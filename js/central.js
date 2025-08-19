@@ -1,5 +1,3 @@
-const { resolve } = require("path")
-
 const tela = document.getElementById('tela')
 const toolbar = document.querySelector('.toolbar')
 const titulo = toolbar.querySelector('span')
