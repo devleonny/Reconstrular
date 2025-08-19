@@ -3,6 +3,15 @@
     border: solid 1px #222;
 }
 
+.popupPdfZip {
+    padding: 2vw;
+    background-color: #d2d2d2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1vw;
+}
+
 .sucesso {
     display: flex;
     align-items: center;

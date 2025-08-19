@@ -1,6 +1,6 @@
 body,
 html {
-    background: linear-gradient(45deg, #249f41, #151749);
+    background: linear-gradient(45deg, #151749, #249f41);
     font-family: 'Poppins', sans-serif;
     height: 100vh;
     width: 100vw;
@@ -166,6 +166,15 @@ span {
     width: 30vw;
 }
 
+.botoes {
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+    padding: 1vw;
+    gap: 1vw;
+}
+
 .botoesMenu {
     display: flex;
     align-items: center;
@@ -293,6 +302,74 @@ button {
     gap: 5px;
     padding: 10vw;
     background-color: #d2d2d2;
+}
+
+.painelCadastro table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.painelCadastro td {
+    background-color: white;
+    border: solid 1px #676767;
+    padding: 8px;
+}
+
+.painelCadastro th {
+    background-color: #676767;
+    color: white;
+    padding: 8px;
+}
+
+.rodapeAlerta {
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    gap: 10px;
+}
+
+.rodapeAlerta img {
+    width: 3vw;
+}
+
+.camposTd {
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    gap: 5px;
+}
+
+.camposTd img {
+    width: 7vw;
+}
+
+.painelPin {
+    display: flex;
+    justify-content: center;
+    align-items: end;
+    flex-direction: column;
+    gap: 10px
+}
+
+.epis {
+    background-color: white;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+    gap: 2px;
+    border-radius: 3px;
+    padding: 1vw;
+    border: solid 1px #222;
+}
+
+.epis img {
+    width: 15vw;
+}
+
+.megaInput {
+    width: 25px;
+    height: 25px;
 }
 
 .toolbarPopup {
@@ -446,8 +523,6 @@ button {
     width: 90%;
     border-radius: 3px;
     padding: 10px;
-    background-color: #222;
-    color: white;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -846,6 +921,7 @@ screen and (min-aspect-ratio: 13/9) {
     }
 
     .atualizar,
+    .epis img,
     .botaoSuperiorLogin img {
         width: 5vw;
     }
@@ -862,6 +938,19 @@ screen and (min-aspect-ratio: 13/9) {
 
     .contornoInterno label {
         font-size: 1.2vw;
+    }
+
+    .botoes {
+        align-items: center;
+        flex-direction: row;
+    }
+
+    .painelPin {
+        flex-direction: row;
+    }
+
+    .camposTd img {
+        width: 3vw;
     }
 
 }

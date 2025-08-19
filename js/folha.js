@@ -28,6 +28,15 @@ const anos = {
     '2026': 2026
 }
 
+const optionsSelect = (obj) => {
+    if (!obj) return
+    let elemento = ''
+    for (const [id, info] of Object.entries(obj).sort()) {
+        elemento += `<option value="${id}">${info}</option>`
+    }
+    return elemento
+}
+
 async function mostrarFolha(idColaborador) {
 
     titulo.textContent = 'Registo de Ponto'
@@ -66,15 +75,6 @@ async function mostrarFolha(idColaborador) {
             ${elemento}
         </div>
     `
-
-    const optionsSelect = (obj) => {
-        if (!obj) return
-        let elemento = ''
-        for (const [id, info] of Object.entries(obj).sort()) {
-            elemento += `<option value="${id}">${info}</option>`
-        }
-        return elemento
-    }
 
     const acumulado = `
         
@@ -317,4 +317,85 @@ async function gerarPDF(idColaborador, nome) {
                 reject()
             });
     })
+}
+
+async function confimacaoZipPdf() {
+    const acumulado = `
+    <div class="popupPdfZip">
+        <span>Selecione o período</span>
+        <select name="ano">${optionsSelect(anos)}</select>
+        <select name="mes">${optionsSelect(meses)}</select>
+
+        <div style="${vertical}; gap: 3px;">
+            <div style="${horizontal}; gap: 3px;">
+                <input type="radio" name="modalidade" value="baixar">
+                <span> Baixar agora </span>
+            </div>
+            <div style="${horizontal}; gap: 3px;">
+                <input type="radio" name="modalidade" value="email">
+                <span> Receber por E-mail </span>
+            </div>
+        </div>
+
+        <button onclick="gerarTodosPDFs()">Confirmar</buttton>
+    </div>
+    `
+
+    popup(acumulado, 'Baixar folhas compactadas em .zip')
+}
+
+async function gerarTodosPDFs() {
+    overlayAguarde();
+    const modalidade = document.querySelector('input[name="modalidade"]:checked').value
+    const body = document.getElementById('body')
+    const trs = body.querySelectorAll('tr')
+    let colaboradores = []
+
+    for (const tr of trs) {
+        if (tr.style.display == 'none') continue
+        const nome = tr.querySelectorAll('span')[0].textContent
+        colaboradores.push({ idColaborador: tr.id, nome })
+    }
+
+    const mes = document.querySelector('[name="mes"]').value;
+    const ano = document.querySelector('[name="ano"]').value;
+    let requisicao = {
+        colaboradores,
+        documento: "folha",
+        servidor: "RECONST",
+        ano,
+        mes,
+        mesTexto: meses[mes]
+    }
+
+    if (modalidade == 'email') requisicao.email = 'lipe.leonny@live.com'
+
+    if (!requisicao.email) {
+        fetch(`${api}/documentos-massa`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requisicao)
+        })
+            .then(res => res.blob())
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `folhas - ${ano} - ${meses[mes]}.zip`;
+                link.click();
+                URL.revokeObjectURL(url);
+                removerOverlay();
+            });
+    } else {
+        fetch(`${api}/documentos-massa`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requisicao)
+        })
+            .then(res => res.json())
+            .then(data => {
+                popup(mensagem(data.mensagem, 'concluido'), 'Envio por E-mail')
+            });
+    }
+
 }
