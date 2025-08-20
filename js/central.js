@@ -47,7 +47,7 @@ const modeloTabela = (colunas, base, btnExtras) => {
 
 const mensagem = (mensagem, imagem) => `
     <div class="mensagem">
-        <img src="gifs/${imagem || 'alerta'}.gif">
+        <img src="${imagem || 'gifs/alerta.gif'}">
         <label>${mensagem}</label>
     </div>
     `
@@ -134,8 +134,12 @@ async function acessoLogin() {
 
             const data = await response.json()
 
-            if (data.permissao == 'novo') {
-                popup(mensagem('Alguém do setor de SUPORTE precisa autorizar sua entrada', 'concluido'), 'ALERTA', true)
+            if (data.mensagem) {
+                divAcesso.style.display = 'flex'
+                return popup(mensagem(data.mensagem), 'Alerta', true);
+
+            } if (data.permissao == 'novo') {
+                popup(mensagem('Alguém do setor de SUPORTE precisa autorizar sua entrada', 'imagens/concluido.png'), 'ALERTA', true)
             } else if (data.permissao !== 'novo') {
                 localStorage.setItem('acesso', JSON.stringify(data));
                 telaPrincipal()
@@ -145,13 +149,15 @@ async function acessoLogin() {
             divAcesso.style.display = 'flex'
 
         } catch (e) {
-            popup(mensagem(e), 'ALERTA', true);
+            popup(mensagem(e), 'Alerta', true);
         }
 
     }
 }
 
 async function verificarSupervisor(usuario, senha) {
+
+    const url = `${api}/acesso`
     const requisicao = {
         tipoAcesso: 'login',
         servidor: 'RECONST',
@@ -178,6 +184,7 @@ async function verificarSupervisor(usuario, senha) {
             return 'Senha Supervisão inválida'
         }
     } catch (e) {
+        console.log(e);
         return 'Não foi possível no momento'
     }
 }
@@ -228,8 +235,8 @@ function salvarCadastro() {
             .then(data => {
 
                 switch (true) {
-                    case data.erro:
-                        popup(mensagem(data.erro), 'AVISO', true);
+                    case data.mensagem:
+                        popup(mensagem(data.mensagem), 'AVISO', true);
                         break;
                     case data.permissao == 'novo':
                         popup(mensagem('Seu cadastro foi realizado! Alguém do setor de SUPORTE precisa autorizar sua entrada!'), 'ALERTA')
@@ -240,7 +247,7 @@ function salvarCadastro() {
 
             })
             .catch(error => {
-                popup(mensagem(error.erro), 'AVISO', true);
+                popup(mensagem(error.mensagem), 'AVISO', true);
             });
 
     }
@@ -342,6 +349,7 @@ async function telaPrincipal() {
                     ${btn('pessoas', 'Colaboradores', 'telaColaboradores()')}
                     ${btn('obras', 'Obras', 'telaObras()')}
                     ${btn('perfil', 'Usuários', 'usuarios()')}
+                    ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
                     ${btn('sair', 'Desconectar', 'deslogar()')}
 
                 </div>
@@ -359,9 +367,62 @@ async function telaPrincipal() {
     tela.innerHTML = acumulado
 
     await sincronizarDados('dados_distritos', true)
+    await sincronizarDados('configuracoes', true)
     dados_distritos = await recuperarDados('dados_distritos')
     await sincronizarSetores()
 
+}
+
+async function telaConfiguracoes() {
+
+    esconderMenus()
+    titulo.innerHTML = 'Configurações'
+    const modelo = (texto, elemento) => `
+        <div>
+            <span><Strong>${texto}</strong></span>
+            ${elemento}
+        </div>
+    `
+
+    const configuracoes = await recuperarDados('configuracoes')
+
+    const acumulado = `
+        <div class="configuracoes">
+            <h1 style="color: #222;">Configurações</h1>
+            <span>Informe os e-mails para receber as informações abaixo:
+            <hr style="width: 100%;">
+            ${modelo('Folhas de Ponto',
+        `<input id="emailFolha" placeholder="digite o e-mail" value="${configuracoes?.emailFolha || ''}">`
+    )}
+            ${modelo('Recebimento de alertas [Colaboradores preenchidos]',
+        `<input id="emailAlertas" placeholder="digite o e-mail" value="${configuracoes?.emailAlertas || ''}">`
+    )}
+
+            <br>
+            <button onclick="salvarConfigs()">Salvar</button>
+        
+        </div>
+    `
+
+    const telaInterna = document.querySelector('.telaInterna')
+
+    telaInterna.innerHTML = acumulado
+}
+
+async function salvarConfigs() {
+
+    const emailFolha = document.getElementById('emailFolha').value
+    const emailAlertas = document.getElementById('emailAlertas').value
+
+    const configuracoes = {
+        emailFolha,
+        emailAlertas
+    }
+
+    await enviar('configuracoes', configuracoes)
+    await inserirDados(configuracoes, 'configuracoes')
+
+    popup(mensagem('Configurações Salvas', 'imagens/concluido.png'), 'Sucesso', true)
 }
 
 function verificarClique(event) {
@@ -545,7 +606,7 @@ async function telaColaboradores() {
     const nomeBase = 'dados_colaboradores'
     titulo.textContent = 'Gerenciar Colaboradores'
     const acumulado = `
-        ${btnRodape('Adicionar', 'adicionarPessoa()')}
+        ${btnRodape('Adicionar', 'adicionarColaborador()')}
         ${modeloTabela(['Nome Completo', 'Telefone', 'Obra Alocada', 'Status', 'Especialidade', 'Folha de Ponto', ''], nomeBase, btnExtras)}
     `
     const telaInterna = document.querySelector('.telaInterna')
@@ -641,7 +702,7 @@ async function salvarEpi(idColaborador) {
 
     const pinInput = document.getElementById('pin')
 
-    if (pinInput.dataset.pin !== pinInput.value) return popup(mensagem('Pins não conferem'), 'Alerta', true)
+    if (pinInput.dataset.pin !== pinInput.value) return popup(mensagem('Pin do colaborador não confere'), 'Alerta', true)
 
     let colaborador = await recuperarDado('dados_colaboradores', idColaborador)
     const inputsAtivos = document.querySelectorAll('input[name="camposEpi"]:checked')
@@ -660,13 +721,16 @@ async function salvarEpi(idColaborador) {
 
     colaborador.epi = epi
 
-    const senha = document.getElementById('senha')
+    // Verificar acesso do supervisor
+    const senhaSupervisor = document.getElementById('supervisor')
+    const acesso = JSON.parse(localStorage.getItem('acesso'))
+    const resposta = await verificarSupervisor(acesso.usuario, senhaSupervisor.value)
 
-    //29
+    if (resposta !== 'Senha válida') return popup(mensagem(resposta), 'Alerta', true)
 
     await enviar(`dados_colaboradores/${idColaborador}/epi`, epi)
     await inserirDados({ [idColaborador]: colaborador }, 'dados_colaboradores')
-    await adicionarPessoa(idColaborador)
+    await adicionarColaborador(idColaborador)
 
     removerPopup()
 
@@ -676,12 +740,12 @@ async function criarLinha(dados, id, nomeBase) {
 
     const modelo = (texto, exclamacao) => {
 
-        const algoPendente = (!dados.epi || !dados.exame || !dados.contrato) ? '<img src="imagens/exclamacao.png">' : ''
+        const algoPendente = (!dados.epi || !dados.exame || !dados.contratoObra) ? 'exclamacao' : 'doublecheck'
 
         return `
         <td>
             <div class="camposTd">
-                ${exclamacao ? algoPendente : ''}
+                ${exclamacao ? `<img src="imagens/${algoPendente}.png">` : ''}
                 <span class="${texto.replace(' ', '_')}">${texto}</span>
             </div>
         </td>`
@@ -691,7 +755,7 @@ async function criarLinha(dados, id, nomeBase) {
     let funcao = ''
 
     if (nomeBase == 'dados_colaboradores') {
-        funcao = `adicionarPessoa('${id}')`
+        funcao = `adicionarColaborador('${id}')`
 
         const especialidades = (dados?.especialidade || [])
             .map(op => `<span>• ${op}</span>`)
@@ -802,7 +866,7 @@ async function gerenciarUsuario(id) {
     popup(acumulado, 'Usuário')
 }
 
-async function adicionarPessoa(id) {
+async function adicionarColaborador(id) {
 
     const colaborador = await recuperarDado('dados_colaboradores', id) || {}
     const dados_obras = await recuperarDados('dados_obras')
@@ -967,6 +1031,7 @@ async function adicionarPessoa(id) {
 function resetarPin() {
     document.querySelector('[name="pin"]').value = ''
     document.querySelector('[name="pinEspelho"]').value = ''
+    verificarRegras()
 }
 
 async function abrirCamera() {
@@ -1054,7 +1119,7 @@ function verificarRegras() {
         </div>
         `
 
-    if (pin.value !== pinEspelho.value) {
+    if (pin.value !== pinEspelho.value || pin.value == '') {
         rodapeAlerta.innerHTML = mensagem('cancel', 'Os Pins não são iguais')
         pin.classList.add('invalido')
         pinEspelho.classList.add('invalido')
@@ -1265,7 +1330,7 @@ async function inserirDados(dados, nomeBase, resetar) {
             db.close();
             resolve(precisaCriar ? versaoAtual + 1 : versaoAtual);
         };
-        req.onerror = (e) => reject(e.target.error);
+        req.onerror = (e) => reject(e.target.mensagemr);
     });
 
     const db = await new Promise((resolve, reject) => {
@@ -1277,7 +1342,7 @@ async function inserirDados(dados, nomeBase, resetar) {
             }
         };
         req.onsuccess = () => resolve(req.result);
-        req.onerror = (e) => reject(e.target.error);
+        req.onerror = (e) => reject(e.target.mensagemr);
     });
 
     const tx = db.transaction(nomeStore, 'readwrite');
@@ -1290,7 +1355,7 @@ async function inserirDados(dados, nomeBase, resetar) {
         const antigo = await new Promise((resolve, reject) => {
             const req = store.get(nomeBase);
             req.onsuccess = () => resolve(req.result?.dados || {});
-            req.onerror = (e) => reject(e.target.error);
+            req.onerror = (e) => reject(e.target.mensagemr);
         });
 
         dadosMesclados = { ...antigo, ...dados };
@@ -1319,7 +1384,7 @@ async function recuperarDados(nomeBase) {
         const db = await new Promise((resolve, reject) => {
             const request = indexedDB.open(nomeBaseCentral);
             request.onsuccess = () => resolve(request.result);
-            request.onerror = (e) => reject(e.target.error);
+            request.onerror = (e) => reject(e.target.mensagemr);
         });
 
         if (!db.objectStoreNames.contains(nomeStore)) {
@@ -1332,7 +1397,7 @@ async function recuperarDados(nomeBase) {
         const item = await new Promise((resolve, reject) => {
             const req = store.get(base);
             req.onsuccess = () => resolve(req.result);
-            req.onerror = (e) => reject(e.target.error);
+            req.onerror = (e) => reject(e.target.mensagemr);
         });
 
         db.close();
@@ -1348,7 +1413,7 @@ async function recuperarDado(nomeBase, id) {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(nomeBaseCentral);
             request.onsuccess = () => resolve(request.result);
-            request.onerror = (e) => reject(e.target.error);
+            request.onerror = (e) => reject(e.target.mensagemr);
         });
     };
 
@@ -1361,7 +1426,7 @@ async function recuperarDado(nomeBase, id) {
         const registro = await new Promise((resolve, reject) => {
             const req = store.get(base);
             req.onsuccess = () => resolve(req.result);
-            req.onerror = (e) => reject(e.target.error);
+            req.onerror = (e) => reject(e.target.mensagemr);
         });
 
         return registro?.dados?.[id] || null;
@@ -1392,7 +1457,7 @@ function enviar(caminho, info) {
         })
             .then(data => resolve(data))
             .catch((erro) => {
-                console.error(erro);
+                console.mensagemr(erro);
                 salvar_offline(objeto, 'enviar');
                 resolve();
             });
@@ -1581,7 +1646,7 @@ async function configuracoes(usuario, campo, valor) {
                 resolve(data);
             })
             .catch(err => {
-                console.error(err)
+                console.mensagemr(err)
                 reject()
             });
     })
@@ -2104,7 +2169,7 @@ async function enviarExcel(idObra) {
             await sincronizarDados('dados_obras')
             await verAndamento(idObra)
         } else {
-            popup(mensagem(`Erro: ${dados.erro}`), 'Alerta')
+            popup(mensagem(`Erro: ${dados.mensagem}`), 'Alerta')
         }
     } catch (err) {
         popup(mensagem(`Erro de conexão: ${err}`), 'Alerta')

@@ -368,7 +368,11 @@ async function gerarTodosPDFs() {
         mesTexto: meses[mes]
     }
 
-    if (modalidade == 'email') requisicao.email = 'lipe.leonny@live.com'
+    if (modalidade == 'email') {
+        const configuracoes = await recuperarDados('configuracoes')
+        if(!configuracoes.emailFolha || configuracoes.emailFolha == '') return popup(mensagem('Configure um e-mail para recebimento das Folhas'), 'Alerta', true)
+        requisicao.email = configuracoes.emailFolha
+    }
 
     if (!requisicao.email) {
         fetch(`${api}/documentos-massa`, {
@@ -394,7 +398,7 @@ async function gerarTodosPDFs() {
         })
             .then(res => res.json())
             .then(data => {
-                popup(mensagem(data.mensagem, 'concluido'), 'Envio por E-mail')
+                popup(mensagem(data.mensagem, 'imagens/concluido.png'), 'Envio por E-mail')
             });
     }
 

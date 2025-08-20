@@ -21,6 +21,8 @@ async function abrirEPI(idColaborador) {
     for (const [equipamento, dados] of Object.entries(equipamentosLinhas)) {
 
         const equip = equipColaborador[equipamento]
+        if(!equipColaborador[equipamento]) continue
+
         equipamentos += `
             <tr>
                 ${tdG(dados.risco)}

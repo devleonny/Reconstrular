@@ -720,6 +720,18 @@ input[type="file"] {
     padding: 5vw;
 }
 
+.configuracoes {
+    background-color: white;
+    border-radius: 3px;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+    gap: 5px;
+    padding: 3vw;
+    width: 100%;
+}
+
 .toolbar {
     display: flex;
     align-items: center;
