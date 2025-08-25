@@ -2274,3 +2274,4 @@ function abrirArquivo(link, nome) {
 
     window.open(link, '_blank');
 }
+
