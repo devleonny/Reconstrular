@@ -346,8 +346,9 @@ async function telaPrincipal() {
                 
                 <div class="botoesMenu">
 
-                    ${btn('pessoas', 'Colaboradores', 'telaColaboradores()')}
+                    ${btn('colaborador', 'Colaboradores', 'telaColaboradores()')}
                     ${btn('obras', 'Obras', 'telaObras()')}
+                    ${btn('pessoas', 'Clientes', 'telaClientes()')}
                     ${btn('perfil', 'Usuários', 'usuarios()')}
                     ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
                     ${btn('sair', 'Desconectar', 'deslogar()')}
@@ -358,8 +359,10 @@ async function telaPrincipal() {
         </div>
 
         <div class="telaInterna">
-            <h1>Reconstrular</h1>
-            <p>Seja bem vindo!</p>
+            <div class="plano-fundo">
+                <h1>Reconstrular</h1>
+                <p>Seja bem vindo!</p>
+            </div>
         </div>
     </div>
     `
@@ -371,6 +374,27 @@ async function telaPrincipal() {
     dados_distritos = await recuperarDados('dados_distritos')
     await sincronizarSetores()
 
+}
+
+function telaClientes() {
+
+    esconderMenus()
+    titulo.textContent = 'Cadastro de Clientes'
+    const acumulado = `
+    <div class="painel-clientes">
+        <div>
+            <img src="imagens/pessoas.png">
+            <span>Cadastro de Clientes</span>
+        </div>
+        <div>
+            <img src="imagens/todos.png">
+            <span>Verificar Clientes</span>
+        </div>
+    </div>
+    `
+
+    const telaInterna = document.querySelector('.telaInterna')
+    telaInterna.innerHTML = acumulado
 }
 
 async function telaConfiguracoes() {
@@ -466,7 +490,7 @@ async function telaObras() {
     titulo.textContent = 'Gerenciar Obras'
     const acumulado = `
         ${btnRodape('Adicionar', 'adicionarObra()')}
-        ${modeloTabela(['Cliente', 'Distrito', 'Cidade', 'Status', 'Acompanhamento', ''], nomeBase)}
+        ${modeloTabela(['Cliente', 'Distrito', 'Cidade', 'Porcentagem', 'Status', 'Acompanhamento', ''], nomeBase)}
     `
     const telaInterna = document.querySelector('.telaInterna')
 
@@ -497,38 +521,18 @@ async function adicionarObra(idObra) {
             <div>${elemento}</div>
         </div>
     `
-    const caixaStatus = retornarCaixas('status')
-
-    function retornarCaixas(name) {
-
-        const opcoesStatus = ['Por Iniciar', 'Em Andamento', 'Finalizado']
-            .map(op => `
-            <div class="opcaoStatus">
-                <input value="${op}" type="radio" name="${name}" ${obra?.[name] == op ? 'checked' : ''}>
-                <span style="text-align: left;">${op}</span>
-            </div>
-            `).join('')
-
-        return `
-            <div name="${name}_bloco" style="${vertical}; gap: 5px;">
-                ${opcoesStatus}
-            </div>`
-
-    }
 
     const acumulado = `
         <div class="painelCadastro">
-            ${modelo('Status', caixaStatus)}
             ${modelo('Distrito', `<select name="distrito" onchange="carregarSelects({select: this})"></select>`)}
             ${modelo('Cidade', `<select name="cidade"></select>`)}
             ${modelo('Cliente', `<input value="${obra?.cliente || ''}" name="cliente" placeholder="Nome do Cliente">`)}
             ${modelo('Contacto cliente', `<input value="${obra?.contacto || ''}" name="contacto" placeholder="Contacto">`)}
             ${modelo('E-mail cliente', `<input value="${obra?.email || ''}" name="email" placeholder="E-mail">`)}
 
-            <hr style="width: 100%;">
-
-            ${btnPadrao('Salvar', `salvarObra(${idObra ? `'${idObra}'` : ''})`)}
-
+        </div>
+        <div class="rodape-formulario">
+            <button onclick="salvarObra(${idObra ? `'${idObra}'` : ''})">Inserir</button>
         </div>
     `
 
@@ -577,8 +581,6 @@ async function salvarObra(idObra) {
     const camposFixos = ['cliente', 'contacto', 'email', 'distrito', 'cidade']
 
     for (const campo of camposFixos) obra[campo] = obVal(campo)
-
-    obra.status = document.querySelector(`input[name="status"]:checked`)?.value || ''
 
     await enviar(`dados_obras/${idObra}`, obra)
     await inserirDados({ [idObra]: obra }, 'dados_obras')
@@ -690,7 +692,8 @@ async function formularioEPI(idColaborador) {
 
             ${senhas('Senha Supervisor')}
 
-            <br>
+        </div>
+        <div class="rodape-formulario">
             <button onclick="salvarEpi('${idColaborador}')">Inserir</button>
         </div>
     `
@@ -773,7 +776,7 @@ async function criarLinha(dados, id, nomeBase) {
             const cidade = distrito.cidades[obraAlocada.cidade]
 
             dadosObra = `
-            
+            <div style="${vertical}; gap: 1px;">
                 <span><strong>${obraAlocada.cliente}</strong></span>
                 <span>• ${distrito.nome}</span>
                 <span>• ${cidade.nome}</span>
@@ -805,12 +808,27 @@ async function criarLinha(dados, id, nomeBase) {
         funcao = `adicionarObra('${id}')`
         const distrito = dados_distritos?.[dados?.distrito] || {}
         const cidades = distrito?.cidades?.[dados?.cidade] || {}
+        const resultado = await atualizarToolbar(id, false, true)
+        const porcentagem = Number(resultado.porcentagemAndamento)
+        
+        let st = 'Por Iniciar'
+        if (porcentagem == 100) {
+            st = 'Finalizado'
+        } else if (porcentagem > 0) {
+            st = 'Em Andamento'
+        }
 
         tds = `
             ${modelo(dados?.cliente || '--')}
             ${modelo(distrito?.nome || '--')}
             ${modelo(cidades?.nome || '--')}
-            ${modelo(dados?.status || '--')}
+            <td style="text-align: center;">
+                <span><strong>${porcentagem}%</strong></span>
+            </td>
+            <td style="text-align: left;">
+                <span class="${st.replace(' ', '_')}">${st}</span>
+                ${resultado.totais.excedente ? '<span class="excedente">Excedente</span>' : ''}
+            </td>
             <td class="detalhes">
                 <img src="imagens/kanban.png" onclick="verAndamento('${id}')">
             </td>
@@ -1023,7 +1041,7 @@ async function adicionarColaborador(id) {
 
         </div>
         <div class="rodape-formulario">
-            <button onclick="salvarColaborador(${id ? `'${id}'`: ''}">Salvar</button>
+            <button onclick="salvarColaborador(${id ? `'${id}'` : ''}">Salvar</button>
         </div>
     `
 
@@ -1574,11 +1592,12 @@ async function listaSetores(timestamp) {
 
 function porcentagemHtml(valor) {
     valor = conversor(valor);
-    const percentual = isNaN(valor) ? 0 : Math.max(0, Math.min(100, valor)).toFixed(0); // limita 0-100
+    const percentual = isNaN(valor) ? 0 : Math.max(0, valor).toFixed(0);
 
     let cor;
     if (percentual < 50) cor = 'red';
     else if (percentual < 100) cor = 'orange';
+    else if (percentual > 100) cor = 'blue';
     else cor = 'green';
 
     return `
@@ -1822,12 +1841,10 @@ function pesquisar(input, idTbody) {
     });
 }
 
-
-async function atualizarToolbar(id, nomeEtapa) {
+async function atualizarToolbar(id, nomeEtapa, resumo) {
 
     let obra = await recuperarDado('dados_obras', id)
     if (!obra.etapas) obra.etapas = {}
-    let tarefa = obra.etapas
 
     if (nomeEtapa && nomeEtapa.includes('Todas')) nomeEtapa = false
 
@@ -1839,6 +1856,7 @@ async function atualizarToolbar(id, nomeEtapa) {
     `
 
     let totais = {
+        excedente: false,
         tarefas: 0,
         naoIniciado: 0,
         emAndamento: 0,
@@ -1870,12 +1888,19 @@ async function atualizarToolbar(id, nomeEtapa) {
                 totais.concluido++
             }
 
-            totais.porcentagemConcluido += tarefa.porcentagem
+            if (tarefa.porcentagem > 100) {
+                totais.excedente = true
+            }
+
+            const progressoTarefa = Math.min(100, tarefa.porcentagem)
+            totais.porcentagemConcluido += progressoTarefa
         }
     }
 
     const emPorcentagemConcluido = totais.porcentagemConcluido / 100
     const porcentagemAndamento = emPorcentagemConcluido == 0 ? 0 : ((emPorcentagemConcluido / totais.tarefas) * 100).toFixed(0)
+
+    if (resumo) return { porcentagemAndamento, totais }
 
     const opcoes = etapas
         .map(op => `<option ${nomeEtapa == op ? 'selected' : ''}>${op}</option>`).join('')
@@ -1930,10 +1955,10 @@ async function editarTarefa(id, idEtapa, idTarefa) {
         <div class="painelCadastro">
             ${modelo('Descrição', tarefa?.descricao || '')}
             ${campos}
-            <hr style="width: 100%">
+        </div>
+        <div class="rodape-formulario">
             <button onclick="${funcao}">Salvar</button>
         </div>
-    
     `
     popup(acumulado, 'Gerenciamento de Etapas e Tarefas')
 

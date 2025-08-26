@@ -11,6 +11,38 @@ html {
     flex-direction: column;
 }
 
+.painel-clientes {
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    width: 90vw;
+    height: 70vh;
+    background-color: #0000005e;
+    border-radius: 3px;
+}
+
+.painel-clientes div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    background-color: white;
+    padding: 10px;
+    border-radius: 2px;
+    height: 20vh;
+}
+
+.plano-fundo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    height: 80vh;
+    width: 90vw;
+    background-color: #0000005e;
+    border-radius: 5px;
+}
+
 .foto {
     border-radius: 5px;
     width: 100%;
@@ -101,6 +133,14 @@ span {
     border: solid 1px red;
     border-radius: 5px;
     background-color: #f7c5c5;
+}
+
+.excedente {
+    padding-left: 1vw;
+    padding-right: 1vw;
+    border: solid 1px #0011ac;
+    border-radius: 5px;
+    background-color: #d2d7ff;
 }
 
 .Finalizado {
@@ -812,7 +852,7 @@ input[type="file"] {
 @media screen and (orientation: landscape),
 screen and (min-aspect-ratio: 13/9) {
 
-        .rodape-formulario span {
+    .rodape-formulario span {
         font-size: 2vw;
     }
 
