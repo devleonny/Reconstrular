@@ -351,7 +351,7 @@ async function telaPrincipal() {
                     ${btn('colaborador', 'Colaboradores', 'telaColaboradores()')}
                     ${btn('obras', 'Obras', 'telaObras()')}
                     ${btn('pessoas', 'Cadastro de Clientes', 'formularioCliente()')}
-                    ${btn('todos', 'Verificar Clientes', 'formularioCliente()')}
+                    ${btn('todos', 'Verificar Clientes', 'telaClientes()')}
                     ${btn('perfil', 'Usuários', 'usuarios()')}
                     ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
                     ${btn('sair', 'Desconectar', 'deslogar()')}
@@ -379,20 +379,46 @@ async function telaPrincipal() {
 
 }
 
-function telaClientes() {
+async function telaClientes() {
 
     esconderMenus()
-    titulo.textContent = 'Cadastro de Clientes'
+    const nomeBase = 'dados_clientes'
+    titulo.textContent = 'Verificar Clientes'
     const acumulado = `
+        ${modeloTabela(['Nome', 'Morada Fiscal', 'Morada de Execução', 'E-mail', 'Telefone', ''], nomeBase)}
+    `
+    const telaInterna = document.querySelector('.telaInterna')
+    telaInterna.innerHTML = acumulado
+
+    const dados = await recuperarDados(nomeBase)
+    for (const [id, dado] of Object.entries(dados).reverse()) criarLinha(dado, id, nomeBase)
+}
+
+async function formularioCliente(idCliente) {
+
+    esconderMenus()
+
+    const cliente = await recuperarDado('dados_clientes', idCliente)
+
+    const modelo = (texto, valor) => `
+        <div style="${vertical};">
+            <span>${texto}</span>
+            <input placeholder="${texto}" name="${texto}" value="${valor || ''}">
+        </div>
+    `
+    titulo.textContent = 'Cadastro de Cliente'
+    const funcao = idCliente ? `salvarCliente('${idCliente}')` : 'salvarCliente()'
+    const acumulado = `
+    <div class="cabecalho-clientes">
+        <button onclick="${funcao}">Salvar</button>
+    </div>
     <div class="painel-clientes">
-        <div onclick="formularioCliente()">
-            <img src="imagens/pessoas.png">
-            <span>Cadastro de Clientes</span>
-        </div>
-        <div>
-            <img src="imagens/todos.png">
-            <span>Verificar Clientes</span>
-        </div>
+        ${modelo('Nome', cliente.nome)}
+        ${modelo('Morada Fiscal', cliente.moradaFiscal)}
+        ${modelo('Morada de Execução', cliente.moradaExecucao)}
+        ${modelo('Número de Contribuinte', cliente.numeroContribuinte)}
+        ${modelo('Telefone', cliente.telefone)}
+        ${modelo('E-mail', cliente.email)}
     </div>
     `
 
@@ -400,35 +426,28 @@ function telaClientes() {
     telaInterna.innerHTML = acumulado
 }
 
-formularioCliente()
+async function salvarCliente(idCliente) {
 
-async function formularioCliente() {
+    const obVal = (texto) => {
+        const el = document.querySelector(`[name="${texto}"]`)
+        return el.value
+    }
 
-    //esconderMenus()
+    idCliente = idCliente || ID5digitos()
+    let cliente = {
+        nome: obVal('Nome'),
+        moradaFiscal: obVal('Morada Fiscal'),
+        moradaExecucao: obVal('Morada de Execução'),
+        numeroContribuinte: obVal('Número de Contribuinte'),
+        telefone: obVal('Telefone'),
+        email: obVal('E-mail')
+    }
 
-    const modelo = (texto) => `
-        <div style="${vertical};">
-            <span>${texto}</span>
-            <input placeholder="${texto}">
-        </div>
-    `
-    titulo.textContent = 'Cadastro de Cliente'
-    const acumulado = `
-    <div class="cabecalho-clientes">
-        <button>Salvar</button>
-    </div>
-    <div class="painel-clientes">
-        ${modelo('Nome', '')}
-        ${modelo('Morada Fiscal', '')}
-        ${modelo('Morada de Execução', '')}
-        ${modelo('Número de Contribuinte', '')}
-        ${modelo('Telefone', '')}
-        ${modelo('E-mail', '')}
-    </div>
-    `
-
-    const telaInterna = document.querySelector('.telaInterna')
-    telaInterna.innerHTML = acumulado
+    await enviar(`dados_clientes/${idCliente}`, cliente)
+    await inserirDados({ [idCliente]: cliente }, 'dados_clientes')
+    await telaClientes()
+    esconderMenus()
+    popup(mensagem('Salvo com sucesso', 'imagens/concluido.png'), 'Salvo')
 }
 
 async function telaConfiguracoes() {
@@ -837,6 +856,16 @@ async function criarLinha(dados, id, nomeBase) {
             <td class="detalhes">
                 <img src="imagens/relogio.png" onclick="mostrarFolha('${id}')">
             </td>
+        `
+
+    } else if (nomeBase == 'dados_clientes') {
+        funcao = `formularioCliente('${id}')`
+        tds = `
+            ${modelo(dados?.nome || '--')}
+            ${modelo(dados?.moradaFiscal || '--')}
+            ${modelo(dados?.moradaExecucao || '--')}
+            ${modelo(dados?.email || '--')}
+            ${modelo(dados?.telefone || '--')}
         `
     } else if (nomeBase == 'dados_obras') {
         funcao = `adicionarObra('${id}')`
