@@ -340,11 +340,13 @@ async function telaPrincipal() {
 
         <div class="side-menu" id="sideMenu">
 
-            <span class="nomeUsuario">${acesso.usuario} <strong>${acesso.permissao}</strong></span>
-
             <div style="${vertical}; justify-content: space-between; height: 100%;">
                 
                 <div class="botoesMenu">
+
+                    <span class="nomeUsuario">${acesso.usuario} <strong>${acesso.permissao}</strong></span>
+
+                    <br>
 
                     ${btn('colaborador', 'Colaboradores', 'telaColaboradores()')}
                     ${btn('obras', 'Obras', 'telaObras()')}
