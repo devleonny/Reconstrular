@@ -189,7 +189,7 @@ async function criarFolha(idColaborador) {
         const diaDaSemana = semana[indiceSem]
         const entradas = folha?.[ano]?.[mesString]?.[dia] || ['00:00', '00:00']
         const hora1 = entradas[0] || '00:00'
-        const hora2 = entradas[1] || '00:00'
+        const hora2 = entradas[1] ? entradas[1] : (entradas[0] && !entradas[1]) ? '17:00' : '00:00'
         const resultado = calcularHoras(hora1, hora2, '08:00')
         const [h, m] = resultado.total.split(':').map(Number)
         const fds = indiceSem == 0 || indiceSem == 6
@@ -253,27 +253,6 @@ function calcularHoras(hora1, hora2, esperado) {
         total: `${String(totalHoras).padStart(2, '0')}:${String(totalMin).padStart(2, '0')}`,
         diferenca: `${sinal}${String(diffHoras).padStart(2, '0')}:${String(diffMin).padStart(2, '0')}`
     };
-}
-
-function cloneWithInlineStyles(node) {
-    const clone = node.cloneNode(true);
-
-    const apply = (src, dst) => {
-        const cs = getComputedStyle(src);
-        let css = '';
-        for (let i = 0; i < cs.length; i++) {
-            const p = cs[i];
-            css += `${p}:${cs.getPropertyValue(p)};`;
-        }
-        dst.setAttribute('style', css);
-    };
-
-    apply(node, clone);
-    const srcAll = node.querySelectorAll('*');
-    const dstAll = clone.querySelectorAll('*');
-    for (let i = 0; i < srcAll.length; i++) apply(srcAll[i], dstAll[i]);
-
-    return clone;
 }
 
 async function gerarPDF(idColaborador, nome) {

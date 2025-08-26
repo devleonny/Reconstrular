@@ -411,6 +411,8 @@ async function telaConfiguracoes() {
 
 async function salvarConfigs() {
 
+    overlayAguarde()
+
     const emailFolha = document.getElementById('emailFolha').value
     const emailAlertas = document.getElementById('emailAlertas').value
 
@@ -734,6 +736,8 @@ async function salvarEpi(idColaborador) {
 
     removerPopup()
 
+    await enviarAlerta(idColaborador)
+
 }
 
 async function criarLinha(dados, id, nomeBase) {
@@ -1016,9 +1020,10 @@ async function adicionarColaborador(id) {
             <div class="rodapeAlerta"></div>
 
             <br>
-            
-            ${btnPadrao('Salvar', `salvarColaborador(${id ? `'${id}'` : ''})`)}
 
+        </div>
+        <div class="rodape-formulario">
+            <button onclick="salvarColaborador(${id ? `'${id}'`: ''}">Salvar</button>
         </div>
     `
 
@@ -1232,7 +1237,7 @@ async function salvarColaborador(idColaborador) {
     }
     colaborador.pin = inputPin.value
 
-    const camposAnexos = ['contratoObra', 'exame', 'epi'];
+    const camposAnexos = ['contratoObra', 'exame'];
     for (const campo of camposAnexos) {
         const input = document.querySelector(`[name="${campo}"]`);
         if (!input || !input.files || input.files.length === 0) continue;
@@ -2149,6 +2154,19 @@ function calcular() {
     indPorcentagem.innerHTML = porcentagemHtml(porcentagem)
 
     document.querySelector(`[name="Porcentagem"]`).value = porcentagem
+}
+
+async function enviarAlerta(idColaborador) {
+    const url = `${api}/enviar-alerta`
+    const resposta = await fetch(url, {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idColaborador, servidor: 'RECONST' })
+    });
+
+    const dados = await resposta.json();
+
+    popup(mensagem(dados.mensagem), 'Aviso', true);
 }
 
 async function enviarExcel(idObra) {

@@ -2,7 +2,7 @@ body,
 html {
     background: linear-gradient(45deg, #151749, #249f41);
     font-family: 'Poppins', sans-serif;
-    height: 100vh;
+    min-height: 100vh;
     width: 100vw;
     margin: 0;
     display: flex;
@@ -270,7 +270,7 @@ button {
     cursor: pointer;
     background-color: #249f41;
     border-radius: 3px;
-    border: solid 1px #222;
+    border: none;
     white-space: nowrap;
 }
 
@@ -278,6 +278,8 @@ button {
     min-width: 90vw;
     overflow: auto;
     max-height: 80vh;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
 }
 
 .janela_fora {
@@ -302,6 +304,8 @@ button {
     gap: 5px;
     padding: 10vw;
     background-color: #d2d2d2;
+    max-height: 70vh;
+    overflow-y: auto;
 }
 
 .painelCadastro table {
@@ -788,8 +792,34 @@ input[type="file"] {
     font-size: 4vw;
 }
 
+.rodape-formulario {
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    background-color: #a0a0a0ff;
+    gap: 1vw;
+}
+
+.rodape-formulario button {
+    padding: 5vw;
+    font-size: 4vw;
+}
+
+.rodape-formulario span {
+    font-size: 4vw;
+}
+
 @media screen and (orientation: landscape),
 screen and (min-aspect-ratio: 13/9) {
+
+        .rodape-formulario span {
+        font-size: 2vw;
+    }
+
+    .rodape-formulario button {
+        padding: 2vw;
+        font-size: 2vw;
+    }
 
     .tabTarefas table {
         width: -webkit-fill-available;
