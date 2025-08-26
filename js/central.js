@@ -350,7 +350,8 @@ async function telaPrincipal() {
 
                     ${btn('colaborador', 'Colaboradores', 'telaColaboradores()')}
                     ${btn('obras', 'Obras', 'telaObras()')}
-                    ${btn('pessoas', 'Clientes', 'telaClientes()')}
+                    ${btn('pessoas', 'Cadastro de Clientes', 'formularioCliente()')}
+                    ${btn('todos', 'Verificar Clientes', 'formularioCliente()')}
                     ${btn('perfil', 'Usuários', 'usuarios()')}
                     ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
                     ${btn('sair', 'Desconectar', 'deslogar()')}
@@ -384,7 +385,7 @@ function telaClientes() {
     titulo.textContent = 'Cadastro de Clientes'
     const acumulado = `
     <div class="painel-clientes">
-        <div>
+        <div onclick="formularioCliente()">
             <img src="imagens/pessoas.png">
             <span>Cadastro de Clientes</span>
         </div>
@@ -392,6 +393,37 @@ function telaClientes() {
             <img src="imagens/todos.png">
             <span>Verificar Clientes</span>
         </div>
+    </div>
+    `
+
+    const telaInterna = document.querySelector('.telaInterna')
+    telaInterna.innerHTML = acumulado
+}
+
+formularioCliente()
+
+async function formularioCliente() {
+
+    //esconderMenus()
+
+    const modelo = (texto) => `
+        <div style="${vertical};">
+            <span>${texto}</span>
+            <input placeholder="${texto}">
+        </div>
+    `
+    titulo.textContent = 'Cadastro de Cliente'
+    const acumulado = `
+    <div class="cabecalho-clientes">
+        <button>Salvar</button>
+    </div>
+    <div class="painel-clientes">
+        ${modelo('Nome', '')}
+        ${modelo('Morada Fiscal', '')}
+        ${modelo('Morada de Execução', '')}
+        ${modelo('Número de Contribuinte', '')}
+        ${modelo('Telefone', '')}
+        ${modelo('E-mail', '')}
     </div>
     `
 
@@ -525,7 +557,7 @@ async function adicionarObra(idObra) {
     `
 
     const acumulado = `
-        <div class="painelCadastro">
+        <div class="painel-cadastro">
             ${modelo('Distrito', `<select name="distrito" onchange="carregarSelects({select: this})"></select>`)}
             ${modelo('Cidade', `<select name="cidade"></select>`)}
             ${modelo('Cliente', `<input value="${obra?.cliente || ''}" name="cliente" placeholder="Nome do Cliente">`)}
@@ -674,7 +706,7 @@ async function formularioEPI(idColaborador) {
         .join('')
 
     const acumulado = `
-        <div class="painelCadastro">
+        <div class="painel-cadastro">
 
             <table>
                 <thead>${cab}</thead>
@@ -812,7 +844,7 @@ async function criarLinha(dados, id, nomeBase) {
         const cidades = distrito?.cidades?.[dados?.cidade] || {}
         const resultado = await atualizarToolbar(id, false, true)
         const porcentagem = Number(resultado.porcentagemAndamento)
-        
+
         let st = 'Por Iniciar'
         if (porcentagem == 100) {
             st = 'Finalizado'
@@ -995,7 +1027,7 @@ async function adicionarColaborador(id) {
     }
 
     const acumulado = `
-        <div class="painelCadastro">
+        <div class="painel-cadastro">
 
             ${modelo('Nome Completo', `<textarea ${regras} name="nome" placeholder="Nome Completo">${colaborador?.nome || ''}</textarea>`)}
             ${modelo('Data de Nascimento', `<input ${regras} value="${colaborador?.dataNascimento || ''}" type="date" name="dataNascimento">`)}
@@ -1954,7 +1986,7 @@ async function editarTarefa(id, idEtapa, idTarefa) {
     }
 
     const acumulado = `
-        <div class="painelCadastro">
+        <div class="painel-cadastro">
             ${modelo('Descrição', tarefa?.descricao || '')}
             ${campos}
         </div>
