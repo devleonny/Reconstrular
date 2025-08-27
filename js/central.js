@@ -575,13 +575,18 @@ async function adicionarObra(idObra) {
         </div>
     `
 
+    const clientes = await recuperarDados('dados_clientes')
+    const opcoesClientes = Object.entries({ ...{ '': { nome: '' } }, ...clientes })
+        .map(([idCliente, cliente]) => `<option id="${idCliente}" ${obra.cliente == idCliente ? 'selected' : ''}>${cliente.nome}</option>`)
+        .join('')
+
     const acumulado = `
         <div class="painel-cadastro">
             ${modelo('Distrito', `<select name="distrito" onchange="carregarSelects({select: this})"></select>`)}
             ${modelo('Cidade', `<select name="cidade"></select>`)}
-            ${modelo('Cliente', `<input value="${obra?.cliente || ''}" name="cliente" placeholder="Nome do Cliente">`)}
-            ${modelo('Contacto cliente', `<input value="${obra?.contacto || ''}" name="contacto" placeholder="Contacto">`)}
-            ${modelo('E-mail cliente', `<input value="${obra?.email || ''}" name="email" placeholder="E-mail">`)}
+            ${modelo('Cliente', `<select name="cliente" onchange="buscarDados(this)">${opcoesClientes}</select>`)}
+            ${modelo('Telefone', `<span name="telefone"></span>`)}
+            ${modelo('E-mail', `<span name="email"></span>`)}
 
         </div>
         <div class="rodape-formulario">
@@ -592,6 +597,21 @@ async function adicionarObra(idObra) {
     popup(acumulado, 'Cadastro')
 
     await carregarSelects({ ...obra })
+
+    buscarDados()
+
+}
+
+async function buscarDados() {
+    const select = document.querySelector('[name="cliente"]')
+    const idCliente = select.options[select.selectedIndex].id
+
+    const cliente = await recuperarDado('dados_clientes', idCliente)
+
+    if (!cliente) return
+
+    document.querySelector('[name="telefone"]').textContent = cliente.telefone
+    document.querySelector('[name="email"]').textContent = cliente.email
 
 }
 
@@ -631,9 +651,13 @@ async function salvarObra(idObra) {
     }
 
     let obra = {}
-    const camposFixos = ['cliente', 'contacto', 'email', 'distrito', 'cidade']
+    const camposFixos = ['distrito', 'cidade']
 
     for (const campo of camposFixos) obra[campo] = obVal(campo)
+
+    const select = document.querySelector('[name="cliente"]')
+    const idCliente = select.options[select.selectedIndex].id
+    obra.cliente = idCliente
 
     await enviar(`dados_obras/${idObra}`, obra)
     await inserirDados({ [idObra]: obra }, 'dados_obras')
@@ -873,6 +897,7 @@ async function criarLinha(dados, id, nomeBase) {
         const cidades = distrito?.cidades?.[dados?.cidade] || {}
         const resultado = await atualizarToolbar(id, false, true)
         const porcentagem = Number(resultado.porcentagemAndamento)
+        const cliente = await recuperarDado('dados_clientes', dados.cliente)
 
         let st = 'Por Iniciar'
         if (porcentagem == 100) {
@@ -882,7 +907,7 @@ async function criarLinha(dados, id, nomeBase) {
         }
 
         tds = `
-            ${modelo(dados?.cliente || '--')}
+            ${modelo(cliente?.nome || '--')}
             ${modelo(distrito?.nome || '--')}
             ${modelo(cidades?.nome || '--')}
             <td style="text-align: center;">
@@ -1673,12 +1698,26 @@ function porcentagemHtml(valor) {
   `;
 }
 
-function modeloTR({ descricao, unidade, porcentagem, quantidade, cor, id, idEtapa, idTarefa }) {
+async function marcarConcluido(input, id, idEtapa, idTarefa) {
+
+    let obra = await recuperarDado('dados_obras', id)
+    obra.etapas[idEtapa].tarefas[idTarefa].concluido = input.checked
+
+    await enviar(`dados_obras/${id}/etapas/${idEtapa}/tarefas/${idTarefa}/concluido`, input.checked)
+    await inserirDados({ [id]: obra }, 'dados_obras')
+    await atualizarToolbar(id, false, false)
+
+}
+
+function modeloTR({ descricao, unidade, porcentagem, quantidade, cor, id, idEtapa, idTarefa, concluido }) {
 
     const idLinha = idTarefa ? idTarefa : idEtapa
     const esquema = `('${id}', '${idEtapa}' ${idTarefa ? `, '${idTarefa}'` : ''})`
     const tr = `
         <tr id="${idLinha}" data-etapa="${!idTarefa ? 'sim' : ''}" data-concluido="${porcentagem >= 100 ? 'sim' : ''}" style="background-color: ${cor ? cor : ''};">
+            <td>
+                ${idTarefa ? `<input onchange="marcarConcluido(this, '${id}', '${idEtapa}', '${idTarefa}')" type="checkbox" ${concluido ? 'checked' : ''}>` : ''}
+            </td>
             <td></td>
             <td>
                 <div style="${horizontal}; justify-content: space-between;">
@@ -1697,7 +1736,6 @@ function modeloTR({ descricao, unidade, porcentagem, quantidade, cor, id, idEtap
     `
 
     const trExistente = document.getElementById(idLinha)
-
     if (trExistente) return trExistente.innerHTML = tr
     document.getElementById('bodyTarefas').insertAdjacentHTML('beforeend', tr)
 
@@ -1755,17 +1793,6 @@ async function verAndamento(id) {
             <div class="painel-1-tarefas">
                 <input placeholder="Pesquisa" oninput="pesquisar(this, 'bodyTarefas')">
                 <select id="etapas" onchange="atualizarToolbar('${id}', this.value); carregarLinhas('${id}', this.value)"></select>
-
-                <div style="${vertical};">
-                    <div style="${horizontal}; gap: 1vw;">
-                        <input type="checkbox" name="etapa" onchange="filtrar()">
-                        <span>Exibir somente as etapas</span>
-                    </div>
-                    <div style="${horizontal}; gap: 1vw;">
-                        <input type="checkbox" name="concluido" onchange="filtrar()">
-                        <span>Ocultar etapa concluídas</span>
-                    </div>
-                </div>
                 <button style="background-color: #247EFF;" onclick="caixa('${id}', this)">+ Adicionar</button>
                 <input type="file" id="arquivoExcel" accept=".xls,.xlsx" style="display:none" onchange="enviarExcel('${id}')">
                 <button style="background-color: #249f41;" onclick="document.getElementById('arquivoExcel').click()">Importar Excel</button>
@@ -1774,7 +1801,16 @@ async function verAndamento(id) {
 
             <div id="resumo" class="painel-1-tarefas"></div>
 
-            <br>
+            <div style="${horizontal}; gap: 2vw;">
+                <div style="${horizontal}; gap: 1vw;">
+                    <input type="checkbox" name="etapa" onchange="filtrar()">
+                    <span>Exibir somente as etapas</span>
+                </div>
+                <div style="${horizontal}; gap: 1vw;">
+                    <input type="checkbox" name="concluido" onchange="filtrar()">
+                    <span>Ocultar etapa concluídas</span>
+                </div>
+            </div>
 
             <div class="tabTarefas">
                 <table>
@@ -1919,7 +1955,7 @@ async function atualizarToolbar(id, nomeEtapa, resumo) {
     `
 
     let totais = {
-        excedente: false,
+        excedente: 0,
         tarefas: 0,
         naoIniciado: 0,
         emAndamento: 0,
@@ -1943,7 +1979,9 @@ async function atualizarToolbar(id, nomeEtapa, resumo) {
 
         for (const [idTarefa, tarefa] of tarefas) {
 
-            if (tarefa.porcentagem == 0) {
+            if(tarefa.concluido) {
+                totais.concluido++
+            } else if (tarefa.porcentagem == 0) {
                 totais.naoIniciado++
             } else if (tarefa.porcentagem !== 0 && tarefa.porcentagem < 100) {
                 totais.emAndamento++
@@ -1952,7 +1990,7 @@ async function atualizarToolbar(id, nomeEtapa, resumo) {
             }
 
             if (tarefa.porcentagem > 100) {
-                totais.excedente = true
+                totais.excedente++
             }
 
             const progressoTarefa = Math.min(100, tarefa.porcentagem)
@@ -1973,6 +2011,7 @@ async function atualizarToolbar(id, nomeEtapa, resumo) {
         ${bloco('Total', totais.tarefas)}
         ${bloco('Não iniciado', totais.naoIniciado)}
         ${bloco('Em andamento', totais.emAndamento)}
+        ${bloco('Excedente', totais.excedente)}
         ${bloco('Concluída', totais.concluido)}
         ${bloco('Realizado', `${porcentagemAndamento}%`)}
     `
@@ -2099,10 +2138,10 @@ function ordenacaoAutomatica() {
 
         if (tr.dataset.etapa && tr.dataset.etapa == 'sim') {
             ordemEtapas++
-            tds[0].textContent = `${ordemEtapas}.0`
+            tds[1].textContent = `${ordemEtapas}.0`
             ordemTarefas = 1
         } else {
-            tds[0].textContent = `${ordemEtapas}.${ordemTarefas}`
+            tds[1].textContent = `${ordemEtapas}.${ordemTarefas}`
             ordemTarefas++
         }
     }

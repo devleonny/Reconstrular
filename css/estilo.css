@@ -735,8 +735,7 @@ input[type="file"] {
     justify-content: center;
     align-items: center;
     flex-direction: column;
-    padding-left: 5vw;
-    padding-right: 5vw;
+    width: 100%;
 }
 
 .bloco label {
@@ -827,6 +826,12 @@ input[type="file"] {
     margin-bottom: 20px;
 }
 
+.tabTarefas {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
 
 .tabTarefas td {
     padding: 8px;
@@ -881,11 +886,21 @@ screen and (min-aspect-ratio: 13/9) {
     }
 
     .tabTarefas table {
-        width: -webkit-fill-available;
+        width: max-content;
         table-layout: fixed;
         border-collapse: collapse;
         font-size: 1.2vw;
         display: table;
+    }
+
+    .tabTarefas table td:nth-child(3),
+    .tabTarefas table th:nth-child(3) {
+        width: 35vw;
+    }
+
+    .tabTarefas table td:nth-child(4),
+    .tabTarefas table th:nth-child(4) {
+        width: 35vw;
     }
 
     .tabTarefas span {
