@@ -226,14 +226,26 @@ span {
     gap: 1vw;
 }
 
+.nomeUsuario span {
+    font-size: 5vw;
+    padding: 5px;
+    width: 80%;
+    background-color: #249f41;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+    color: white;
+}
+
+
 .botoesMenu {
     display: flex;
     align-items: start;
-    justify-content: center;
+    justify-content: start;
     flex-direction: column;
     width: 100%;
     gap: 1px;
-    margin-top: 20vw;
+    margin-top: 20vh;
+    margin-bottom: 20vh;
 }
 
 .loginBloco {
@@ -692,7 +704,7 @@ input[type="file"] {
 
 .edicao {
     display: flex;
-    justify-content: center;
+    justify-content: start;
     align-items: center;
     gap: 5px;
 }
@@ -865,8 +877,54 @@ input[type="file"] {
     font-size: 4vw;
 }
 
+.fotos {
+    padding: 5px;
+    display: none;
+    grid-template-columns: repeat(1, 1fr);
+    align-items: start;
+    gap: 2px;
+    background-color: #7f7f7f;
+    border-radius: 3px;
+}
+
+.fotos img {
+    width: 20vw;
+}
+
+.capturar {
+    border-radius: 3px;
+    background-color: #b8b8b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 2vw;
+    margin: 2vw;
+}
+
+.capturar span {
+    font-size: 3vw;
+}
+
 @media screen and (orientation: landscape),
 screen and (min-aspect-ratio: 13/9) {
+
+    .fotos {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .fotos img {
+        width: 10vw;
+    }
+
+    .capturar {
+        padding: 0.5vw;
+        margin: 0.5vw;
+    }
+
+    .capturar span {
+        font-size: 1.2vw;
+    }
 
     .painel-clientes {
         grid-template-columns: repeat(3, 1fr);
@@ -881,7 +939,7 @@ screen and (min-aspect-ratio: 13/9) {
     }
 
     .rodape-formulario button {
-        padding: 2vw;
+        padding: 1vw;
         font-size: 2vw;
     }
 
@@ -1033,6 +1091,7 @@ screen and (min-aspect-ratio: 13/9) {
     }
 
     .painel-cadastro {
+        max-height: 50vh;
         padding: 5vw;
     }
 

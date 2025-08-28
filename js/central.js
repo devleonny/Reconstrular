@@ -9,6 +9,7 @@ let dados_distritos = {}
 let etapasProvisorias = {}
 let stream;
 const api = `https://leonny.dev.br`
+const servidor = 'RECONST'
 
 const dtFormatada = (data) => {
     if (!data) return '--'
@@ -340,7 +341,7 @@ async function telaPrincipal() {
 
         <div class="side-menu" id="sideMenu">
 
-            <div style="${vertical}; justify-content: space-between; height: 100%;">
+            <div style="${vertical}; justify-content: space-between; height: 100%; overflow: auto;">
                 
                 <div class="botoesMenu">
 
@@ -352,6 +353,7 @@ async function telaPrincipal() {
                     ${btn('obras', 'Obras', 'telaObras()')}
                     ${btn('pessoas', 'Cadastro de Clientes', 'formularioCliente()')}
                     ${btn('todos', 'Verificar Clientes', 'telaClientes()')}
+                    ${btn('contas', 'Despesas', 'telaCadastros()')}
                     ${btn('perfil', 'Usuários', 'usuarios()')}
                     ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
                     ${btn('sair', 'Desconectar', 'deslogar()')}
@@ -413,12 +415,12 @@ async function formularioCliente(idCliente) {
         <button onclick="${funcao}">Salvar</button>
     </div>
     <div class="painel-clientes">
-        ${modelo('Nome', cliente.nome)}
-        ${modelo('Morada Fiscal', cliente.moradaFiscal)}
-        ${modelo('Morada de Execução', cliente.moradaExecucao)}
-        ${modelo('Número de Contribuinte', cliente.numeroContribuinte)}
-        ${modelo('Telefone', cliente.telefone)}
-        ${modelo('E-mail', cliente.email)}
+        ${modelo('Nome', cliente?.nome || '')}
+        ${modelo('Morada Fiscal', cliente?.moradaFiscal || '')}
+        ${modelo('Morada de Execução', cliente?.moradaExecucao || '')}
+        ${modelo('Número de Contribuinte', cliente?.numeroContribuinte || '')}
+        ${modelo('Telefone', cliente?.telefone || '')}
+        ${modelo('E-mail', cliente?.email || '')}
     </div>
     `
 
@@ -1709,7 +1711,7 @@ async function marcarConcluido(input, id, idEtapa, idTarefa) {
 
 }
 
-function modeloTR({ descricao, unidade, porcentagem, quantidade, cor, id, idEtapa, idTarefa, concluido }) {
+function modeloTR({ descricao, unidade, porcentagem, quantidade, cor, id, idEtapa, idTarefa, concluido, fotos}) {
 
     const idLinha = idTarefa ? idTarefa : idEtapa
     const esquema = `('${id}', '${idEtapa}' ${idTarefa ? `, '${idTarefa}'` : ''})`
@@ -1730,6 +1732,7 @@ function modeloTR({ descricao, unidade, porcentagem, quantidade, cor, id, idEtap
                 <div class="edicao">
                     <img class="btnAcmp" src="imagens/lapis.png" onclick="editarTarefa${esquema}">
                     <img class="btnAcmp" src="imagens/fechar.png" onclick="confirmarExclusao${esquema}">
+                    ${Object.keys(fotos || []).length > 0 ? `<img class="btnAcmp" src="imagens/camera.png">` : ''}
                 </div>
             </td>
         </tr>
@@ -2055,14 +2058,21 @@ async function editarTarefa(id, idEtapa, idTarefa) {
 
     const acumulado = `
         <div class="painel-cadastro">
-            ${modelo('Descrição', tarefa?.descricao || '')}
-            ${campos}
+            <div style="${horizontal}; align-items: start; gap: 1vw;">
+                <div style="${vertical}">
+                    ${modelo('Descrição', tarefa?.descricao || '')}
+                    ${campos}
+                </div>
+                ${await blocoAuxiliarFotos(tarefa?.fotos || {})}
+            </div>
         </div>
         <div class="rodape-formulario">
             <button onclick="${funcao}">Salvar</button>
         </div>
     `
     popup(acumulado, 'Gerenciamento de Etapas e Tarefas')
+    
+    visibilidadeFotos()
 
 }
 
@@ -2105,6 +2115,17 @@ async function salvarTarefa(id, idEtapa, idTarefa) {
         porcentagem: Number(valor('Porcentagem') || 0)
     };
 
+    const fotos = document.querySelector('.fotos')
+    const imgs = fotos.querySelectorAll('img')
+    let album = {}
+    if (imgs.length > 0) {
+        for (const img of imgs) {
+            if (img.dataset && img.dataset.salvo == 'sim') continue
+            const foto = await importarAnexos({ foto: img.src })
+            album[foto[0].link] = foto[0]
+        }
+    }
+
     if (idTarefa === 'novo') {
         idTarefa = ID5digitos();
         etapaAlterada = true;
@@ -2115,11 +2136,22 @@ async function salvarTarefa(id, idEtapa, idTarefa) {
     }
 
     // Adiciona a tarefa antes de reorganizar
-    objeto.etapas[idEtapaAtual].tarefas[idTarefa] = novosDadosBase;
+    let tarefa = objeto.etapas[idEtapaAtual].tarefas[idTarefa]
+    tarefa.fotos = {
+        ...tarefa.fotos,
+        ...album
+    }
+
+    tarefa = {
+        ...tarefa,
+        ...novosDadosBase
+    }
+    
+    objeto.etapas[idEtapaAtual].tarefas[idTarefa] = tarefa
 
     await enviar(`dados_obras/${id}/etapas`, objeto.etapas);
-    modeloTR({ ...novosDadosBase, id, idTarefa, idEtapa: idEtapaAtual });
     await inserirDados({ [id]: objeto }, 'dados_obras');
+    modeloTR({ ...tarefa, id, idTarefa, idEtapa: idEtapaAtual });
 
     etapaAlterada ? await verAndamento(id) : await atualizarToolbar(id);
     removerPopup();
@@ -2299,3 +2331,68 @@ function abrirArquivo(link, nome) {
     window.open(link, '_blank');
 }
 
+async function blocoAuxiliarFotos(fotos) {
+
+    if (fotos) {
+
+        const imagens = Object.entries(fotos)
+            .map(([link, foto]) => `<img name="foto" data-salvo="sim" id="${link}" src="${api}/uploads/${servidor}/${link}" class="foto" onclick="ampliarImagem(this, '${link}')">`)
+            .join('')
+
+        const painel = `
+            <div style="${vertical}; gap: 5px;">
+                <div class="capturar" onclick="blocoAuxiliarFotos()">
+                    <img src="imagens/camera.png" class="olho">
+                    <span>Abrir Câmera</span>
+                </div>
+                <div class="fotos">${imagens}</div>
+            </div>
+        `
+        return painel
+
+    } else {
+
+        const popupCamera = `
+            <div style="${vertical}; align-items: center; gap: 3px; background-color: #d2d2d2;">
+                <div class="capturar" style="position: fixed; bottom: 10px; left: 10px; z-index: 10003;" onclick="fotoTarefa()">
+                    <img src="imagens/camera.png" class="olho">
+                    <span>Capturar Imagem</span>
+                </div>
+
+                <div class="cameraDiv">
+                    <video autoplay playsinline></video>
+                    <canvas style="display: none;"></canvas>
+                </div>
+            </div>
+            `
+        popup(popupCamera, 'Captura', true)
+        await abrirCamera()
+    }
+
+}
+
+function visibilidadeFotos() {
+    const fotos = document.querySelector('.fotos')
+    const qtd = fotos.querySelectorAll('img')
+    fotos.style.display = qtd.length == 0 ? 'none' : 'grid'
+}
+
+async function fotoTarefa() {
+
+    const fotos = document.querySelector('.fotos')
+    const cameraDiv = document.querySelector('.cameraDiv');
+    const canvas = cameraDiv.querySelector('canvas');
+    const video = cameraDiv.querySelector('video');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+
+    const idFoto = ID5digitos()
+    const foto = `<img name="foto" id="${idFoto}" src="${canvas.toDataURL('image/png')}" class="foto" onclick="ampliarImagem(this, '${idFoto}')">`
+    fotos.insertAdjacentHTML('beforeend', foto)
+
+    removerPopup()
+    visibilidadeFotos()
+
+}

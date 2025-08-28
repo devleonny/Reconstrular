@@ -1,0 +1,19 @@
+.painel-superior-cadastros {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    align-items: end;
+    justify-content: start;
+
+}
+
+.painel-superior-cadastros button {
+    margin: 5px;
+}
+
+@media screen and (orientation: landscape),
+screen and (min-aspect-ratio: 13/9) {
+
+    .painel-superior-cadastros {
+        display: flex;
+    }
+}
