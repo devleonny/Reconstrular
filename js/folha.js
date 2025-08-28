@@ -81,7 +81,7 @@ async function mostrarFolha(idColaborador) {
         <div class="painelFiltros">
             ${modelo('Ano', `<select name="ano" onchange="criarFolha('${idColaborador}')">${optionsSelect(anos)}</select>`)}
             ${modelo('Mês', `<select name="mes" onchange="criarFolha('${idColaborador}')">${optionsSelect(meses)}</select>`)}
-            <img src="imagens/pdf.png" onclick="gerarPDF('${idColaborador}', '${colaborador.nome}')">
+            <img src="imagens/pdf.png" onclick="gerarTodosPDFs('${idColaborador}', '${colaborador.nome}')">
             <button onclick="telaColaboradores()">Voltar</button>
         </div>
 
@@ -255,49 +255,6 @@ function calcularHoras(hora1, hora2, esperado) {
     };
 }
 
-async function gerarPDF(idColaborador, nome) {
-
-    overlayAguarde()
-    const mes = document.querySelector('[name="mes"]').value
-    const ano = document.querySelector('[name="ano"]').value
-
-    return new Promise((resolve, reject) => {
-
-        fetch(`${api}/documentos`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                dados: {
-                    ano,
-                    mes,
-                    mesTexto: meses[mes],
-                    idColaborador
-                },
-                documento: 'folha',
-                servidor: 'RECONST'
-            })
-        })
-            .then(response => response.blob())
-            .then(blob => {
-                const link = document.createElement("a");
-                const url = URL.createObjectURL(blob);
-                link.href = url;
-                link.download = `${nome} - ${ano} - ${meses[mes]}.pdf`;
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                URL.revokeObjectURL(url);
-                removerOverlay()
-                resolve()
-            })
-            .catch(err => {
-                console.error("Erro ao gerar PDF:", err)
-                popup(mensagem(`Falha no processo: ${err}`), 'Alerta')
-                reject()
-            });
-    })
-}
-
 async function confimacaoZipPdf() {
     const acumulado = `
     <div class="popupPdfZip">
@@ -323,21 +280,28 @@ async function confimacaoZipPdf() {
     popup(acumulado, 'Baixar folhas compactadas em .zip')
 }
 
-async function gerarTodosPDFs() {
-    overlayAguarde();
-    const modalidade = document.querySelector('input[name="modalidade"]:checked').value
-    const body = document.getElementById('body')
-    const trs = body.querySelectorAll('tr')
-    let colaboradores = []
+async function gerarTodosPDFs(idColaborador, nome) {
 
-    for (const tr of trs) {
-        if (tr.style.display == 'none') continue
-        const nome = tr.querySelectorAll('span')[0].textContent
-        colaboradores.push({ idColaborador: tr.id, nome })
-    }
+    overlayAguarde();
 
     const mes = document.querySelector('[name="mes"]').value;
     const ano = document.querySelector('[name="ano"]').value;
+    let modalidade = ''
+    let colaboradores = []
+
+    if (!idColaborador) {
+        modalidade = document.querySelector('input[name="modalidade"]:checked').value
+        const body = document.getElementById('body')
+        const trs = body.querySelectorAll('tr')
+        for (const tr of trs) {
+            if (tr.style.display == 'none') continue
+            const nome = tr.querySelectorAll('span')[0].textContent
+            colaboradores.push({ idColaborador: tr.id, nome })
+        }
+    } else {
+        colaboradores = [{ idColaborador, nome }]
+    }
+
     let requisicao = {
         colaboradores,
         documento: "folha",
@@ -349,7 +313,7 @@ async function gerarTodosPDFs() {
 
     if (modalidade == 'email') {
         const configuracoes = await recuperarDados('configuracoes')
-        if(!configuracoes.emailFolha || configuracoes.emailFolha == '') return popup(mensagem('Configure um e-mail para recebimento das Folhas'), 'Alerta', true)
+        if (!configuracoes.emailFolha || configuracoes.emailFolha == '') return popup(mensagem('Configure um e-mail para recebimento das Folhas'), 'Alerta', true)
         requisicao.email = configuracoes.emailFolha
     }
 
@@ -364,7 +328,7 @@ async function gerarTodosPDFs() {
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement("a");
                 link.href = url;
-                link.download = `folhas - ${ano} - ${meses[mes]}.zip`;
+                link.download = `folhas - ${ano} - ${meses[mes]}.tar`;
                 link.click();
                 URL.revokeObjectURL(url);
                 removerOverlay();
