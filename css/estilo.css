@@ -834,6 +834,7 @@ input[type="file"] {
 
 .painel-1-tarefas {
     display: grid;
+    grid-template-columns: repeat(1, 1fr);
     gap: 2vw;
     margin-bottom: 20px;
 }
@@ -974,9 +975,7 @@ screen and (min-aspect-ratio: 13/9) {
     }
 
     .painel-1-tarefas {
-        align-items: center;
-        display: flex;
-        justify-content: space-between;
+        grid-template-columns: repeat(4, 1fr);
         gap: 2vw;
     }
 

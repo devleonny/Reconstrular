@@ -592,7 +592,7 @@ async function adicionarObra(idObra) {
 
         </div>
         <div class="rodape-formulario">
-            <button onclick="salvarObra(${idObra ? `'${idObra}'` : ''})">Inserir</button>
+            <button onclick="salvarObra(${idObra ? `'${idObra}'` : ''})">Salvar</button>
         </div>
     `
 
@@ -646,13 +646,13 @@ async function salvarObra(idObra) {
     overlayAguarde()
 
     idObra = idObra || unicoID()
+    let obra = await recuperarDado('dados_obras', idObra) || {}
 
     function obVal(name) {
         const el = document.querySelector(`[name="${name}"]`)
         if (el) return el.value
     }
 
-    let obra = {}
     const camposFixos = ['distrito', 'cidade']
 
     for (const campo of camposFixos) obra[campo] = obVal(campo)
@@ -1711,7 +1711,7 @@ async function marcarConcluido(input, id, idEtapa, idTarefa) {
 
 }
 
-function modeloTR({ descricao, unidade, porcentagem, quantidade, cor, id, idEtapa, idTarefa, concluido, fotos}) {
+function modeloTR({ descricao, unidade, porcentagem, quantidade, cor, id, idEtapa, idTarefa, concluido, fotos }) {
 
     const idLinha = idTarefa ? idTarefa : idEtapa
     const esquema = `('${id}', '${idEtapa}' ${idTarefa ? `, '${idTarefa}'` : ''})`
@@ -1796,6 +1796,8 @@ async function verAndamento(id) {
             <div class="painel-1-tarefas">
                 <input placeholder="Pesquisa" oninput="pesquisar(this, 'bodyTarefas')">
                 <select id="etapas" onchange="atualizarToolbar('${id}', this.value); carregarLinhas('${id}', this.value)"></select>
+                <button style="background-color: red;" onclick="pdfObra('${id}')">Exportar PDF</button>
+                <button style="background-color: red;" onclick="pdfObra('${id}', 'email')">Enviar PDF</button>
                 <button style="background-color: #247EFF;" onclick="caixa('${id}', this)">+ Adicionar</button>
                 <input type="file" id="arquivoExcel" accept=".xls,.xlsx" style="display:none" onchange="enviarExcel('${id}')">
                 <button style="background-color: #249f41;" onclick="document.getElementById('arquivoExcel').click()">Importar Excel</button>
@@ -1982,7 +1984,7 @@ async function atualizarToolbar(id, nomeEtapa, resumo) {
 
         for (const [idTarefa, tarefa] of tarefas) {
 
-            if(tarefa.concluido) {
+            if (tarefa.concluido) {
                 totais.concluido++
             } else if (tarefa.porcentagem == 0) {
                 totais.naoIniciado++
@@ -2071,7 +2073,7 @@ async function editarTarefa(id, idEtapa, idTarefa) {
         </div>
     `
     popup(acumulado, 'Gerenciamento de Etapas e Tarefas')
-    
+
     visibilidadeFotos()
 
 }
@@ -2136,9 +2138,10 @@ async function salvarTarefa(id, idEtapa, idTarefa) {
     }
 
     // Adiciona a tarefa antes de reorganizar
-    let tarefa = objeto.etapas[idEtapaAtual].tarefas[idTarefa]
+    let tarefa = objeto.etapas[idEtapaAtual].tarefas[idTarefa] || {}
+
     tarefa.fotos = {
-        ...tarefa.fotos,
+        ...(tarefa.fotos || {}),
         ...album
     }
 
@@ -2146,7 +2149,7 @@ async function salvarTarefa(id, idEtapa, idTarefa) {
         ...tarefa,
         ...novosDadosBase
     }
-    
+
     objeto.etapas[idEtapaAtual].tarefas[idTarefa] = tarefa
 
     await enviar(`dados_obras/${id}/etapas`, objeto.etapas);
@@ -2394,5 +2397,51 @@ async function fotoTarefa() {
 
     removerPopup()
     visibilidadeFotos()
+
+}
+
+async function pdfObra(idObra, modalidade) {
+
+    overlayAguarde();
+
+    let requisicao = {
+        idObra,
+        documento: 'relatorio',
+        servidor: 'RECONST'
+    }
+
+    if (modalidade == 'email') {
+        const configuracoes = await recuperarDados('configuracoes')
+        if (!configuracoes.emailFolha || configuracoes.emailFolha == '') return popup(mensagem('Configure um e-mail para recebimento das Folhas'), 'Alerta', true)
+        requisicao.email = configuracoes.emailFolha
+    }
+
+    if (!requisicao.email) {
+        fetch(`${api}/documentos-massa`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requisicao)
+        })
+            .then(res => res.blob())
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `teste.pdf`;
+                link.click();
+                URL.revokeObjectURL(url);
+                removerOverlay();
+            });
+    } else {
+        fetch(`${api}/documentos-massa`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requisicao)
+        })
+            .then(res => res.json())
+            .then(data => {
+                popup(mensagem(data.mensagem, 'imagens/concluido.png'), 'Envio por E-mail')
+            });
+    }
 
 }
