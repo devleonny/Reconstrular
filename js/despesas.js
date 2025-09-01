@@ -20,7 +20,7 @@ function telaDespesas() {
 
 async function verificarDespesas() {
 
-    const colunas = ['Fornecedor', 'Número do Contribuinte', 'Valor', 'IVA', 'Data', 'Imagem da Fatura', 'Upload Fatura', 'Tipo de Material', 'Obra']
+    const colunas = ['Fornecedor', 'Número do Contribuinte', 'Valor', 'IVA', 'Data', 'Imagem da Fatura', 'Upload Fatura', 'Tipo de Material', 'Obra', '']
     let cabecalhos = {
         ths: '',
         pesq: ''
@@ -58,19 +58,29 @@ async function verificarDespesas() {
 
     telaInterna.innerHTML = acumulado
 
+    const dados = await recuperarDados('dados_despesas')
+    for (const [id, dado] of Object.entries(dados)) {
+        criarLinha(dado, id, 'dados_despesas')
+    }
+
 }
 
 async function formularioDespesa(idDespesa) {
 
     esconderMenus()
 
-    const despesa = await recuperarDado('despesas', idDespesa)
+    const despesa = await recuperarDado('dados_despesas', idDespesa)
     const fornecedores = await recuperarDados('fornecedores')
+    const materiais = await recuperarDados('materiais')
     const dados_obras = await recuperarDados('dados_obras')
     const clientes = await recuperarDados('dados_clientes')
 
-    const opcoesFornecedores = Object.entries(fornecedores)
-        .map(([idFornecedor, fornecedor]) => `<option id="${idFornecedor}">${fornecedor.nome}</option>`)
+    const opcoesFornecedores = Object.entries({ '': { nome: '' }, ...fornecedores })
+        .map(([idFornecedor, fornecedor]) => `<option id="${idFornecedor}" ${despesa?.fornecedor == idFornecedor ? 'selected' : ''}>${fornecedor.nome}</option>`)
+        .join('')
+
+    const opcoesMateriais = Object.entries({ '': { nome: '' }, ...materiais })
+        .map(([idMaterial, material]) => `<option id="${idMaterial}" ${despesa?.material == idMaterial ? 'selected' : ''}>${material.nome}</option>`)
         .join('')
 
     let opcoesObras = ''
@@ -79,43 +89,108 @@ async function formularioDespesa(idDespesa) {
         const distrito = dados_distritos?.[obra.distrito] || {}
         const cidade = distrito?.cidades?.[obra.cidade] || {}
         const cliente = clientes?.[obra?.cliente] || {}
-        opcoesObras += `<option value="${idObra}">${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
+        opcoesObras += `<option id="${idObra}" value="${idObra}" ${despesa?.obra == idObra ? 'selected' : ''}>${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
     }
 
     titulo.textContent = 'Inserir Despesa'
-    const funcao = idDespesa ? `salvarCliente('${idDespesa}')` : 'salvarCliente()'
+    const funcao = idDespesa ? `salvarDespesa('${idDespesa}')` : 'salvarDespesa()'
+    const placeholder = `placeholder="Escolha o fornecedor"`
     const acumulado = `
     <div class="cabecalho-clientes">
         <button onclick="telaDespesas()" style="background-color: #3131ab;">Voltar</button>
         <button onclick="${funcao}">Salvar</button>
     </div>
     <div class="painel-clientes">
-        ${modeloLivre('Fornecedor', `<select onchange="buscarLocalidadeFornecedor(this)">${opcoesFornecedores}</select>`)}
-        ${modeloLivre('Distrito', `<input name="distrito" readOnly>`)}
-        ${modeloLivre('Cidade', `<input name="cidade" readOnly>`)}
-        ${modeloLivre('Número do Contribuinte', `<input name="numeroContribuinte" readOnly>`)}
-
-        ${modelo('Valor', despesa?.valor || '')}
-        ${modelo('IVA', despesa?.iva || '')}
-        ${modelo('Data', despesa?.data || '')}
-        ${modeloLivre('Obra', `<select>${opcoesObras}</select>`)}
+        ${modeloLivre('Fornecedor', `<select name="fornecedor" onchange="buscarLocalidadeFornecedor()">${opcoesFornecedores}</select>`)}
+        ${modeloLivre('Distrito', `<input ${placeholder} name="distrito" readOnly>`)}
+        ${modeloLivre('Cidade', `<input ${placeholder} name="cidade" readOnly>`)}
+        ${modeloLivre('Número do Contribuinte', `<input ${placeholder} name="numeroContribuinte" readOnly>`)}
+        ${modeloLivre('Valor', `<input name="valor" placeholder="Valor" type="number" value="${despesa?.valor || ''}">`)}
+        ${modeloLivre('IVA', `<input name="iva" placeholder="IVA" type="number" value="${despesa?.iva || ''}">`)}
+        ${modeloLivre('Data', `<input name="data" type="date" value="${despesa?.data || ''}">`)}
+        ${modeloLivre('Tipo de Material', `<select name="material">${opcoesMateriais}</select>`)}
+        ${modeloLivre('Obra', `<select name="obra">${opcoesObras}</select>`)}
+        ${modeloLivre('Upload Fatura', '<input name="fatura" type="file">')}
+        ${modeloLivre('Imagem da Fatura', `
+        <div style="${vertical}; gap: 5px;">
+            <img src="imagens/camera.png" class="cam" onclick="abrirCamera()">
+            <div class="cameraDiv">
+                <button onclick="tirarFoto()">Tirar Foto</button>
+                <video autoplay playsinline></video>
+                <canvas style="display: none;"></canvas>
+            </div>
+            <img name="foto" ${despesa?.foto ? `src="${api}/uploads/RECONST/${despesa.foto}"` : ''} class="foto">
+        </div>`)}
     </div>
     `
 
     telaInterna.innerHTML = acumulado
+    buscarLocalidadeFornecedor()
 }
 
-async function buscarLocalidadeFornecedor(select) {
+async function salvarDespesa(idDespesa) {
+    overlayAguarde();
 
+    idDespesa = idDespesa || ID5digitos();
+    let despesaAtual = await recuperarDado('dados_despesas', idDespesa);
+
+    const fornecedor = document.querySelector('[name="fornecedor"]');
+    const obra = document.querySelector('[name="obra"]');
+    const material = document.querySelector('[name="material"]');
+
+    let despesa = {
+        fornecedor: fornecedor.selectedOptions[0].id,
+        obra: obra.selectedOptions[0].id,
+        material: material.selectedOptions[0].id,
+        iva: Number(obVal('iva')),
+        valor: Number(obVal('valor')),
+        data: obVal('data')
+    };
+
+    // Foto da Fatura
+    const foto = document.querySelector('[name="foto"]');
+    if (foto.src && !foto.src.includes(api)) {
+        const resposta = await importarAnexos({ foto: foto.src });
+
+        if (resposta[0].link) {
+            despesa.foto = resposta[0].link;
+        } else {
+            removerOverlay();
+            return popup(mensagem('Falha no envio da Foto: tente novamente.'), 'Alerta', true);
+        }
+    }
+
+    // Arquivo da fatura (ex: pdf)
+    const input = document.querySelector('[name="fatura"]');
+    if (input?.files?.length === 1) {
+        const anexos = await importarAnexos({ input });
+        despesa.fatura = anexos[0].link;
+    }
+
+    despesa = {
+        ...despesaAtual,
+        ...despesa
+    };
+
+    await enviar(`dados_despesas/${idDespesa}`, despesa);
+    await inserirDados({ [idDespesa]: despesa }, 'dados_despesas');
+    await verificarDespesas();
+    removerOverlay();
+}
+
+
+async function buscarLocalidadeFornecedor() {
+
+    const select = document.querySelector('[name="fornecedor"]')
     const idFornecedor = select.selectedOptions[0].id
     const fornecedor = await recuperarDado('fornecedores', idFornecedor)
 
     const distrito = dados_distritos?.[fornecedor?.distrito] || '--'
     const cidade = distrito?.cidades?.[fornecedor?.cidade] || '--'
-    
+
     document.querySelector('[name="numeroContribuinte"]').value = fornecedor?.numeroContribuinte || '--'
-    document.querySelector('[name="cidade"]').value = cidade.nome
-    document.querySelector('[name="distrito"]').value = distrito.nome
+    document.querySelector('[name="cidade"]').value = cidade?.nome || '--'
+    document.querySelector('[name="distrito"]').value = distrito?.nome || '--'
 
 }
 

@@ -27,7 +27,7 @@ const modelo = (texto, valor, name) => `
 const modeloLivre = (texto, elemento) => `
     <div style="${vertical};">
         <span>${texto}</span>
-        <div>${elemento}</div>
+        <div style="width: 90%;">${elemento}</div>
     </div>
 `
 const dtFormatada = (data) => {
@@ -844,12 +844,13 @@ async function criarLinha(dados, id, nomeBase) {
     const modelo = (texto, exclamacao) => {
 
         const algoPendente = (!dados.epi || !dados.exame || !dados.contratoObra) ? 'exclamacao' : 'doublecheck'
+        const classExistente = isNaN(texto) ? `class="${texto.replace(' ', '_')}"` : ''
 
         return `
         <td>
             <div class="camposTd">
                 ${exclamacao ? `<img src="imagens/${algoPendente}.png">` : ''}
-                <span class="${texto.replace(' ', '_')}">${texto}</span>
+                <span ${classExistente}>${texto}</span>
             </div>
         </td>`
     }
@@ -864,32 +865,10 @@ async function criarLinha(dados, id, nomeBase) {
             .map(op => `<span>• ${op}</span>`)
             .join('')
 
-        const obraAlocada = await recuperarDado('dados_obras', dados.obraAlocada) || false
-
-        let dadosObra = '<span>Sem Obra</span>'
-        if (obraAlocada && dados_distritos[obraAlocada.distrito]) {
-            const distrito = dados_distritos[obraAlocada.distrito]
-            const cidade = distrito.cidades[obraAlocada.cidade]
-
-            dadosObra = `
-            <div style="${vertical}; gap: 1px;">
-                <span><strong>${obraAlocada.cliente}</strong></span>
-                <span>• ${distrito.nome}</span>
-                <span>• ${cidade.nome}</span>
-            </div>
-            `
-        }
-
-        const infoObra = `
-            <div style="${vertical}; gap: 2px;">
-                ${dadosObra}
-            </div>
-        `
-
         tds = `
             ${modelo(dados?.nome || '--', true)}
             ${modelo(dados?.telefone || '--')}
-            <td>${infoObra}</td>
+            <td>${await infoObra()}</td>
             ${modelo(dados?.status || '--')}
             <td>
                 <div style="${vertical}; gap: 2px;">
@@ -899,6 +878,33 @@ async function criarLinha(dados, id, nomeBase) {
             <td class="detalhes">
                 <img src="imagens/relogio.png" onclick="mostrarFolha('${id}')">
             </td>
+        `
+
+    } else if (nomeBase == 'dados_despesas') {
+
+        const fornecedor = await recuperarDado('fornecedores', dados.fornecedor)
+        const material = await recuperarDado('materiais', dados.material)
+        const foto = dados.foto ? `<img onclick="abrirArquivo('${dados.foto}')" class="cam" src="imagens/contas.png">` : ''
+        const fatura = dados.fatura ? `<img onclick="abrirArquivo('${dados.fatura}')"  class="cam" src="imagens/anexo.png">` : ''
+        let data = '--'
+        if(dados.data) {
+            const [ano, mes, dia] = dados.data.split('-')
+            data = `${dia}/${mes}/${ano}`
+        }
+
+        funcao = `formularioDespesa('${id}')`
+
+        tds = `
+            ${modelo(fornecedor?.nome || '--')}
+            ${modelo(fornecedor?.numeroContribuinte || '--')}
+            ${modelo(dinheiro(dados?.valor))}
+            ${modelo(dados?.iva || '--')}
+            ${modelo(data)}
+            <td>${foto}</td>
+            <td>${fatura}</td>
+            ${modelo(material?.nome || '--')}
+
+            <td>${await infoObra()}</td>
         `
 
     } else if (nomeBase == 'materiais') {
@@ -996,6 +1002,32 @@ async function criarLinha(dados, id, nomeBase) {
     const body = document.getElementById('body')
     body.insertAdjacentHTML('beforeend', linha)
 
+    async function infoObra() {
+
+        const obra = await recuperarDado('dados_obras', dados.obra) || false
+        let dadosObra = '<span>Sem Obra</span>'
+        if (obra && obra.distrito) {
+
+            const cliente = await recuperarDado('dados_clientes', obra?.cliente)
+            const distrito = dados_distritos[obra?.distrito]
+            const cidade = distrito?.cidades[obra?.cidade]
+
+            dadosObra = `
+            <div style="${vertical}; gap: 1px;">
+                <span><strong>${cliente.nome}</strong></span>
+                <span>• ${distrito.nome}</span>
+                <span>• ${cidade.nome}</span>
+            </div>
+            `
+        }
+
+        return infoObra = `
+            <div style="${vertical}; gap: 2px;">
+                ${dadosObra}
+            </div>
+        `
+    }
+
 }
 
 async function gerenciarUsuario(id) {
@@ -1025,6 +1057,15 @@ async function gerenciarUsuario(id) {
     `
 
     popup(acumulado, 'Usuário')
+}
+
+function dinheiro(valor) {
+    if (!valor) return '€ 0,00';
+
+    return valor.toLocaleString('pt-BR', { 
+        style: 'currency', 
+        currency: 'EUR' 
+    });
 }
 
 async function adicionarColaborador(id) {
@@ -1145,7 +1186,7 @@ async function adicionarColaborador(id) {
             ${modelo('Apólice de Seguro', `<input value="0010032495" name="apolice" placeholder="Número da Apólice" readOnly>`)}
             ${modelo('Telefone', `<input ${regras} value="${colaborador?.telefone || ''}" name="telefone" placeholder="Telefone">`)}
             ${modelo('E-mail', `<textarea ${regras} name="email" placeholder="E-mail">${colaborador?.email || ''}</textarea>`)}
-            ${modelo('Obra Alocada', `<select name="obraAlocada">${opcoesObras}</select>`)}
+            ${modelo('Obra Alocada', `<select name="obra">${opcoesObras}</select>`)}
             ${modelo('Documento', caixaDocumentos)}
             ${modelo('Número de Contribuinte', `<input ${regras} value="${colaborador?.numeroContribuinte || ''}" name="numeroContribuinte" placeholder="Máximo de 9 dígitos">`)}
             ${modelo('Segurança Social', `<input ${regras} value="${colaborador?.segurancaSocial || ''}" name="segurancaSocial" placeholder="Máximo de 11 dígitos">`)}
@@ -1169,7 +1210,6 @@ async function adicionarColaborador(id) {
                             <canvas style="display: none;"></canvas>
                         </div>
                         <img name="foto" ${colaborador?.foto ? `src="${api}/uploads/RECONST/${colaborador.foto}"` : ''} class="foto">
-
                     </div>
                 `)}
             <br>
@@ -1185,7 +1225,7 @@ async function adicionarColaborador(id) {
 
         </div>
         <div class="rodape-formulario">
-            <button onclick="salvarColaborador(${id ? `'${id}'` : ''}">Salvar</button>
+            <button onclick="salvarColaborador(${id ? `'${id}'` : ''})">Salvar</button>
         </div>
     `
 
@@ -1365,7 +1405,7 @@ async function salvarColaborador(idColaborador) {
 
     let colaborador = { ...colaboradorExistente };
 
-    const camposFixos = ['nome', 'dataNascimento', 'email', 'morada', 'apolice', 'telefone', 'numeroDocumento', 'segurancaSocial', 'obraAlocada', 'numeroContribuinte'];
+    const camposFixos = ['nome', 'dataNascimento', 'email', 'morada', 'apolice', 'telefone', 'numeroDocumento', 'segurancaSocial', 'obra', 'numeroContribuinte'];
     for (const campo of camposFixos) colaborador[campo] = obVal(campo);
 
     const camposRatio = ['status', 'documento'];
@@ -2371,19 +2411,19 @@ function criarAnexoVisual({ nome, link, funcao }) {
 
     return `
         <div class="contornoAnexos" name="${link}">
-            <div onclick="abrirArquivo('${link}', '${nome}')" class="contornoInterno">
+            <div onclick="abrirArquivo('${link}')" class="contornoInterno">
                 <img src="imagens/anexo2.png">
-                <label title="${nome}">${nome}</label>
+                <label>Arquivo</label>
             </div>
             <img src="imagens/cancel.png" style="display: ${displayExcluir};" onclick="${funcao}">
         </div>`
 }
 
-function abrirArquivo(link, nome) {
+function abrirArquivo(link) {
     link = `${api}/uploads/RECONST/${link}`;
     const imagens = ['png', 'jpg', 'jpeg'];
 
-    const extensao = nome.split('.').pop().toLowerCase(); // pega sem o ponto
+    const extensao = link.split('.').pop().toLowerCase(); // pega sem o ponto
 
     if (imagens.includes(extensao)) {
         const acumulado = `
@@ -2391,7 +2431,7 @@ function abrirArquivo(link, nome) {
                 <img src="${link}">
             </div>
         `
-        return popup(acumulado, nome, true);
+        return popup(acumulado, 'Arquivo', true);
     }
 
     window.open(link, '_blank');

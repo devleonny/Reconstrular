@@ -37,6 +37,11 @@ html {
     border-bottom-right-radius: 10px;
 }
 
+.painel-clientes input,
+.painel-clientes select {
+    width: 100%;
+}
+
 .plano-fundo {
     display: flex;
     align-items: center;
@@ -71,6 +76,10 @@ html {
     overflow-y: auto;
     background-color: #d2d2d2;
     padding: 2vw;
+}
+
+.fundoImagens img {
+    width: 100%;
 }
 
 .contornoAnexos {
@@ -1069,8 +1078,7 @@ screen and (min-aspect-ratio: 13/9) {
         max-width: 90vw;
     }
 
-    .aguarde img,
-    .dino {
+    .aguarde img {
         width: 10vw;
     }
 
