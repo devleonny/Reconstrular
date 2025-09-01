@@ -28,16 +28,13 @@ html {
 }
 
 .painel-clientes {
+    padding: 10px;
     display: grid;
     grid-template-columns: repeat(1, 1fr);
     width: 90vw;
     background-color: #d2d2d2;
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
-}
-
-.painel-clientes div {
-    margin: 2vw;
 }
 
 .plano-fundo {
@@ -558,6 +555,10 @@ button {
 
 .side-menu.active {
     left: 0;
+}
+
+.side-menu::-webkit-scrollbar {
+    display: none;
 }
 
 .painelBotoes {

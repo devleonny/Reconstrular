@@ -5,12 +5,31 @@ const horizontal = `display: flex; align-items: center; justify-content: center;
 const vertical = `display: flex; align-items: start; justify-content: start; flex-direction: column`
 const nomeBaseCentral = 'Reconstrular'
 const nomeStore = 'Bases'
+const api = `https://leonny.dev.br`
+const servidor = 'RECONST'
 let dados_distritos = {}
 let etapasProvisorias = {}
 let stream;
-const api = `https://leonny.dev.br`
-const servidor = 'RECONST'
+let telaInterna = null
+const voltarClientes = `<button style="background-color: #3131ab;" onclick="telaClientes()">Voltar</button>`
 
+function obVal(name) {
+    const el = document.querySelector(`[name="${name}"]`);
+    return el ? el.value : '';
+}
+
+const modelo = (texto, valor, name) => `
+    <div style="${vertical};">
+        <span>${texto}</span>
+        <input name="${name}" placeholder="${texto}" value="${valor || ''}">
+    </div>
+`
+const modeloLivre = (texto, elemento) => `
+    <div name="${texto}" style="${vertical};">
+        <span>${texto}</span>
+        <div>${elemento}</div>
+    </div>
+`
 const dtFormatada = (data) => {
     if (!data) return '--'
     const [ano, mes, dia] = data.split('-')
@@ -78,13 +97,6 @@ function exibirSenha(img) {
 function cadastrar() {
 
     const campos = ['Nome Completo', 'Usuário', 'Senha', 'E-mail', 'Telefone']
-
-    const modelo = (texto) => `
-        <div style="${vertical};">
-            <span>${texto}</span>
-            <input placeholder="${texto}">
-        </div>
-    `
 
     const acumulado = `
         <div class="camposCadastro">
@@ -340,25 +352,19 @@ async function telaPrincipal() {
     <div class="menu-container">
 
         <div class="side-menu" id="sideMenu">
+            <div class="botoesMenu">
 
-            <div style="${vertical}; justify-content: space-between; height: 100%; overflow: auto;">
-                
-                <div class="botoesMenu">
+                <span class="nomeUsuario">${acesso.usuario} <strong>${acesso.permissao}</strong></span>
 
-                    <span class="nomeUsuario">${acesso.usuario} <strong>${acesso.permissao}</strong></span>
+                <br>
 
-                    <br>
-
-                    ${btn('colaborador', 'Colaboradores', 'telaColaboradores()')}
-                    ${btn('obras', 'Obras', 'telaObras()')}
-                    ${btn('pessoas', 'Cadastro de Clientes', 'formularioCliente()')}
-                    ${btn('todos', 'Verificar Clientes', 'telaClientes()')}
-                    ${btn('contas', 'Despesas', 'telaCadastros()')}
-                    ${btn('perfil', 'Usuários', 'usuarios()')}
-                    ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
-                    ${btn('sair', 'Desconectar', 'deslogar()')}
-
-                </div>
+                ${btn('colaborador', 'Colaboradores', 'telaColaboradores()')}
+                ${btn('obras', 'Obras', 'telaObras()')}
+                ${btn('pessoas', 'Clientes', 'telaClientes()')}
+                ${btn('contas', 'Despesas', 'telaDespesas()')}
+                ${btn('perfil', 'Usuários', 'usuarios()')}
+                ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
+                ${btn('sair', 'Desconectar', 'deslogar()')}
 
             </div>
         </div>
@@ -373,6 +379,7 @@ async function telaPrincipal() {
     `
 
     tela.innerHTML = acumulado
+    telaInterna = document.querySelector('.telaInterna')
 
     await sincronizarDados('dados_distritos', true)
     await sincronizarDados('configuracoes', true)
@@ -381,15 +388,30 @@ async function telaPrincipal() {
 
 }
 
-async function telaClientes() {
+function telaClientes() {
+
+    esconderMenus()
+
+    const acumulado = `
+        <div class="painel-despesas">
+            <br>
+            ${btn('pessoas', 'Inserir Cliente', 'formularioCliente()')}
+            ${btn('todos', 'Verificar Clientes', 'verificarClientes()')}
+        </div>
+    `
+
+    telaInterna.innerHTML = acumulado
+
+}
+
+async function verificarClientes() {
 
     esconderMenus()
     const nomeBase = 'dados_clientes'
     titulo.textContent = 'Verificar Clientes'
     const acumulado = `
-        ${modeloTabela(['Nome', 'Morada Fiscal', 'Morada de Execução', 'E-mail', 'Telefone', ''], nomeBase)}
+        ${modeloTabela(['Nome', 'Morada Fiscal', 'Morada de Execução', 'E-mail', 'Telefone', ''], nomeBase, voltarClientes)}
     `
-    const telaInterna = document.querySelector('.telaInterna')
     telaInterna.innerHTML = acumulado
 
     const dados = await recuperarDados(nomeBase)
@@ -412,6 +434,7 @@ async function formularioCliente(idCliente) {
     const funcao = idCliente ? `salvarCliente('${idCliente}')` : 'salvarCliente()'
     const acumulado = `
     <div class="cabecalho-clientes">
+        ${voltarClientes}
         <button onclick="${funcao}">Salvar</button>
     </div>
     <div class="painel-clientes">
@@ -424,7 +447,6 @@ async function formularioCliente(idCliente) {
     </div>
     `
 
-    const telaInterna = document.querySelector('.telaInterna')
     telaInterna.innerHTML = acumulado
 }
 
@@ -483,8 +505,6 @@ async function telaConfiguracoes() {
         </div>
     `
 
-    const telaInterna = document.querySelector('.telaInterna')
-
     telaInterna.innerHTML = acumulado
 }
 
@@ -520,7 +540,6 @@ async function usuarios() {
         ${modeloTabela(['Nome', 'Usuário', 'Setor', 'Permissão', ''], nomeBase)}
     `
     titulo.textContent = 'Gerenciar Usuários'
-    const telaInterna = document.querySelector('.telaInterna')
     telaInterna.innerHTML = acumulado
 
     const dados_setores = await recuperarDados(nomeBase)
@@ -547,7 +566,6 @@ async function telaObras() {
         ${btnRodape('Adicionar', 'adicionarObra()')}
         ${modeloTabela(['Cliente', 'Distrito', 'Cidade', 'Porcentagem', 'Status', 'Acompanhamento', ''], nomeBase)}
     `
-    const telaInterna = document.querySelector('.telaInterna')
 
     telaInterna.innerHTML = acumulado
 
@@ -579,7 +597,7 @@ async function adicionarObra(idObra) {
 
     const clientes = await recuperarDados('dados_clientes')
     const opcoesClientes = Object.entries({ ...{ '': { nome: '' } }, ...clientes })
-        .map(([idCliente, cliente]) => `<option id="${idCliente}" ${obra.cliente == idCliente ? 'selected' : ''}>${cliente.nome}</option>`)
+        .map(([idCliente, cliente]) => `<option id="${idCliente}" ${obra?.cliente == idCliente ? 'selected' : ''}>${cliente.nome}</option>`)
         .join('')
 
     const acumulado = `
@@ -692,7 +710,6 @@ async function telaColaboradores() {
         ${btnRodape('Adicionar', 'adicionarColaborador()')}
         ${modeloTabela(['Nome Completo', 'Telefone', 'Obra Alocada', 'Status', 'Especialidade', 'Folha de Ponto', ''], nomeBase, btnExtras)}
     `
-    const telaInterna = document.querySelector('.telaInterna')
 
     telaInterna.innerHTML = acumulado
     dados_distritos = await recuperarDados('dados_distritos')
@@ -884,6 +901,33 @@ async function criarLinha(dados, id, nomeBase) {
             </td>
         `
 
+    } else if (nomeBase == 'materiais') {
+
+        funcao = `adicionarMateriais('${id}')`
+        tds = `
+            ${modelo(dados?.nome || '--')}
+        `
+
+    } else if (nomeBase == 'ferramentas') {
+
+        funcao = `adicionarFerramentas('${id}')`
+        tds = `
+            ${modelo(dados?.nome || '--')}
+        `
+
+    } else if (nomeBase == 'fornecedores') {
+
+        const distrito = dados_distritos?.[dados?.distrito] || {}
+        const cidades = distrito?.cidades?.[dados?.cidade] || {}
+
+        funcao = `adicionarFornecedor('${id}')`
+        tds = `
+            ${modelo(dados?.nome || '--')}
+            ${modelo(dados?.numeroContribuinte || '--')}
+            ${modelo(distrito?.nome || '--')}
+            ${modelo(cidades?.nome || '--')}
+        `
+
     } else if (nomeBase == 'dados_clientes') {
         funcao = `formularioCliente('${id}')`
         tds = `
@@ -892,6 +936,11 @@ async function criarLinha(dados, id, nomeBase) {
             ${modelo(dados?.moradaExecucao || '--')}
             ${modelo(dados?.email || '--')}
             ${modelo(dados?.telefone || '--')}
+        `
+    } else if (nomeBase == 'materiais') {
+        funcao = `adicionarMateriais('${id}')`
+        tds = `
+            ${modelo(dados?.nome || '--')}
         `
     } else if (nomeBase == 'dados_obras') {
         funcao = `adicionarObra('${id}')`
@@ -983,6 +1032,7 @@ async function adicionarColaborador(id) {
     const colaborador = await recuperarDado('dados_colaboradores', id) || {}
     const dados_obras = await recuperarDados('dados_obras')
     const dados_distritos = await recuperarDados('dados_distritos')
+    const clientes = await recuperarDados('dados_clientes')
 
     const listas = {
         status: ['Ativo', 'Baixa Médica', 'Não Ativo', 'Impedido'],
@@ -1029,11 +1079,15 @@ async function adicionarColaborador(id) {
     }
 
     const obras = { '': { cliente: 'Sem Obra', cidade: '--', distrito: '--' }, ...dados_obras }
+
     let opcoesObras = ''
     for (const [idObra, obra] of Object.entries(obras)) {
         const distrito = dados_distritos?.[obra.distrito] || {}
         const cidade = distrito?.cidades?.[obra.cidade] || {}
-        opcoesObras += `<option ${colaborador?.obraAlocada == idObra ? 'selected' : ''} value="${idObra}">${obra.cliente} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
+        const cliente = clientes?.[obra?.cliente] || {}
+        console.log(obra);
+
+        opcoesObras += `<option value="${idObra}">${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
     }
 
     const regras = `oninput="verificarRegras()"`
@@ -1308,11 +1362,6 @@ async function salvarColaborador(idColaborador) {
 
     // Recupera colaborador existente para não sobrescrever anexos
     let colaboradorExistente = await recuperarDado('dados_colaboradores', idColaborador) || {};
-
-    function obVal(name) {
-        const el = document.querySelector(`[name="${name}"]`);
-        return el ? el.value : '';
-    }
 
     let colaborador = { ...colaboradorExistente };
 
@@ -1615,6 +1664,16 @@ function pesquisarCX(input) {
 
 }
 
+function inicialMaiuscula(string) {
+    if (string == undefined) {
+        return ''
+    }
+    string.includes('_') ? string = string.split('_').join(' ') : ''
+
+    if (string.includes('lpu')) return string.toUpperCase()
+    return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+}
+
 async function configuracoes(usuario, campo, valor) {
 
     let dados_usuario = await recuperarDado('dados_setores', usuario)
@@ -1825,7 +1884,7 @@ async function verAndamento(id) {
 
         </div>
     `
-    const telaInterna = document.querySelector('.telaInterna')
+
     telaInterna.innerHTML = acumulado
 
     await atualizarToolbar(id)

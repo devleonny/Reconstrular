@@ -165,7 +165,5 @@ async function abrirEPI(idColaborador) {
     </div>
     `
 
-    const telaInterna = document.querySelector('.telaInterna')
-
     telaInterna.innerHTML = acumulado
 }

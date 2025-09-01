@@ -10,10 +10,22 @@
     margin: 5px;
 }
 
+.painel-despesas {
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    flex-direction: column;
+    height: 80vh;
+    width: 90vw;
+    background-color: #0000005e;
+    border-radius: 5px;
+    gap: 1px;
+    color: black;
+}
+
 @media screen and (orientation: landscape),
 screen and (min-aspect-ratio: 13/9) {
 
-    .painel-superior-cadastros {
-        display: flex;
-    }
+
+
 }

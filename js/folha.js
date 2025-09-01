@@ -110,7 +110,7 @@ async function mostrarFolha(idColaborador) {
             </div>
         </div>
     `
-    const telaInterna = document.querySelector('.telaInterna')
+
     telaInterna.innerHTML = acumulado
 
     const obVal = (name) => {
