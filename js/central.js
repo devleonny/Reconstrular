@@ -25,7 +25,7 @@ const modelo = (texto, valor, name) => `
     </div>
 `
 const modeloLivre = (texto, elemento) => `
-    <div name="${texto}" style="${vertical};">
+    <div style="${vertical};">
         <span>${texto}</span>
         <div>${elemento}</div>
     </div>
@@ -2099,6 +2099,10 @@ async function editarTarefa(id, idEtapa, idTarefa) {
 
         tarefa = objeto?.etapas?.[idEtapa]?.tarefas?.[idTarefa] || {}
 
+        const unidades = ['ml', 'm²', 'und', 'm³', 'n/a']
+            .map(op => `<option ${tarefa?.unidade == op ? 'selected' : ''}>${op}</option>`)
+            .join('')
+
         funcao = `salvarTarefa('${id}', '${idEtapa}', '${idTarefa}')`
         campos = `
             ${modelo('Etapa',
@@ -2106,7 +2110,7 @@ async function editarTarefa(id, idEtapa, idTarefa) {
                 ${Object.entries(etapasProvisorias).map(([id, nomeEtapa]) => `<option value="${id}" ${id == idEtapa ? 'selected' : ''}>${nomeEtapa}</option>`).join('')}
             </select>`)}
 
-            ${modelo('Unidade', tarefa?.unidade || '')}
+            ${modeloLivre('Unidade', `<select name="Unidade">${unidades}</select>`)}
             ${modelo('Quantidade', tarefa?.quantidade || '', true)}
             ${modelo('Resultado', tarefa?.resultado || '', true)}
             <div id="indPorcentagem"></div>
