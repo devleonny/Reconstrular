@@ -354,10 +354,13 @@ async function telaPrincipal() {
         <div class="side-menu" id="sideMenu">
             <div class="botoesMenu">
 
-                <span class="nomeUsuario">${acesso.usuario} <strong>${acesso.permissao}</strong></span>
-
                 <br>
 
+                <div class="nomeUsuario">
+                    <span><strong>${inicialMaiuscula(acesso.permissao)}</strong> ${acesso.usuario}</span>
+                </div>
+
+                ${btn('atualizar', 'Sincronizar App', 'atualizarApp()')}
                 ${btn('colaborador', 'Colaboradores', 'telaColaboradores()')}
                 ${btn('obras', 'Obras', 'telaObras()')}
                 ${btn('pessoas', 'Clientes', 'telaClientes()')}
@@ -381,16 +384,125 @@ async function telaPrincipal() {
     tela.innerHTML = acumulado
     telaInterna = document.querySelector('.telaInterna')
 
-    await sincronizarDados('dados_distritos', true)
-    await sincronizarDados('configuracoes', true)
-    dados_distritos = await recuperarDados('dados_distritos')
+    atualizarApp()
+
+}
+
+async function atualizarApp() {
+
+    mostrarMenus(true)
+    sincronizarApp()
+    let status = { total: 9, atual: 1 }
+
+    sincronizarApp(status)
     await sincronizarSetores()
+    status.atual++
+
+    const basesAuxiliares = [
+        'dados_distritos',
+        'dados_clientes',
+        'fornecedores',
+        'materiais',
+        'dados_obras',
+        'ferramentas',
+        'dados_colaboradores',
+        'dados_despesas'  
+    ];
+
+    for (const base of basesAuxiliares) {
+        sincronizarApp(status)
+        await sincronizarDados(base, true)
+        status.atual++
+    }
+
+    sincronizarApp({ remover: true })
+}
+
+function sincronizarApp({ atual, total, remover } = {}) {
+
+    if (remover) {
+        
+        setTimeout(() => {
+            document.querySelector('.circular-loader').remove()
+            mostrarMenus(false)
+            return
+        }, 2000)
+
+        return
+
+    } else if (atual) {
+
+        const circumference = 2 * Math.PI * 50;
+        const percent = (atual / total) * 100;
+        const offset = circumference - (circumference * percent / 100);
+        progressCircle.style.strokeDasharray = circumference;
+        progressCircle.style.strokeDashoffset = offset;
+        percentageText.textContent = `${percent.toFixed(0)}%`;
+
+        return
+
+    } else {
+
+        const carregamentoHTML = `
+        <div class="circular-loader">
+            <svg>
+                <circle class="bg" cx="60" cy="60" r="50"></circle>
+                <circle class="progress" cx="60" cy="60" r="50"></circle>
+            </svg>
+            <div class="percentage">0%</div>
+        </div>
+        `
+        const botoesMenu = document.querySelector('.botoesMenu')
+        botoesMenu.insertAdjacentHTML('afterbegin', carregamentoHTML)
+
+        progressCircle = document.querySelector('.circular-loader .progress');
+        percentageText = document.querySelector('.circular-loader .percentage');
+    }
+
+}
+
+function pesquisarGenerico(coluna, texto, filtro, id) {
+
+    filtro[coluna] = String(texto).toLowerCase().replace('.', '')
+
+    let tbody = document.getElementById(id);
+    let trs = tbody.querySelectorAll('tr');
+    let contador = 0
+
+    trs.forEach(function (tr) {
+        let tds = tr.querySelectorAll('td');
+        let mostrarLinha = true;
+
+        for (var col in filtro) {
+            let filtroTexto = filtro[col];
+
+            if (filtroTexto && col < tds.length) {
+                let element = tds[col].querySelector('input') || tds[col].querySelector('textarea') || tds[col].querySelector('select') || tds[col].textContent
+                let conteudoCelula = element.value ? element.value : element
+                let texto_campo = String(conteudoCelula).toLowerCase().replace('.', '')
+
+                if (!texto_campo.includes(filtroTexto)) {
+                    mostrarLinha = false;
+                    break;
+                }
+            }
+        }
+
+        mostrarLinha ? contador++ : ''
+
+        tr.style.display = mostrarLinha ? '' : 'none';
+    });
+
+    let contagem = document.getElementById('contagem')
+    if (contagem) {
+        contagem.textContent = contador
+    }
 
 }
 
 function telaClientes() {
 
-    esconderMenus()
+    mostrarMenus()
 
     const acumulado = `
         <div class="painel-despesas">
@@ -406,7 +518,7 @@ function telaClientes() {
 
 async function verificarClientes() {
 
-    esconderMenus()
+    mostrarMenus()
     const nomeBase = 'dados_clientes'
     titulo.textContent = 'Verificar Clientes'
     const acumulado = `
@@ -420,14 +532,14 @@ async function verificarClientes() {
 
 async function formularioCliente(idCliente) {
 
-    esconderMenus()
+    mostrarMenus()
 
     const cliente = await recuperarDado('dados_clientes', idCliente)
 
     const modelo = (texto, valor) => `
-        <div style="${vertical};">
+        <div style="${vertical}; padding: 10px;">
             <span>${texto}</span>
-            <input placeholder="${texto}" name="${texto}" value="${valor || ''}">
+            <input oninput="regrasClientes()" placeholder="${texto}" name="${texto}" value="${valor || ''}">
         </div>
     `
     titulo.textContent = 'Cadastro de Cliente'
@@ -448,9 +560,38 @@ async function formularioCliente(idCliente) {
     `
 
     telaInterna.innerHTML = acumulado
+    regrasClientes()
+}
+
+function regrasClientes() {//29
+
+    const campos = ['Telefone', 'Número de Contribuinte']
+    const limite = 9
+    let bloqueio = false
+    for (const campo of campos) {
+
+        const el = document.querySelector(`[name="${campo}"]`)
+        el.value = el.value.replace(/\D/g, '');
+        if (el.value.length > limite) {
+            el.value = el.value.slice(0, limite);
+        }
+
+        if (el.value.length !== limite) {
+            el.classList.add('invalido')
+            bloqueio = true
+        } else {
+            el.classList.remove('invalido')
+        }
+
+    }
+
+    return bloqueio
+
 }
 
 async function salvarCliente(idCliente) {
+
+    if(regrasClientes()) return popup(mensagem('Verifique os campos destacados'), 'Alerta', true) 
 
     const obVal = (texto) => {
         const el = document.querySelector(`[name="${texto}"]`)
@@ -469,14 +610,14 @@ async function salvarCliente(idCliente) {
 
     await enviar(`dados_clientes/${idCliente}`, cliente)
     await inserirDados({ [idCliente]: cliente }, 'dados_clientes')
-    await telaClientes()
-    esconderMenus()
+    await verificarClientes()
+    mostrarMenus()
     popup(mensagem('Salvo com sucesso', 'imagens/concluido.png'), 'Salvo')
 }
 
 async function telaConfiguracoes() {
 
-    esconderMenus()
+    mostrarMenus()
     titulo.innerHTML = 'Configurações'
     const modelo = (texto, elemento) => `
         <div>
@@ -533,7 +674,7 @@ function verificarClique(event) {
 
 async function usuarios() {
 
-    esconderMenus()
+    mostrarMenus()
 
     const nomeBase = 'dados_setores'
     const acumulado = `
@@ -559,7 +700,7 @@ async function sincronizarDados(base, overlayOff) {
 
 async function telaObras() {
 
-    esconderMenus()
+    mostrarMenus()
     const nomeBase = 'dados_obras'
     titulo.textContent = 'Gerenciar Obras'
     const acumulado = `
@@ -693,14 +834,15 @@ function deslogar() {
     telaLogin()
 }
 
-function esconderMenus() {
-    const sideMenu = document.getElementById('sideMenu');
-    sideMenu.classList.toggle('active');
+function mostrarMenus(operacao) {
+    const menu = document.getElementById('sideMenu').classList
+    if (operacao == 'toggle' || !operacao) return menu.toggle('active')
+    operacao ? menu.add('active') : menu.remove('active')
 }
 
 async function telaColaboradores() {
 
-    esconderMenus()
+    mostrarMenus()
     const btnExtras = `
         <button onclick="confimacaoZipPdf()">Baixar Folhas em .zip</button> 
     `
@@ -887,8 +1029,9 @@ async function criarLinha(dados, id, nomeBase) {
         const foto = dados.foto ? `<img onclick="abrirArquivo('${dados.foto}')" class="cam" src="imagens/contas.png">` : ''
         const fatura = dados.fatura ? `<img onclick="abrirArquivo('${dados.fatura}')"  class="cam" src="imagens/anexo.png">` : ''
         let data = '--'
-        if(dados.data) {
-            const [ano, mes, dia] = dados.data.split('-')
+        let ano, mes, dia
+        if (dados.data) {
+            [ano, mes, dia] = dados.data.split('-')
             data = `${dia}/${mes}/${ano}`
         }
 
@@ -899,7 +1042,12 @@ async function criarLinha(dados, id, nomeBase) {
             ${modelo(fornecedor?.numeroContribuinte || '--')}
             ${modelo(dinheiro(dados?.valor))}
             ${modelo(dados?.iva || '--')}
-            ${modelo(data)}
+            ${modelo(ano)}
+            ${modelo(meses[mes])}
+            <td>
+                <span style="display: none;">${dados?.data}</span>
+                <span>${data}</span>
+            </td>
             <td>${foto}</td>
             <td>${fatura}</td>
             ${modelo(material?.nome || '--')}
@@ -1011,21 +1159,10 @@ async function criarLinha(dados, id, nomeBase) {
             const cliente = await recuperarDado('dados_clientes', obra?.cliente)
             const distrito = dados_distritos[obra?.distrito]
             const cidade = distrito?.cidades[obra?.cidade]
-
-            dadosObra = `
-            <div style="${vertical}; gap: 1px;">
-                <span><strong>${cliente.nome}</strong></span>
-                <span>• ${distrito.nome}</span>
-                <span>• ${cidade.nome}</span>
-            </div>
-            `
+            dadosObra = `<span>${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</span>`
         }
 
-        return infoObra = `
-            <div style="${vertical}; gap: 2px;">
-                ${dadosObra}
-            </div>
-        `
+        return dadosObra
     }
 
 }
@@ -1062,9 +1199,9 @@ async function gerenciarUsuario(id) {
 function dinheiro(valor) {
     if (!valor) return '€ 0,00';
 
-    return valor.toLocaleString('pt-BR', { 
-        style: 'currency', 
-        currency: 'EUR' 
+    return valor.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'EUR'
     });
 }
 
@@ -1291,7 +1428,7 @@ function verificarRegras() {
         if (!campo) continue;
 
         //Tipo
-        if (regra.tipo === 1) {
+        if (regra.tipo === 1) {//29
             campo.value = campo.value.replace(/\D/g, '');
         } else if (regra.tipo === 'A') {
             campo.value = campo.value.replace(/[0-9]/g, '');
@@ -1613,37 +1750,6 @@ async function deletar(chave) {
                 resolve();
             });
     });
-}
-
-function pesquisarGenerico(coluna, texto, filtro, id) {
-
-    filtro[coluna] = String(texto).toLowerCase().replace('.', '')
-
-    let tbody = document.getElementById(id);
-    let trs = tbody.querySelectorAll('tr');
-
-    trs.forEach(function (tr) {
-        let tds = tr.querySelectorAll('td');
-        let mostrarLinha = true;
-
-        for (var col in filtro) {
-            let filtroTexto = filtro[col];
-
-            if (filtroTexto && col < tds.length) {
-                let element = tds[col].querySelector('input') || tds[col].querySelector('textarea') || tds[col].querySelector('select') || tds[col].textContent
-                let conteudoCelula = element.value ? element.value : element
-                let texto_campo = String(conteudoCelula).toLowerCase().replace('.', '')
-
-                if (!texto_campo.includes(filtroTexto)) {
-                    mostrarLinha = false;
-                    break;
-                }
-            }
-        }
-
-        tr.style.display = mostrarLinha ? '' : 'none';
-    });
-
 }
 
 async function cxOpcoes(name, nomeBase, campos, funcaoAux) {

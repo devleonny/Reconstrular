@@ -1,8 +1,9 @@
 const voltar = `<button style="background-color: #3131ab;" onclick="telaDespesas()">Voltar</button>`
+let filtros = {}
 
 function telaDespesas() {
 
-    esconderMenus()
+    mostrarMenus()
 
     const acumulado = `
         <div class="painel-despesas">
@@ -18,17 +19,69 @@ function telaDespesas() {
 
 }
 
+async function atualizarDespesas() {
+    await sincronizarDados('dados_despesas')
+    await verificarDespesas()
+}
+
 async function verificarDespesas() {
 
-    const colunas = ['Fornecedor', 'Número do Contribuinte', 'Valor', 'IVA', 'Data', 'Imagem da Fatura', 'Upload Fatura', 'Tipo de Material', 'Obra', '']
+    const colunas = ['Fornecedor', 'Número do Contribuinte', 'Valor', 'IVA', 'Ano', 'Mês', 'Data', 'Imagem da Fatura', 'Upload Fatura', 'Tipo de Material', 'Obra', '']
     let cabecalhos = {
         ths: '',
         pesq: ''
     }
 
+    const clientes = await recuperarDados('dados_clientes')
+    const materiais = await recuperarDados('materiais')
+    const fornecedores = await recuperarDados('fornecedores')
+    const dados_obras = await recuperarDados('dados_obras')
+    const opcoesFornecedores = Object.entries({ '': { nome: '' }, ...fornecedores })
+        .map(([idFornecedor, fornecedor]) => `<option id="${idFornecedor}">${fornecedor.nome}</option>`)
+        .join('')
+    const opcoesMateriais = Object.entries({ '': { nome: '' }, ...materiais })
+        .map(([idMaterial, material]) => `<option id="${idMaterial}">${material.nome}</option>`)
+        .join('')
+    const opcoesMeses = Object.entries({ '': '', ...meses }).sort()
+        .map(([numero, mes]) => `<option id="${numero}">${mes}</option>`)
+        .join('')
+    const opcoesAnos = Object.entries({ '': '', ...anos }).sort()
+        .map(([anoSt, anoNum]) => `<option id="${anoNum}">${anoNum}</option>`)
+        .join('')
+
+    let opcoesObras = ''
+    const obras = { '': '', ...dados_obras }
+    for (const [idObra, obra] of Object.entries(obras)) {
+        const distrito = dados_distritos?.[obra.distrito] || {}
+        const cidade = distrito?.cidades?.[obra.cidade] || {}
+        const cliente = clientes?.[obra?.cliente] || {}
+        opcoesObras += cliente.nome 
+        ? `<option>${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
+        : `<option></option>`
+    }
+
+    const funcPesq = (col) => `
+        oninput="pesquisarGenerico('${col}', this.value, filtros, 'body')"
+    `
+    let i = 0
     for (const coluna of colunas) {
         cabecalhos.ths += `<th>${coluna}</th>`
-        cabecalhos.pesq += `<th style="background-color: white; text-align: left;" contentEditable="true"></th>`
+        if (coluna == 'Tipo de Material') {
+            cabecalhos.pesq += `<th><select ${funcPesq(i)}>${opcoesMateriais}</select></th>`
+        } else if (coluna == 'Ano') {
+            cabecalhos.pesq += `<th><select ${funcPesq(i)}>${opcoesAnos}</select></th>`
+        } else if (coluna == 'Mês') {
+            cabecalhos.pesq += `<th><select ${funcPesq(i)}>${opcoesMeses}</select></th>`
+        } else if (coluna == 'Data') {
+            cabecalhos.pesq += `<th><input type="date" ${funcPesq(i)}></th>`
+        } else if (coluna == 'Fornecedor') {
+            cabecalhos.pesq += `<th><select ${funcPesq(i)}>${opcoesFornecedores}</select></th>`
+        } else if (coluna == 'Obra') {
+            cabecalhos.pesq += `<th><select ${funcPesq(i)}>${opcoesObras}</select></th>`
+        } else {
+            cabecalhos.pesq += `<th><input ${funcPesq(i)}></th>`
+        }
+        i++
     }
 
     const acumulado = `
@@ -41,11 +94,11 @@ async function verificarDespesas() {
                     </div>
                     ${voltar}
                 </div>
-                <img class="atualizar" src="imagens/atualizar.png" onclick="">
+                <img class="atualizar" src="imagens/atualizar.png" onclick="atualizarDespesas()">
             </div>
             <div class="recorteTabela">
                 <table class="tabela">
-                    <thead>
+                    <thead class="cabecalho-despesas">
                         <tr>${cabecalhos.ths}</tr>
                         <tr>${cabecalhos.pesq}</tr>
                     </thead>
@@ -67,7 +120,7 @@ async function verificarDespesas() {
 
 async function formularioDespesa(idDespesa) {
 
-    esconderMenus()
+    mostrarMenus()
 
     const despesa = await recuperarDado('dados_despesas', idDespesa)
     const fornecedores = await recuperarDados('fornecedores')

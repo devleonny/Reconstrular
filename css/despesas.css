@@ -10,6 +10,19 @@
     margin: 5px;
 }
 
+.cabecalho-despesas th {
+    background-color: white;
+}
+
+.cabecalho-despesas input {
+    padding: 0px;
+    border: none;
+}
+
+.cabecalho-despesas select {
+    border: none;
+}
+
 .painel-despesas {
     display: flex;
     align-items: center;
