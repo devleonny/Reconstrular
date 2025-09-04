@@ -352,24 +352,22 @@ async function telaPrincipal() {
     <div class="menu-container">
 
         <div class="side-menu" id="sideMenu">
-            <div class="botoesMenu">
 
-                <br>
+            <br>
 
-                <div class="nomeUsuario">
-                    <span><strong>${inicialMaiuscula(acesso.permissao)}</strong> ${acesso.usuario}</span>
-                </div>
-
-                ${btn('atualizar', 'Sincronizar App', 'atualizarApp()')}
-                ${btn('colaborador', 'Colaboradores', 'telaColaboradores()')}
-                ${btn('obras', 'Obras', 'telaObras()')}
-                ${btn('pessoas', 'Clientes', 'telaClientes()')}
-                ${btn('contas', 'Despesas', 'telaDespesas()')}
-                ${btn('perfil', 'Usuários', 'usuarios()')}
-                ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
-                ${btn('sair', 'Desconectar', 'deslogar()')}
-
+            <div class="nomeUsuario">
+                <span><strong>${inicialMaiuscula(acesso.permissao)}</strong> ${acesso.usuario}</span>
             </div>
+
+            ${btn('atualizar', 'Sincronizar App', 'atualizarApp()')}
+            ${btn('colaborador', 'Colaboradores', 'telaColaboradores()')}
+            ${btn('obras', 'Obras', 'telaObras()')}
+            ${btn('pessoas', 'Clientes', 'telaClientes()')}
+            ${btn('contas', 'Despesas', 'telaDespesas()')}
+            ${btn('perfil', 'Usuários', 'usuarios()')}
+            ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
+            ${btn('sair', 'Desconectar', 'deslogar()')}
+
         </div>
 
         <div class="telaInterna">
@@ -415,6 +413,8 @@ async function atualizarApp() {
         status.atual++
     }
 
+    dados_distritos = await recuperarDados('dados_distritos')
+
     sincronizarApp({ remover: true })
 }
 
@@ -452,7 +452,7 @@ function sincronizarApp({ atual, total, remover } = {}) {
             <div class="percentage">0%</div>
         </div>
         `
-        const botoesMenu = document.querySelector('.botoesMenu')
+        const botoesMenu = document.querySelector('.side-menu')
         botoesMenu.insertAdjacentHTML('afterbegin', carregamentoHTML)
 
         progressCircle = document.querySelector('.circular-loader .progress');
@@ -668,7 +668,7 @@ async function salvarConfigs() {
 }
 
 function verificarClique(event) {
-    const menu = document.getElementById('sideMenu');
+    const menu = document.querySelector('.side-menu');
     if (menu && menu.classList.contains('active') && !menu.contains(event.target)) menu.classList.remove('active')
 }
 
@@ -778,7 +778,6 @@ async function buscarDados() {
 
 async function carregarSelects({ select, cidade, distrito }) {
 
-    const dados_distritos = await recuperarDados('dados_distritos');
     const selectDistrito = document.querySelector('[name="distrito"]');
     const selectCidade = document.querySelector('[name="cidade"]');
     const campoVazio = { '': { nome: '' } }
@@ -835,7 +834,7 @@ function deslogar() {
 }
 
 function mostrarMenus(operacao) {
-    const menu = document.getElementById('sideMenu').classList
+    const menu = document.querySelector('.side-menu').classList
     if (operacao == 'toggle' || !operacao) return menu.toggle('active')
     operacao ? menu.add('active') : menu.remove('active')
 }
@@ -854,7 +853,6 @@ async function telaColaboradores() {
     `
 
     telaInterna.innerHTML = acumulado
-    dados_distritos = await recuperarDados('dados_distritos')
     const dados_colaboradores = await recuperarDados(nomeBase)
     for (const [id, colaborador] of Object.entries(dados_colaboradores).reverse()) criarLinha(colaborador, id, nomeBase)
 
@@ -1159,7 +1157,7 @@ async function criarLinha(dados, id, nomeBase) {
             const cliente = await recuperarDado('dados_clientes', obra?.cliente)
             const distrito = dados_distritos[obra?.distrito]
             const cidade = distrito?.cidades[obra?.cidade]
-            dadosObra = `<span>${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</span>`
+            dadosObra = `<span>${cliente?.nome || '--'} / ${distrito?.nome || '--'} / ${cidade?.nome || '--'}</span>`
         }
 
         return dadosObra
@@ -1209,7 +1207,6 @@ async function adicionarColaborador(id) {
 
     const colaborador = await recuperarDado('dados_colaboradores', id) || {}
     const dados_obras = await recuperarDados('dados_obras')
-    const dados_distritos = await recuperarDados('dados_distritos')
     const clientes = await recuperarDados('dados_clientes')
 
     const listas = {

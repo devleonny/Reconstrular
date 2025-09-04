@@ -24,6 +24,7 @@ html {
 }
 
 .circular-loader {
+    margin-top: 2vw;
     position: relative;
     width: 120px;
     height: 120px;
@@ -286,17 +287,6 @@ span {
     border-top-right-radius: 10px;
     border-bottom-right-radius: 10px;
     color: white;
-}
-
-.botoesMenu {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-    flex-direction: column;
-    width: 100%;
-    gap: 1px;
-    margin-top: 20vh;
-    margin-bottom: 20vh;
 }
 
 .loginBloco {
@@ -593,8 +583,6 @@ button {
     overflow: hidden;
 }
 
-
-/* Menu lateral */
 .side-menu {
     position: fixed;
     top: 0;
@@ -605,6 +593,12 @@ button {
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
     transition: 0.3s;
     z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    flex-direction: column;
+    gap: 1px;
+    overflow: auto;
 }
 
 .side-menu.active {
@@ -641,8 +635,8 @@ button {
 .btnRodape {
     position: fixed;
     bottom: 10px;
-    right: 10px;
-    width: 90%;
+    left: 10px;
+    width: 95%;
     border-radius: 3px;
     padding: 10px;
     display: flex;
@@ -1116,10 +1110,6 @@ screen and (min-aspect-ratio: 13/9) {
     .mensagem img,
     .cadeado {
         width: 7vw;
-    }
-
-    .botoesMenu {
-        margin-top: 10vw;
     }
 
     .recorteTabela {
