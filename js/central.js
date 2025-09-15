@@ -25,7 +25,7 @@ const modelo = (texto, valor, name) => `
     </div>
 `
 const modeloLivre = (texto, elemento) => `
-    <div style="${vertical};">
+    <div style="${vertical}; padding: 10px;">
         <span>${texto}</span>
         <div style="width: 90%;">${elemento}</div>
     </div>
@@ -365,6 +365,7 @@ async function telaPrincipal() {
             ${btn('pessoas', 'Clientes', 'telaClientes()')}
             ${btn('contas', 'Despesas', 'telaDespesas()')}
             ${btn('perfil', 'Usuários', 'usuarios()')}
+            ${btn('orcamentos', 'Orçamentos', 'telaOrcamentos()')}
             ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
             ${btn('sair', 'Desconectar', 'deslogar()')}
 

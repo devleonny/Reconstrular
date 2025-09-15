@@ -9,6 +9,7 @@ html {
     justify-content: start;
     align-items: center;
     flex-direction: column;
+    font-size: 0.9rem;
 }
 
 .cabecalho-clientes {
@@ -149,17 +150,11 @@ html {
     width: 5vw
 }
 
-.contornoInterno label {
-    font-size: 2vw;
-}
-
 span {
-    font-size: 4vw;
     color: black;
 }
 
 .nomeUsuario {
-    font-size: 3vw;
     padding: 5px;
     width: 80%;
     background-color: #249f41;
@@ -280,7 +275,6 @@ span {
 }
 
 .nomeUsuario span {
-    font-size: 5vw;
     padding: 5px;
     width: 80%;
     background-color: #249f41;
@@ -346,7 +340,6 @@ span {
 }
 
 select {
-    font-size: 3vw;
     padding: 5px;
     border-radius: 3px;
 }
@@ -394,7 +387,6 @@ button {
     justify-content: start;
     max-width: 90vw;
     text-align: center;
-    font-size: 3vw;
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
@@ -495,7 +487,6 @@ button {
 
 .toolbarPopup span {
     color: white;
-    font-size: 4vw;
 }
 
 .botaoPopup {
@@ -515,7 +506,6 @@ button {
 .botaoPopup label {
     cursor: pointer;
     color: white;
-    font-size: 5vw;
 }
 
 .blocoTabela {
@@ -546,7 +536,6 @@ button {
 .tabela th {
     border: solid 1px #d2d2d2;
     color: #222;
-    font-size: 5vw;
     padding: 8px;
 }
 
@@ -573,7 +562,7 @@ button {
 }
 
 .btnLateral img {
-    width: 10vw;
+    width: 2rem;
     margin-left: 10px
 }
 
@@ -642,7 +631,6 @@ button {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 5vw;
     z-index: 0;
     gap: 2vw;
 }
@@ -660,7 +648,6 @@ input[type="file"] {
 
 .btnPadrao {
     width: 100%;
-    font-size: 5vw;
     background-color: #249f41;
     padding-top: 5px;
     padding-bottom: 5px;
@@ -736,10 +723,6 @@ input[type="file"] {
     z-index: 200;
 }
 
-.caixa span {
-    font-size: 1.8vw;
-}
-
 .acompanhamento {
     border-radius: 3px;
     padding: 2vw;
@@ -801,13 +784,11 @@ input[type="file"] {
 
 .bloco label {
     color: #222;
-    font-size: 4vw;
     white-space: nowrap;
 }
 
 .bloco span {
     color: #fd6828;
-    font-size: 8vw;
 }
 
 .linha {
@@ -856,7 +837,6 @@ input[type="file"] {
 }
 
 .toolbar span {
-    font-size: 5vw;
     color: white;
 }
 
@@ -906,10 +886,6 @@ input[type="file"] {
     border-collapse: collapse;
 }
 
-.tabTarefas span {
-    font-size: 4vw;
-}
-
 .rodape-formulario {
     display: flex;
     align-items: center;
@@ -919,12 +895,7 @@ input[type="file"] {
 }
 
 .rodape-formulario button {
-    padding: 5vw;
-    font-size: 4vw;
-}
-
-.rodape-formulario span {
-    font-size: 4vw;
+    padding: 1.2rem;
 }
 
 .fotos {
@@ -952,16 +923,15 @@ input[type="file"] {
     margin: 2vw;
 }
 
-.capturar span {
-    font-size: 3vw;
+.form-zonas {
+    padding: 1rem;
+    background-color: #d2d2d2;
+    border-radius: 10px;
+    width: 100%;
 }
 
 @media screen and (orientation: landscape),
 screen and (min-aspect-ratio: 13/9) {
-
-    .nomeUsuario span {
-        font-size: 2vw;
-    }
 
     .fotos {
         grid-template-columns: repeat(3, 1fr);
@@ -976,32 +946,14 @@ screen and (min-aspect-ratio: 13/9) {
         margin: 0.5vw;
     }
 
-    .capturar span {
-        font-size: 1.2vw;
-    }
-
     .painel-clientes {
         grid-template-columns: repeat(3, 1fr);
-    }
-
-    .nomeUsuario {
-        font-size: 1.5vw;
-    }
-
-    .rodape-formulario span {
-        font-size: 2vw;
-    }
-
-    .rodape-formulario button {
-        padding: 1vw;
-        font-size: 2vw;
     }
 
     .tabTarefas table {
         width: max-content;
         table-layout: fixed;
         border-collapse: collapse;
-        font-size: 1.2vw;
         display: table;
     }
 
@@ -1015,18 +967,6 @@ screen and (min-aspect-ratio: 13/9) {
         width: 35vw;
     }
 
-    .tabTarefas span {
-        font-size: 1.2vw;
-    }
-
-    .bloco label {
-        font-size: 1.2vw;
-    }
-
-    .bloco span {
-        font-size: 2vw;
-    }
-
     .painel-1-tarefas {
         grid-template-columns: repeat(4, 1fr);
         gap: 2vw;
@@ -1035,10 +975,6 @@ screen and (min-aspect-ratio: 13/9) {
     input {
         padding: 0.8vw;
         margin: 0.8vw 0;
-    }
-
-    .btnLateral img {
-        width: 3vw;
     }
 
     .loginBloco {
@@ -1050,21 +986,12 @@ screen and (min-aspect-ratio: 13/9) {
         flex-direction: row;
     }
 
-    span {
-        font-size: 1.2vw;
-    }
-
-    select {
-        font-size: 1.2vw;
-    }
-
     .janela {
         min-width: 70vw;
         max-height: 80vh;
     }
 
     .janela_fora {
-        font-size: 2vw;
         max-width: 80vw;
     }
 
@@ -1072,29 +999,15 @@ screen and (min-aspect-ratio: 13/9) {
         font-size: 3vw;
     }
 
-    .tabela th {
-        font-size: 2vw;
-    }
-
-    .tabela td {
-        font-size: 1vw;
-    }
-
     .btnRodape {
         width: auto;
         right: 3vw;
         bottom: 3vh;
-        font-size: 1.8vw;
     }
 
     .btnExcel {
         gap: 10vw;
         display: flex;
-        font-size: 1.8vw;
-    }
-
-    .btnPadrao {
-        font-size: 2.5vw;
     }
 
     .pesquisa {
@@ -1121,18 +1034,6 @@ screen and (min-aspect-ratio: 13/9) {
         width: 10vw;
     }
 
-    .toolbarPopup span {
-        font-size: 1.8vw;
-    }
-
-    .toolbar span {
-        font-size: 1.8vw;
-    }
-
-    .tabela th {
-        font-size: 1.2vw;
-    }
-
     .camposCadastro {
         padding: 2vw;
     }
@@ -1156,10 +1057,6 @@ screen and (min-aspect-ratio: 13/9) {
 
     .contornoInterno img {
         width: 2vw
-    }
-
-    .contornoInterno label {
-        font-size: 1.2vw;
     }
 
     .botoes {
