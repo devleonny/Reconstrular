@@ -11,6 +11,7 @@ let dados_distritos = {}
 let etapasProvisorias = {}
 let stream;
 let telaInterna = null
+let emAtualizacao = false
 const voltarClientes = `<button style="background-color: #3131ab;" onclick="telaClientes()">Voltar</button>`
 
 function obVal(name) {
@@ -127,7 +128,7 @@ async function acessoLogin() {
 
         const requisicao = {
             tipoAcesso: 'login',
-            servidor: 'RECONST',
+            servidor,
             dados: {
                 usuario: inputs[0].value,
                 senha: inputs[1].value
@@ -173,7 +174,7 @@ async function verificarSupervisor(usuario, senha) {
     const url = `${api}/acesso`
     const requisicao = {
         tipoAcesso: 'login',
-        servidor: 'RECONST',
+        servidor,
         dados: { usuario, senha }
     }
 
@@ -226,7 +227,7 @@ function salvarCadastro() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                servidor: 'RECONST',
+                servidor,
                 tipoAcesso: 'cadastro',
                 dados: {
                     usuario,
@@ -389,12 +390,20 @@ async function telaPrincipal() {
 
 async function atualizarApp() {
 
+    if (emAtualizacao) return
+
+    emAtualizacao = true
+
     mostrarMenus(true)
     sincronizarApp()
-    let status = { total: 9, atual: 1 }
+    let status = { total: 10, atual: 1 }
 
     sincronizarApp(status)
     await sincronizarSetores()
+    status.atual++
+
+    sincronizarApp(status)
+    await camposOrcamento()
     status.atual++
 
     const basesAuxiliares = [
@@ -405,7 +414,7 @@ async function atualizarApp() {
         'dados_obras',
         'ferramentas',
         'dados_colaboradores',
-        'dados_despesas'  
+        'dados_despesas'
     ];
 
     for (const base of basesAuxiliares) {
@@ -417,12 +426,14 @@ async function atualizarApp() {
     dados_distritos = await recuperarDados('dados_distritos')
 
     sincronizarApp({ remover: true })
+
+    emAtualizacao = false
 }
 
 function sincronizarApp({ atual, total, remover } = {}) {
 
     if (remover) {
-        
+
         setTimeout(() => {
             document.querySelector('.circular-loader').remove()
             mostrarMenus(false)
@@ -592,7 +603,7 @@ function regrasClientes() {//29
 
 async function salvarCliente(idCliente) {
 
-    if(regrasClientes()) return popup(mensagem('Verifique os campos destacados'), 'Alerta', true) 
+    if (regrasClientes()) return popup(mensagem('Verifique os campos destacados'), 'Alerta', true)
 
     const obVal = (texto) => {
         const el = document.querySelector(`[name="${texto}"]`)
@@ -1661,7 +1672,7 @@ function enviar(caminho, info) {
         let objeto = {
             caminho: caminho,
             valor: info,
-            servidor: 'RECONST'
+            servidor
         };
 
         fetch(`${api}/salvar`, {
@@ -1691,7 +1702,7 @@ async function receber(chave) {
     }
 
     let objeto = {
-        servidor: 'RECONST',
+        servidor,
         chave: chave,
         timestamp: timestamp
     };
@@ -1728,7 +1739,7 @@ async function deletar(chave) {
     const objeto = {
         chave,
         usuario: acesso.usuario,
-        servidor: 'RECONST'
+        servidor
     }
 
     return new Promise((resolve) => {
@@ -1829,7 +1840,7 @@ async function configuracoes(usuario, campo, valor) {
         fetch(`${api}/configuracoes`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ usuario, campo, valor, servidor: 'RECONST' })
+            body: JSON.stringify({ usuario, campo, valor, servidor })
         })
             .then(response => {
                 if (!response.ok) {
@@ -1845,6 +1856,28 @@ async function configuracoes(usuario, campo, valor) {
                 reject()
             });
     })
+}
+
+async function camposOrcamento() {
+    try {
+        const response = await fetch(`${api}/campos`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ servidor })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        await inserirDados(data, 'campos_orcamento')
+        return data;
+
+    } catch {
+        return {}
+    }
+
 }
 
 async function sincronizarSetores() {
@@ -1868,7 +1901,7 @@ async function listaSetores(timestamp) {
         const response = await fetch(`${api}/setores`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ timestamp, servidor: 'RECONST' })
+            body: JSON.stringify({ timestamp, servidor })
         });
 
         if (!response.ok) {
@@ -2409,7 +2442,7 @@ async function enviarAlerta(idColaborador) {
     const resposta = await fetch(url, {
         method: 'POST',
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idColaborador, servidor: 'RECONST' })
+        body: JSON.stringify({ idColaborador, servidor })
     });
 
     const dados = await resposta.json();
@@ -2614,7 +2647,7 @@ async function pdfObra(idObra, modalidade) {
     let requisicao = {
         idObra,
         documento: 'relatorio',
-        servidor: 'RECONST'
+        servidor
     }
 
     if (modalidade == 'email') {

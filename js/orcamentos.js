@@ -1,4 +1,6 @@
 const voltarOrcamentos = `<button style="background-color: #3131ab;" onclick="telaOrcamentos()">Voltar</button>`
+let campos = {}
+
 let ambientes = {
     'Quarto': [
         '',
@@ -149,9 +151,9 @@ async function preencherCliente() {
 
     const campos = ['moradaExecucao', 'moradaFiscal', 'email', 'telefone', 'numeroContribuinte']
 
-    for(const campo of campos) {
-       const el = document.querySelector(`[name="${campo}"]`)
-       if(el) el.value = cliente?.[campo] || ''
+    for (const campo of campos) {
+        const el = document.querySelector(`[name="${campo}"]`)
+        if (el) el.value = cliente?.[campo] || ''
     }
 
 }
@@ -163,9 +165,9 @@ async function salvarOrcamento({ idOrcamento }) {
     idOrcamento = idOrcamento || ID5digitos()
 
     const select = document.querySelector('[name="idCliente"]')
-    const idCliente = select.selectedOptions[0]?.id 
+    const idCliente = select.selectedOptions[0]?.id
 
-    if(!idCliente) return popup(mensagem('Campo Cliente obrigatório'), 'Alerta')
+    if (!idCliente) return popup(mensagem('Campo Cliente obrigatório'), 'Alerta')
 
     let orcamento = {
         idCliente,
@@ -174,12 +176,12 @@ async function salvarOrcamento({ idOrcamento }) {
         zonas: {}
     }
 
-    for(const ambiente of Object.keys(ambientes)) {
+    for (const ambiente of Object.keys(ambientes)) {
         const el = document.querySelector(`[name="${ambiente}"]`)
-        if(el && el.value !== '') orcamento.zonas[ambiente] = el.value
+        if (el && el.value !== '') orcamento.zonas[ambiente] = el.value
     }
 
-    await inserirDados({[idOrcamento]: orcamento}, 'dados_orcamentos')
+    await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
 
     await execucoes(idOrcamento)
 
@@ -191,14 +193,24 @@ execucoes('Z9aym')
 
 async function execucoes(idOrcamento) {
 
+    campos = await recuperarDados('campos_orcamento')
+
     let orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
 
     let zonas = orcamento?.zonas || {} //Primeira zona, e seguir para as demais;
     let zona1 = Object.keys(zonas)[0]
 
-    const colunas = ['Especialidade', 'Descrição', 'Item1', 'Item2']
-        .map(col => `<th>${col}</th>`)
-        .join('')
+    const colunas = [
+        'Especialidade',
+        'Descrição do Serviço',
+        'Descrição Extra <br>(facultativo)',
+        'Unidade de Medida',
+        'Unidades',
+        'Metro Linear(cm)',
+        'Comprimento(cm)',
+        'Largura(cm)',
+        'Altura(cm)'
+    ].map(col => `<th>${col}</th>`).join('')
 
     const btn = (cor, texto, funcao) => `<button style="background-color: ${cor}; color: #222;" onclick="${funcao}">${texto}</button>`
 
@@ -209,6 +221,7 @@ async function execucoes(idOrcamento) {
                 <div class="painelBotoes">
                     <div style="${horizontal}; justify-content: space-between; width: 90%;">
                         <span style="font-size: 2rem; padding: 0.5rem;">${zona1}</span>
+                        ${btn('green', 'Adicionar Linha', 'adicionarLinha()')}
                         ${btn('#FF0000', 'Excluir Zona', '')}
                     </div>
                 </div>
@@ -239,5 +252,43 @@ async function execucoes(idOrcamento) {
     `
 
     telaInterna.innerHTML = acumulado
-    
+
+}
+
+function adicionarLinha() {
+    const body = document.getElementById('body')
+
+    const especialidades = Object.keys(campos)
+        .map(op => `<option>${op}</option>`)
+        .join('')
+
+    const idTemp = ID5digitos()
+
+    const tr = `
+        <tr>
+            <td>
+                <select name="espec_${idTemp}" onchange="buscarCampos('${idTemp}')">${especialidades}</select>
+            </td>
+            <td>
+                <select name="desc_${idTemp}"></select>
+            </td>
+            <td></td>
+            <td></td>
+        </tr>
+    `
+
+    body.insertAdjacentHTML('beforeend', tr)
+}
+
+function buscarCampos(idTemp) {
+
+    const especialidade = document.querySelector(`[name="espec_${idTemp}"]`)
+    const descricao = document.querySelector(`[name="desc_${idTemp}"]`)
+
+    const opcoes = Object.keys(campos[especialidade.value])
+        .map(op => `<option>${op}</option>`)
+        .join('')
+
+    descricao.innerHTML = opcoes
+
 }
