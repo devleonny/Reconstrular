@@ -221,7 +221,6 @@ async function execucoes(idOrcamento) {
                 <div class="painelBotoes">
                     <div style="${horizontal}; justify-content: space-between; width: 90%;">
                         <span style="font-size: 2rem; padding: 0.5rem;">${zona1}</span>
-                        ${btn('green', 'Adicionar Linha', 'adicionarLinha()')}
                         ${btn('#FF0000', 'Excluir Zona', '')}
                     </div>
                 </div>
@@ -233,7 +232,9 @@ async function execucoes(idOrcamento) {
                         <tbody id="body"></tbody>
                     </table>
                 </div>
-                <div class="rodapeTabela"></div>
+                <div class="rodapeTabela">
+                    ${btn('green', 'Adicionar Linha', 'adicionarLinha()')}
+                </div>
             </div>
 
             <div style="${horizontal}; gap: 1rem;">
@@ -258,7 +259,7 @@ async function execucoes(idOrcamento) {
 function adicionarLinha() {
     const body = document.getElementById('body')
 
-    const especialidades = Object.keys(campos)
+    const especialidades = ['', ...Object.keys(campos)]
         .map(op => `<option>${op}</option>`)
         .join('')
 
@@ -267,11 +268,17 @@ function adicionarLinha() {
     const tr = `
         <tr>
             <td>
-                <select name="espec_${idTemp}" onchange="buscarCampos('${idTemp}')">${especialidades}</select>
+                <select style="width: 100%;" name="espec_${idTemp}" onchange="buscarCampos('${idTemp}')">${especialidades}</select>
             </td>
             <td>
-                <select name="desc_${idTemp}"></select>
+                <select style="width: 100%;" name="desc_${idTemp}" onchange="buscarMedidas('${idTemp}')"></select>
             </td>
+            <td contentEditable="true" style="text-align: left;"></td>
+            <td name="medida_${idTemp}"></td>
+
+            <td></td>
+            <td></td>
+            <td></td>
             <td></td>
             <td></td>
         </tr>
@@ -285,10 +292,53 @@ function buscarCampos(idTemp) {
     const especialidade = document.querySelector(`[name="espec_${idTemp}"]`)
     const descricao = document.querySelector(`[name="desc_${idTemp}"]`)
 
-    const opcoes = Object.keys(campos[especialidade.value])
+    const opcoes = ['', ...Object.keys(campos[especialidade.value])]
         .map(op => `<option>${op}</option>`)
         .join('')
 
     descricao.innerHTML = opcoes
+
+}
+
+function buscarMedidas(idTemp) {
+    const medida = document.querySelector(`[name="medida_${idTemp}"]`)
+    const especialidade = document.querySelector(`[name="espec_${idTemp}"]`)
+    const desc = document.querySelector(`[name="desc_${idTemp}"]`)
+
+    medida.textContent = campos[especialidade.value][desc.value]
+
+    filtroValores()
+}
+
+function filtroValores() {
+
+    const body = document.getElementById('body')
+    const trs = body.querySelectorAll('tr')
+
+    const esquema = {
+        '': [],
+        'm2': [6, 8],
+        'm3': [6, 7, 8],
+        'ml': [5],
+        'und': [4]
+    }
+
+    for (const tr of trs) {
+
+        const tds = tr.querySelectorAll('td')
+        const medida = tds[3].textContent
+
+        for (let i = 4; i <= 8; i++) {
+            if (esquema[medida].includes(i)) {
+                tds[i].style.backgroundColor = '#00FFFF'
+                tds[i].contentEditable = true
+            } else {
+                tds[i].textContent = ''
+                tds[i].contentEditable = false
+                tds[i].style.backgroundColor = ''
+            }
+        }
+
+    }
 
 }
