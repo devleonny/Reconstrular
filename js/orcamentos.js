@@ -156,7 +156,9 @@ async function preencherCliente() {
 
 }
 
-async function salvarOrcamento(idOrcamento) {
+async function salvarOrcamento({ idOrcamento }) {
+
+    overlayAguarde()
 
     idOrcamento = idOrcamento || ID5digitos()
 
@@ -179,28 +181,33 @@ async function salvarOrcamento(idOrcamento) {
 
     await inserirDados({[idOrcamento]: orcamento}, 'dados_orcamentos')
 
+    await execucoes(idOrcamento)
 
+    removerOverlay()
 
 }
+
+execucoes(idOrcamento)
 
 async function execucoes(idOrcamento) {
 
     let orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
 
     let zonas = orcamento?.zonas || {} //Primeira zona, e seguir para as demais;
-
-    let zona1 = zonas[0]
+    let zona1 = Object.keys(zonas)[0]
 
     const colunas = ['Especialidade', 'Descrição', 'Item1', 'Item2']
         .map(col => `<th>${col}</th>`)
         .join('')
 
+    const btn = (cor, texto, funcao) => `<button style="background-color: ${cor};" onclick="${funcao}">${texto}</button>`
+
     const acumulado = `
-        <div class="painel-clientes">
+        <div style="${vertical}; gap: 1rem;">
             
             <div class="blocoTabela">
                 <div class="painelBotoes">
-                    <span>${}</span>
+                    <span>${zona1}</span>
                 </div>
                 <div class="recorteTabela">
                     <table class="tabela">
@@ -213,7 +220,21 @@ async function execucoes(idOrcamento) {
                 <div class="rodapeTabela"></div>
             </div>
 
+            <div style="${horizontal}; gap: 1rem;">
+
+                ${btn('#00FFFF', 'Voltar a Zona', '')}
+
+                ${btn('#FFFF00', 'Próxima Zona<', '')}
+
+                ${btn('#FF9900', 'Ver Orçamento', '')}
+
+                ${btn('#00FF00', 'Orçamento Final', '')}
+
+            </div>
+
         </div>
     `
+
+    telaInterna.innerHTML = acumulado
     
 }
