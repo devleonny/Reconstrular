@@ -187,7 +187,7 @@ async function salvarOrcamento({ idOrcamento }) {
 
 }
 
-execucoes(idOrcamento)
+execucoes('Z9aym')
 
 async function execucoes(idOrcamento) {
 
@@ -200,14 +200,17 @@ async function execucoes(idOrcamento) {
         .map(col => `<th>${col}</th>`)
         .join('')
 
-    const btn = (cor, texto, funcao) => `<button style="background-color: ${cor};" onclick="${funcao}">${texto}</button>`
+    const btn = (cor, texto, funcao) => `<button style="background-color: ${cor}; color: #222;" onclick="${funcao}">${texto}</button>`
 
     const acumulado = `
         <div style="${vertical}; gap: 1rem;">
             
             <div class="blocoTabela">
                 <div class="painelBotoes">
-                    <span>${zona1}</span>
+                    <div style="${horizontal}; justify-content: space-between; width: 90%;">
+                        <span style="font-size: 2rem; padding: 0.5rem;">${zona1}</span>
+                        ${btn('#FF0000', 'Excluir Zona', '')}
+                    </div>
                 </div>
                 <div class="recorteTabela">
                     <table class="tabela">
@@ -224,7 +227,7 @@ async function execucoes(idOrcamento) {
 
                 ${btn('#00FFFF', 'Voltar a Zona', '')}
 
-                ${btn('#FFFF00', 'Próxima Zona<', '')}
+                ${btn('#FFFF00', 'Próxima Zona', '')}
 
                 ${btn('#FF9900', 'Ver Orçamento', '')}
 
