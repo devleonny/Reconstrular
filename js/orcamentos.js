@@ -93,11 +93,11 @@ async function orcamentos() {
 
     mostrarMenus(false)
 
-    const colunas = ['Cliente', '', 'Editar']
+    const colunas = ['Cliente', 'Zonas', 'Editar']
     let ths = ''
     let pesquisa = ''
 
-    for(const col of colunas) {
+    for (const col of colunas) {
 
         ths += `<th>${col}</th>`
 
@@ -134,12 +134,12 @@ async function orcamentos() {
 
     const orcamentos = await recuperarDados('dados_orcamentos')
 
-    for(const [idOrcamento, orcamento] of Object.entries(orcamentos)) {
+    for (const [idOrcamento, orcamento] of Object.entries(orcamentos)) {
 
         criarLinhaOrcamento(idOrcamento, orcamento)
 
     }
-    
+
 }
 
 function criarLinhaOrcamento(idOrcamento, orcamento) {
@@ -147,16 +147,22 @@ function criarLinhaOrcamento(idOrcamento, orcamento) {
     const cliente = clientes?.[orcamento.idCliente] || {}
     const tds = `
         <td>${cliente?.nome || '...'}</td>
-        <td></td>
-        <td><img src="imagens/pesquisar.png" style="width: 2rem;" onclick="execucoes('${idOrcamento}')"></td>
+        <td>
+            <img src="imagens/planta.png" style="width: 2rem;" onclick="execucoes('${idOrcamento}')">
+        </td>
+        <td>
+            <img src="imagens/pesquisar.png" style="width: 2rem;" onclick="formularioOrcamento('${idOrcamento}')">
+        </td>
     `
 
     const trExistente = document.getElementById(idOrcamento)
 
-    if(trExistente) return trExistente.innerHTML = tds
+    if (trExistente) return trExistente.innerHTML = tds
 
     document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${idOrcamento}">${tds}</tr>`)
 }
+
+telaOrcamentos()
 
 async function formularioOrcamento(idOrcamento) {
     mostrarMenus()
@@ -164,13 +170,16 @@ async function formularioOrcamento(idOrcamento) {
     const orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
     const clientes = await recuperarDados('dados_clientes')
 
+    console.log(orcamento);
+
+
     const opcoesClientes = Object.entries({ '': { nome: '' }, ...clientes })
-        .map(([idCliente, dados]) => `<option id="${idCliente}">${dados.nome}</option>`)
+        .map(([idCliente, dados]) => `<option id="${idCliente}" ${orcamento?.idCliente == idCliente ? 'selected' : ''}>${dados.nome}</option>`)
         .join('')
 
     const zonas = (lista, ambiente) => {
         const opcoes = lista
-            .map(op => `<option>${op}</option>`)
+            .map(op => `<option ${orcamento?.zonas?.[ambiente]?.[op] ? 'selected' : ''}>${op}</option>`)
             .join('')
 
         return `<select name="${ambiente}">${opcoes}</select>`
@@ -187,6 +196,7 @@ async function formularioOrcamento(idOrcamento) {
             <input oninput="regrasClientes()" placeholder="${texto}" name="${texto}" value="${valor || ''}">
         </div>
     `
+    const funcao = idOrcamento ? `salvarOrcamento('${idOrcamento}')` : 'salvarOrcamento()'
 
     titulo.textContent = 'Dados de Orçamento'
 
@@ -201,8 +211,8 @@ async function formularioOrcamento(idOrcamento) {
         ${modeloLivre('Morada de Execução', `<input name="moradaExecucao" readOnly>`)}
         ${modeloLivre('Telefone', `<input name="telefone" readOnly>`)}
         ${modeloLivre('E-mail', `<input name="email" readOnly>`)}
-        ${modeloLivre('Data de contato', `<input name="dataContato" type="date">`)}
-        ${modeloLivre('Data de visita', `<input name="dataVisita" type="date">`)}
+        ${modeloLivre('Data de contato', `<input value="${orcamento?.dataContato || ''}" name="dataContato" type="date">`)}
+        ${modeloLivre('Data de visita', `<input value="${orcamento?.dataVisita || ''}" name="dataVisita" type="date">`)}
     </div>
 
     <br>
@@ -212,11 +222,13 @@ async function formularioOrcamento(idOrcamento) {
         <hr style="width: 100%">
         ${campos}
         <hr style="width: 100%">
-        <button onclick="salvarOrcamento({idOrcamento: ${idOrcamento || false}})">Ir para a Fase 2 - Execuções</button>
+        <button onclick="${funcao}">Ir para a Fase 2 - Execuções</button>
     </div>
     `
 
     telaInterna.innerHTML = acumulado
+
+    preencherCliente()
 }
 
 async function preencherCliente() {
@@ -234,7 +246,7 @@ async function preencherCliente() {
 
 }
 
-async function salvarOrcamento({ idOrcamento }) {
+async function salvarOrcamento(idOrcamento) {
 
     overlayAguarde()
 
@@ -245,32 +257,31 @@ async function salvarOrcamento({ idOrcamento }) {
 
     if (!idCliente) return popup(mensagem('Campo Cliente obrigatório'), 'Alerta')
 
-    let orcamento = {
+    let orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
+    let zonas = orcamento?.zonas || {}
+
+    let orcamentoAtualizado = {
         idCliente,
         dataVisita: document.querySelector('[name="dataVisita"]').value,
         dataContato: document.querySelector('[name="dataContato"]').value,
-        zonas: {}
+        zonas: { ...zonas }
     }
 
     for (const ambiente of Object.keys(ambientes)) {
         const el = document.querySelector(`[name="${ambiente}"]`)
         if (el && el.value !== '') {
-            if (!orcamento.zonas[ambiente]) {
-                orcamento.zonas[ambiente] = {}
-            }
-            orcamento.zonas[ambiente][el.value] = {}
+            if (!orcamentoAtualizado.zonas[ambiente]) orcamentoAtualizado.zonas[ambiente] = {}
+            if (!orcamentoAtualizado.zonas[ambiente][el.value]) orcamentoAtualizado.zonas[ambiente][el.value] = {}
         }
     }
 
-    await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
+    await inserirDados({ [idOrcamento]: orcamentoAtualizado }, 'dados_orcamentos')
 
     await execucoes(idOrcamento)
 
     removerOverlay()
 
 }
-
-execucoes('Kkpah')
 
 async function execucoes(id, proximo = 0) {
     idOrcamento = id;
@@ -336,7 +347,7 @@ async function execucoes(id, proximo = 0) {
     ambiente1 = ambientes[window.idxAmbiente];
     zona1 = zonasDoAmbiente[window.idxZona];
 
-    if(!zona1) return await telaOrcamentos()
+    if (!zona1) return await telaOrcamentos()
 
     // cabeçalhos
     const colunas = [
@@ -351,7 +362,7 @@ async function execucoes(id, proximo = 0) {
         'Altura<br>(cm)'
     ].map(col => `<th>${col}</th>`).join('');
 
-    const btn = (cor, texto, funcao, branco) => 
+    const btn = (cor, texto, funcao, branco) =>
         `<button style="color:${branco ? 'white' : '#222'};background-color:${cor};" onclick="${funcao}">${texto}</button>`;
 
     const acumulado = `
