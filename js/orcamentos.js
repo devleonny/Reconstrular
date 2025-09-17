@@ -72,7 +72,7 @@ async function telaOrcamentos() {
 
     clientes = await recuperarDados('dados_clientes')
 
-    mostrarMenus()
+    mostrarMenus(false)
 
     const acumulado = `
         <div class="painel-despesas">
@@ -87,6 +87,11 @@ async function telaOrcamentos() {
 }
 
 async function orcamentos() {
+
+    zona1 = null
+    ambiente1 = null
+
+    mostrarMenus(false)
 
     const colunas = ['Cliente', '', 'Editar']
     let ths = ''
@@ -143,7 +148,7 @@ function criarLinhaOrcamento(idOrcamento, orcamento) {
     const tds = `
         <td>${cliente?.nome || '...'}</td>
         <td></td>
-        <td><img src="imagens/pesquisar.png" style="width: 2rem;"></td>
+        <td><img src="imagens/pesquisar.png" style="width: 2rem;" onclick="execucoes('${idOrcamento}')"></td>
     `
 
     const trExistente = document.getElementById(idOrcamento)
@@ -277,7 +282,8 @@ async function execucoes(id, proximo = 0) {
     let ambientes = Object.keys(zonas);
 
     if (ambientes.length === 0) {
-        telaInterna.innerHTML = "<p>Não há ambientes/zones cadastradas.</p>";
+        await telaOrcamentos()
+        popup(mensagem('Nenhuma Zona disponível'), 'Alerta')
         return;
     }
 
@@ -322,7 +328,8 @@ async function execucoes(id, proximo = 0) {
 
     zonasDoAmbiente = Object.keys(zonas[ambientes[window.idxAmbiente]] || {});
     if (zonasDoAmbiente.length === 0) {
-        telaInterna.innerHTML = "<p>Nenhuma zona disponível.</p>";
+        await telaOrcamentos()
+        popup(mensagem('Nenhuma Zona disponível'), 'Alerta')
         return;
     }
 

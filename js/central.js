@@ -847,9 +847,14 @@ function deslogar() {
 
 function mostrarMenus(operacao) {
     const menu = document.querySelector('.side-menu').classList
-    if (operacao == 'toggle' || !operacao) return menu.toggle('active')
+
+    if (operacao === 'toggle' || operacao === undefined) {
+        return menu.toggle('active')
+    }
+
     operacao ? menu.add('active') : menu.remove('active')
 }
+
 
 async function telaColaboradores() {
 
