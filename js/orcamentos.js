@@ -1,5 +1,9 @@
 const voltarOrcamentos = `<button style="background-color: #3131ab;" onclick="telaOrcamentos()">Voltar</button>`
 let campos = {}
+let idOrcamento = null
+let ambiente1 = null
+let zona1 = null
+let clientes = {}
 
 let ambientes = {
     'Quarto': [
@@ -66,20 +70,87 @@ function povoarLista(ini, lim, texto) {
 
 async function telaOrcamentos() {
 
+    clientes = await recuperarDados('dados_clientes')
+
     mostrarMenus()
 
     const acumulado = `
         <div class="painel-despesas">
             <br>
             ${btn('orcamentos', 'Dados de Orçamento', 'formularioOrcamento()')}
-            ${btn('todos', 'Fase 1 - Dados de Orçamento', '')}
-            ${btn('todos', 'Fase 2 - Execuções', '')}
-            ${btn('todos', 'Fase 3 - Orçamento Final', '')}
+            ${btn('todos', 'Orçamentos', 'orcamentos()')}
         </div>
     `
 
     telaInterna.innerHTML = acumulado
 
+}
+
+async function orcamentos() {
+
+    const colunas = ['Cliente', '', 'Editar']
+    let ths = ''
+    let pesquisa = ''
+
+    for(const col of colunas) {
+
+        ths += `<th>${col}</th>`
+
+        pesquisa += `<th style="background-color: white; text-align: left;" contentEditable="true"></th>`
+
+    }
+
+    const acumulado = `
+        <div class="blocoTabela">
+            <div class="painelBotoes">
+                <div class="botoes">
+                    <div class="pesquisa">
+                        <input oninput="pesquisar(this, 'body')" placeholder="Pesquisar" style="width: 100%;">
+                        <img src="imagens/pesquisar2.png">
+                    </div>
+                    ${voltarOrcamentos}
+                </div>
+                <img class="atualizar" src="imagens/atualizar.png" onclick="atualizarDespesas()">
+            </div>
+            <div class="recorteTabela">
+                <table class="tabela">
+                    <thead>
+                        <tr>${ths}</tr>
+                        <tr>${pesquisa}</tr>
+                    </thead>
+                    <tbody id="body"></tbody>
+                </table>
+            </div>
+            <div class="rodapeTabela"></div>
+        </div>
+    `
+
+    telaInterna.innerHTML = acumulado
+
+    const orcamentos = await recuperarDados('dados_orcamentos')
+
+    for(const [idOrcamento, orcamento] of Object.entries(orcamentos)) {
+
+        criarLinhaOrcamento(idOrcamento, orcamento)
+
+    }
+    
+}
+
+function criarLinhaOrcamento(idOrcamento, orcamento) {
+
+    const cliente = clientes?.[orcamento.idCliente] || {}
+    const tds = `
+        <td>${cliente?.nome || '...'}</td>
+        <td></td>
+        <td><img src="imagens/pesquisar.png" style="width: 2rem;"></td>
+    `
+
+    const trExistente = document.getElementById(idOrcamento)
+
+    if(trExistente) return trExistente.innerHTML = tds
+
+    document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${idOrcamento}">${tds}</tr>`)
 }
 
 async function formularioOrcamento(idOrcamento) {
@@ -178,7 +249,12 @@ async function salvarOrcamento({ idOrcamento }) {
 
     for (const ambiente of Object.keys(ambientes)) {
         const el = document.querySelector(`[name="${ambiente}"]`)
-        if (el && el.value !== '') orcamento.zonas[ambiente] = el.value
+        if (el && el.value !== '') {
+            if (!orcamento.zonas[ambiente]) {
+                orcamento.zonas[ambiente] = {}
+            }
+            orcamento.zonas[ambiente][el.value] = {}
+        }
     }
 
     await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
@@ -189,39 +265,95 @@ async function salvarOrcamento({ idOrcamento }) {
 
 }
 
-execucoes('Z9aym')
+execucoes('Kkpah')
 
-async function execucoes(idOrcamento) {
+async function execucoes(id, proximo = 0) {
+    idOrcamento = id;
 
-    campos = await recuperarDados('campos_orcamento')
+    campos = await recuperarDados('campos_orcamento');
+    let orcamento = await recuperarDado('dados_orcamentos', idOrcamento);
 
-    let orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
+    let zonas = orcamento?.zonas || {};
+    let ambientes = Object.keys(zonas);
 
-    let zonas = orcamento?.zonas || {} //Primeira zona, e seguir para as demais;
-    let zona1 = Object.keys(zonas)[0]
+    if (ambientes.length === 0) {
+        telaInterna.innerHTML = "<p>Não há ambientes/zones cadastradas.</p>";
+        return;
+    }
 
+    // estado global de posição
+    if (typeof window.idxAmbiente === "undefined") window.idxAmbiente = 0;
+    if (typeof window.idxZona === "undefined") window.idxZona = 0;
+
+    // aplica deslocamento (+1, -1 ou 0)
+    window.idxZona += proximo;
+
+    let zonasDoAmbiente = Object.keys(zonas[ambientes[window.idxAmbiente]] || {});
+
+    // avançar zonas
+    if (window.idxZona >= zonasDoAmbiente.length) {
+        window.idxAmbiente++;
+        while (window.idxAmbiente < ambientes.length) {
+            zonasDoAmbiente = Object.keys(zonas[ambientes[window.idxAmbiente]] || {});
+            if (zonasDoAmbiente.length > 0) {
+                window.idxZona = 0;
+                break;
+            }
+            window.idxAmbiente++;
+        }
+    }
+
+    // retroceder zonas
+    if (window.idxZona < 0) {
+        window.idxAmbiente--;
+        while (window.idxAmbiente >= 0) {
+            zonasDoAmbiente = Object.keys(zonas[ambientes[window.idxAmbiente]] || {});
+            if (zonasDoAmbiente.length > 0) {
+                window.idxZona = zonasDoAmbiente.length - 1;
+                break;
+            }
+            window.idxAmbiente--;
+        }
+    }
+
+    // segurança: limites
+    if (window.idxAmbiente < 0) window.idxAmbiente = 0;
+    if (window.idxAmbiente >= ambientes.length) window.idxAmbiente = ambientes.length - 1;
+
+    zonasDoAmbiente = Object.keys(zonas[ambientes[window.idxAmbiente]] || {});
+    if (zonasDoAmbiente.length === 0) {
+        telaInterna.innerHTML = "<p>Nenhuma zona disponível.</p>";
+        return;
+    }
+
+    ambiente1 = ambientes[window.idxAmbiente];
+    zona1 = zonasDoAmbiente[window.idxZona];
+
+    if(!zona1) return await telaOrcamentos()
+
+    // cabeçalhos
     const colunas = [
         'Especialidade',
         'Descrição do Serviço',
         'Descrição Extra <br>(facultativo)',
-        'Unidade de Medida',
+        'Unidade de <br> Medida',
         'Unidades',
-        'Metro Linear(cm)',
-        'Comprimento(cm)',
-        'Largura(cm)',
-        'Altura(cm)'
-    ].map(col => `<th>${col}</th>`).join('')
+        'Metro Linear<br>(cm)',
+        'Comprimento<br>(cm)',
+        'Largura<br>(cm)',
+        'Altura<br>(cm)'
+    ].map(col => `<th>${col}</th>`).join('');
 
-    const btn = (cor, texto, funcao) => `<button style="background-color: ${cor}; color: #222;" onclick="${funcao}">${texto}</button>`
+    const btn = (cor, texto, funcao, branco) => 
+        `<button style="color:${branco ? 'white' : '#222'};background-color:${cor};" onclick="${funcao}">${texto}</button>`;
 
     const acumulado = `
         <div style="${vertical}; gap: 1rem;">
-            
             <div class="blocoTabela">
                 <div class="painelBotoes">
                     <div style="${horizontal}; justify-content: space-between; width: 90%;">
                         <span style="font-size: 2rem; padding: 0.5rem;">${zona1}</span>
-                        ${btn('#FF0000', 'Excluir Zona', '')}
+                        ${btn('#ad0000ff', 'Excluir Zona', '', true)}
                     </div>
                 </div>
                 <div class="recorteTabela">
@@ -233,37 +365,44 @@ async function execucoes(idOrcamento) {
                     </table>
                 </div>
                 <div class="rodapeTabela">
-                    ${btn('green', 'Adicionar Linha', 'adicionarLinha()')}
+                    ${btn('green', 'Adicionar Linha', 'adicionarLinha()', true)}
                 </div>
             </div>
-
             <div style="${horizontal}; gap: 1rem;">
-
-                ${btn('#00FFFF', 'Voltar a Zona', '')}
-
-                ${btn('#FFFF00', 'Próxima Zona', '')}
-
+                ${btn('#00FFFF', 'Voltar a Zona', "execucoes(idOrcamento, -1)")}
+                ${btn('#FFFF00', 'Próxima Zona', "execucoes(idOrcamento, 1)")}
                 ${btn('#FF9900', 'Ver Orçamento', '')}
-
                 ${btn('#00FF00', 'Orçamento Final', '')}
-
             </div>
-
         </div>
-    `
+    `;
 
-    telaInterna.innerHTML = acumulado
+    telaInterna.innerHTML = acumulado;
 
+    for (const [especialidade, dados] of Object.entries(zonas[ambiente1]?.[zona1] || {})) {
+        adicionarLinha(especialidade, dados);
+    }
+
+    filtroValores();
 }
 
-function adicionarLinha() {
+
+function adicionarLinha(especialidade, dados = {}) {
     const body = document.getElementById('body')
 
+    console.log(especialidade, dados);
+
+
     const especialidades = ['', ...Object.keys(campos)]
-        .map(op => `<option>${op}</option>`)
+        .map(op => `<option ${especialidade == op ? 'selected' : ''}>${op}</option>`)
         .join('')
 
     const idTemp = ID5digitos()
+
+    let tds = ''
+    for (let i = 0; i <= 4; i++) {
+        tds += ``
+    }
 
     const tr = `
         <tr>
@@ -273,30 +412,74 @@ function adicionarLinha() {
             <td>
                 <select style="width: 100%;" name="desc_${idTemp}" onchange="buscarMedidas('${idTemp}')"></select>
             </td>
-            <td contentEditable="true" style="text-align: left;"></td>
-            <td name="medida_${idTemp}"></td>
 
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
+            <td oninput="salvarExecucao()" contentEditable="true" style="text-align: left;">${dados?.descricaoExtra || ''}</td>
+            <td name="medida_${idTemp}" oninput="salvarExecucao()">${dados?.medida || ''}</td>
+            <td oninput="salvarExecucao()">${dados?.unidades || ''}</td>
+            <td oninput="salvarExecucao()">${dados?.metroLinear || ''}</td>
+            <td oninput="salvarExecucao()">${dados?.comprimento || ''}</td>
+            <td oninput="salvarExecucao()">${dados?.largura || ''}</td>
+            <td oninput="salvarExecucao()">${dados?.altura || ''}</td>
+
         </tr>
     `
 
     body.insertAdjacentHTML('beforeend', tr)
+
+    if (especialidade) buscarCampos(idTemp, dados.descricao)
 }
 
-function buscarCampos(idTemp) {
+async function salvarExecucao() {
+    let orcamento = await recuperarDado('dados_orcamentos', idOrcamento);
+    if (!orcamento) return;
+    if (!ambiente1 || !zona1) return;
+
+    if (!orcamento.zonas) orcamento.zonas = {};
+    if (!orcamento.zonas[ambiente1]) orcamento.zonas[ambiente1] = {};
+    orcamento.zonas[ambiente1][zona1] = {};
+
+    const body = document.getElementById('body');
+    if (!body) return;
+
+    const trs = body.querySelectorAll('tr');
+
+    for (const tr of trs) {
+        const tds = tr.querySelectorAll('td');
+        const selEsp = tds[0]?.querySelector('select');
+        const especialidade = selEsp ? selEsp.value.trim() : '';
+        if (!especialidade) continue;
+
+        const selDesc = tds[1]?.querySelector('select');
+        const descricao = selDesc ? selDesc.value : '';
+
+        orcamento.zonas[ambiente1][zona1][especialidade] = {
+            descricao,
+            descricaoExtra: tds[2]?.textContent || '',
+            medida: tds[3]?.textContent || '',
+            unidades: tds[4]?.textContent || '',
+            metroLinear: tds[5]?.textContent || '',
+            comprimento: tds[6]?.textContent || '',
+            largura: tds[7]?.textContent || '',
+            altura: tds[8]?.textContent || ''
+        };
+    }
+
+    await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos');
+}
+
+
+function buscarCampos(idTemp, descSalva) {
 
     const especialidade = document.querySelector(`[name="espec_${idTemp}"]`)
     const descricao = document.querySelector(`[name="desc_${idTemp}"]`)
 
     const opcoes = ['', ...Object.keys(campos[especialidade.value])]
-        .map(op => `<option>${op}</option>`)
+        .map(op => `<option ${descSalva == op ? 'selected' : ''}>${op}</option>`)
         .join('')
 
     descricao.innerHTML = opcoes
+
+    filtroValores()
 
 }
 
@@ -329,6 +512,7 @@ function filtroValores() {
         const medida = tds[3].textContent
 
         for (let i = 4; i <= 8; i++) {
+
             if (esquema[medida].includes(i)) {
                 tds[i].style.backgroundColor = '#00FFFF'
                 tds[i].contentEditable = true
@@ -340,5 +524,7 @@ function filtroValores() {
         }
 
     }
+
+    salvarExecucao()
 
 }
