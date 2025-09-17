@@ -1,8 +1,8 @@
 const voltarOrcamentos = `<button style="background-color: #3131ab;" onclick="telaOrcamentos()">Voltar</button>`
 let campos = {}
 let idOrcamento = null
-let ambiente1 = null
 let zona1 = null
+let indiceZona = 0
 let clientes = {}
 
 let ambientes = {
@@ -58,6 +58,14 @@ let ambientes = {
     'Sala de Refeições': ['', 'Sala de Refeições'],
 }
 
+async function atualizarOrcamentos() {
+
+    await sincronizarDados('dados_orcamentos')
+    await sincronizarDados('dados_clientes')
+    await orcamentos()
+
+}
+
 function povoarLista(ini, lim, texto) {
     let lista = []
 
@@ -77,7 +85,7 @@ async function telaOrcamentos() {
     const acumulado = `
         <div class="painel-despesas">
             <br>
-            ${btn('orcamentos', 'Dados de Orçamento', 'formularioOrcamento()')}
+            ${btn('orcamentos', 'Criar Orçamento', 'formularioOrcamento()')}
             ${btn('todos', 'Orçamentos', 'orcamentos()')}
         </div>
     `
@@ -93,7 +101,7 @@ async function orcamentos() {
 
     mostrarMenus(false)
 
-    const colunas = ['Cliente', 'Zonas', 'Editar']
+    const colunas = ['Cliente', 'Data de Contato', 'Data de Visita', 'Zonas', 'Editar']
     let ths = ''
     let pesquisa = ''
 
@@ -115,7 +123,7 @@ async function orcamentos() {
                     </div>
                     ${voltarOrcamentos}
                 </div>
-                <img class="atualizar" src="imagens/atualizar.png" onclick="atualizarDespesas()">
+                <img class="atualizar" src="imagens/atualizar.png" onclick="atualizarOrcamentos()">
             </div>
             <div class="recorteTabela">
                 <table class="tabela">
@@ -145,8 +153,17 @@ async function orcamentos() {
 function criarLinhaOrcamento(idOrcamento, orcamento) {
 
     const cliente = clientes?.[orcamento.idCliente] || {}
+
+    const dt = (data) => {
+        if (!data) return '--/--/----'
+        const [ano, mes, dia] = data.split('-')
+        return `${dia}/${mes}/${ano}`
+    }
+
     const tds = `
         <td>${cliente?.nome || '...'}</td>
+        <td>${dt(orcamento.dataContato)}</td>
+        <td>${dt(orcamento.dataVisita)}</td>
         <td>
             <img src="imagens/planta.png" style="width: 2rem;" onclick="execucoes('${idOrcamento}')">
         </td>
@@ -170,16 +187,13 @@ async function formularioOrcamento(idOrcamento) {
     const orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
     const clientes = await recuperarDados('dados_clientes')
 
-    console.log(orcamento);
-
-
     const opcoesClientes = Object.entries({ '': { nome: '' }, ...clientes })
         .map(([idCliente, dados]) => `<option id="${idCliente}" ${orcamento?.idCliente == idCliente ? 'selected' : ''}>${dados.nome}</option>`)
         .join('')
 
     const zonas = (lista, ambiente) => {
         const opcoes = lista
-            .map(op => `<option ${orcamento?.zonas?.[ambiente]?.[op] ? 'selected' : ''}>${op}</option>`)
+            .map(zona => `<option ${orcamento?.zonas?.[zona] ? 'selected' : ''}>${zona}</option>`)
             .join('')
 
         return `<select name="${ambiente}">${opcoes}</select>`
@@ -270,8 +284,7 @@ async function salvarOrcamento(idOrcamento) {
     for (const ambiente of Object.keys(ambientes)) {
         const el = document.querySelector(`[name="${ambiente}"]`)
         if (el && el.value !== '') {
-            if (!orcamentoAtualizado.zonas[ambiente]) orcamentoAtualizado.zonas[ambiente] = {}
-            if (!orcamentoAtualizado.zonas[ambiente][el.value]) orcamentoAtualizado.zonas[ambiente][el.value] = {}
+            if (!orcamentoAtualizado.zonas[el.value]) orcamentoAtualizado.zonas[el.value] = {}
         }
     }
 
@@ -283,71 +296,48 @@ async function salvarOrcamento(idOrcamento) {
 
 }
 
+function confirmarExcluirZona() {
+
+    const acumulado = `
+        <div style="${horizontal}; gap: 10px; padding: 1rem; background-color: #d2d2d2;">
+            <span>Tem certeza que deseja excluir esta Zona?</span>
+            <button onclick="excluirZona()">Confirmar</button>
+        </div>
+    `
+    popup(acumulado, 'Tem certeza?', true)
+}
+
+async function excluirZona() {
+
+    overlayAguarde()
+
+    let orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
+
+    delete orcamento.zonas[zona1]
+
+    await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
+
+    removerPopup()
+
+    await execucoes(idOrcamento, 1)
+
+}
+
 async function execucoes(id, proximo = 0) {
     idOrcamento = id;
 
     campos = await recuperarDados('campos_orcamento');
     let orcamento = await recuperarDado('dados_orcamentos', idOrcamento);
+    let zonas = orcamento?.zonas || {}
 
-    let zonas = orcamento?.zonas || {};
-    let ambientes = Object.keys(zonas);
+    indiceZona = indiceZona + proximo
+    zona1 = Object.keys(zonas)[indiceZona]
 
-    if (ambientes.length === 0) {
-        await telaOrcamentos()
-        popup(mensagem('Nenhuma Zona disponível'), 'Alerta')
-        return;
+    if(!zona1) {
+
+
+        return popup(mensagem(''))
     }
-
-    // estado global de posição
-    if (typeof window.idxAmbiente === "undefined") window.idxAmbiente = 0;
-    if (typeof window.idxZona === "undefined") window.idxZona = 0;
-
-    // aplica deslocamento (+1, -1 ou 0)
-    window.idxZona += proximo;
-
-    let zonasDoAmbiente = Object.keys(zonas[ambientes[window.idxAmbiente]] || {});
-
-    // avançar zonas
-    if (window.idxZona >= zonasDoAmbiente.length) {
-        window.idxAmbiente++;
-        while (window.idxAmbiente < ambientes.length) {
-            zonasDoAmbiente = Object.keys(zonas[ambientes[window.idxAmbiente]] || {});
-            if (zonasDoAmbiente.length > 0) {
-                window.idxZona = 0;
-                break;
-            }
-            window.idxAmbiente++;
-        }
-    }
-
-    // retroceder zonas
-    if (window.idxZona < 0) {
-        window.idxAmbiente--;
-        while (window.idxAmbiente >= 0) {
-            zonasDoAmbiente = Object.keys(zonas[ambientes[window.idxAmbiente]] || {});
-            if (zonasDoAmbiente.length > 0) {
-                window.idxZona = zonasDoAmbiente.length - 1;
-                break;
-            }
-            window.idxAmbiente--;
-        }
-    }
-
-    // segurança: limites
-    if (window.idxAmbiente < 0) window.idxAmbiente = 0;
-    if (window.idxAmbiente >= ambientes.length) window.idxAmbiente = ambientes.length - 1;
-
-    zonasDoAmbiente = Object.keys(zonas[ambientes[window.idxAmbiente]] || {});
-    if (zonasDoAmbiente.length === 0) {
-        await telaOrcamentos()
-        popup(mensagem('Nenhuma Zona disponível'), 'Alerta')
-        return;
-    }
-
-    ambiente1 = ambientes[window.idxAmbiente];
-    zona1 = zonasDoAmbiente[window.idxZona];
-
-    if (!zona1) return await telaOrcamentos()
 
     // cabeçalhos
     const colunas = [
@@ -371,7 +361,7 @@ async function execucoes(id, proximo = 0) {
                 <div class="painelBotoes">
                     <div style="${horizontal}; justify-content: space-between; width: 90%;">
                         <span style="font-size: 2rem; padding: 0.5rem;">${zona1}</span>
-                        ${btn('#ad0000ff', 'Excluir Zona', '', true)}
+                        ${btn('#ad0000ff', 'Excluir Zona', `confirmarExcluirZona()`, true)}
                     </div>
                 </div>
                 <div class="recorteTabela">
@@ -397,19 +387,15 @@ async function execucoes(id, proximo = 0) {
 
     telaInterna.innerHTML = acumulado;
 
-    for (const [especialidade, dados] of Object.entries(zonas[ambiente1]?.[zona1] || {})) {
+    for (const [especialidade, dados] of Object.entries(zonas?.[zona1] || {})) {
         adicionarLinha(especialidade, dados);
     }
 
     filtroValores();
 }
 
-
 function adicionarLinha(especialidade, dados = {}) {
     const body = document.getElementById('body')
-
-    console.log(especialidade, dados);
-
 
     const especialidades = ['', ...Object.keys(campos)]
         .map(op => `<option ${especialidade == op ? 'selected' : ''}>${op}</option>`)
@@ -449,12 +435,10 @@ function adicionarLinha(especialidade, dados = {}) {
 
 async function salvarExecucao() {
     let orcamento = await recuperarDado('dados_orcamentos', idOrcamento);
-    if (!orcamento) return;
-    if (!ambiente1 || !zona1) return;
-
+    if (!orcamento || !zona1) return;
     if (!orcamento.zonas) orcamento.zonas = {};
-    if (!orcamento.zonas[ambiente1]) orcamento.zonas[ambiente1] = {};
-    orcamento.zonas[ambiente1][zona1] = {};
+
+    orcamento.zonas[zona1] = {};
 
     const body = document.getElementById('body');
     if (!body) return;
@@ -470,7 +454,7 @@ async function salvarExecucao() {
         const selDesc = tds[1]?.querySelector('select');
         const descricao = selDesc ? selDesc.value : '';
 
-        orcamento.zonas[ambiente1][zona1][especialidade] = {
+        orcamento.zonas[zona1][especialidade] = {
             descricao,
             descricaoExtra: tds[2]?.textContent || '',
             medida: tds[3]?.textContent || '',
