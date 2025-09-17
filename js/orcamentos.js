@@ -85,7 +85,7 @@ async function telaOrcamentos() {
     const acumulado = `
         <div class="painel-despesas">
             <br>
-            ${btn('orcamentos', 'Criar Orçamento', 'formularioOrcamento()')}
+            ${btn('orcamentos', 'Dados de Orçamento', 'formularioOrcamento()')}
             ${btn('todos', 'Orçamentos', 'orcamentos()')}
         </div>
     `
@@ -97,11 +97,11 @@ async function telaOrcamentos() {
 async function orcamentos() {
 
     zona1 = null
-    ambiente1 = null
+    indiceZona = 0
 
     mostrarMenus(false)
 
-    const colunas = ['Cliente', 'Data de Contato', 'Data de Visita', 'Zonas', 'Editar']
+    const colunas = ['Cliente', 'Data de Contato', 'Data de Visita', 'Zonas', 'Editar', 'Orcamento']
     let ths = ''
     let pesquisa = ''
 
@@ -170,6 +170,9 @@ function criarLinhaOrcamento(idOrcamento, orcamento) {
         <td>
             <img src="imagens/pesquisar.png" style="width: 2rem;" onclick="formularioOrcamento('${idOrcamento}')">
         </td>
+        <td>
+            <img src="imagens/orcamentos.png" style="width: 2rem;" onclick="orcamentoFinal('${idOrcamento}')">
+        </td>
     `
 
     const trExistente = document.getElementById(idOrcamento)
@@ -178,8 +181,6 @@ function criarLinhaOrcamento(idOrcamento, orcamento) {
 
     document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${idOrcamento}">${tds}</tr>`)
 }
-
-telaOrcamentos()
 
 async function formularioOrcamento(idOrcamento) {
     mostrarMenus()
@@ -319,7 +320,7 @@ async function excluirZona() {
 
     removerPopup()
 
-    await execucoes(idOrcamento, 1)
+    await execucoes(idOrcamento)
 
 }
 
@@ -330,13 +331,19 @@ async function execucoes(id, proximo = 0) {
     let orcamento = await recuperarDado('dados_orcamentos', idOrcamento);
     let zonas = orcamento?.zonas || {}
 
+    if (Object.keys(zonas) == 0) {
+        await orcamentos()
+        popup(mensagem('Orçamento sem nenhuma zona disponível'), 'Alerta')
+        return
+    }
+
     indiceZona = indiceZona + proximo
     zona1 = Object.keys(zonas)[indiceZona]
 
-    if(!zona1) {
-
-
-        return popup(mensagem(''))
+    if (!zona1) {
+        indiceZona = indiceZona + (proximo * -1)
+        zona1 = Object.keys(zonas)[indiceZona]
+        return popup(mensagem('Sem mais zonas por aqui...'), 'Alerta')
     }
 
     // cabeçalhos
@@ -528,5 +535,77 @@ function filtroValores() {
     }
 
     salvarExecucao()
+
+}
+
+orcamentoFinal('uujGr')
+
+async function orcamentoFinal(idOrcamento) {
+
+    let orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
+    let idCliente = orcamento?.idCliente || ''
+    let cliente = await recuperarDado('dados_clientes', idCliente)
+
+    const dados = {
+        'ORÇAMENTO': 'TOTAL (s/iva)',
+        'Nome': cliente?.nome || '',
+        'Morada Fiscal': cliente?.moradaFiscal || '',
+        'Morada de Execução': cliente?.moradaExecucao || '',
+        'Nif': cliente?.nif || '',
+        'E-mail': cliente?.email || '',
+        'Contacto': cliente?.telefone || '',
+        'Data contacto': orcamento?.dataContato || '',
+        'Data de visita': orcamento?.dataVisita || '',
+        'Dias Úteis Estimados': ''
+    }
+
+    let linhas = ''
+    let i = 0
+    for (const [titulo, dado] of Object.entries(dados)) {
+
+        if (i == 0) {
+            linhas += `
+            <tr>
+                <td colspan="2" class="titulo-orcamento">${titulo}</td>
+                <td class="total-orcamento">${dado}</td>
+            </tr>
+            `
+
+        } else {
+
+            linhas += `
+            <tr>
+                <td style="background-color: #5b707f; color: white;">${titulo}</td>
+                <td style="background-color: #DCE6F5;">${dado}</td>
+                ${i == 1 ? `<td rowspan="9" style="background-color: white;"></td>` : ''}
+            </tr>`
+        }
+
+        i++
+    }
+
+    const colunas = ['Zona', 'Especialidade', 'Descrição do Serviço', 'Descrição Extra <br>(facultativo)', 'Unidade de Medida', 'Qtd', 'Preço Final']
+        .map(col => `<th>${col}</th>`)
+        .join('')
+
+    const acumulado = `
+        <div style="width: 100%; padding: 0.5rem;">
+            <table class="tabela-orcamento">
+                <tbody>
+                    ${linhas}
+                </tbody>
+            </table>
+
+            <br>
+
+            <table class="tabela-orcamento-2">
+                <thead>${colunas}</thead>
+                <tbody></tbody>
+            </table>
+
+        </div>
+    `
+
+    tela.innerHTML = acumulado
 
 }
