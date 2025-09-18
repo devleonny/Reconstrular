@@ -9,12 +9,18 @@
 }
 
 .titulo-orcamento {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
     text-align: center;
     padding: 0.5rem;
-    background-color: #5b707f;
-    color: white;
+}
+
+.titulo-orcamento span {
     font-weight: bold;
     font-size: 1.2rem;
+    color: white;
 }
 
 .total-orcamento {
@@ -24,6 +30,11 @@
     color: white;
     font-size: 1rem;
     font-weight: bold;
+}
+
+.tabela-orcamento th:first-child,
+.tabela-orcamento td:first-child {
+    width: 20%;
 }
 
 .tabela-orcamento-2 {
@@ -37,7 +48,16 @@
 }
 
 .tabela-orcamento-2 th {
-    padding: 0.2rem;
+    padding: 0.4rem;
     border: solid 1px #000;
     background-color: #DCE6F5;
+}
+
+.total-valor {
+    font-size: 1.2rem;
+    color: red;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }

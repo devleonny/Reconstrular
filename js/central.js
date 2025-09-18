@@ -396,7 +396,7 @@ async function atualizarApp() {
 
     mostrarMenus(true)
     sincronizarApp()
-    let status = { total: 10, atual: 1 }
+    let status = { total: 11, atual: 1 }
 
     sincronizarApp(status)
     await sincronizarSetores()
@@ -414,7 +414,8 @@ async function atualizarApp() {
         'dados_obras',
         'ferramentas',
         'dados_colaboradores',
-        'dados_despesas'
+        'dados_despesas', 
+        'dados_orcamentos'
     ];
 
     for (const base of basesAuxiliares) {
@@ -1277,8 +1278,6 @@ async function adicionarColaborador(id) {
         const distrito = dados_distritos?.[obra.distrito] || {}
         const cidade = distrito?.cidades?.[obra.cidade] || {}
         const cliente = clientes?.[obra?.cliente] || {}
-        console.log(obra);
-
         opcoesObras += `<option value="${idObra}">${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
     }
 

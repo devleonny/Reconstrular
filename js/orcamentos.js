@@ -82,6 +82,8 @@ async function telaOrcamentos() {
 
     mostrarMenus(false)
 
+    titulo.textContent = 'Orçamentos'
+
     const acumulado = `
         <div class="painel-despesas">
             <br>
@@ -213,8 +215,6 @@ async function formularioOrcamento(idOrcamento) {
     `
     const funcao = idOrcamento ? `salvarOrcamento('${idOrcamento}')` : 'salvarOrcamento()'
 
-    titulo.textContent = 'Dados de Orçamento'
-
     const acumulado = `
     <div class="cabecalho-clientes">
         ${voltarOrcamentos}
@@ -291,6 +291,8 @@ async function salvarOrcamento(idOrcamento) {
 
     await inserirDados({ [idOrcamento]: orcamentoAtualizado }, 'dados_orcamentos')
 
+    enviar(`dados_orcamentos/${idOrcamento}`, orcamentoAtualizado)
+
     await execucoes(idOrcamento)
 
     removerOverlay()
@@ -316,6 +318,8 @@ async function excluirZona() {
 
     delete orcamento.zonas[zona1]
 
+    deletar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}`)
+
     await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
 
     removerPopup()
@@ -329,22 +333,29 @@ async function execucoes(id, proximo = 0) {
 
     campos = await recuperarDados('campos_orcamento');
     let orcamento = await recuperarDado('dados_orcamentos', idOrcamento);
-    let zonas = orcamento?.zonas || {}
+    let zonas = orcamento?.zonas || {};
 
-    if (Object.keys(zonas) == 0) {
-        await orcamentos()
-        popup(mensagem('Orçamento sem nenhuma zona disponível'), 'Alerta')
-        return
+    const chavesZonas = Object.keys(zonas);
+
+    if (chavesZonas.length === 0) {
+        await orcamentos();
+        popup(mensagem('Orçamento sem nenhuma zona disponível'), 'Alerta');
+        return;
     }
 
-    indiceZona = indiceZona + proximo
-    zona1 = Object.keys(zonas)[indiceZona]
+    // Se for string, tenta localizar a chave
+    if (typeof proximo === "string") {
+        const idx = chavesZonas.indexOf(proximo);
+        indiceZona = idx >= 0 ? idx : 0;
+    } else {
+        // numérico: avança/retrocede
+        indiceZona = (indiceZona ?? 0) + proximo;
 
-    if (!zona1) {
-        indiceZona = indiceZona + (proximo * -1)
-        zona1 = Object.keys(zonas)[indiceZona]
-        return popup(mensagem('Sem mais zonas por aqui...'), 'Alerta')
+        if (indiceZona < 0) indiceZona = 0;
+        if (indiceZona >= chavesZonas.length) indiceZona = chavesZonas.length - 1;
     }
+
+    zona1 = chavesZonas[indiceZona];
 
     // cabeçalhos
     const colunas = [
@@ -384,10 +395,9 @@ async function execucoes(id, proximo = 0) {
                 </div>
             </div>
             <div style="${horizontal}; gap: 1rem;">
-                ${btn('#00FFFF', 'Voltar a Zona', "execucoes(idOrcamento, -1)")}
-                ${btn('#FFFF00', 'Próxima Zona', "execucoes(idOrcamento, 1)")}
-                ${btn('#FF9900', 'Ver Orçamento', '')}
-                ${btn('#00FF00', 'Orçamento Final', '')}
+                ${btn('#00FFFF', 'Voltar a Zona', `execucoes('${idOrcamento}', -1)`)}
+                ${btn('#FFFF00', 'Próxima Zona', `execucoes('${idOrcamento}', 1)`)}
+                ${btn('#FF9900', 'Ver Orçamento', `orcamentoFinal('${idOrcamento}')`)}
             </div>
         </div>
     `;
@@ -465,15 +475,17 @@ async function salvarExecucao() {
             descricao,
             descricaoExtra: tds[2]?.textContent || '',
             medida: tds[3]?.textContent || '',
-            unidades: tds[4]?.textContent || '',
-            metroLinear: tds[5]?.textContent || '',
-            comprimento: tds[6]?.textContent || '',
-            largura: tds[7]?.textContent || '',
-            altura: tds[8]?.textContent || ''
+            unidades: Number(tds[4]?.textContent || 0),
+            metroLinear: Number(tds[5]?.textContent || 0),
+            comprimento: Number(tds[6]?.textContent || 0),
+            largura: Number(tds[7]?.textContent || 0),
+            altura: Number(tds[8]?.textContent || 0)
         };
     }
 
     await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos');
+
+    enviar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}`, orcamento.zonas[zona1])
 }
 
 
@@ -538,13 +550,17 @@ function filtroValores() {
 
 }
 
-orcamentoFinal('uujGr')
-
 async function orcamentoFinal(idOrcamento) {
 
     let orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
     let idCliente = orcamento?.idCliente || ''
     let cliente = await recuperarDado('dados_clientes', idCliente)
+
+    const dt = (data) => {
+        if (!data) return '--/--/----'
+        const [ano, mes, dia] = data.split('-')
+        return `${dia}/${mes}/${ano}`
+    }
 
     const dados = {
         'ORÇAMENTO': 'TOTAL (s/iva)',
@@ -554,8 +570,8 @@ async function orcamentoFinal(idOrcamento) {
         'Nif': cliente?.nif || '',
         'E-mail': cliente?.email || '',
         'Contacto': cliente?.telefone || '',
-        'Data contacto': orcamento?.dataContato || '',
-        'Data de visita': orcamento?.dataVisita || '',
+        'Data contacto': dt(orcamento?.dataContato),
+        'Data de visita': dt(orcamento?.dataVisita),
         'Dias Úteis Estimados': ''
     }
 
@@ -566,7 +582,12 @@ async function orcamentoFinal(idOrcamento) {
         if (i == 0) {
             linhas += `
             <tr>
-                <td colspan="2" class="titulo-orcamento">${titulo}</td>
+                <td colspan="2" style="background-color: #5b707f;">
+                    <div class="titulo-orcamento">
+                        <img class="btnAcmp" src="imagens/lapis.png" onclick="formularioOrcamento('${idOrcamento}')">
+                        <span>${titulo}</span>
+                    </div>
+                </td>
                 <td class="total-orcamento">${dado}</td>
             </tr>
             `
@@ -577,7 +598,13 @@ async function orcamentoFinal(idOrcamento) {
             <tr>
                 <td style="background-color: #5b707f; color: white;">${titulo}</td>
                 <td style="background-color: #DCE6F5;">${dado}</td>
-                ${i == 1 ? `<td rowspan="9" style="background-color: white;"></td>` : ''}
+                ${i == 1
+                    ? `
+                    <td rowspan="9" style="background-color: white;">
+                        <div class="total-valor">0,00 €</div>
+                    </td>
+                    `
+                    : ''}
             </tr>`
         }
 
@@ -588,8 +615,49 @@ async function orcamentoFinal(idOrcamento) {
         .map(col => `<th>${col}</th>`)
         .join('')
 
+    const quantidadeFinal = ({ metroLinear, altura, largura, comprimento, unidades, medida }) => {
+
+        let final = 0
+        if (medida == 'm2') {
+            final = comprimento * altura
+        } else if (medida == 'm3') {
+            final = comprimento * altura * largura
+        } else if (medida == 'ml') {
+            final = metroLinear / 1000
+        } else if (medida == 'und') {
+            final = unidades
+        }
+
+        return final
+    }
+
+    let itens = ''
+    for (const [zona, especialidades] of Object.entries(orcamento?.zonas || {})) {
+        for (const [especialidade, dados] of Object.entries(especialidades)) {
+            itens += `
+                <tr>
+                    <td>
+                        <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
+                            <img onclick="execucoes('${idOrcamento}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">
+                            <span>${zona}</span>
+                        </div>
+                    </td>
+                    <td>${especialidade}</td>
+                    <td>${dados?.descricao || ''}</td>
+                    <td>${dados?.descricaoExtra || ''}</td>
+                    <td>${dados?.medida || ''}</td>
+                    <td>${quantidadeFinal(dados)}</td>
+                    <td></td>
+                </tr>
+            `
+        }
+    }
+
     const acumulado = `
-        <div style="width: 100%; padding: 0.5rem;">
+        <div style="width: 100%; padding: 1rem;">
+            <div style="width: 100%; ${horizontal}; justify-content: start; padding: 0.5rem;">
+                <button onclick="orcamentos()">Voltar para Orçamentos</button>
+            </div>
             <table class="tabela-orcamento">
                 <tbody>
                     ${linhas}
@@ -600,12 +668,12 @@ async function orcamentoFinal(idOrcamento) {
 
             <table class="tabela-orcamento-2">
                 <thead>${colunas}</thead>
-                <tbody></tbody>
+                <tbody>${itens}</tbody>
             </table>
 
         </div>
     `
 
-    tela.innerHTML = acumulado
+    telaInterna.innerHTML = acumulado
 
 }
