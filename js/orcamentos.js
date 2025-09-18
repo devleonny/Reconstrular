@@ -494,7 +494,7 @@ function buscarCampos(idTemp, descSalva) {
     const especialidade = document.querySelector(`[name="espec_${idTemp}"]`)
     const descricao = document.querySelector(`[name="desc_${idTemp}"]`)
 
-    const opcoes = ['', ...Object.keys(campos[especialidade.value])]
+    const opcoes = ['', ...Object.keys(campos?.[especialidade.value]?.especialidades || {})]
         .map(op => `<option ${descSalva == op ? 'selected' : ''}>${op}</option>`)
         .join('')
 
@@ -509,7 +509,7 @@ function buscarMedidas(idTemp) {
     const especialidade = document.querySelector(`[name="espec_${idTemp}"]`)
     const desc = document.querySelector(`[name="desc_${idTemp}"]`)
 
-    medida.textContent = campos[especialidade.value][desc.value]
+    medida.textContent = campos?.[especialidade.value]?.especialidades?.[desc.value]?.medida || ''
 
     filtroValores()
 }

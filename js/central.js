@@ -414,7 +414,7 @@ async function atualizarApp() {
         'dados_obras',
         'ferramentas',
         'dados_colaboradores',
-        'dados_despesas', 
+        'dados_despesas',
         'dados_orcamentos'
     ];
 
@@ -628,10 +628,28 @@ async function salvarCliente(idCliente) {
     popup(mensagem('Salvo com sucesso', 'imagens/concluido.png'), 'Salvo')
 }
 
-async function telaConfiguracoes() {
+function telaConfiguracoes() {
+
+    mostrarMenus(false)
+
+    titulo.textContent = 'Configurações'
+
+    const acumulado = `
+        <div class="painel-despesas">
+            <br>
+            ${btn('carta', 'Configurações de E-mail', 'configuracoesEmails()')}
+            ${btn('preco', 'Tabelas de Preço', 'telaPrecos()')}
+        </div>
+    `
+
+    telaInterna.innerHTML = acumulado
+
+}
+
+async function configuracoesEmails() {
 
     mostrarMenus()
-    titulo.innerHTML = 'Configurações'
+    titulo.innerHTML = 'Configurações de E-mails'
     const modelo = (texto, elemento) => `
         <div>
             <span><Strong>${texto}</strong></span>
@@ -654,7 +672,11 @@ async function telaConfiguracoes() {
     )}
 
             <br>
-            <button onclick="salvarConfigs()">Salvar</button>
+
+            <div style="${horizontal}; gap: 1rem;">
+                <button onclick="salvarConfigs()">Salvar</button>
+                <button onclick="telaConfiguracoes()" style="background-color: #3131ab;">Voltar</button>
+            </div>
         
         </div>
     `
@@ -1864,10 +1886,18 @@ async function configuracoes(usuario, campo, valor) {
 
 async function camposOrcamento() {
     try {
+
+        let timestamp = 0
+        const campos = await recuperarDados('campos_orcamento')
+
+        for (const [zona, dados] of Object.entries(campos)) {
+            if (dados.timestamp > timestamp) timestamp = dados.timestamp
+        }
+
         const response = await fetch(`${api}/campos`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ servidor })
+            body: JSON.stringify({ servidor, timestamp })
         });
 
         if (!response.ok) {
