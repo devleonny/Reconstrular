@@ -659,14 +659,14 @@ async function configuracoesEmails() {
     const acumulado = `
         <div class="configuracoes">
             <h1 style="color: #222;">Configurações</h1>
-            <span>Informe os e-mails para receber as informações abaixo:
+            <span>Informe os e-mails para receber as informações abaixo: </span>
             <hr style="width: 100%;">
-            ${modelo('Folhas de Ponto',
-        `<input id="emailFolha" placeholder="digite o e-mail" value="${configuracoes?.emailFolha || ''}">`
-    )}
-            ${modelo('Recebimento de alertas [Colaboradores preenchidos]',
-        `<input id="emailAlertas" placeholder="digite o e-mail" value="${configuracoes?.emailAlertas || ''}">`
-    )}
+
+            <span>Folhas de Ponto</span>
+            <input id="emailFolha" placeholder="digite o e-mail" value="${configuracoes?.emailFolha || ''}">
+
+            <span>Recebimento de alertas [<b>Colaboradores preenchidos</b>]</span>
+            <input id="emailAlertas" placeholder="digite o e-mail" value="${configuracoes?.emailAlertas || ''}">
 
             <br>
 
@@ -679,6 +679,7 @@ async function configuracoesEmails() {
     `
 
     telaInterna.innerHTML = acumulado
+
 }
 
 async function salvarConfigs() {
@@ -1764,7 +1765,7 @@ async function deletar(chave) {
         usuario: acesso.usuario,
         servidor
     }
-    
+
     return new Promise((resolve) => {
         fetch(url, {
             method: "DELETE",
