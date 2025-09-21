@@ -1,0 +1,21 @@
+.toolbar-precos {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.toolbar-precos span {
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    padding: 5px;
+    background-color: #b1b1b1;
+}
+
+.total-composicao{
+    margin: 0.5rem;
+    padding: 5px;
+    border-radius: 3px;
+    background-color: orange;
+}

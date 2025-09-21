@@ -209,3 +209,63 @@ async function recuperarDadoIndexedDB(nomeBase, id) {
     db.close();
     return resultado;
 }
+
+async function deletarDB(base, idInterno) {
+    if (isAndroid) {
+        return await deletarDBJson(base, idInterno);
+    } else {
+        return await deletarDBIndexedDB(base, idInterno);
+    }
+}
+
+// ----- Android (JSON local) -----
+async function deletarDBJson(base, idInterno) {
+    let banco = await lerArquivoJSON();
+
+    if (banco[base] && banco[base][idInterno]) {
+        delete banco[base][idInterno];
+        await salvarArquivoJSON(banco);
+    }
+}
+
+// ----- Navegador (IndexedDB) -----
+async function deletarDBIndexedDB(base, idInterno) {
+
+    const db = await new Promise((resolve, reject) => {
+        const request = indexedDB.open(nomeBaseCentral);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = (e) => reject(e.target.error);
+    });
+
+    if (!db.objectStoreNames.contains(nomeStore)) {
+        db.close();
+        return;
+    }
+
+    const tx = db.transaction(nomeStore, 'readwrite');
+    const store = tx.objectStore(nomeStore);
+
+    // Pega o objeto inteiro da base
+    const registro = await new Promise((resolve, reject) => {
+        const req = store.get(base);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = (e) => reject(e.target.error);
+    });
+
+    if (registro && registro.dados && registro.dados[idInterno]) {
+        delete registro.dados[idInterno];
+
+        // Salva de volta com o mesmo id
+        await new Promise((resolve, reject) => {
+            const putReq = store.put(registro);
+            putReq.onsuccess = resolve;
+            putReq.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    await new Promise((resolve) => {
+        tx.oncomplete = resolve;
+    });
+
+    db.close();
+}

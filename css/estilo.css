@@ -347,9 +347,7 @@ select {
 
 input,
 textarea {
-    display: block;
-    padding: 1vw;
-    margin: 1vw 0;
+    padding: 5px;
     border-radius: 5px;
     border: 1px solid #888;
 }
@@ -373,7 +371,7 @@ button {
 }
 
 .janela {
-    min-width: 90vw;
+    max-width: 90vw;
     overflow: auto;
     max-height: 80vh;
     border-bottom-left-radius: 10px;
@@ -386,7 +384,6 @@ button {
     flex-direction: column;
     align-items: center;
     justify-content: start;
-    max-width: 90vw;
     text-align: center;
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
@@ -510,6 +507,7 @@ button {
 }
 
 .blocoTabela {
+    width: 100%;
     display: flex;
     align-items: start;
     justify-content: start;
@@ -519,15 +517,21 @@ button {
 .recorteTabela {
     height: max-content;
     max-height: 70vh;
+    min-width: 100%;
     max-width: 80vw;
     overflow: auto;
 }
 
 .tabela {
     min-width: max-content;
-    width: 90vw;
     background-color: white;
     border-collapse: collapse;
+}
+
+.tabela thead {
+    box-shadow: 0 1px 0 #ccc;
+    top: 0;
+    position: sticky;
 }
 
 .tabela thead input {
@@ -621,6 +625,9 @@ button {
     border-bottom-right-radius: 10px;
     background-color: #b1b1b1;
     padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .btnRodape {
@@ -860,7 +867,7 @@ input[type="file"] {
     position: absolute;
     top: 10px;
     right: 10px;
-    width: 4rem;
+    width: 3rem;
 }
 
 .painel-1-tarefas {
@@ -974,11 +981,6 @@ screen and (min-aspect-ratio: 13/9) {
         gap: 2vw;
     }
 
-    input {
-        padding: 0.8vw;
-        margin: 0.8vw 0;
-    }
-
     .loginBloco {
         max-width: 80vw;
         max-height: 80vh;
@@ -986,15 +988,6 @@ screen and (min-aspect-ratio: 13/9) {
 
     .baixoLogin {
         flex-direction: row;
-    }
-
-    .janela {
-        min-width: 70vw;
-        max-height: 80vh;
-    }
-
-    .janela_fora {
-        max-width: 80vw;
     }
 
     .botaoPopup label {

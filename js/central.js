@@ -402,11 +402,8 @@ async function atualizarApp() {
     await sincronizarSetores()
     status.atual++
 
-    sincronizarApp(status)
-    await camposOrcamento()
-    status.atual++
-
     const basesAuxiliares = [
+        'campos',
         'dados_distritos',
         'dados_clientes',
         'fornecedores',
@@ -1767,7 +1764,7 @@ async function deletar(chave) {
         usuario: acesso.usuario,
         servidor
     }
-
+    
     return new Promise((resolve) => {
         fetch(url, {
             method: "DELETE",
@@ -1884,35 +1881,6 @@ async function configuracoes(usuario, campo, valor) {
     })
 }
 
-async function camposOrcamento() {
-    try {
-
-        let timestamp = 0
-        const campos = await recuperarDados('campos_orcamento')
-
-        for (const [zona, dados] of Object.entries(campos)) {
-            if (dados.timestamp > timestamp) timestamp = dados.timestamp
-        }
-
-        const response = await fetch(`${api}/campos`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ servidor, timestamp })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        await inserirDados(data, 'campos_orcamento')
-        return data;
-
-    } catch {
-        return {}
-    }
-
-}
 
 async function sincronizarSetores() {
 
