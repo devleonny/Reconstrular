@@ -668,7 +668,7 @@ async function configuracoesEmails() {
             <span>Recebimento de alertas [<b>Colaboradores preenchidos</b>]</span>
             <input id="emailAlertas" placeholder="digite o e-mail" value="${configuracoes?.emailAlertas || ''}">
 
-            <br>
+            <br> 
 
             <div style="${horizontal}; gap: 1rem;">
                 <button onclick="salvarConfigs()">Salvar</button>

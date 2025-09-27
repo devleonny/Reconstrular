@@ -254,17 +254,12 @@ span {
     border-radius: 3px;
 }
 
-.dino {
-    width: 30vw;
-}
-
 .botoes {
     display: flex;
     align-items: start;
     justify-content: start;
     flex-direction: column;
-    padding: 1vw;
-    gap: 1vw;
+    gap: 1rem;
 }
 
 .nomeUsuario {
@@ -699,12 +694,12 @@ input[type="file"] {
     justify-content: center;
     background-color: white;
     border-radius: 50px;
-    padding-left: 5vw;
-    margin: 5vw;
+    padding-left: 0.5rem;
+    margin: 0.5rem;
 }
 
 .pesquisa img {
-    width: 5vw;
+    width: 2.5rem;
 }
 
 .pesquisa input {
@@ -1005,12 +1000,6 @@ screen and (min-aspect-ratio: 13/9) {
         display: flex;
     }
 
-    .pesquisa {
-        padding-left: 2vw;
-        margin: 2vw;
-    }
-
-    .pesquisa img,
     .detalhes img {
         width: 3vw;
     }

@@ -18,6 +18,7 @@ async function telaPrecos() {
                         <input oninput="pesquisar(this, 'body')" placeholder="Pesquisar" style="width: 100%;">
                         <img src="imagens/pesquisar2.png">
                     </div>
+                    <button onclick="edicaoItem()">Criar Item</button>
                 </div>
                 <img class="atualizar" src="imagens/atualizar.png" onclick="atualizarCampos()">
             </div>
@@ -32,9 +33,9 @@ async function telaPrecos() {
             <div class="rodapeTabela"></div>
         </div>
     `
-
+    const blocoTabela = document.querySelector('.blocoTabela')
     const telaInterna = document.querySelector('.telaInterna')
-    telaInterna.innerHTML = acumulado
+    if(!blocoTabela) telaInterna.innerHTML = acumulado
 
     for (const [idCampo, dados] of Object.entries(campos)) {
         criarLinhasCampos(idCampo, dados)
@@ -53,7 +54,12 @@ function criarLinhasCampos(idCampo, dados) {
 
     const tds = `
         <td>${dados.especialidade}</td>
-        <td style="text-align: left; width: 200px;">${dados.descricao}</td>
+        <td>
+            <div style="${horizontal}; gap: 5px;">
+                <img onclick="edicaoItem('${idCampo}')" src="imagens/lapis.png" style="width: 1.5rem;">
+                <span style="width: 200px; text-align: left;">${dados.descricao}</span>
+            </div>
+        </td>
         <td>${dados.medida}</td>
         <td>
             <div style="${horizontal};">
@@ -76,6 +82,62 @@ function criarLinhasCampos(idCampo, dados) {
     document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${idCampo}">${tds}</tr>`)
 }
 
+async function edicaoItem(idCampo) {
+
+    idCampo = idCampo || ID5digitos()
+
+    const campo = await recuperarDado('campos', idCampo)
+
+    const opcoesMedidas = ['', 'und', 'ml', 'm2', 'm3']
+        .map(op => `<option ${op == campo?.medida ? 'selected' : ''}>${op}</option>`)
+        .join('')
+
+    const modelo = (texto, elemento) => `
+        <div style="${vertical}">
+            <span>${texto}</span>
+            <div>${elemento}</div>
+        </div>
+    `
+    let especialidades = []
+    for (const [idCampo, campo] of Object.entries(campos)) {
+        if (!especialidades.includes(campo.especialidade)) especialidades.push(campo.especialidade)
+    }
+
+    const opcoesEspecialidade = especialidades
+        .map(op => `<option>${op}</option>`)
+        .join('')
+
+    const acumulado = `
+        <div style="${vertical}; background-color: #d2d2d2; padding: 0.5rem; gap: 0.5rem;">
+            ${modelo('Descrição', `<textarea name="descricao">${campo?.descricao || ''}</textarea>`)}
+            ${modelo('Medida', `<select name="medida">${opcoesMedidas}</select>`)}
+            ${modelo('Especialidade', `
+                <input name="especialidade" list="especialidade" value="${campo?.especialidade || ''}">
+                <datalist id="especialidade">${opcoesEspecialidade}</datalist>`)}
+            <hr style="width: 100%;">
+            <button onclick="salvarCampo('${idCampo}')">Salvar</button>
+        </div>
+    `
+
+    popup(acumulado, 'Edição de Campo', true)
+}
+
+async function salvarCampo(idCampo) {
+
+    let campo = {}
+    const cmps = ['descricao', 'medida', 'especialidade']
+
+    for (const cmp of cmps) {
+        const el = document.querySelector(`[name="${cmp}"]`)
+        if (el) campo[cmp] = el.value
+    }
+
+    enviar(`campos/${idCampo}`, campo)
+    await inserirDados({ [idCampo]: campo }, 'campos')
+    removerPopup()
+    await telaPrecos()
+}
+
 async function painelMargem(id) {
 
     margem = 0
@@ -88,7 +150,7 @@ async function painelMargem(id) {
     const acumulado = `
         <div style="${vertical}; background-color: #d2d2d2; padding: 1rem; width: max-content;">
             <span>Defina uma margem (%):</span>
-            <input oninput="calcularValorFinal(${campo.totalComposicao ? dinheiro(campo.totalComposicao) : '--'}, this)" type="number" placeholder="0">
+            <input oninput="calcularValorFinal('${campo.totalComposicao ? dinheiro(campo.totalComposicao) : ''}', this)" type="number" placeholder="0">
             <hr style="width: 100%;">
 
             <span>Sub total do Item: <b>${campo.totalComposicao ? dinheiro(campo.totalComposicao) : '--'}</b></span>
@@ -102,6 +164,8 @@ async function painelMargem(id) {
 }
 
 function calcularValorFinal(subtotal, input) {
+
+    subtotal = conversor(subtotal)
 
     const novoTotal = document.getElementById('novoTotal')
     margem = Number(input.value)
