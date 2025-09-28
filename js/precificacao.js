@@ -73,8 +73,11 @@ function editarMargemEmMassa() {
 
 async function aplicarEmMassa() {
 
+    overlayAguarde()
+
     const margemMassa = document.querySelector('[name="margemMassa"]')
-    if(!margemMassa) return popup(mensagem('O campo margem não pode ficar vazio!'), 'Alerta', true)
+    if (!margemMassa) return popup(mensagem('O campo margem não pode ficar vazio!'), 'Alerta', true)
+    const margemNum = Number(margemMassa.value)
 
     campos = await recuperarDados('campos')
     let codigos = []
@@ -84,9 +87,14 @@ async function aplicarEmMassa() {
         if (tr.style.display !== 'none') codigos.push(tr.id)
     }
 
-    for(const codigo of codigos) {
-        campos[codigo].margem = Number(margemMassa.value)
+    for (const codigo of codigos) {
+        campos[codigo].margem = margemNum
     }
+
+    const resposta = await enviarMargens({ codigos, margem: margemNum })
+    console.log(resposta);
+
+    if (resposta.mensagem) return popup(resposta.mensagem, 'Alerta', true)
 
     removerPopup()
     await inserirDados(campos, 'campos')

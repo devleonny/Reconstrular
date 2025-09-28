@@ -438,7 +438,7 @@ function sincronizarApp({ atual, total, remover } = {}) {
 
         setTimeout(() => {
             const loader = document.querySelector('.circular-loader')
-            if(loader) loader.remove()
+            if (loader) loader.remove()
             mostrarMenus(false)
             return
         }, 2000)
@@ -1731,7 +1731,7 @@ function erroConexao() {
 
     sincronizarApp({ remover: true })
     emAtualizacao = false
-    
+
 }
 
 async function receber(chave) {
@@ -1787,7 +1787,7 @@ async function deletar(chave) {
 
     return new Promise((resolve) => {
         fetch(url, {
-            method: "DELETE",
+            method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
@@ -2736,4 +2736,23 @@ async function reprocessarOffline() {
 
         }
     }
+}
+
+async function enviarMargens({ codigos, margem }) {
+    return new Promise((resolve) => {
+        fetch(`${api}/margens`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({codigos, margem, servidor})
+        })
+            .then(response => response.json())
+            .then(data => {
+                resolve(data);
+            })
+            .catch((err) => {
+                reject({ mensagem: err });
+            });
+    });
 }
