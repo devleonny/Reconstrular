@@ -86,6 +86,10 @@ const btn = (img, valor, funcao) => `
 `
 telaLogin()
 
+setInterval(async function () {
+    await reprocessarOffline()
+}, 30 * 1000)
+
 function exibirSenha(img) {
 
     let inputSenha = img.previousElementSibling
@@ -433,7 +437,8 @@ function sincronizarApp({ atual, total, remover } = {}) {
     if (remover) {
 
         setTimeout(() => {
-            document.querySelector('.circular-loader').remove()
+            const loader = document.querySelector('.circular-loader')
+            if(loader) loader.remove()
             mostrarMenus(false)
             return
         }, 2000)
@@ -736,12 +741,9 @@ async function telaObras() {
     mostrarMenus()
     const nomeBase = 'dados_obras'
     titulo.textContent = 'Gerenciar Obras'
-    const acumulado = `
-        ${btnRodape('Adicionar', 'adicionarObra()')}
-        ${modeloTabela(['Cliente', 'Distrito', 'Cidade', 'Porcentagem', 'Status', 'Acompanhamento', ''], nomeBase)}
-    `
+    const btnExtra = `<button onclick="adicionarObra()">Adicionar</button>`
 
-    telaInterna.innerHTML = acumulado
+    telaInterna.innerHTML = modeloTabela(['Cliente', 'Distrito', 'Cidade', 'Porcentagem', 'Status', 'Acompanhamento', ''], nomeBase, btnExtra)
 
     const dados_obras = await recuperarDados(nomeBase)
     for (const [idObra, obra] of Object.entries(dados_obras).reverse()) criarLinha(obra, idObra, nomeBase)
@@ -781,7 +783,6 @@ async function adicionarObra(idObra) {
             ${modelo('Cliente', `<select name="cliente" onchange="buscarDados(this)">${opcoesClientes}</select>`)}
             ${modelo('Telefone', `<span name="telefone"></span>`)}
             ${modelo('E-mail', `<span name="email"></span>`)}
-
         </div>
         <div class="rodape-formulario">
             <button onclick="salvarObra(${idObra ? `'${idObra}'` : ''})">Salvar</button>
@@ -881,16 +882,13 @@ async function telaColaboradores() {
 
     mostrarMenus()
     const btnExtras = `
-        <button onclick="confimacaoZipPdf()">Baixar Folhas em .zip</button> 
+        <button onclick="confimacaoZipPdf()">Baixar Folhas em .zip</button>
+        <button onclick="adicionarColaborador()">Adicionar</button>
     `
     const nomeBase = 'dados_colaboradores'
     titulo.textContent = 'Gerenciar Colaboradores'
-    const acumulado = `
-        ${btnRodape('Adicionar', 'adicionarColaborador()')}
-        ${modeloTabela(['Nome Completo', 'Telefone', 'Obra Alocada', 'Status', 'Especialidade', 'Folha de Ponto', ''], nomeBase, btnExtras)}
-    `
 
-    telaInterna.innerHTML = acumulado
+    telaInterna.innerHTML = modeloTabela(['Nome Completo', 'Telefone', 'Obra Alocada', 'Status', 'Especialidade', 'Folha de Ponto', ''], nomeBase, btnExtras)
     const dados_colaboradores = await recuperarDados(nomeBase)
     for (const [id, colaborador] of Object.entries(dados_colaboradores).reverse()) criarLinha(colaborador, id, nomeBase)
 
@@ -1103,8 +1101,15 @@ async function criarLinha(dados, id, nomeBase) {
         funcao = `adicionarFerramentas('${id}')`
         tds = `
             ${modelo(dados?.nome || '--')}
+            
         `
+    } else if (nomeBase == 'maoObra') {
 
+        funcao = `adicionarMaoObra('${id}')`
+        tds = `
+            ${modelo(dados?.nome || '--')}
+            
+        `
     } else if (nomeBase == 'fornecedores') {
 
         const distrito = dados_distritos?.[dados?.distrito] || {}
@@ -1707,12 +1712,26 @@ function enviar(caminho, info) {
             body: JSON.stringify(objeto)
         })
             .then(data => resolve(data))
-            .catch((erro) => {
-                console.mensagemr(erro);
-                salvar_offline(objeto, 'enviar');
+            .catch(() => {
+                salvarOffline(objeto, 'enviar');
                 resolve();
             });
     });
+}
+
+function erroConexao() {
+    const acumulado = `
+        <div id="erroConexao" style="${horizontal}; gap: 1rem; background-color: #d2d2d2; padding: 1rem;">
+            <img src="gifs/alerta.gif" style="width: 2rem;">
+            <span><b>Dados não sincronizados:</b> tente novamente em minutos.</span>
+        </div>
+    `
+    const erroConexao = document.getElementById('erroConexao')
+    if (!erroConexao) popup(acumulado, 'Sincronização', true)
+
+    sincronizarApp({ remover: true })
+    emAtualizacao = false
+    
 }
 
 async function receber(chave) {
@@ -1751,7 +1770,7 @@ async function receber(chave) {
                 resolve(data);
             })
             .catch(err => {
-                popup(mensagem(`Erro de conexão: ${err}`))
+                erroConexao()
                 resolve({})
             });
     })
@@ -1779,6 +1798,7 @@ async function deletar(chave) {
                 resolve(data);
             })
             .catch((err) => {
+                salvarOffline(objeto, 'deletar', idEvento);
                 popup(mensagem(err), 'Aviso', true)
                 resolve();
             });
@@ -2687,4 +2707,33 @@ async function pdfObra(idObra, modalidade) {
             });
     }
 
+}
+
+function salvarOffline(objeto, operacao, idEvento) {
+    let dados_offline = JSON.parse(localStorage.getItem('dados_offline')) || {}
+    idEvento = idEvento || ID5digitos()
+
+    if (!dados_offline[operacao]) dados_offline[operacao] = {}
+    dados_offline[operacao][idEvento] = objeto
+
+    localStorage.setItem('dados_offline', JSON.stringify(dados_offline))
+}
+
+async function reprocessarOffline() {
+    let dados_offline = JSON.parse(localStorage.getItem('dados_offline')) || {};
+
+    for (let [operacao, operacoes] of Object.entries(dados_offline)) {
+        const ids = Object.keys(operacoes);
+
+        for (let idEvento of ids) {
+            const evento = operacoes[idEvento];
+
+            if (operacao === 'enviar') {
+                await enviar(evento.caminho, evento.valor, idEvento);
+            } else if (operacao === 'deletar', idEvento) {
+                await deletar(evento.chave, idEvento);
+            }
+
+        }
+    }
 }

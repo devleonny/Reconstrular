@@ -1,12 +1,18 @@
 let idCampo = null
 let margem = 0
-let precoFinal = 0
 
 async function telaPrecos() {
 
     campos = await recuperarDados('campos')
 
-    const ths = ['Especialidade', 'Descrição', 'Unidade de Medida', 'Composição', 'Sub-Total', 'Margem', 'Total']
+    const tMargem = `
+        <div style="${horizontal}; gap: 5px;">
+            <span>Margem</span>
+            <input type="checkbox" onclick="marcarTodosMargem(this)">
+            <img onclick="editarMargemEmMassa()" src="imagens/lapis.png" style="width: 1.5rem;">
+        </div>
+    `
+    const ths = ['Especialidade', 'Descrição', 'Unidade de Medida', 'Composição', 'Sub-Total', tMargem, 'Total']
         .map(col => `<th>${col}</th>`)
         .join('')
 
@@ -35,10 +41,65 @@ async function telaPrecos() {
     `
     const blocoTabela = document.querySelector('.blocoTabela')
     const telaInterna = document.querySelector('.telaInterna')
-    if(!blocoTabela) telaInterna.innerHTML = acumulado
+    if (!blocoTabela) telaInterna.innerHTML = acumulado
 
     for (const [idCampo, dados] of Object.entries(campos)) {
         criarLinhasCampos(idCampo, dados)
+    }
+
+}
+
+function editarMargemEmMassa() {
+
+    const acumulado = `
+        <div style="${vertical}; background-color: #d2d2d2; padding: 1rem; gap: 0.5rem;">
+
+            <span style="text-align: left;">A margem escolhida será replicada <br>para todos os itens marcados</span>
+
+            <div style="${horizontal}; gap: 3px;">
+                <input name="margemMassa" type="number"> 
+                <span>%</span>
+            </div>
+
+            <hr style="width: 100%;">
+
+            <button onclick="aplicarEmMassa()">Salvar</button>
+
+        </div>
+    `
+
+    popup(acumulado, 'Aplicar margem em massa', true)
+}
+
+async function aplicarEmMassa() {
+
+    const margemMassa = document.querySelector('[name="margemMassa"]')
+    if(!margemMassa) return popup(mensagem('O campo margem não pode ficar vazio!'), 'Alerta', true)
+
+    campos = await recuperarDados('campos')
+    let codigos = []
+    const inputs = document.querySelectorAll('[name="margem"]')
+    for (const input of inputs) {
+        const tr = input.closest('tr')
+        if (tr.style.display !== 'none') codigos.push(tr.id)
+    }
+
+    for(const codigo of codigos) {
+        campos[codigo].margem = Number(margemMassa.value)
+    }
+
+    removerPopup()
+    await inserirDados(campos, 'campos')
+    await telaPrecos()
+
+}
+
+function marcarTodosMargem(inputTH) {
+
+    const inputs = document.querySelectorAll('[name="margem"]')
+    for (const input of inputs) {
+        const tr = input.closest('tr')
+        if (tr.style.display !== 'none') input.checked = inputTH.checked
     }
 
 }
@@ -51,6 +112,8 @@ async function atualizarCampos() {
 }
 
 function criarLinhasCampos(idCampo, dados) {
+
+    const total = dados.margem ? (1 + (dados.margem / 100)) * dados.totalComposicao : dados?.totalComposicao || 0
 
     const tds = `
         <td>${dados.especialidade}</td>
@@ -66,14 +129,15 @@ function criarLinhasCampos(idCampo, dados) {
                 <img src="imagens/caixa.png" style="width: 1.5rem;" onclick="composicoes('${idCampo}')">
             </div>
         </td>
-        <td>${dados?.totalComposicao || '0'} €</td>
+        <td>${dinheiro(dados?.totalComposicao || 0)}</td>
         <td>
             <div style="${horizontal}; gap: 0.5rem;">
                 <img src="imagens/lapis.png" style="width: 1.5rem;" onclick="painelMargem('${idCampo}')">
                 <span>${dados?.margem || '0'} %</span>
+                <input type="checkbox" name="margem">
             </div>
         </td>
-        <td>${dados.precoFinal ? dinheiro(dados.precoFinal) : ''}</td>
+        <td>${dinheiro(total)}</td>
     `
 
     const trExistente = document.getElementById(idCampo)
@@ -141,7 +205,6 @@ async function salvarCampo(idCampo) {
 async function painelMargem(id) {
 
     margem = 0
-    precoFinal = 0
 
     idCampo = id
 
@@ -154,7 +217,7 @@ async function painelMargem(id) {
             <hr style="width: 100%;">
 
             <span>Sub total do Item: <b>${campo.totalComposicao ? dinheiro(campo.totalComposicao) : '--'}</b></span>
-            <span>Preço Final será: <b><span id="novoTotal">${campo.precoFinal ? dinheiro(campo.precoFinal) : '--'}</span></b></span>
+            <span>Preço Final será: <b><span id="novoTotal"></span></b></span>
 
             <hr style="width: 100%;">
             <button onclick="salvarMargem()">Salvar</button>
@@ -170,7 +233,6 @@ function calcularValorFinal(subtotal, input) {
     const novoTotal = document.getElementById('novoTotal')
     margem = Number(input.value)
     const calculo = Number((subtotal * (1 + (margem / 100))).toFixed(2))
-    precoFinal = calculo
     novoTotal.textContent = dinheiro(calculo)
 
 }
@@ -180,12 +242,9 @@ async function salvarMargem() {
     overlayAguarde()
 
     let campo = await recuperarDado('campos', idCampo)
-    precoFinal = margem == 0 ? campo.totalComposicao : precoFinal
     campo.margem = margem
-    campo.precoFinal = precoFinal
 
     enviar(`campos/${idCampo}/margem`, margem)
-    enviar(`campos/${idCampo}/precoFinal`, precoFinal)
 
     await inserirDados({ [idCampo]: campo }, 'campos')
 
@@ -384,11 +443,8 @@ async function calcularTotal() {
 
     let campo = await recuperarDado('campos', idCampo)
     campo.totalComposicao = totais.geral
-    precoFinal = campo.margem ? Number((totais.geral * (1 + (campo.margem / 100))).toFixed(2)) : totais.geral
-    campo.precoFinal = precoFinal
 
     enviar(`campos/${idCampo}/totalComposicao`, totais.geral)
-    enviar(`campos/${idCampo}/precoFinal`, precoFinal)
 
     await inserirDados({ [idCampo]: campo }, 'campos')
     await telaPrecos()

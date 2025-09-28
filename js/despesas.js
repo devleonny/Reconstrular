@@ -13,6 +13,7 @@ function telaDespesas() {
             ${btn('fornecedor', 'Fornecedores', 'telaFornecedores()')}
             ${btn('caixa', 'Materiais', 'telaMateriais()')}
             ${btn('ferramentas', 'Ferramentas', 'telaFerramentas()')}
+            ${btn('colaborador', 'Mão de Obra', 'telaMaoObra()')}
         </div>
     `
     telaInterna.innerHTML = acumulado
@@ -303,11 +304,8 @@ async function salvarFornecedor(idFornecedor) {
 async function telaMateriais() {
 
     const nomeBase = 'materiais'
-    const acumulado = `
-        ${btnRodape('Adicionar', 'adicionarMateriais()')}
-        ${modeloTabela(['Nome do Material', ''], nomeBase, voltar)}
-    `
-    telaInterna.innerHTML = acumulado
+    const btnExtras = `<button onclick="adicionarMateriais()">Adicionar</button>${voltar}`
+    telaInterna.innerHTML = modeloTabela(['Nome do Material', ''], nomeBase, btnExtras)
 
     const dados = await recuperarDados(nomeBase)
     for (const [id, dado] of Object.entries(dados)) {
@@ -339,7 +337,7 @@ async function salvarMaterial(idMaterial) {
         nome: obVal('nome'),
     }
 
-    await enviar(`materiais/${idMaterial}`, material)
+    enviar(`materiais/${idMaterial}`, material)
     await inserirDados({ [idMaterial]: material }, 'materiais')
     await telaMateriais()
 
@@ -349,11 +347,8 @@ async function salvarMaterial(idMaterial) {
 async function telaFerramentas() {
 
     const nomeBase = 'ferramentas'
-    const acumulado = `
-        ${btnRodape('Adicionar', 'adicionarFerramentas()')}
-        ${modeloTabela(['Nome da Ferramenta', ''], nomeBase, voltar)}
-    `
-    telaInterna.innerHTML = acumulado
+    const btnExtras = `<button onclick="adicionarFerramentas()">Adicionar</button>${voltar}`
+    telaInterna.innerHTML = modeloTabela(['Nome da Ferramenta', ''], nomeBase, btnExtras)
 
     const dados = await recuperarDados(nomeBase)
     for (const [id, dado] of Object.entries(dados)) {
@@ -363,7 +358,7 @@ async function telaFerramentas() {
 
 async function adicionarFerramentas(idFerramenta) {
 
-    const ferramenta = await recuperarDado('materiais', idFerramenta)
+    const ferramenta = await recuperarDado('ferramentas', idFerramenta)
     const acumulado = `
     <div class="painel-cadastro">
         ${modelo('Nome da Ferramenta', ferramenta?.nome || '', 'nome')}
@@ -385,9 +380,52 @@ async function salvarFerramenta(idFerramenta) {
         nome: obVal('nome'),
     }
 
-    await enviar(`ferramentas/${idFerramenta}`, ferramenta)
+    enviar(`ferramentas/${idFerramenta}`, ferramenta)
     await inserirDados({ [idFerramenta]: ferramenta }, 'ferramentas')
     await telaFerramentas()
+
+    removerPopup()
+}
+
+async function telaMaoObra() {
+
+    const nomeBase = 'maoObra'
+    const btnExtras = `<button onclick="adicionarMaoObra()">Adicionar</button>${voltar}`
+    telaInterna.innerHTML = modeloTabela(['Categoria da Mão de Obra', ''], nomeBase, btnExtras)
+
+    const dados = await recuperarDados(nomeBase)
+    for (const [id, dado] of Object.entries(dados)) {
+        criarLinha(dado, id, nomeBase)
+    }
+}
+
+async function adicionarMaoObra(idMaoObra) {
+
+    const maoObra = await recuperarDado('maoObra', idMaoObra)
+    const acumulado = `
+    <div class="painel-cadastro">
+        ${modelo('Nome da Categoria', maoObra?.nome || '', 'nome')}
+    </div>
+    <div class="rodape-formulario">
+        <button onclick="salvarMaoObra(${idMaoObra ? `'${idMaoObra}'` : ''})">Salvar</button>
+    </div>
+    `
+    popup(acumulado, 'Cadastro de Mão de Obra', true)
+
+}
+
+async function salvarMaoObra(idMaoObra) {
+
+    overlayAguarde()
+    idMaoObra = idMaoObra || ID5digitos()
+
+    const maoObra = {
+        nome: obVal('nome'),
+    }
+
+    enviar(`maoObra/${idMaoObra}`, maoObra)
+    await inserirDados({ [idMaoObra]: maoObra }, 'maoObra')
+    await telaMaoObra()
 
     removerPopup()
 }

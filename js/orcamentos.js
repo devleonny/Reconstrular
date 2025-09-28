@@ -700,7 +700,9 @@ async function orcamentoFinal(idOrcamento) {
 
             const dadosCampoEspecifico = campos?.[idCampo] || {}
             const quantidade = quantidadeFinal(dados)
-            total += (dadosCampoEspecifico?.precoFinal || 0) * quantidade
+            const totalComposicao = dadosCampoEspecifico?.totalComposicao || 0
+            const totalLinha = dadosCampoEspecifico.margem ? (1 + (dadosCampoEspecifico.margem / 100)) * totalComposicao : totalComposicao
+            total += totalLinha * quantidade
 
             itens += `
                 <tr>
@@ -720,7 +722,7 @@ async function orcamentoFinal(idOrcamento) {
                     </td>
                     <td>${dados?.medida || ''}</td>
                     <td>${quantidade}</td>
-                    <td>${dadosCampoEspecifico.precoFinal ? dinheiro(dadosCampoEspecifico.precoFinal) : 0}</td>
+                    <td>${dinheiro(totalLinha)}</td>
                 </tr>
             `
         }
