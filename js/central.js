@@ -402,10 +402,6 @@ async function atualizarApp() {
     sincronizarApp()
     let status = { total: 11, atual: 1 }
 
-    sincronizarApp(status)
-    await sincronizarSetores()
-    status.atual++
-
     const basesAuxiliares = [
         'campos',
         'dados_distritos',
@@ -416,7 +412,8 @@ async function atualizarApp() {
         'ferramentas',
         'dados_colaboradores',
         'dados_despesas',
-        'dados_orcamentos'
+        'dados_orcamentos',
+        'dados_setores'
     ];
 
     for (const base of basesAuxiliares) {
@@ -439,7 +436,6 @@ function sincronizarApp({ atual, total, remover } = {}) {
         setTimeout(() => {
             const loader = document.querySelector('.circular-loader')
             if (loader) loader.remove()
-            mostrarMenus(false)
             return
         }, 2000)
 
@@ -1639,7 +1635,9 @@ async function salvarColaborador(idColaborador) {
 
     }
 
-    await enviar(`dados_colaboradores/${idColaborador}`, colaborador);
+    const resposta = await enviar(`dados_colaboradores/${idColaborador}`, colaborador)
+    console.log(resposta);
+    
     await inserirDados({ [idColaborador]: colaborador }, 'dados_colaboradores');
 
     criarLinha(colaborador, idColaborador, 'dados_colaboradores');
@@ -1713,7 +1711,7 @@ function enviar(caminho, info) {
         })
             .then(data => resolve(data))
             .catch(() => {
-                salvarOffline(objeto, 'enviar');
+                salvarOffline(objeto, 'enviar')
                 resolve();
             });
     });
@@ -1736,15 +1734,15 @@ function erroConexao() {
 
 async function receber(chave) {
 
-    let chavePartes = chave.split('/')
+    const chavePartes = chave.split('/')
     let timestamp = 0
-    let dados = await recuperarDados(chavePartes[0]) || {}
+    const dados = await recuperarDados(chavePartes[0]) || {}
 
-    for (const [id, objeto] of Object.entries(dados)) {
+    for (const [, objeto] of Object.entries(dados)) {
         if (objeto.timestamp && objeto.timestamp > timestamp) timestamp = objeto.timestamp
     }
 
-    let objeto = {
+    const objeto = {
         servidor,
         chave: chave,
         timestamp: timestamp
@@ -1767,7 +1765,7 @@ async function receber(chave) {
                 return response.json();
             })
             .then(data => {
-                resolve(data);
+                resolve(data)
             })
             .catch(err => {
                 erroConexao()
@@ -1896,47 +1894,10 @@ async function configuracoes(usuario, campo, valor) {
                 resolve(data);
             })
             .catch(err => {
-                console.mensagemr(err)
+                console.log(err)
                 reject()
             });
     })
-}
-
-
-async function sincronizarSetores() {
-
-    dados_setores = await recuperarDados('dados_setores')
-
-    let timestamp = 0
-    for (const [usuario, objeto] of Object.entries(dados_setores)) {
-        if (objeto.timestamp && objeto.timestamp > timestamp) timestamp = objeto.timestamp
-    }
-
-    let nuvem = await listaSetores(timestamp)
-
-    await inserirDados(nuvem, 'dados_setores')
-    dados_setores = await recuperarDados('dados_setores')
-
-}
-
-async function listaSetores(timestamp) {
-    try {
-        const response = await fetch(`${api}/setores`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ timestamp, servidor })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        return data;
-
-    } catch {
-        return {}
-    }
 }
 
 function porcentagemHtml(valor) {
