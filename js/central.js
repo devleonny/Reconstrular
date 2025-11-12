@@ -37,24 +37,28 @@ const dtFormatada = (data) => {
     return `${dia}/${mes}/${ano}`
 }
 
-const modeloTabela = (colunas, base, btnExtras) => {
+const modeloTabela = ({ colunas, base, btnExtras, removerPesquisa }) => {
 
     const ths = colunas
         .map(col => `<th>${col}</th>`).join('')
 
     const thead = (colunas && colunas.length > 0) ? `<thead>${ths}</thead>` : ''
 
+    const pesquisa = removerPesquisa ? '' : `
+        <div class="pesquisa">
+            <input oninput="pesquisar(this, 'body')" placeholder="Pesquisar" style="width: 100%;">
+            <img src="imagens/pesquisar2.png">
+        </div>
+    `
+
     return `
     <div class="blocoTabela">
         <div class="painelBotoes">
             <div class="botoes">
-                <div class="pesquisa">
-                    <input oninput="pesquisar(this, 'body')" placeholder="Pesquisar" style="width: 100%;">
-                    <img src="imagens/pesquisar2.png">
-                </div>
+                ${pesquisa}
                 ${btnExtras || ''}
             </div>
-            <img class="atualizar" src="imagens/atualizar.png" onclick="atualizarDados('${base}')">
+            ${base ? `<img class="atualizar" src="imagens/atualizar.png" onclick="atualizarDados('${base}')">` : ''}
         </div>
         <div class="recorteTabela">
             <table class="tabela">
@@ -365,11 +369,11 @@ async function telaPrincipal() {
             </div>
 
             ${btn('atualizar', 'Sincronizar App', 'atualizarApp()')}
+            ${btn('perfil', 'Parceiros', 'telaUsuarios()')}
             ${btn('colaborador', 'Colaboradores', 'telaColaboradores()')}
             ${btn('obras', 'Obras', 'telaObras()')}
             ${btn('pessoas', 'Clientes', 'telaClientes()')}
             ${btn('contas', 'Despesas', 'telaDespesas()')}
-            ${btn('perfil', 'Usuários', 'usuarios()')}
             ${btn('orcamentos', 'Orçamentos', 'telaOrcamentos()')}
             ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
             ${btn('sair', 'Desconectar', 'deslogar()')}
@@ -400,9 +404,10 @@ async function atualizarApp() {
 
     mostrarMenus(true)
     sincronizarApp()
-    let status = { total: 11, atual: 1 }
+    let status = { total: 12, atual: 1 }
 
     const basesAuxiliares = [
+        'parceiros',
         'campos',
         'dados_distritos',
         'dados_clientes',
@@ -533,7 +538,7 @@ async function verificarClientes() {
     const nomeBase = 'dados_clientes'
     titulo.textContent = 'Verificar Clientes'
     const acumulado = `
-        ${modeloTabela(['Nome', 'Morada Fiscal', 'Morada de Execução', 'E-mail', 'Telefone', ''], nomeBase, voltarClientes)}
+        ${modeloTabela({ colunas: ['Nome', 'Morada Fiscal', 'Morada de Execução', 'E-mail', 'Telefone', ''], nomeBase, btnExtras: voltarClientes })}
     `
     telaInterna.innerHTML = acumulado
 
@@ -706,21 +711,6 @@ function verificarClique(event) {
     if (menu && menu.classList.contains('active') && !menu.contains(event.target)) menu.classList.remove('active')
 }
 
-async function usuarios() {
-
-    mostrarMenus()
-
-    const nomeBase = 'dados_setores'
-    const acumulado = `
-        ${modeloTabela(['Nome', 'Usuário', 'Setor', 'Permissão', ''], nomeBase)}
-    `
-    titulo.textContent = 'Gerenciar Usuários'
-    telaInterna.innerHTML = acumulado
-
-    const dados_setores = await recuperarDados(nomeBase)
-    for (const [id, usuario] of Object.entries(dados_setores).reverse()) criarLinha(usuario, id, nomeBase)
-
-}
 
 async function sincronizarDados(base, overlayOff) {
 
@@ -737,9 +727,9 @@ async function telaObras() {
     mostrarMenus()
     const nomeBase = 'dados_obras'
     titulo.textContent = 'Gerenciar Obras'
-    const btnExtra = `<button onclick="adicionarObra()">Adicionar</button>`
+    const btnExtras = `<button onclick="adicionarObra()">Adicionar</button>`
 
-    telaInterna.innerHTML = modeloTabela(['Cliente', 'Distrito', 'Cidade', 'Porcentagem', 'Status', 'Acompanhamento', ''], nomeBase, btnExtra)
+    telaInterna.innerHTML = modeloTabela({ colunas: ['Cliente', 'Distrito', 'Cidade', 'Porcentagem', 'Status', 'Acompanhamento', ''], nomeBase, btnExtras })
 
     const dados_obras = await recuperarDados(nomeBase)
     for (const [idObra, obra] of Object.entries(dados_obras).reverse()) criarLinha(obra, idObra, nomeBase)
@@ -884,7 +874,7 @@ async function telaColaboradores() {
     const nomeBase = 'dados_colaboradores'
     titulo.textContent = 'Gerenciar Colaboradores'
 
-    telaInterna.innerHTML = modeloTabela(['Nome Completo', 'Telefone', 'Obra Alocada', 'Status', 'Especialidade', 'Folha de Ponto', ''], nomeBase, btnExtras)
+    telaInterna.innerHTML = modeloTabela({ colunas: ['Nome Completo', 'Telefone', 'Obra Alocada', 'Status', 'Especialidade', 'Folha de Ponto', ''], nomeBase, btnExtras })
     const dados_colaboradores = await recuperarDados(nomeBase)
     for (const [id, colaborador] of Object.entries(dados_colaboradores).reverse()) criarLinha(colaborador, id, nomeBase)
 
@@ -1162,14 +1152,6 @@ async function criarLinha(dados, id, nomeBase) {
             <td class="detalhes">
                 <img src="imagens/kanban.png" onclick="verAndamento('${id}')">
             </td>
-        `
-    } else if (nomeBase == 'dados_setores') {
-        funcao = `gerenciarUsuario('${id}')`
-        tds = `
-            ${modelo(dados?.nome_completo || '--')}
-            ${modelo(dados?.usuario || '--')}
-            ${modelo(dados?.setor || '--')}
-            ${modelo(dados?.permissao || '--')}
         `
     }
 
@@ -1637,7 +1619,7 @@ async function salvarColaborador(idColaborador) {
 
     const resposta = await enviar(`dados_colaboradores/${idColaborador}`, colaborador)
     console.log(resposta);
-    
+
     await inserirDados({ [idColaborador]: colaborador }, 'dados_colaboradores');
 
     criarLinha(colaborador, idColaborador, 'dados_colaboradores');
@@ -1675,22 +1657,84 @@ function telaLogin() {
                         <input type="password" placeholder="Senha">
                         <img src="imagens/olhoFechado.png" class="olho" onclick="exibirSenha(this)">
                     </div>
-
+                    
                     <br>
-                    <button onclick="acessoLogin()">Entrar</button>
+                    <span onclick="recuperarSenha()" style="text-decoration: underline; cursor: pointer;">Esqueceu a senha?</span>
 
                 </div>
-                <div style="display: flex; justify-content: center; align-items: center; flex-direction: column;">
-                    <label>Primeiro acesso?</label>
-                    <button style="background-color: #097fe6; white-space: nowrap;" onclick="cadastrar()">Cadastre-se</button>
-                </div>
-                <br>
+
+                <button onclick="acessoLogin()">Entrar</button>
+
             </div>
 
         </div>
     `
 
     tela.innerHTML = acumulado
+}
+
+function recuperarSenha() {
+
+    const acumulado = `
+        <div class="painel-recuperacao">
+            <span>Digite o Usuário</span>
+            <input name="identificador">
+            <hr>
+            <button onclick="solicitarCodigo()">Solicitar</button>
+        </div>
+    `
+
+    popup(acumulado, 'Recuperar acesso', true)
+
+}
+
+async function solicitarCodigo() {
+
+    const identificador = document.querySelector('[name="identificador"]')
+
+    if (!identificador) return
+
+    overlayAguarde()
+
+    const resposta = await recAC(identificador.value)
+
+    if (resposta.sucess) {
+
+        const acumulado = `
+            <div class="painel-recuperacao">
+                <span>Preencha com os números recebidos no e-mail</span>
+                <hr>
+                <div style="${horizontal}; gap: 0.5rem;">
+                    <input id="identificador" style="display: none;" value="${identificador.value}">
+                    <input id="codigo" placeholder="Código" class="camp-1" type="number">
+                    <input id="novaSenha" placeholder="Nova Senha" class="camp-1">
+                    <button onclick="salvarSenha()">Confirmar</button>
+                </div>
+            </div>
+        `
+        popup(acumulado, 'Informe o código')
+    } else {
+        popup(mensagem(resposta.mensagem || 'Falha na solicitação'), 'Alerta')
+    }
+
+}
+
+async function salvarSenha() {
+
+    overlayAguarde()
+
+    const identificador = document.getElementById('identificador').value
+    const novaSenha = document.getElementById('novaSenha').value
+    const codigo = document.getElementById('codigo').value
+
+    const resposta = await salvarNovaSenha({ identificador, novaSenha, codigo })
+
+    if (resposta.sucess) {
+        return popup(mensagem(resposta.mensagem), 'Alerta')
+    }
+
+    if (resposta.mensagem) popup(mensagem(resposta.mensagem), 'Alerta', true)
+
 }
 
 // API
@@ -2706,7 +2750,7 @@ async function enviarMargens({ codigos, margem }) {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({codigos, margem, servidor})
+            body: JSON.stringify({ codigos, margem, servidor })
         })
             .then(response => response.json())
             .then(data => {
@@ -2716,4 +2760,60 @@ async function enviarMargens({ codigos, margem }) {
                 reject({ mensagem: err });
             });
     });
+}
+
+async function recAC(identificador) {
+
+    const url = `${api}/recuperar`
+
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ identificador, servidor })
+        })
+
+        if (!response.ok) {
+            console.error(`Falha ao deletar: ${response.status} ${response.statusText}`)
+            const erroServidor = await response.text()
+            console.error(`Resposta do servidor:`, erroServidor)
+            throw new Error(`Erro HTTP ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        return data
+
+    } catch (erro) {
+        return { mensagem: erro }
+    }
+
+}
+
+async function salvarNovaSenha({ identificador, novaSenha, codigo }) {
+
+    const url = `${api}/verificar-codigo`
+
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ identificador, novaSenha, codigo, servidor })
+        })
+
+        if (!response.ok) {
+            console.error(`Falha ao deletar: ${response.status} ${response.statusText}`)
+            const erroServidor = await response.text()
+            console.error(`Resposta do servidor:`, erroServidor)
+            throw new Error(`Erro HTTP ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        return data
+
+    } catch (erro) {
+        return { mensagem: erro }
+    }
+
 }

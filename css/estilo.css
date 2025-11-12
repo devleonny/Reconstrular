@@ -12,6 +12,10 @@ html {
     font-size: 0.9rem;
 }
 
+hr {
+    width: 100%;
+}
+
 .cabecalho-clientes {
     display: flex;
     align-items: center;
@@ -108,7 +112,7 @@ html {
     justify-content: start;
     align-items: start;
     flex-direction: column;
-    gap: 2px
+    gap: 2px;
 }
 
 .fundoImagens {
@@ -117,6 +121,10 @@ html {
     overflow-y: auto;
     background-color: #d2d2d2;
     padding: 2vw;
+}
+
+img {
+    cursor: pointer;
 }
 
 .fundoImagens img {
@@ -303,6 +311,22 @@ span {
     width: 2rem;
 }
 
+.painel-recuperacao {
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: start;
+    padding: 2rem;
+    background-color: #d2d2d2;
+}
+
+.camp-1 {
+    width: 10rem;
+    border-radius: 5px;
+    padding: 1rem;
+    border: solid 1px #797979;
+}
+
 .baixoLogin {
     gap: 20px;
     flex: 1;
@@ -311,7 +335,7 @@ span {
     flex-direction: column;
     justify-content: center;
     background-color: white;
-    padding: 1vw;
+    padding: 2rem;
 }
 
 .cadeado {
@@ -534,14 +558,14 @@ button {
 }
 
 .tabela th {
+    font-weight: lighter;
     border: solid 1px #d2d2d2;
-    color: #222;
     padding: 8px;
 }
 
 .tabela td {
     text-align: center;
-    padding: 3px;
+    padding: 8px;
     border: 1px solid #d2d2d2;
 }
 

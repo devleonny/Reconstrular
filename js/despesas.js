@@ -56,9 +56,9 @@ async function verificarDespesas() {
         const distrito = dados_distritos?.[obra.distrito] || {}
         const cidade = distrito?.cidades?.[obra.cidade] || {}
         const cliente = clientes?.[obra?.cliente] || {}
-        opcoesObras += cliente.nome 
-        ? `<option>${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
-        : `<option></option>`
+        opcoesObras += cliente.nome
+            ? `<option>${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
+            : `<option></option>`
     }
 
     const funcPesq = (col) => `
@@ -253,7 +253,7 @@ async function telaFornecedores() {
     const nomeBase = 'fornecedores'
     const acumulado = `
         ${btnRodape('Adicionar', 'adicionarFornecedor()')}
-        ${modeloTabela(['Nome', 'Número do Contribuinte', 'Distrito', 'Cidade', ''], nomeBase, voltar)}
+        ${modeloTabela({ colunas: ['Nome', 'Número do Contribuinte', 'Distrito', 'Cidade', ''], nomeBase, btnExtras: voltar })}
     `
     telaInterna.innerHTML = acumulado
 
@@ -305,7 +305,7 @@ async function telaMateriais() {
 
     const nomeBase = 'materiais'
     const btnExtras = `<button onclick="adicionarMateriais()">Adicionar</button>${voltar}`
-    telaInterna.innerHTML = modeloTabela(['Nome do Material', ''], nomeBase, btnExtras)
+    telaInterna.innerHTML = modeloTabela({ colunas: ['Nome do Material', ''], nomeBase, btnExtras })
 
     const dados = await recuperarDados(nomeBase)
     for (const [id, dado] of Object.entries(dados)) {
@@ -348,7 +348,7 @@ async function telaFerramentas() {
 
     const nomeBase = 'ferramentas'
     const btnExtras = `<button onclick="adicionarFerramentas()">Adicionar</button>${voltar}`
-    telaInterna.innerHTML = modeloTabela(['Nome da Ferramenta', ''], nomeBase, btnExtras)
+    telaInterna.innerHTML = modeloTabela({ colunas: ['Nome da Ferramenta', ''], nomeBase, btnExtras })
 
     const dados = await recuperarDados(nomeBase)
     for (const [id, dado] of Object.entries(dados)) {
@@ -391,7 +391,7 @@ async function telaMaoObra() {
 
     const nomeBase = 'maoObra'
     const btnExtras = `<button onclick="adicionarMaoObra()">Adicionar</button>${voltar}`
-    telaInterna.innerHTML = modeloTabela(['Categoria da Mão de Obra', ''], nomeBase, btnExtras)
+    telaInterna.innerHTML = modeloTabela({ colunas: ['Categoria da Mão de Obra', ''], nomeBase, btnExtras })
 
     const dados = await recuperarDados(nomeBase)
     for (const [id, dado] of Object.entries(dados)) {
