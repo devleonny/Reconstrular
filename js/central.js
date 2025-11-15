@@ -88,6 +88,56 @@ const btn = (img, valor, funcao) => `
         <div>${valor}</div>
     </div>
 `
+
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'F8') resetarBases()
+})
+
+async function resetarBases() {
+
+    overlayAguarde(true)
+
+    const divMensagem = document.querySelector('.div-mensagem')
+
+    divMensagem.innerHTML = `
+        <div style="${vertical}; gap: 1vh;">
+            <label><b>Reconstrular</b>: Por favor, aguarde...</label>
+            <br>
+            
+            <div id="logs" style="${vertical}; gap: 1vh;"></div>
+        </div>
+    `
+
+    const logs = document.getElementById('logs')
+
+    logs.insertAdjacentHTML('beforeend', '<label>Criando uma nova Base, 0km, novíssima...</label>')
+
+    const bases = [
+        'parceiros',
+        'funcoes',
+        'campos',
+        'dados_distritos',
+        'dados_clientes',
+        'fornecedores',
+        'materiais',
+        'dados_obras',
+        'ferramentas',
+        'dados_colaboradores',
+        'dados_despesas',
+        'dados_orcamentos',
+        'dados_setores'
+    ]
+
+    for (const base of bases) {
+        await sincronizarDados(base, true, true) // Nome base, overlay off e resetar bases;
+        logs.insertAdjacentHTML('beforeend', `<label>Sincronizando: ${base}</label>`)
+    }
+
+    telaPrincipal()
+    removerOverlay()
+
+}
+
 telaLogin()
 
 setInterval(async function () {
@@ -338,6 +388,7 @@ function overlayAguarde() {
 
     const elemento = `
         <div class="aguarde">
+            <div class="div-mensagem"></div>
             <img src="gifs/loading.gif">
         </div>
     `
@@ -404,10 +455,11 @@ async function atualizarApp() {
 
     mostrarMenus(true)
     sincronizarApp()
-    let status = { total: 12, atual: 1 }
+    let status = { total: 13, atual: 1 }
 
     const basesAuxiliares = [
         'parceiros',
+        'funcoes',
         'campos',
         'dados_distritos',
         'dados_clientes',
@@ -419,7 +471,7 @@ async function atualizarApp() {
         'dados_despesas',
         'dados_orcamentos',
         'dados_setores'
-    ];
+    ]
 
     for (const base of basesAuxiliares) {
         sincronizarApp(status)
@@ -579,7 +631,7 @@ async function formularioCliente(idCliente) {
     regrasClientes()
 }
 
-function regrasClientes() {//29
+function regrasClientes() {
 
     const campos = ['Telefone', 'Número de Contribuinte']
     const limite = 9
@@ -642,6 +694,7 @@ function telaConfiguracoes() {
             <br>
             ${btn('carta', 'Configurações de E-mail', 'configuracoesEmails()')}
             ${btn('preco', 'Tabelas de Preço', 'telaPrecos()')}
+            ${btn('niveis', 'Níveis de Acesso', 'telaNiveis()')}
         </div>
     `
 
@@ -653,13 +706,6 @@ async function configuracoesEmails() {
 
     mostrarMenus()
     titulo.innerHTML = 'Configurações de E-mails'
-    const modelo = (texto, elemento) => `
-        <div>
-            <span><Strong>${texto}</strong></span>
-            ${elemento}
-        </div>
-    `
-
     const configuracoes = await recuperarDados('configuracoes')
 
     const acumulado = `
@@ -685,6 +731,119 @@ async function configuracoesEmails() {
     `
 
     telaInterna.innerHTML = acumulado
+
+}
+
+async function telaNiveis() { //29
+
+    titulo.innerHTML = 'Níveis de Acesso'
+    const nomeBase = 'funcoes'
+    const colunas = [
+        'Função',
+        'Colaboradores',
+        'Obras',
+        'Clientes',
+        'Despesas',
+        'Usuários',
+        'Orçamentos',
+        'Configurações',
+        'Registo de Ponto',
+        'Notificações',
+        ''
+    ]
+
+    const btnExtras = `
+        <button onclick="adicionarFuncao()">Adicionar Função</button>
+    `
+
+    const acumulado = modeloTabela({ colunas, nomeBase, btnExtras })
+
+    telaInterna.innerHTML = acumulado
+
+    const funcoes = await recuperarDados('funcoes')
+
+    for (const [idFuncao, dados] of Object.entries(funcoes || {})) {
+
+        criarLinhaFuncao(idFuncao, dados)
+    }
+
+}
+
+function criarLinhaFuncao(idFuncao, dados) {
+
+    const tds = `
+        <td>${dados?.nome || ''}</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+    `
+
+    const trExistente = document.getElementById(idFuncao)
+
+    if (trExistente) return trExistente.innerHTML = tds
+
+    document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${idFuncao}">${tds}</tr>`)
+
+}
+
+async function adicionarFuncao(idFuncao) {
+
+    const modelo = (texto, elemento) => `
+        <div class="linha-padrao">
+            <span>${texto}</span>
+            ${elemento}
+        </div>
+    `
+
+    const acumulado = `
+        <div style="${vertical}; padding: 0.5rem; background-color: #d2d2d2;">
+
+            <div class="painel-padrao">
+
+                ${modelo('Função', `<input name="nomeFuncao" placeholder="Nome da Função">`)}
+
+            </div>
+    
+        </div>
+        <div class="rodape-painel-clientes">
+
+            <div onclick="${idFuncao ? `salvarFuncao('${idFuncao}')` : 'salvarFuncao()'}" class="botoes-rodape">
+                <img src="imagens/concluido.png">
+                <span>Salvar</span>
+            </div>
+        </div>
+    `
+
+    popup(acumulado, 'Adicionar Função', true)
+
+}
+
+async function salvarFuncao(idFuncao) {
+
+    idFuncao = idFuncao || ID5digitos()
+
+    overlayAguarde()
+
+    const funcao = await recuperarDado('funcoes', idFuncao) || {}
+
+    const nomeFuncao = document.querySelector('[name="nomeFuncao"]')
+
+    funcao.nome = nomeFuncao.value
+
+    await inserirDados({ [idFuncao]: funcao }, 'funcoes')
+
+    enviar(`funcoes/${idFuncao}`, funcao)
+
+    await telaNiveis()
+
+    removerPopup()
 
 }
 
@@ -1761,11 +1920,11 @@ function enviar(caminho, info) {
     });
 }
 
-function erroConexao() {
+function erroConexao(mensagem) {
     const acumulado = `
         <div id="erroConexao" style="${horizontal}; gap: 1rem; background-color: #d2d2d2; padding: 1rem;">
             <img src="gifs/alerta.gif" style="width: 2rem;">
-            <span><b>Dados não sincronizados:</b> tente novamente em minutos.</span>
+            <span>${mensagem || `<b>Tente novamente em minutos</b>`}</span>
         </div>
     `
     const erroConexao = document.getElementById('erroConexao')
@@ -1790,7 +1949,7 @@ async function receber(chave) {
         servidor,
         chave: chave,
         timestamp: timestamp
-    };
+    }
 
     const obs = {
         method: "POST",
@@ -1798,7 +1957,7 @@ async function receber(chave) {
             "Content-Type": "application/json",
         },
         body: JSON.stringify(objeto)
-    };
+    }
 
     return new Promise((resolve, reject) => {
         fetch(`${api}/dados`, obs)
@@ -1809,12 +1968,17 @@ async function receber(chave) {
                 return response.json();
             })
             .then(data => {
+                if (data.mensagem) {
+                    erroConexao(data?.mensagem || `<b>Falha ao carregar</b>: ${chave}`)
+                    reject()
+                }
                 resolve(data)
             })
             .catch(err => {
-                erroConexao()
-                resolve({})
-            });
+                const msg = (err && err.message) ? err.message : `<b>Falha ao carregar</b>: ${chave}`
+                erroConexao(msg)
+                reject()
+            })
     })
 }
 
