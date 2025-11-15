@@ -8,7 +8,6 @@ function telaDespesas() {
     const acumulado = `
         <div class="painel-despesas">
             <br>
-            ${btn('contas', 'Inserir Despesas', 'formularioDespesa()')}
             ${btn('todos', 'Verificar Despesas', 'verificarDespesas()')}
             ${btn('fornecedor', 'Fornecedores', 'telaFornecedores()')}
             ${btn('caixa', 'Materiais', 'telaMateriais()')}
@@ -52,7 +51,7 @@ async function verificarDespesas() {
 
     let opcoesObras = ''
     const obras = { '': '', ...dados_obras }
-    for (const [idObra, obra] of Object.entries(obras)) {
+    for (const [, obra] of Object.entries(obras)) {
         const distrito = dados_distritos?.[obra.distrito] || {}
         const cidade = distrito?.cidades?.[obra.cidade] || {}
         const cliente = clientes?.[obra?.cliente] || {}
@@ -93,7 +92,8 @@ async function verificarDespesas() {
                         <input oninput="pesquisar(this, 'body')" placeholder="Pesquisar" style="width: 100%;">
                         <img src="imagens/pesquisar2.png">
                     </div>
-                    ${voltar}
+                    <button onclick="formularioDespesa()">Adicionar</button>
+                    
                 </div>
                 <img class="atualizar" src="imagens/atualizar.png" onclick="atualizarDespesas()">
             </div>
@@ -121,64 +121,63 @@ async function verificarDespesas() {
 
 async function formularioDespesa(idDespesa) {
 
-    mostrarMenus()
-
     const despesa = await recuperarDado('dados_despesas', idDespesa)
     const fornecedores = await recuperarDados('fornecedores')
     const materiais = await recuperarDados('materiais')
     const dados_obras = await recuperarDados('dados_obras')
     const clientes = await recuperarDados('dados_clientes')
 
-    const opcoesFornecedores = Object.entries({ '': { nome: '' }, ...fornecedores })
+    const opcoesFornecedores = Object.entries(fornecedores)
         .map(([idFornecedor, fornecedor]) => `<option id="${idFornecedor}" ${despesa?.fornecedor == idFornecedor ? 'selected' : ''}>${fornecedor.nome}</option>`)
         .join('')
 
-    const opcoesMateriais = Object.entries({ '': { nome: '' }, ...materiais })
+    const opcoesMateriais = Object.entries(materiais)
         .map(([idMaterial, material]) => `<option id="${idMaterial}" ${despesa?.material == idMaterial ? 'selected' : ''}>${material.nome}</option>`)
         .join('')
 
-    let opcoesObras = ''
-    const obras = { '': { cliente: 'Sem Obra', cidade: '--', distrito: '--' }, ...dados_obras }
-    for (const [idObra, obra] of Object.entries(obras)) {
-        const distrito = dados_distritos?.[obra.distrito] || {}
-        const cidade = distrito?.cidades?.[obra.cidade] || {}
-        const cliente = clientes?.[obra?.cliente] || {}
-        opcoesObras += `<option id="${idObra}" value="${idObra}" ${despesa?.obra == idObra ? 'selected' : ''}>${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
-    }
+    const opcoesObras = Object.entries(dados_obras)
+        .map(([idObra, obra]) => {
+            const distrito = dados_distritos?.[obra.distrito] || {}
+            const cidade = distrito?.cidades?.[obra.cidade] || {}
+            const cliente = clientes?.[obra?.cliente] || {}
+            return `<option value="${idObra}">${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
+        }).join('')
 
-    titulo.textContent = 'Inserir Despesa'
-    const funcao = idDespesa ? `salvarDespesa('${idDespesa}')` : 'salvarDespesa()'
     const placeholder = `placeholder="Escolha o fornecedor"`
-    const acumulado = `
-    <div class="cabecalho-clientes">
-        <button onclick="telaDespesas()" style="background-color: #3131ab;">Voltar</button>
-        <button onclick="${funcao}">Salvar</button>
-    </div>
-    <div class="painel-clientes">
-        ${modeloLivre('Fornecedor', `<select name="fornecedor" onchange="buscarLocalidadeFornecedor()">${opcoesFornecedores}</select>`)}
-        ${modeloLivre('Distrito', `<input ${placeholder} name="distrito" readOnly>`)}
-        ${modeloLivre('Cidade', `<input ${placeholder} name="cidade" readOnly>`)}
-        ${modeloLivre('Número do Contribuinte', `<input ${placeholder} name="numeroContribuinte" readOnly>`)}
-        ${modeloLivre('Valor', `<input name="valor" placeholder="Valor" type="number" value="${despesa?.valor || ''}">`)}
-        ${modeloLivre('IVA', `<input name="iva" placeholder="IVA" type="number" value="${despesa?.iva || ''}">`)}
-        ${modeloLivre('Data', `<input name="data" type="date" value="${despesa?.data || ''}">`)}
-        ${modeloLivre('Tipo de Material', `<select name="material">${opcoesMateriais}</select>`)}
-        ${modeloLivre('Obra', `<select name="obra">${opcoesObras}</select>`)}
-        ${modeloLivre('Upload Fatura', '<input name="fatura" type="file">')}
-        ${modeloLivre('Imagem da Fatura', `
-        <div style="${vertical}; gap: 5px;">
-            <img src="imagens/camera.png" class="cam" onclick="abrirCamera()">
-            <div class="cameraDiv">
-                <button onclick="tirarFoto()">Tirar Foto</button>
-                <video autoplay playsinline></video>
-                <canvas style="display: none;"></canvas>
-            </div>
-            <img name="foto" ${despesa?.foto ? `src="${api}/uploads/RECONST/${despesa.foto}"` : ''} class="foto">
-        </div>`)}
-    </div>
-    `
 
-    telaInterna.innerHTML = acumulado
+    const linhas = [
+        { texto: 'Fornecedor', elemento: `<select name="fornecedor" onchange="buscarLocalidadeFornecedor()"><option></option>${opcoesFornecedores}</select>` },
+        { texto: 'Distrito', elemento: `<input ${placeholder} name="distrito" readOnly>` },
+        { texto: 'Cidade', elemento: `<input ${placeholder} name="cidade" readOnly>` },
+        { texto: 'Número do Contribuinte', elemento: `<input ${placeholder} name="numeroContribuinte" readOnly>` },
+        { texto: 'Valor', elemento: `<input name="valor" placeholder="Valor" type="number" value="${despesa?.valor || ''}">` },
+        { texto: 'IVA', elemento: `<input name="iva" placeholder="IVA" type="number" value="${despesa?.iva || ''}">` },
+        { texto: 'Data', elemento: `<input name="data" type="date" value="${despesa?.data || ''}">` },
+        { texto: 'Tipo de Material', elemento: `<select name="material"><option></option>${opcoesMateriais}</select>` },
+        { texto: 'Obra', elemento: `<select name="obra"><option></option>${opcoesObras}</select>` },
+        { texto: 'Upload Fatura', elemento: `<input name="fatura" type="file">` },
+        {
+            texto: 'Imagem da Fatura',
+            elemento: `
+            <div style="${vertical}; gap: 5px;">
+                <img src="imagens/camera.png" class="cam" onclick="abrirCamera()">
+                <div class="cameraDiv">
+                    <button onclick="tirarFoto()">Tirar Foto</button>
+                    <video autoplay playsinline></video>
+                    <canvas style="display: none;"></canvas>
+                </div>
+                <img name="foto" ${despesa?.foto ? src = "${api}/uploads/RECONST/${despesa.foto}" : ''} class="foto">
+            </div>`
+        }
+    ]
+
+    const botoes = [
+        { texto: 'Salvar', funcao: idDespesa ? `salvarDespesa('${idDespesa}')` : 'salvarDespesa()', img: 'concluido' }
+    ]
+
+    const form = new formulario({ linhas, botoes, titulo: 'Incluir Despesa' })
+    form.abrirFormulario()
+
     buscarLocalidadeFornecedor()
 }
 

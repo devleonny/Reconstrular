@@ -763,7 +763,6 @@ async function telaNiveis() { //29
     const funcoes = await recuperarDados('funcoes')
 
     for (const [idFuncao, dados] of Object.entries(funcoes || {})) {
-
         criarLinhaFuncao(idFuncao, dados)
     }
 
@@ -795,33 +794,12 @@ function criarLinhaFuncao(idFuncao, dados) {
 
 async function adicionarFuncao(idFuncao) {
 
-    const modelo = (texto, elemento) => `
-        <div class="linha-padrao">
-            <span>${texto}</span>
-            ${elemento}
-        </div>
-    `
+    const linhas = [{ texto: 'Função', elemento: `<input name="nomeFuncao" placeholder="Nome da Função">` }]
+    const botoes = [{ funcao: idFuncao ? `salvarFuncao('${idFuncao}')` : null, img: 'concluido', texto: 'Salvar' }]
 
-    const acumulado = `
-        <div style="${vertical}; padding: 0.5rem; background-color: #d2d2d2;">
+    const form = new formulario({ linhas, botoes, titulo: 'Adicionar Função' })
 
-            <div class="painel-padrao">
-
-                ${modelo('Função', `<input name="nomeFuncao" placeholder="Nome da Função">`)}
-
-            </div>
-    
-        </div>
-        <div class="rodape-painel-clientes">
-
-            <div onclick="${idFuncao ? `salvarFuncao('${idFuncao}')` : 'salvarFuncao()'}" class="botoes-rodape">
-                <img src="imagens/concluido.png">
-                <span>Salvar</span>
-            </div>
-        </div>
-    `
-
-    popup(acumulado, 'Adicionar Função', true)
+    form.abrirFormulario()
 
 }
 
@@ -881,19 +859,6 @@ async function sincronizarDados(base, overlayOff) {
     if (!overlayOff) removerOverlay()
 }
 
-async function telaObras() {
-
-    mostrarMenus()
-    const nomeBase = 'dados_obras'
-    titulo.textContent = 'Gerenciar Obras'
-    const btnExtras = `<button onclick="adicionarObra()">Adicionar</button>`
-
-    telaInterna.innerHTML = modeloTabela({ colunas: ['Cliente', 'Distrito', 'Cidade', 'Porcentagem', 'Status', 'Acompanhamento', ''], nomeBase, btnExtras })
-
-    const dados_obras = await recuperarDados(nomeBase)
-    for (const [idObra, obra] of Object.entries(dados_obras).reverse()) criarLinha(obra, idObra, nomeBase)
-}
-
 async function atualizarDados(base) {
 
     overlayAguarde()
@@ -902,43 +867,6 @@ async function atualizarDados(base) {
     const dados = await recuperarDados(base)
     for (const [id, objeto] of Object.entries(dados).reverse()) criarLinha(objeto, id, base)
     removerOverlay()
-
-}
-
-async function adicionarObra(idObra) {
-
-    const obra = await recuperarDado('dados_obras', idObra)
-
-    const modelo = (texto, elemento) => `
-        <div style="${vertical}; gap: 3px;">
-            <span style="text-align: left;"><strong>${texto}</strong></span>
-            <div>${elemento}</div>
-        </div>
-    `
-
-    const clientes = await recuperarDados('dados_clientes')
-    const opcoesClientes = Object.entries({ ...{ '': { nome: '' } }, ...clientes })
-        .map(([idCliente, cliente]) => `<option id="${idCliente}" ${obra?.cliente == idCliente ? 'selected' : ''}>${cliente.nome}</option>`)
-        .join('')
-
-    const acumulado = `
-        <div class="painel-cadastro">
-            ${modelo('Distrito', `<select name="distrito" onchange="carregarSelects({select: this})"></select>`)}
-            ${modelo('Cidade', `<select name="cidade"></select>`)}
-            ${modelo('Cliente', `<select name="cliente" onchange="buscarDados(this)">${opcoesClientes}</select>`)}
-            ${modelo('Telefone', `<span name="telefone"></span>`)}
-            ${modelo('E-mail', `<span name="email"></span>`)}
-        </div>
-        <div class="rodape-formulario">
-            <button onclick="salvarObra(${idObra ? `'${idObra}'` : ''})">Salvar</button>
-        </div>
-    `
-
-    popup(acumulado, 'Cadastro')
-
-    await carregarSelects({ ...obra })
-
-    buscarDados()
 
 }
 
@@ -1022,22 +950,6 @@ function mostrarMenus(operacao) {
     operacao ? menu.add('active') : menu.remove('active')
 }
 
-
-async function telaColaboradores() {
-
-    mostrarMenus()
-    const btnExtras = `
-        <button onclick="confimacaoZipPdf()">Baixar Folhas em .zip</button>
-        <button onclick="adicionarColaborador()">Adicionar</button>
-    `
-    const nomeBase = 'dados_colaboradores'
-    titulo.textContent = 'Gerenciar Colaboradores'
-
-    telaInterna.innerHTML = modeloTabela({ colunas: ['Nome Completo', 'Telefone', 'Obra Alocada', 'Status', 'Especialidade', 'Folha de Ponto', ''], nomeBase, btnExtras })
-    const dados_colaboradores = await recuperarDados(nomeBase)
-    for (const [id, colaborador] of Object.entries(dados_colaboradores).reverse()) criarLinha(colaborador, id, nomeBase)
-
-}
 
 function visibilidade(input, value) {
     const campos = ['quantidade', 'tamanho']
@@ -1162,46 +1074,10 @@ async function salvarEpi(idColaborador) {
 
 async function criarLinha(dados, id, nomeBase) {
 
-    const modelo = (texto, exclamacao) => {
-
-        const algoPendente = (!dados.epi || !dados.exame || !dados.contratoObra) ? 'exclamacao' : 'doublecheck'
-        const classExistente = isNaN(texto) ? `class="${texto.replace(' ', '_')}"` : ''
-
-        return `
-        <td>
-            <div class="camposTd">
-                ${exclamacao ? `<img src="imagens/${algoPendente}.png">` : ''}
-                <span ${classExistente}>${texto}</span>
-            </div>
-        </td>`
-    }
-
     let tds = ''
     let funcao = ''
 
-    if (nomeBase == 'dados_colaboradores') {
-        funcao = `adicionarColaborador('${id}')`
-
-        const especialidades = (dados?.especialidade || [])
-            .map(op => `<span>• ${op}</span>`)
-            .join('')
-
-        tds = `
-            ${modelo(dados?.nome || '--', true)}
-            ${modelo(dados?.telefone || '--')}
-            <td>${await infoObra()}</td>
-            ${modelo(dados?.status || '--')}
-            <td>
-                <div style="${vertical}; gap: 2px;">
-                    ${especialidades}
-                </div>
-            </td>
-            <td class="detalhes">
-                <img src="imagens/relogio.png" onclick="mostrarFolha('${id}')">
-            </td>
-        `
-
-    } else if (nomeBase == 'dados_despesas') {
+    if (nomeBase == 'dados_despesas') {
 
         const fornecedor = await recuperarDado('fornecedores', dados.fornecedor)
         const material = await recuperarDado('materiais', dados.material)
@@ -1217,44 +1093,37 @@ async function criarLinha(dados, id, nomeBase) {
         funcao = `formularioDespesa('${id}')`
 
         tds = `
-            ${modelo(fornecedor?.nome || '--')}
-            ${modelo(fornecedor?.numeroContribuinte || '--')}
-            ${modelo(dinheiro(dados?.valor))}
-            ${modelo(dados?.iva || '--')}
-            ${modelo(ano)}
-            ${modelo(meses[mes])}
+            <td>${fornecedor?.nome || '--'}</td>
+            <td>${fornecedor?.numeroContribuinte || '--'}</td>
+            <td>${dinheiro(dados?.valor)}</td>
+            <td>${dados?.iva || '--'}</td>
+            <td>${(ano)}</td>
+            <td>${meses[mes]}</td>
             <td>
                 <span style="display: none;">${dados?.data}</span>
                 <span>${data}</span>
             </td>
             <td>${foto}</td>
             <td>${fatura}</td>
-            ${modelo(material?.nome || '--')}
-
+            <td>${material?.nome || '--'}</td>
             <td>${await infoObra()}</td>
         `
 
     } else if (nomeBase == 'materiais') {
 
         funcao = `adicionarMateriais('${id}')`
-        tds = `
-            ${modelo(dados?.nome || '--')}
-        `
+        tds = `<td>${dados?.nome || '--'}</td>`
 
     } else if (nomeBase == 'ferramentas') {
 
         funcao = `adicionarFerramentas('${id}')`
-        tds = `
-            ${modelo(dados?.nome || '--')}
-            
-        `
+        tds = `<td>${dados?.nome || '--'}</td>`
+
     } else if (nomeBase == 'maoObra') {
 
         funcao = `adicionarMaoObra('${id}')`
-        tds = `
-            ${modelo(dados?.nome || '--')}
-            
-        `
+        tds = `<td>${modelo(dados?.nome || '--')}</td>`
+
     } else if (nomeBase == 'fornecedores') {
 
         const distrito = dados_distritos?.[dados?.distrito] || {}
@@ -1262,55 +1131,25 @@ async function criarLinha(dados, id, nomeBase) {
 
         funcao = `adicionarFornecedor('${id}')`
         tds = `
-            ${modelo(dados?.nome || '--')}
-            ${modelo(dados?.numeroContribuinte || '--')}
-            ${modelo(distrito?.nome || '--')}
-            ${modelo(cidades?.nome || '--')}
+            <td>${dados?.nome || '--'}</td>
+            <td>${dados?.numeroContribuinte || '--'}</td>
+            <td>${distrito?.nome || '--'}</td>
+            <td>${cidades?.nome || '--'}</td>
         `
 
     } else if (nomeBase == 'dados_clientes') {
         funcao = `formularioCliente('${id}')`
         tds = `
-            ${modelo(dados?.nome || '--')}
-            ${modelo(dados?.moradaFiscal || '--')}
-            ${modelo(dados?.moradaExecucao || '--')}
-            ${modelo(dados?.email || '--')}
-            ${modelo(dados?.telefone || '--')}
+            <td>${dados?.nome || '--'}</td>
+            <td>${dados?.moradaFiscal || '--'}</td>
+            <td>${dados?.moradaExecucao || '--'}</td>
+            <td>${dados?.email || '--'}</td>
+            <td>${dados?.telefone || '--'}</td>
         `
     } else if (nomeBase == 'materiais') {
         funcao = `adicionarMateriais('${id}')`
         tds = `
-            ${modelo(dados?.nome || '--')}
-        `
-    } else if (nomeBase == 'dados_obras') {
-        funcao = `adicionarObra('${id}')`
-        const distrito = dados_distritos?.[dados?.distrito] || {}
-        const cidades = distrito?.cidades?.[dados?.cidade] || {}
-        const resultado = await atualizarToolbar(id, false, true)
-        const porcentagem = Number(resultado.porcentagemAndamento)
-        const cliente = await recuperarDado('dados_clientes', dados.cliente)
-
-        let st = 'Por Iniciar'
-        if (porcentagem == 100) {
-            st = 'Finalizado'
-        } else if (porcentagem > 0) {
-            st = 'Em Andamento'
-        }
-
-        tds = `
-            ${modelo(cliente?.nome || '--')}
-            ${modelo(distrito?.nome || '--')}
-            ${modelo(cidades?.nome || '--')}
-            <td style="text-align: center;">
-                <span><strong>${porcentagem}%</strong></span>
-            </td>
-            <td style="text-align: left;">
-                <span class="${st.replace(' ', '_')}">${st}</span>
-                ${resultado.totais.excedente ? '<span class="excedente">Excedente</span>' : ''}
-            </td>
-            <td class="detalhes">
-                <img src="imagens/kanban.png" onclick="verAndamento('${id}')">
-            </td>
+            <td>${dados?.nome || '--'}</td>
         `
     }
 
@@ -1383,169 +1222,7 @@ function dinheiro(valor) {
     });
 }
 
-async function adicionarColaborador(id) {
 
-    const colaborador = await recuperarDado('dados_colaboradores', id) || {}
-    const dados_obras = await recuperarDados('dados_obras')
-    const clientes = await recuperarDados('dados_clientes')
-
-    const listas = {
-        status: ['Ativo', 'Baixa Médica', 'Não Ativo', 'Impedido'],
-        documento: ['Cartão de Cidadão', 'Passaporte', 'Título de residência'],
-        especialidade: ['Pedreiros', 'Ladrilhadores', 'Pintor', 'Estucador', 'Pavimento Laminado', 'Eletricista Certificado', 'Ajudante', 'Teto Falso e Paredes em Gesso Cartonado', 'Canalizador', 'Carpinteiro']
-    }
-
-    const modelo = (texto, elemento) => `
-        <div style="${vertical}; gap: 3px;">
-            <span style="text-align: left;"><strong>${texto}</strong></span>
-            <div>${elemento}</div>
-        </div>
-    `
-
-    function retornarCaixas(name) {
-
-        let opcoesStatus = ''
-        const espc = name == 'especialidade'
-
-        for (const op of listas[name]) {
-            let checked = false
-
-            const especialidades = colaborador?.especialidade || []
-            if ((espc && especialidades.includes(op)) || colaborador?.[name] == op) {
-                checked = true
-            }
-
-            opcoesStatus += `
-            <div class="opcaoStatus">
-                <input ${regras} value="${op}" 
-                type="${espc ? 'checkbox' : 'radio'}" 
-                name="${name}" 
-                ${checked ? 'checked' : ''}>
-                <span style="text-align: left;">${op}</span>
-            </div>
-            `
-        }
-
-        return `
-            <div name="${name}_bloco" style="${vertical}; gap: 5px;">
-                ${opcoesStatus}
-            </div>`
-
-    }
-
-    const obras = { '': { cliente: 'Sem Obra', cidade: '--', distrito: '--' }, ...dados_obras }
-
-    let opcoesObras = ''
-    for (const [idObra, obra] of Object.entries(obras)) {
-        const distrito = dados_distritos?.[obra.distrito] || {}
-        const cidade = distrito?.cidades?.[obra.cidade] || {}
-        const cliente = clientes?.[obra?.cliente] || {}
-        opcoesObras += `<option value="${idObra}">${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
-    }
-
-    const regras = `oninput="verificarRegras()"`
-    const caixaStatus = retornarCaixas('status')
-    const caixaEspecialidades = retornarCaixas('especialidade')
-    const caixaDocumentos = `${retornarCaixas('documento')} <input ${regras} value="${colaborador?.numeroDocumento || ''}" name="numeroDocumento" placeholder="Número do documento">`
-    const divAnexos = (chave) => {
-        const anexos = colaborador?.[chave] || {}
-        let anexoString = ''
-        for (const [idAnexo, anexo] of Object.entries(anexos)) {
-            anexoString += criarAnexoVisual(anexo)
-        }
-        return `<div style="${vertical}">${anexoString}</div>`
-    }
-
-    // EPI
-    let blocoEPI = `
-    <div style="${vertical}; margin-bottom: 1vw;">
-        <button onclick="formularioEPI('${id}')">Inserir EPI</button>
-    </div>
-    `
-    if (colaborador.epi) {
-
-        let camposEpi = ''
-        for (const [equipamento, dados] of Object.entries(colaborador?.epi?.equipamentos || {})) {
-            camposEpi += `
-                <div style="${vertical}; gap: 2px;">
-                    <span><strong>${equipamento.toUpperCase()}</strong></span>
-                    <span>• Quantidade: ${dados.quantidade}</span>
-                    <span>• Tamanho: ${dados.tamanho}</span>
-                </div>
-            `
-        }
-
-        blocoEPI += `
-        <div class="epis">
-            <div style="${horizontal}; justify-content: space-between; width: 100%;">
-                <div style="${vertical}">
-                    ${camposEpi}
-                </div>
-                <img src="imagens/pdf.png" onclick="abrirEPI('${id}')">
-            </div>
-            <hr style="width: 100%;">
-            <span>Inserido em: ${new Date(colaborador.epi.data).toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' })}</span>
-        </div>
-    `
-    }
-
-    const acumulado = `
-        <div class="painel-cadastro">
-
-            ${modelo('Nome Completo', `<textarea ${regras} name="nome" placeholder="Nome Completo">${colaborador?.nome || ''}</textarea>`)}
-            ${modelo('Data de Nascimento', `<input ${regras} value="${colaborador?.dataNascimento || ''}" type="date" name="dataNascimento">`)}
-            ${modelo('Morada', `<textarea ${regras} name="morada" placeholder="Morada">${colaborador?.morada || ''}</textarea>`)}
-            ${modelo('Apólice de Seguro', `<input value="0010032495" name="apolice" placeholder="Número da Apólice" readOnly>`)}
-            ${modelo('Telefone', `<input ${regras} value="${colaborador?.telefone || ''}" name="telefone" placeholder="Telefone">`)}
-            ${modelo('E-mail', `<textarea ${regras} name="email" placeholder="E-mail">${colaborador?.email || ''}</textarea>`)}
-            ${modelo('Obra Alocada', `<select name="obra">${opcoesObras}</select>`)}
-            ${modelo('Documento', caixaDocumentos)}
-            ${modelo('Número de Contribuinte', `<input ${regras} value="${colaborador?.numeroContribuinte || ''}" name="numeroContribuinte" placeholder="Máximo de 9 dígitos">`)}
-            ${modelo('Segurança Social', `<input ${regras} value="${colaborador?.segurancaSocial || ''}" name="segurancaSocial" placeholder="Máximo de 11 dígitos">`)}
-            ${modelo('Especialidade', caixaEspecialidades)}
-            ${modelo('Status', caixaStatus)}
-            ${modelo('Contrato de Obra', `<input name="contratoObra" type="file">`)}
-            ${divAnexos('contratoObra')}
-            ${modelo('Exame médico', '<input name="exame" type="file">')}
-            ${divAnexos('exame')}
-
-            <hr style="width: 100%;">
-            ${modelo('Epi’s', blocoEPI)}
-            <hr style="width: 100%;">
-
-            ${modelo('Foto do Colaborador', `
-                    <div style="${vertical}; gap: 5px;">
-                        <img src="imagens/camera.png" class="cam" onclick="abrirCamera()">
-                        <div class="cameraDiv">
-                            <button onclick="tirarFoto()">Tirar Foto</button>
-                            <video autoplay playsinline></video>
-                            <canvas style="display: none;"></canvas>
-                        </div>
-                        <img name="foto" ${colaborador?.foto ? `src="${api}/uploads/RECONST/${colaborador.foto}"` : ''} class="foto">
-                    </div>
-                `)}
-            <br>
-
-            <div class="painelPin">
-                ${modelo('PIN de Acesso', `<input ${regras} type="password" value="${colaborador?.pin || ''}" ${colaborador.pin ? `data-existente="${colaborador.pin}"` : ''} name="pin" placeholder="Máximo de 4 números">`)}
-                ${modelo('Repetir PIN', `<input ${regras} name="pinEspelho" value="${colaborador?.pin}" type="password" placeholder="Repita o PIN">`)}
-                <button onclick="resetarPin()">Novo Pin</button>
-            </div>
-            <div class="rodapeAlerta"></div>
-
-            <br>
-
-        </div>
-        <div class="rodape-formulario">
-            <button onclick="salvarColaborador(${id ? `'${id}'` : ''})">Salvar</button>
-        </div>
-    `
-
-    popup(acumulado, 'Cadastro')
-
-    verificarRegras()
-
-}
 
 function resetarPin() {
     document.querySelector('[name="pin"]').value = ''
@@ -2980,4 +2657,19 @@ async function salvarNovaSenha({ identificador, novaSenha, codigo }) {
         return { mensagem: erro }
     }
 
+}
+
+function divPorcentagem(porcentagem) {
+    const valor = Math.max(0, Math.min(100, Number(porcentagem) || 0))
+
+    return `
+        <div style="${horizontal}; width: 95%; z-index: 0;">
+            <div style="position: relative; border: 1px solid #666666; width: 100%; height: 16px; background: #eee; border-radius: 8px; overflow: hidden;">
+                <div style="width: ${valor}%; height: 100%; background: ${valor >= 70 ? "#4caf50" : valor >= 40 ? "#ffc107" : "#f44336"};"></div>
+                <label style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.7rem; color: #000;">
+                    ${valor}%
+                </label>
+            </div>
+        </div>
+    `
 }

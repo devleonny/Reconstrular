@@ -1,6 +1,6 @@
 body,
 html {
-    background: linear-gradient(45deg, #151749, #249f41);
+    background: linear-gradient(45deg, #323639, #5b707f);
     font-family: 'Poppins', sans-serif;
     min-height: 100vh;
     width: 100vw;
@@ -16,12 +16,16 @@ hr {
     width: 100%;
 }
 
+img {
+    width: 2rem;
+}
+
 .painel-padrao {
-    background: linear-gradient(45deg, #249f41, #151749);
+    background: linear-gradient(45deg, #323639, #5b707f);
     display: flex;
     flex-direction: column;
     gap: 8px;
-    max-height: 70vh;
+    max-height: 60vh;
     max-width: 900px;
     box-sizing: border-box;
     overflow-y: auto;
@@ -54,7 +58,7 @@ hr {
     border: solid 1px #bbbbbb;
 }
 
-.rodape-painel-clientes {
+.rodape-padrao {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -122,7 +126,7 @@ hr {
 }
 
 .circular-loader .progress {
-    stroke: #4caf50;
+    stroke: #5b707f;
     stroke-dasharray: 314;
     stroke-dashoffset: 314;
     transition: stroke-dashoffset 0.3s linear;
@@ -171,10 +175,6 @@ hr {
 .foto {
     border-radius: 5px;
     width: 100%;
-}
-
-.cam {
-    width: 7vw;
 }
 
 .cameraDiv {
@@ -237,7 +237,7 @@ img {
 .nomeUsuario {
     padding: 5px;
     width: 80%;
-    background-color: #249f41;
+    background-color: #5b707f;
     border-top-right-radius: 10px;
     border-bottom-right-radius: 10px;
     color: white;
@@ -283,6 +283,7 @@ img {
 }
 
 .Em_Andamento {
+    display: inline-block;
     padding-left: 1vw;
     padding-right: 1vw;
     border: solid 1px #ff9100;
@@ -291,6 +292,7 @@ img {
 }
 
 .Por_Iniciar {
+    display: inline-block;
     padding-left: 1vw;
     padding-right: 1vw;
     border: solid 1px red;
@@ -299,6 +301,7 @@ img {
 }
 
 .Ativo {
+    display: inline-block;
     padding-left: 1vw;
     padding-right: 1vw;
     border: solid 1px green;
@@ -352,7 +355,7 @@ img {
 .nomeUsuario span {
     padding: 5px;
     width: 80%;
-    background-color: #249f41;
+    background-color: #5b707f;
     border-top-right-radius: 10px;
     border-bottom-right-radius: 10px;
     color: white;
@@ -451,12 +454,12 @@ input:focus {
 }
 
 button {
+    border: solid 1px #222;
     padding: 10px 20px;
     color: white;
     cursor: pointer;
-    background-color: #249f41;
+    background-color: #5b707f;
     border-radius: 3px;
-    border: none;
     white-space: nowrap;
 }
 
@@ -486,7 +489,7 @@ button {
     justify-content: start;
     flex-direction: column;
     gap: 5px;
-    padding: 10vw;
+    padding: 1rem;
     background-color: #d2d2d2;
     max-height: 70vh;
     overflow-y: auto;
@@ -528,7 +531,7 @@ button {
 }
 
 .camposTd img {
-    width: 7vw;
+    width: 2rem;
 }
 
 .painelPin {
@@ -622,13 +625,15 @@ button {
     box-shadow: 0 1px 0 #ccc;
     top: 0;
     position: sticky;
+    background-color: #d2d2d2;
+    z-index: 10;
 }
 
 .tabela thead input {
     width: 100%;
 }
 
-.tabela th {
+.tabela th { 
     font-weight: lighter;
     border: solid 1px #d2d2d2;
     padding: 8px;
@@ -642,11 +647,6 @@ button {
 
 .tabela span {
     text-align: left;
-}
-
-.tabela thead {
-    box-shadow: 0 1px 0 #ccc;
-    background-color: #d2d2d2;
 }
 
 .btnLateral {
@@ -708,6 +708,7 @@ button {
     background-color: #b1b1b1;
     gap: 2px;
     width: 100%;
+    padding: 0.5rem;
 }
 
 .rodapeTabela {
@@ -750,7 +751,7 @@ input[type="file"] {
 
 .btnPadrao {
     width: 100%;
-    background-color: #249f41;
+    background-color: #5b707f;
     padding-top: 5px;
     padding-bottom: 5px;
     border-radius: 3px;
@@ -985,18 +986,6 @@ input[type="file"] {
     border-collapse: collapse;
 }
 
-.rodape-formulario {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-    background-color: #a0a0a0ff;
-    gap: 1vw;
-}
-
-.rodape-formulario button {
-    padding: 1.2rem;
-}
-
 .fotos {
     padding: 5px;
     display: none;
@@ -1112,11 +1101,6 @@ screen and (min-aspect-ratio: 13/9) {
         padding: 2vw;
     }
 
-    .painel-cadastro {
-        max-height: 50vh;
-        padding: 5vw;
-    }
-
     .contornoInterno img {
         width: 2vw
     }
@@ -1128,10 +1112,6 @@ screen and (min-aspect-ratio: 13/9) {
 
     .painelPin {
         flex-direction: row;
-    }
-
-    .camposTd img {
-        width: 3vw;
     }
 
 }

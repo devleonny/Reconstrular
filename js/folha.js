@@ -28,11 +28,11 @@ const anos = {
     '2026': 2026
 }
 
-const optionsSelect = (obj) => {
+const optionsSelect = (obj, chave) => {
     if (!obj) return
     let elemento = ''
     for (const [id, info] of Object.entries(obj).sort()) {
-        elemento += `<option value="${id}">${info}</option>`
+        elemento += `<option id="${id}" value="${id}">${chave ? info[chave] : info}</option>`
     }
     return elemento
 }

@@ -147,7 +147,7 @@ async function editarParceiros(usuario) {
             </div>
     
         </div>
-        <div class="rodape-painel-clientes">
+        <div class="painel-padrao">
 
             <div onclick="salvarParceiros('${usuario}')" class="botoes-rodape">
                 <img src="imagens/concluido.png">
