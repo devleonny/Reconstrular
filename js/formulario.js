@@ -17,7 +17,7 @@ class formulario {
 
         const linhaFormulario = ({ texto, elemento }) => `
             <div class="linha-padrao">
-                <span>${texto}</span>
+                <span>${texto || ''}</span>
                 <div>${elemento}</div>
             </div>
         `

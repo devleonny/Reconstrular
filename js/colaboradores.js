@@ -8,10 +8,9 @@ async function telaColaboradores() {
     `
     const distritos = await recuperarDados('dados_distritos')
 
-    mostrarMenus()
     const btnExtras = `
         <div style="${vertical}; gap: 2px;">
-            <button style="width: 100%;" onclick="confimacaoZipPdf()">Folhas de Ponto.pdf</button>
+            <button style="width: 100%;" onclick="gerarTodosPDFs()">Folhas de Ponto.pdf</button>
             <div style="${horizontal}; gap: 2px;">
                 ${modelo('Ano', `<select name="ano"><option></option>${optionsSelect(anos)}</select>`)}
                 ${modelo('Mês', `<select name="mes"><option></option>${optionsSelect(meses)}</select>`)}
@@ -90,7 +89,7 @@ async function criarLinhaColaboradores(id, colaborador) {
     const trExistente = document.getElementById(id)
     if (trExistente) return trExistente.innerHTML = tds
 
-    document.getElementById('body').insertAdjacentHTML('beforebegin', `<tr id="${id}">${tds}</tr>`)
+    document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${id}">${tds}</tr>`)
 }
 
 async function adicionarColaborador(id) {
@@ -230,9 +229,11 @@ async function adicionarColaborador(id) {
         {
             texto: 'PIN de Acesso',
             elemento: `
-            <div class="painelPin">
+            <div class="painel-pin">
                 <input ${regras} type="password" value="${colaborador?.pin || ''}" ${colaborador.pin ? `data-existente="${colaborador.pin}"` : ''} name="pin" placeholder="Máximo de 4 números">
                 <input ${regras} name="pinEspelho" value="${colaborador?.pin}" type="password" placeholder="Repita o PIN">
+                
+                <div class="rodape-alerta"></div>
                 <button onclick="resetarPin()">Novo Pin</button>
             </div>
             `

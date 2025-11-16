@@ -512,15 +512,15 @@ button {
     padding: 8px;
 }
 
-.rodapeAlerta {
+.rodape-alerta {
     display: flex;
     align-items: center;
     justify-content: start;
     gap: 10px;
 }
 
-.rodapeAlerta img {
-    width: 3vw;
+.rodape-alerta img {
+    width: 2rem;
 }
 
 .camposTd {
@@ -534,7 +534,7 @@ button {
     width: 2rem;
 }
 
-.painelPin {
+.painel-pin {
     display: flex;
     justify-content: center;
     align-items: end;
@@ -564,6 +564,7 @@ button {
 }
 
 .toolbarPopup {
+    cursor: pointer;
     border-top-left-radius: 5px;
     border-top-right-radius: 5px;
     justify-content: space-between;
@@ -577,6 +578,7 @@ button {
 }
 
 .toolbarPopup span {
+    font-size: 1rem;
     color: white;
 }
 
@@ -633,7 +635,7 @@ button {
     width: 100%;
 }
 
-.tabela th { 
+.tabela th {
     font-weight: lighter;
     border: solid 1px #d2d2d2;
     padding: 8px;
@@ -738,6 +740,38 @@ button {
     gap: 2vw;
 }
 
+.opcoes {
+    background-color: #097fe6;
+    padding: 5px;
+    border-radius: 3px;
+    margin: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: white;
+}
+
+.atalhos-opcoes:hover {
+    color: white;
+    background-color: #323940;
+}
+
+.atalhos-opcoes {
+    width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    cursor: pointer;
+    gap: 10px;
+    background-color: #efefef;
+    padding: 3px;
+    border-radius: 2px;
+    font-size: 0.8rem;
+}
+
 .opcaoStatus {
     display: flex;
     align-items: center;
@@ -816,14 +850,10 @@ input[type="file"] {
 }
 
 .caixa {
-    position: absolute;
-    background-color: white;
-    padding: 2vw;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    display: flex;
+    padding: 0.5rem;
+    display: none;
     flex-direction: column;
-    gap: 5px;
-    z-index: 200;
+    gap: 2px;
 }
 
 .acompanhamento {
@@ -964,15 +994,21 @@ input[type="file"] {
 .painel-1-tarefas {
     display: grid;
     grid-template-columns: repeat(1, 1fr);
-    gap: 2vw;
+    gap: 0.5rem;
     margin-bottom: 20px;
+}
+
+.tabela-especialidade {
+    margin-bottom: 1rem;
 }
 
 .tabTarefas {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-direction: column;
     width: 100%;
+    gap: 0.5rem;
 }
 
 .tabTarefas td {
