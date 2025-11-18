@@ -1787,78 +1787,6 @@ async function configuracoes(usuario, campo, valor) {
     })
 }
 
-function porcentagemHtml(valor) {
-    valor = conversor(valor);
-    const percentual = isNaN(valor) ? 0 : Math.max(0, valor).toFixed(0);
-
-    let cor;
-    if (percentual < 50) cor = 'red';
-    else if (percentual < 100) cor = 'orange';
-    else if (percentual > 100) cor = 'blue';
-    else cor = 'green';
-
-    return `
-    <div style="display:flex; align-items:center; gap:4px;">
-        <span style="color:#888; font-size:14px;">${percentual}%</span>
-        <div class="barra" style="flex:1; height:8px; background:#ddd;">
-            <div style="width:${percentual}%; height:100%; background:${cor};"></div>
-        </div>
-    </div>
-  `;
-}
-
-async function marcarConcluido(input, id, idEtapa, idTarefa) {
-
-    let obra = await recuperarDado('dados_obras', id)
-    obra.etapas[idEtapa].tarefas[idTarefa].concluido = input.checked
-
-    await enviar(`dados_obras/${id}/etapas/${idEtapa}/tarefas/${idTarefa}/concluido`, input.checked)
-    await inserirDados({ [id]: obra }, 'dados_obras')
-    await atualizarToolbar(id, false, false)
-
-}
-
-async function confirmarExclusao(id, idEtapa, idTarefa) {
-
-    const esquema = `('${id}', '${idEtapa}' ${idTarefa ? `, '${idTarefa}'` : ''})`
-    const acumulado = `
-    <div class="aviso">
-        ${mensagem('Tem certeza que deseja remover este item?')}
-        <button onclick="excluir${esquema}">Confirmar</button>
-    </div>
-    `
-
-    popup(acumulado, 'Aviso')
-}
-
-async function excluir(id, idEtapa, idTarefa) {
-
-    removerPopup()
-    overlayAguarde()
-
-    let objeto = await recuperarDado('dados_obras', id)
-
-    if (idTarefa) {
-
-        delete objeto.etapas[idEtapa].tarefas[idTarefa]
-        await deletar(`dados_obras/${id}/etapas/${idEtapa}/tarefas/${idTarefa}`)
-
-    } else {
-
-        delete objeto.etapas[idEtapa]
-        await deletar(`dados_obras/${id}/etapas/${idEtapa}`)
-
-    }
-
-    await inserirDados({ [id]: objeto }, 'dados_obras')
-
-    document.getElementById('bodyTarefas').innerHTML = ''
-    await verAndamento(id)
-
-    removerOverlay()
-    ordenacaoAutomatica()
-}
-
 function filtrar() {
     const inputEtapa = document.querySelector('[name="etapa"]');
     const inputConcluido = document.querySelector('[name="concluido"]');
@@ -1912,41 +1840,6 @@ function pesquisar(input, idTbody) {
             tr.style.display = 'none'; // oculta
         }
     });
-}
-
-function ordenacaoAutomatica() {
-    const bodyTarefas = document.getElementById('bodyTarefas')
-    const trs = bodyTarefas.querySelectorAll('tr')
-
-    let ordemEtapas = 0
-    let ordemTarefas = 1
-    for (const tr of trs) {
-        const tds = tr.querySelectorAll('td')
-
-        if (tr.dataset.etapa && tr.dataset.etapa == 'sim') {
-            ordemEtapas++
-            tds[1].textContent = `${ordemEtapas}.0`
-            ordemTarefas = 1
-        } else {
-            tds[1].textContent = `${ordemEtapas}.${ordemTarefas}`
-            ordemTarefas++
-        }
-    }
-
-}
-
-function calcular() {
-
-    const campoQuantidade = document.querySelector('[name="Quantidade"]')
-    if (!campoQuantidade) return
-    const quantidade = Number(campoQuantidade.value)
-    const resultado = Number(document.querySelector('[name="Resultado"]').value)
-    const indPorcentagem = document.getElementById('indPorcentagem')
-    const porcentagem = (resultado / quantidade) * 100
-
-    indPorcentagem.innerHTML = porcentagemHtml(porcentagem)
-
-    document.querySelector(`[name="Porcentagem"]`).value = porcentagem
 }
 
 async function enviarAlerta(idColaborador) {
