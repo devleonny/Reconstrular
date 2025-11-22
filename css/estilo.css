@@ -641,6 +641,8 @@ button {
 }
 
 .recorteTabela {
+    border-left: 1px solid #797979;
+    border-right: 1px solid #797979;
     height: max-content;
     max-height: 70vh;
     min-width: 100%;
@@ -731,7 +733,7 @@ button {
 }
 
 .painelBotoes {
-    border-bottom: 1px solid #666666;
+    border: solid 1px #797979;
     min-height: 4vh;
     display: flex;
     align-items: start;
@@ -745,7 +747,7 @@ button {
 }
 
 .rodapeTabela {
-    border-top: 1px solid #666666;
+    border: solid 1px #797979;
     width: 100%;
     min-height: 2vh;
     border-bottom-left-radius: 10px;
@@ -888,14 +890,18 @@ input[type="file"] {
 }
 
 .acompanhamento {
-    border-radius: 3px;
-    padding: 2vw;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+    padding: 1rem;
     background-color: white;
-    height: 80vh;
     color: #222;
-    overflow-y: auto;
     padding-bottom: 50vh;
     box-shadow: 0px 0px 3px #222;
+    overflow: auto;
+    height: 80vh;
+    max-width: 90vw;
 }
 
 .edicao {
@@ -935,6 +941,7 @@ input[type="file"] {
     justify-content: center;
     gap: 1vw;
 }
+
 
 .bloco {
     border: solid 1px #c9c9c9;
@@ -1056,7 +1063,6 @@ input[type="file"] {
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    width: 100%;
     gap: 0.5rem;
 }
 
@@ -1136,7 +1142,7 @@ screen and (min-aspect-ratio: 13/9) {
     }
 
     .painel-1-tarefas {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(6, 1fr);
     }
 
     .loginBloco {

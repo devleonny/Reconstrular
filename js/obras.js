@@ -177,6 +177,7 @@ async function verAndamento(id) {
             <input placeholder="Pesquisa" oninput="pesquisarObras(this)">
             <select id="etapas" onchange="atualizarToolbar({nomeTarefa: this.value})"></select>
             <button style="background-color: red;" onclick="pdfObra()">Exportar PDF</button>
+            <button style="background-color: #ffd100; color: #000000" onclick="telaCronograma('${id}')">Cronograma</button>
             <button onclick="telaObras()">Voltar</button>
         </div>
 
@@ -390,9 +391,8 @@ async function marcarConclusao(input, idObra, idOrcamento, idDescricao) {
 
     const item = obra.andamento[idOrcamento][idDescricao] ??= {}
     item.concluido = input.checked
-
+    enviar(`dados_obras/${idObra}/andamento/${idOrcamento}/${idDescricao}/concluido`, input.checked)
     await inserirDados({ [idObra]: obra }, 'dados_obras')
-
     await verAndamento(idObra)
 
 }
@@ -440,7 +440,9 @@ async function salvarFotos(idObra, idOrcamento, idDescricao) {
             if (img.dataset?.salvo === 'sim') continue
 
             const foto = await importarAnexos({ foto: img.src })
-            album[foto[0].link] = foto[0]
+            const idFoto = foto[0].link
+            album[idFoto] = foto[0]
+            enviar(`dados_obras/${idObra}/andamento/${idOrcamento}/${idDescricao}/fotos/${idFoto}`, foto[0])
         }
     }
 
@@ -450,6 +452,7 @@ async function salvarFotos(idObra, idOrcamento, idDescricao) {
         ...(obra.andamento[idOrcamento][idDescricao].fotos ?? {}),
         ...album
     }
+
 
     await inserirDados({ [idObra]: obra }, 'dados_obras')
     removerPopup()
@@ -476,10 +479,14 @@ async function salvarAndamento(idObra, idOrcamento, idDescricao) {
 
     const obra = await recuperarDado('dados_obras', idObra)
 
+    const realizado = Number(qtdeRealizada.value)
+
     obra.andamento ??= {}
     obra.andamento[idOrcamento] ??= {}
     obra.andamento[idOrcamento][idDescricao] ??= {}
-    obra.andamento[idOrcamento][idDescricao].realizado = Number(qtdeRealizada.value)
+    obra.andamento[idOrcamento][idDescricao].realizado = realizado
+
+    enviar(`dados_obras/${idObra}/andamento/${idOrcamento}/${idDescricao}/realizado`, realizado)
 
     await inserirDados({ [idObra]: obra }, 'dados_obras')
 
@@ -587,7 +594,7 @@ async function atualizarToolbar({ nomeTarefa } = {}) {
     obra.resultado = resultado
 
     await inserirDados({ [idObraAtual]: obra }, 'dados_obras')
-    enviar(`dados_obras/${idObraAtual}/acompanhamento/resultado`, resultado)
+    enviar(`dados_obras/${idObraAtual}/resultado`, resultado)
 
     const opcoes = [... new Set(tarefas)]
         .map(op => `<option ${nomeTarefa == op ? 'selected' : ''}>${op}</option>`)
@@ -652,4 +659,142 @@ async function pdf(html) {
         popup(mensagem(err), 'Alerta', true)
     }
 
+}
+
+async function telaCronograma(idObra) {
+
+    const obra = await recuperarDado('dados_obras', idObra)
+    const cliente = await recuperarDado('dados_clientes', obra?.cliente)
+    const acompanhamento = document.querySelector('.acompanhamento')
+    titulo.textContent = 'Cronograma'
+
+    if (!acompanhamento) return
+
+    const tabInfos = `
+        <table class="tabela" style="background-color: #5b707f;"> 
+            <tbody>
+                <tr>
+                    <td colspan="2" style="color: white; font-size: 1.2rem;">CRONOGRAMA DE OBRA</td>
+                    <td colspan="2" style="background-color: red; color: white;">Dias Úteis Estimados</td>
+                </tr>
+                <tr>
+                    <td style="color: white;">Cliente</td>
+                    <td style="background-color: white;">${cliente?.nome || '??'}</td>
+                    <td rowspan="4" style="background-color: white;"></td>
+                </tr>
+                <tr>
+                    <td style="color: white;">Morada de Execução</td>
+                    <td style="background-color: white;">${cliente?.moradaExecucao || '??'}</td>
+                </tr>
+                <tr>
+                    <td style="color: white;">Data de Início</td>
+                    <td style="background-color: white;">
+                        <input type="date">
+                    </td>
+                </tr>
+                <tr>
+                    <td style="color: white;">Data de Fim Previsto</td>
+                    <td style="background-color: white;"></td>
+                </tr>
+            </tbody>
+        </table>
+    `
+
+    const colunas = [
+        'Ação', 
+        'Zonas', 
+        'Especialidades', 
+        'Descrição do Serviço', 
+        'Medida', 
+        'Quantidade', 
+        'Tempo (hh:mm)',
+        'Início',
+        'Fim',
+        'Segunda',
+        'Terça',
+        'Quarta',
+        'Quinta',
+        'Sexta',
+        'Sábado',
+        'Domingo'
+    ]
+    const campos = await recuperarDados('campos')
+    let linhas = ''
+
+    // Em cada orçamento vinculado;
+    for (const [idOrcamento, status] of Object.entries(obra?.orcamentos_vinculados || {})) {
+
+        if (!status) continue
+
+        const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) //29
+
+        // Em cada zona;
+        for (const [zona, itens] of Object.entries(orcamento?.zonas || {})) {
+
+            // Em cada item;
+            for (const [idDescricao, dados] of Object.entries(itens)) {
+
+                const dadosCampo = campos[idDescricao]
+
+                linhas += `
+                    <tr>
+                        <td></td>
+                        <td>${zona}</td>
+                        <td>${dadosCampo?.especialidade || ''}</td>
+                        <td>${dadosCampo?.descricao || ''}</td>
+                        <td>${dadosCampo?.medida || ''}</td>
+                        <td>${dados?.unidades || ''}</td>
+                        <td>${calcularDuracao(dados?.unidades, dadosCampo?.duracao)}</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                `
+            }
+        }
+    }
+
+    const tabDados = `
+        <table class="tabela">
+            <thead>
+                <tr style="background-color: #5b707f; color: white;">
+                    ${colunas.map(col => `<th>${col}</th>`).join('')}
+                </tr>
+            </thead>
+            <tbody>${linhas}</tbody>
+        </table>
+    `
+
+    const acumulado = `
+        <div style="${vertical}; gap: 1rem; width: 90vw;">
+            <div style="${horizontal}; gap: 2rem;">
+                <button>Gravar</button>
+                <button>PDF</button>
+                <button onclick="verAndamento('${idObra}')">Voltar</button>
+            </div>
+
+            ${tabInfos}
+
+            ${tabDados}
+        </div>
+    `
+
+    acompanhamento.innerHTML = acumulado
+
+}
+
+function calcularDuracao(quantidade = 0, duracao = '00:00') {
+    const [h, m] = duracao.split(':').map(Number)
+    const minutosTotais = (h * 60 + m) * quantidade
+
+    const horas = Math.floor(minutosTotais / 60)
+    const minutos = minutosTotais % 60
+
+    return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`
 }

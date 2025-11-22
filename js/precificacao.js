@@ -264,6 +264,7 @@ async function salvarMargem() {
 async function composicoes(id) {
 
     idCampo = id
+    const campo = await recuperarDado('campos', id)
 
     const modeloTabela = (tipoTabela) => {
 
@@ -295,20 +296,27 @@ async function composicoes(id) {
                 <span id="toolbar_materiais" onclick="toogleTabela('materiais')">Materiais</span>
                 <span id="toolbar_ferramentas" onclick="toogleTabela('ferramentas')">Ferramentas</span>
                 <span id="toolbar_maoObra" onclick="toogleTabela('maoObra')">Mão de Obra</span>
+                <span id="toolbar_duracao" onclick="toogleTabela('duracao')">Duração</span>
             </div>
 
             ${modeloTabela('materiais')}
             ${modeloTabela('ferramentas')}
             ${modeloTabela('maoObra')}
 
+            <div id="duracao" class="edicao-duracao">
+                <div style="${vertical}; padding: 2rem;">
+                    <span>Duração (Horas)</span>
+                    <input type="time" oninput="salvarDuracao('${id}', this)" value="${campo?.duracao || ''}">
+                </div>
+            </div>
+
         </div>
     `
 
-    popup(acumulado, 'Composição de Preço', true)
+    popup(acumulado, 'Configuração da Tarefa', true)
 
     toogleTabela('materiais')
 
-    const campo = await recuperarDado('campos', idCampo)
     const tabelas = ['materiais', 'ferramentas', 'maoObra']
 
     for (const tabela of tabelas) {
@@ -323,9 +331,20 @@ async function composicoes(id) {
 
 }
 
+async function salvarDuracao(idCampo, input) {
+
+    const duracao = input.value
+    const campo = await recuperarDado('campos', idCampo)
+    campo.duracao = duracao
+
+    enviar(`campos/${idCampo}/duracao`, duracao)
+    await inserirDados({ [idCampo]: campo }, 'campos')
+
+}
+
 function toogleTabela(idAtual) {
 
-    const tabelas = ['materiais', 'ferramentas', 'maoObra']
+    const tabelas = ['materiais', 'ferramentas', 'maoObra', 'duracao']
 
     for (const tabela of tabelas) {
         const tabHtml = document.getElementById(tabela)

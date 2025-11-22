@@ -694,8 +694,7 @@ function telaConfiguracoes() {
     const acumulado = `
         <div class="painel-despesas">
             <br>
-            ${btn('carta', 'Configurações de E-mail', 'configuracoesEmails()')}
-            ${btn('preco', 'Tabelas de Preço', 'telaPrecos()')}
+            ${btn('preco', 'Configuração da Tarefas', 'telaPrecos()')}
             ${btn('niveis', 'Níveis de Acesso', 'telaNiveis()')}
         </div>
     `

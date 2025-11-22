@@ -13,9 +13,18 @@
     background-color: #b1b1b1;
 }
 
-.total-composicao{
+.total-composicao {
     margin: 0.5rem;
     padding: 5px;
     border-radius: 3px;
     background-color: orange;
+}
+
+.edicao-duracao {
+    display: none;
+    width: 100%;
+    background-color: #efefef;
+    border: solid 1px #797979;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
 }
