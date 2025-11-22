@@ -564,22 +564,53 @@ button {
 }
 
 .toolbarPopup {
-    cursor: pointer;
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 40px;
+    /* área principal | botão (X) */
+    align-items: center;
+    width: 100%;
+    min-height: 35px;
+    color: white;
+    background: #3b444c;
     border-top-left-radius: 5px;
     border-top-right-radius: 5px;
-    justify-content: space-between;
     border-bottom: 1px solid #d2d2d2;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    color: white;
-    background: linear-gradient(to left, #B12425 10%, #3b444c 0%);
-    min-height: 35px;
+    overflow: hidden;
 }
 
-.toolbarPopup span {
+.toolbarPopup::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 40px;
+    background: #B12425;
+    border-top-right-radius: 5px;
+    z-index: 0;
+}
+
+.toolbarPopup>* {
+    position: relative;
+    z-index: 1;
+}
+
+.toolbarPopup .title {
     font-size: 1rem;
-    color: white;
+    justify-self: center;
+}
+
+.toolbarPopup .close {
+    font-size: 1rem;
+    width: 40px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: transparent;
+    border: none;
 }
 
 .botaoPopup {
@@ -922,6 +953,7 @@ input[type="file"] {
 }
 
 .bloco span {
+    font-size: 1.2rem;
     color: #fd6828;
 }
 
@@ -1105,7 +1137,6 @@ screen and (min-aspect-ratio: 13/9) {
 
     .painel-1-tarefas {
         grid-template-columns: repeat(4, 1fr);
-        gap: 2vw;
     }
 
     .loginBloco {

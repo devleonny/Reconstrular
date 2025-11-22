@@ -337,8 +337,8 @@ function popup(elementoHTML, titulo, naoRemoverAnteriores) {
                 
                 <div class="toolbarPopup">
 
-                    <div style="width: 90%;">${titulo || 'Popup'}</div>
-                    <span style="width: 10%" onclick="removerPopup()">×</span>
+                    <div class="title">${titulo || 'Popup'}</div>
+                    <span class="close" onclick="removerPopup()">×</span>
 
                 </div>
                 
@@ -1246,6 +1246,15 @@ async function abrirCamera() {
     }
 }
 
+function encerrarCam() {
+
+    if (stream) stream.getTracks().forEach(track => track.stop());
+    const cameraDiv = document.querySelector('.cameraDiv');
+    if (cameraDiv) cameraDiv.style.display = 'none'
+
+}
+
+
 async function tirarFoto() {
     const cameraDiv = document.querySelector('.cameraDiv');
     const canvas = cameraDiv.querySelector('canvas');
@@ -1258,8 +1267,13 @@ async function tirarFoto() {
     fotoFinal.src = canvas.toDataURL('image/png');
     fotoFinal.style.display = 'block';
 
-    stream.getTracks().forEach(track => track.stop());
-    cameraDiv.style.display = 'none'
+    encerrarCam()
+
+    setTimeout(() => {
+
+        encerrarCam()
+
+    }, 2 * 60 * 1000)
 
 }
 
@@ -1624,18 +1638,16 @@ async function receber(chave) {
         if (objeto.timestamp && objeto.timestamp > timestamp) timestamp = objeto.timestamp
     }
 
-    const objeto = {
-        servidor,
-        chave: chave,
-        timestamp: timestamp
-    }
-
     const obs = {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify(objeto)
+        body: JSON.stringify({
+            servidor,
+            chave,
+            timestamp
+        })
     }
 
     return new Promise((resolve, reject) => {
@@ -1785,31 +1797,6 @@ async function configuracoes(usuario, campo, valor) {
                 reject()
             });
     })
-}
-
-function filtrar() {
-    const inputEtapa = document.querySelector('[name="etapa"]');
-    const inputConcluido = document.querySelector('[name="concluido"]');
-    const tbody = document.getElementById('bodyTarefas');
-    if (!tbody) return;
-
-    const etapaChecked = !!inputEtapa?.checked;
-    const concluidoChecked = !!inputConcluido?.checked;
-
-    const linhas = tbody.querySelectorAll('tr');
-
-    linhas.forEach(tr => {
-        const etapaAttr = (tr.dataset.etapa || '').toLowerCase();
-        const concluidoAttr = (tr.dataset.concluido || '').toLowerCase();
-
-        let mostrar = true;
-
-        if (etapaChecked && etapaAttr !== 'sim') mostrar = false;
-
-        if (concluidoChecked && concluidoAttr === 'sim') mostrar = false;
-
-        tr.style.display = mostrar ? '' : 'none';
-    });
 }
 
 function pesquisar(input, idTbody) {
@@ -2013,7 +2000,7 @@ async function blocoAuxiliarFotos(fotos) {
                 </div>
             </div>
             `
-        popup(popupCamera, 'Captura', true)
+        popup(popupCamera, 'Registrar Fotos', true)
         await abrirCamera()
     }
 
@@ -2042,52 +2029,6 @@ async function fotoTarefa() {
 
     removerPopup()
     visibilidadeFotos()
-
-}
-
-async function pdfObra(idObra, modalidade) {
-
-    overlayAguarde();
-
-    let requisicao = {
-        idObra,
-        documento: 'relatorio',
-        servidor
-    }
-
-    if (modalidade == 'email') {
-        const configuracoes = await recuperarDados('configuracoes')
-        if (!configuracoes.emailFolha || configuracoes.emailFolha == '') return popup(mensagem('Configure um e-mail para recebimento das Folhas'), 'Alerta', true)
-        requisicao.email = configuracoes.emailFolha
-    }
-
-    if (!requisicao.email) {
-        fetch(`${api}/documentos-massa`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requisicao)
-        })
-            .then(res => res.blob())
-            .then(blob => {
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = `teste.pdf`;
-                link.click();
-                URL.revokeObjectURL(url);
-                removerOverlay();
-            });
-    } else {
-        fetch(`${api}/documentos-massa`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requisicao)
-        })
-            .then(res => res.json())
-            .then(data => {
-                popup(mensagem(data.mensagem, 'imagens/concluido.png'), 'Envio por E-mail')
-            });
-    }
 
 }
 

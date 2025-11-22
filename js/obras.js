@@ -1,3 +1,5 @@
+let idObraAtual = null
+
 async function telaObras() {
 
     mostrarMenus()
@@ -34,10 +36,14 @@ async function criarLinhaObras(id, obra) {
 
     const distrito = dados_distritos?.[obra?.distrito] || {}
     const cidades = distrito?.cidades?.[obra?.cidade] || {}
-    const resultado = await atualizarToolbar(id, false, true)
-    const porcentagem = Number(resultado.porcentagemAndamento)
+    const resultado = obra?.resultado || {}
+    const porcentagem = Number(resultado?.porcentagem || 0)
     const cliente = await recuperarDado('dados_clientes', obra.cliente)
-    const st = porcentagem == 100 ? 'Por Iniciar' : 'Em Andamento'
+    const st = porcentagem == 0
+        ? 'Por Iniciar'
+        : porcentagem > 0
+            ? 'Em Andamento'
+            : 'Finalizado'
 
     tds = `
         <td>${cliente?.nome || '--'}</td>
@@ -48,7 +54,7 @@ async function criarLinhaObras(id, obra) {
         </td>
         <td style="text-align: left;">
             <span class="${st.replace(' ', '_')}">${st}</span>
-            ${resultado.totais.excedente ? '<span class="excedente">Excedente</span>' : ''}
+            ${resultado?.excedente ? '<span class="excedente">Excedente</span>' : ''}
         </td>
         <td></td>
         <td></td>
@@ -161,28 +167,27 @@ async function vincularOrcamento(input, idObra, idOrcamento) {
 
 async function verAndamento(id) {
 
+    idObraAtual = id
+
     titulo.textContent = 'Lista de Tarefas'
 
     const acumulado = `
 
         <div class="painel-1-tarefas">
-            <input placeholder="Pesquisa" oninput="pesquisar(this, 'bodyTarefas')">
-            <select id="etapas" onchange="atualizarToolbar('${id}', this.value); carregarLinhas('${id}', this.value)"></select>
-            <button style="background-color: red;" onclick="pdfObra('${id}')">Exportar PDF</button>
-            <button style="background-color: red;" onclick="pdfObra('${id}', 'email')">Enviar PDF</button>
-            <input type="file" id="arquivoExcel" accept=".xls,.xlsx" style="display:none" onchange="enviarExcel('${id}')">
-            <button style="background-color: #249f41;" onclick="document.getElementById('arquivoExcel').click()">Importar Excel</button>
-            <button style="background-color: #222;" onclick="telaObras()">Voltar</button>
+            <input placeholder="Pesquisa" oninput="pesquisarObras(this)">
+            <select id="etapas" onchange="atualizarToolbar({nomeTarefa: this.value})"></select>
+            <button style="background-color: red;" onclick="pdfObra()">Exportar PDF</button>
+            <button onclick="telaObras()">Voltar</button>
         </div>
 
         <div id="resumo" class="painel-1-tarefas"></div>
 
-        <div style="${horizontal}; gap: 2vw;">
-            <div style="${horizontal}; gap: 1vw;">
+        <div style="${horizontal}; gap: 1rem;">
+            <div style="${horizontal}; gap: 1rem;">
                 <input type="checkbox" name="etapa" onchange="filtrar()">
                 <span>Exibir somente as etapas</span>
             </div>
-            <div style="${horizontal}; gap: 1vw;">
+            <div style="${horizontal}; gap: 1rem;">
                 <input type="checkbox" name="concluido" onchange="filtrar()">
                 <span>Ocultar etapa concluídas</span>
             </div>
@@ -195,9 +200,49 @@ async function verAndamento(id) {
     const acompanhamento = document.querySelector('.acompanhamento')
     if (!acompanhamento) telaInterna.innerHTML = `<div class="acompanhamento">${acumulado}</div>`
 
-    await atualizarToolbar(id)
     await carregarLinhasAndamento(id)
+    await atualizarToolbar()
 
+}
+
+async function pdfObra() {
+    const acompanhamento = document.querySelector('.acompanhamento')
+
+    const html = `
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/estilo.css">
+      </head>
+      <body>
+        ${acompanhamento.outerHTML}
+      </body>
+    </html>
+  `
+
+    await pdf(html)
+}
+
+function filtrar() {
+    const inputEtapa = document.querySelector('[name="etapa"]')
+    const inputConcluido = document.querySelector('[name="concluido"]')
+    const etapaChecked = !!inputEtapa?.checked
+    const concluidoChecked = !!inputConcluido?.checked
+
+    const linhas = document.querySelectorAll('tr')
+
+    linhas.forEach(tr => {
+        const etapaAttr = tr.dataset.etapa || ''
+        const concluidoAttr = tr.dataset.concluido || ''
+
+        let mostrar = true
+
+        if (etapaChecked && etapaAttr !== 'S') mostrar = false
+
+        if (concluidoChecked && concluidoAttr == 'S') mostrar = false
+
+        tr.style.display = mostrar ? '' : 'none'
+    })
 }
 
 async function carregarLinhasAndamento(idObra) {
@@ -221,7 +266,7 @@ async function carregarLinhasAndamento(idObra) {
         const grupos = {}
 
         // Agrupa por especialidade
-        for (const [nomeZona, dadosZona] of Object.entries(orcamento?.zonas || {})) {
+        for (const [, dadosZona] of Object.entries(orcamento?.zonas || {})) {
             for (const [idDescricao, dadosDescricao] of Object.entries(dadosZona)) {
                 const campo = campos[idDescricao]
                 const esp = campo?.especialidade || "SEM ESPECIALIDADE"
@@ -250,7 +295,11 @@ async function carregarLinhasAndamento(idObra) {
                 tbody.appendChild(trEsp)
             }
 
+            trEsp.dataset.descricao = especialidade
+            trEsp.dataset.especialidade = especialidade
+            trEsp.dataset.etapa = 'N'
             trEsp.style.backgroundColor = '#efefef'
+
             trEsp.innerHTML = `
                 <td></td>
                 <td>1.0</td>
@@ -278,15 +327,26 @@ async function carregarLinhasAndamento(idObra) {
                 const qtdeRealizada = obra?.andamento?.[idOrcamento]?.[item.idDescricao]?.realizado || 0
                 const totalOrcado = item?.dados?.unidades || 0
 
-                const porcent = qtdeRealizada == 0
-                    ? 0
-                    : ((qtdeRealizada / totalOrcado) * 100).toFixed(0)
-
                 const riscado = !!obra?.andamento?.[idOrcamento]?.[item.idDescricao]?.removido
                 const estilo = riscado ? 'style="text-decoration: line-through"' : ''
+                const fotos = !!obra?.andamento?.[idOrcamento]?.[item.idDescricao]?.fotos
+                const icoCam = fotos ? 'concluido' : 'cam'
+                const concluido = !!obra?.andamento?.[idOrcamento]?.[item.idDescricao]?.concluido
+
+                const porcent = concluido
+                    ? 100
+                    : qtdeRealizada == 0
+                        ? 0
+                        : ((qtdeRealizada / totalOrcado) * 100).toFixed(0)
+
+                tr.dataset.concluido = porcent >= 100 ? 'S' : 'N'
+                tr.dataset.etapa = 'S'
+                tr.dataset.especialidade = especialidade
+
+                const params = `'${idObra}', '${idOrcamento}', '${item.idDescricao}'`
 
                 tr.innerHTML = `
-                    <td><input type="checkbox" style="width: 1.5rem; height: 1.5rem"></td>
+                    <td><input onchange="marcarConclusao(this, ${params})" ${concluido ? 'checked' : ''} type="checkbox" style="width: 1.5rem; height: 1.5rem"></td>
 
                     <td ${estilo}>${ordem}</td>
 
@@ -298,13 +358,16 @@ async function carregarLinhasAndamento(idObra) {
                     </td>
 
                     <td style="text-align: center;">${totalOrcado} / ${qtdeRealizada}</td>
-                    <td>${porcentagemHtml(porcent)}</td>
+                    <td>
+                        <input name="porcentagem" style="display: none;" type="number" value="${porcent}">
+                        ${porcentagemHtml(porcent)}
+                    </td>
 
                     <td>
                         <div class="gerenciar">
-                            <img onclick="gerenciar('${idObra}', '${idOrcamento}', '${item.idDescricao}')" src="imagens/lapis.png">
-                            <img onclick="painelFotos('${idObra}', '${idOrcamento}', '${item.idDescricao}')" src="imagens/cam.png">
-                            <img onclick="riscarItem('${idObra}', '${idOrcamento}', '${item.idDescricao}')" src="imagens/fechar.png">
+                            <img onclick="gerenciar(${params})" src="imagens/lapis.png">
+                            <img onclick="painelFotos(${params})" src="imagens/${icoCam}.png">
+                            <img onclick="riscarItem(${params})" src="imagens/fechar.png">
                         </div>
                     </td>
                 `
@@ -317,6 +380,21 @@ async function carregarLinhasAndamento(idObra) {
 
         tabTarefas.appendChild(blocoOrc)
     }
+}
+
+async function marcarConclusao(input, idObra, idOrcamento, idDescricao) {
+    const obra = await recuperarDado('dados_obras', idObra)
+
+    obra.andamento ??= {}
+    obra.andamento[idOrcamento] ??= {}
+
+    const item = obra.andamento[idOrcamento][idDescricao] ??= {}
+    item.concluido = input.checked
+
+    await inserirDados({ [idObra]: obra }, 'dados_obras')
+
+    await verAndamento(idObra)
+
 }
 
 async function riscarItem(idObra, idOrcamento, idDescricao) {
@@ -339,7 +417,7 @@ async function painelFotos(idObra, idOrcamento, idDescricao) {
     const obra = await recuperarDado('dados_obras', idObra)
     const fotos = obra.andamento[idOrcamento][idDescricao].fotos ??= {}
     const linhas = [{ elemento: await blocoAuxiliarFotos(fotos || {}) }]
-    const botoes = [{ texto: 'Salvar', img: 'concluido', funcao: `salvarFotos('${idObra}', '${idOrcamento}', '${item.idDescricao}')` }]
+    const botoes = [{ texto: 'Salvar', img: 'concluido', funcao: `salvarFotos('${idObra}', '${idOrcamento}', '${idDescricao}')` }]
 
     const form = new formulario({ linhas, botoes, titulo: 'Painel de Fotos' })
     form.abrirFormulario()
@@ -354,32 +432,35 @@ async function salvarFotos(idObra, idOrcamento, idDescricao) {
 
     const fotos = document.querySelector('.fotos')
     const imgs = fotos.querySelectorAll('img')
-    let album = {}
+
+    const album = {}
+
     if (imgs.length > 0) {
         for (const img of imgs) {
-            if (img.dataset && img.dataset.salvo == 'sim') continue
+            if (img.dataset?.salvo === 'sim') continue
+
             const foto = await importarAnexos({ foto: img.src })
             album[foto[0].link] = foto[0]
         }
     }
 
     const obra = await recuperarDado('dados_obras', idObra)
-    const albumExistente = obra.andamento[idOrcamento][idDescricao].fotos ??= {}
 
-    albumExistente = {
-        ...albumExistente,
+    obra.andamento[idOrcamento][idDescricao].fotos = {
+        ...(obra.andamento[idOrcamento][idDescricao].fotos ?? {}),
         ...album
     }
 
     await inserirDados({ [idObra]: obra }, 'dados_obras')
     removerPopup()
-
 }
 
 async function gerenciar(idObra, idOrcamento, idDescricao) {
 
+    const obra = await recuperarDado('dados_obras', idObra)
+    const quantidade = obra?.andamento?.[idOrcamento]?.[idDescricao]?.realizado || 0
     const funcao = `salvarAndamento('${idObra}', '${idOrcamento}', '${idDescricao}')`
-    const linhas = [{ texto: 'Quantidade', elemento: `<input type="number" id="qtdeRealizada">` }]
+    const linhas = [{ texto: 'Quantidade', elemento: `<input type="number" id="qtdeRealizada" value="${quantidade}">` }]
     const botoes = [{ texto: 'Salvar', img: 'concluido', funcao }]
 
     const form = new formulario({ linhas, botoes, titulo: 'Gerenciar quantidade', funcao: `verAndamento('${idObra}')` })
@@ -406,11 +487,36 @@ async function salvarAndamento(idObra, idOrcamento, idDescricao) {
     await verAndamento(idObra)
 }
 
-async function atualizarToolbar(id, nomeEtapa, resumo) {
+function pesquisarObras(input) {
+    const termo = input.value.trim().toLowerCase()
+    const trs = document.querySelectorAll('tr')
 
-    const obra = await recuperarDado('dados_obras', id)
-    if (!obra.etapas) obra.etapas = {}
-    if (nomeEtapa && nomeEtapa.includes('Todas')) nomeEtapa = false
+    trs.forEach(tr => {
+        const tds = tr.querySelectorAll('td')
+        let encontrou = false
+
+        tds.forEach(td => {
+            let texto = td.textContent.trim().toLowerCase()
+
+            const inputInterno = td.querySelector('input, textarea, select')
+            if (inputInterno) {
+                texto += ' ' + inputInterno.value.trim().toLowerCase()
+            }
+
+            if (termo && texto.includes(termo)) {
+                encontrou = true;
+            }
+        });
+
+        tr.style.display = (!termo || encontrou) ? '' : 'none' // mostra
+
+    })
+}
+
+async function atualizarToolbar({ nomeTarefa } = {}) {
+
+    if (nomeTarefa && nomeTarefa.includes('Todas')) nomeTarefa = false
+    const linhas = document.querySelectorAll('tr')
 
     const bloco = (texto, valor) => `
         <div class="bloco">
@@ -428,48 +534,63 @@ async function atualizarToolbar(id, nomeEtapa, resumo) {
         porcentagemConcluido: 0
     }
 
-    const etapas = ['Todas as tarefas']
+    const tarefas = ['Todas as tarefas']
+    let excedente = false
 
-    etapasProvisorias = {} // Resetar esse objeto;
-    for (let [idEtapa, dados] of Object.entries(obra.etapas)) {
+    for (let linha of linhas) {
 
-        const etapaAtual = dados.descricao
-        etapas.push(etapaAtual)
-        etapasProvisorias[idEtapa] = dados.descricao
+        const descricao = linha.dataset.descricao
+        const especialidade = linha.dataset.especialidade
 
-        if (nomeEtapa && nomeEtapa !== etapaAtual) continue
+        linha.style.display = (nomeTarefa && nomeTarefa !== especialidade) ? 'none' : ''
 
-        const tarefas = Object.entries(dados?.tarefas || [])
-        totais.tarefas += tarefas.length
+        const tipo = linha.dataset.etapa == 'S' ? 'etapa' : 'especialidade'
 
-        for (const [, tarefa] of tarefas) {
-
-            if (tarefa.concluido) {
-                totais.concluido++
-            } else if (tarefa.porcentagem == 0) {
-                totais.naoIniciado++
-            } else if (tarefa.porcentagem !== 0 && tarefa.porcentagem < 100) {
-                totais.emAndamento++
-            } else if (tarefa.porcentagem >= 100) {
-                totais.concluido++
-            }
-
-            if (tarefa.porcentagem > 100) {
-                totais.excedente++
-            }
-
-            const progressoTarefa = Math.min(100, tarefa.porcentagem)
-            totais.porcentagemConcluido += progressoTarefa
+        if (tipo !== 'etapa') {
+            tarefas.push(descricao)
+            continue
         }
+
+        //Salvar os stats e usar eles na tabela principal;
+        const porcentagem = Number(linha.querySelector('[name="porcentagem"]').value)
+
+        totais.porcentagemConcluido += porcentagem > 100 ? 100 : porcentagem
+        totais.tarefas++
+
+        if (porcentagem >= 100) {
+            totais.concluido++
+        } else if (porcentagem == 0) {
+            totais.naoIniciado++
+        } else if (porcentagem !== 0 && porcentagem < 100) {
+            totais.emAndamento++
+        } else if (porcentagem >= 100) {
+            totais.concluido++
+        }
+
+        if (porcentagem > 100) {
+            excedente = true
+            totais.excedente++
+        }
+
     }
 
-    const emPorcentagemConcluido = totais.porcentagemConcluido / 100
-    const porcentagemAndamento = emPorcentagemConcluido == 0 ? 0 : ((emPorcentagemConcluido / totais.tarefas) * 100).toFixed(0)
+    const emPorcentagemConcluido = totais.porcentagemConcluido
+    const porcentagemAndamento = emPorcentagemConcluido == 0 ? 0 : (emPorcentagemConcluido / totais.tarefas).toFixed(0)
 
-    if (resumo) return { porcentagemAndamento, totais }
+    const obra = await recuperarDado('dados_obras', idObraAtual)
+    obra.resultado ??= {}
+    const resultado = {
+        porcentagem: porcentagemAndamento,
+        excedente
+    }
 
-    const opcoes = etapas
-        .map(op => `<option ${nomeEtapa == op ? 'selected' : ''}>${op}</option>`)
+    obra.resultado = resultado
+
+    await inserirDados({ [idObraAtual]: obra }, 'dados_obras')
+    enviar(`dados_obras/${idObraAtual}/acompanhamento/resultado`, resultado)
+
+    const opcoes = [... new Set(tarefas)]
+        .map(op => `<option ${nomeTarefa == op ? 'selected' : ''}>${op}</option>`)
         .join('')
 
     document.getElementById('etapas').innerHTML = opcoes
@@ -498,4 +619,37 @@ function porcentagemHtml(percentual) {
         </div>
     </div>
   `
+}
+
+async function pdf(html) {
+
+    if (!html) return
+
+    overlayAguarde()
+
+    try {
+
+        const response = await fetch(`${api}/pdf`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ html })
+        })
+
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'documento.pdf'
+        a.click()
+
+        URL.revokeObjectURL(url)
+
+        removerOverlay()
+    } catch (err) {
+        popup(mensagem(err), 'Alerta', true)
+    }
+
 }
