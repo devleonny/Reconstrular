@@ -252,6 +252,8 @@ async function carregarLinhasAndamento(idObra) {
     const campos = await recuperarDados('campos')
 
     const tabTarefas = document.querySelector('.tabTarefas')
+    if(!tabTarefas) return
+
     tabTarefas.innerHTML = ''
 
     for (const [idOrcamento, status] of Object.entries(obra?.orcamentos_vinculados || {})) {
@@ -260,6 +262,8 @@ async function carregarLinhasAndamento(idObra) {
 
         const orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
 
+        if(!orcamento) continue
+        
         const blocoOrc = document.createElement('div')
         blocoOrc.className = 'orcamento-bloco'
         blocoOrc.innerHTML = `<h2>Orçamento: ${orcamento.nome || idOrcamento}</h2>`
@@ -689,7 +693,7 @@ async function telaCronograma(idObra) {
                 <tr>
                     <td style="color: white;">Data de Início</td>
                     <td style="background-color: white;">
-                        <input type="date">
+                        <input type="date" id="dtInicio" onchange="salvarDtInicio(this, '${idObra}')" value="${obra?.dtInicio || ''}">
                     </td>
                 </tr>
                 <tr>
@@ -699,14 +703,13 @@ async function telaCronograma(idObra) {
             </tbody>
         </table>
     `
-
     const colunas = [
-        'Ação', 
-        'Zonas', 
-        'Especialidades', 
-        'Descrição do Serviço', 
-        'Medida', 
-        'Quantidade', 
+        'Ação',
+        'Zonas',
+        'Especialidades',
+        'Descrição do Serviço',
+        'Medida',
+        'Quantidade',
         'Tempo (hh:mm)',
         'Início',
         'Fim',
@@ -718,8 +721,10 @@ async function telaCronograma(idObra) {
         'Sábado',
         'Domingo'
     ]
+
     const campos = await recuperarDados('campos')
-    let linhas = ''
+
+    let linhas = montarSemana(obra?.dtInicio || new Date())
 
     // Em cada orçamento vinculado;
     for (const [idOrcamento, status] of Object.entries(obra?.orcamentos_vinculados || {})) {
@@ -743,17 +748,11 @@ async function telaCronograma(idObra) {
                         <td>${dadosCampo?.especialidade || ''}</td>
                         <td>${dadosCampo?.descricao || ''}</td>
                         <td>${dadosCampo?.medida || ''}</td>
-                        <td>${dados?.unidades || ''}</td>
-                        <td>${calcularDuracao(dados?.unidades, dadosCampo?.duracao)}</td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
+                        <td name="qtde">${dados?.unidades || 0}</td>
+                        <td name="duracao">${calcularDuracao(dados?.unidades, dadosCampo?.duracao)}</td>
+                        <td name="inicio"></td>
+                        <td name="fim"></td>
+                        ${['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'].map(op => `<td name="${op}"></td>`).join('')}
                     </tr>
                 `
             }
@@ -767,7 +766,7 @@ async function telaCronograma(idObra) {
                     ${colunas.map(col => `<th>${col}</th>`).join('')}
                 </tr>
             </thead>
-            <tbody>${linhas}</tbody>
+            <tbody id="itens">${linhas}</tbody>
         </table>
     `
 
@@ -787,14 +786,133 @@ async function telaCronograma(idObra) {
 
     acompanhamento.innerHTML = acumulado
 
+    pintarCronograma()
+
 }
 
-function calcularDuracao(quantidade = 0, duracao = '00:00') {
-    const [h, m] = duracao.split(':').map(Number)
-    const minutosTotais = (h * 60 + m) * quantidade
+function montarSemana(dataStr) {
+    const data = new Date(dataStr + 'T00:00')
+    const ordem = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
+    const posicaoInicial = ordem[data.getDay()]
 
-    const horas = Math.floor(minutosTotais / 60)
-    const minutos = minutosTotais % 60
+    const dias = Array.from({ length: 7 }, () => '')
 
-    return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`
+    let atual = new Date(data)
+    for (let i = posicaoInicial; i < 7; i++) {
+        dias[i] = atual.toLocaleDateString('pt-BR')
+        atual.setDate(atual.getDate() + 1)
+    }
+
+    let tds = ''
+
+    for (let i = 0; i <= 8; i++) tds += `<td></td>`
+
+    tds += dias.map(d => `<td>${d}</td>`).join('')
+
+    return `<tr>${tds}</tr>`
+}
+
+async function salvarDtInicio(input, idObra) {
+
+    const obra = await recuperarDado('dados_obras', idObra)
+    obra.dtInicio = input.value
+    enviar(`dados_obras/${idObra}/dtInicio`, input.value)
+    await inserirDados({ [idObra]: obra }, 'dados_obras')
+
+}
+
+function calcularDuracao(q = 0, d = '00:00') {
+    if (!d) return '00:00'
+    const [h, m] = d.split(':').map(Number)
+    const total = (h * 60 + m) * q
+    return [
+        String(Math.floor(total / 60)).padStart(2, '0'),
+        String(total % 60).padStart(2, '0')
+    ].join(':')
+}
+
+// helpers
+function hhmmParaMinutos(hhmm = '00:00') {
+    const [h = 0, m = 0] = hhmm.split(':').map(Number);
+    return (Number(h) * 60) + Number(m);
+}
+function dataParaPtBR(d) {
+    return d.toLocaleDateString('pt-BR');
+}
+function addDias(data, dias) {
+    const d = new Date(data);
+    d.setDate(d.getDate() + dias);
+    return d;
+}
+
+// pinta os dias do cronograma em sequência, com base na duração (divide por 8h)
+function pintarCronograma() {
+    const dtInicioEl = document.getElementById('dtInicio');
+    const dtInicioVal = dtInicioEl?.value || new Date().toISOString().slice(0, 10);
+    const inicio = new Date(dtInicioVal + 'T00:00');
+
+    const ordem = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 };
+    const posicaoInicial = ordem[inicio.getDay()]; // 0..6 onde 0 -> seg
+
+    const rows = Array.from(document.querySelectorAll('#itens tr')).filter(tr => {
+        // ignora a linha de cabeçalho das datas (se existir como primeira)
+        return tr.querySelector('[name="qtde"]') || tr.querySelector('[name="duracao"]');
+    });
+
+    // zera estilos das colunas de dias antes de pintar
+    for (const tr of rows) {
+        ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'].forEach(dia => {
+            const cell = tr.querySelector(`[name="${dia}"]`);
+            if (cell) {
+                cell.style.background = '';
+                cell.textContent = '';
+            }
+        });
+        // limpa inicio/fim
+        const ini = tr.querySelector('[name="inicio"]');
+        const fim = tr.querySelector('[name="fim"]');
+        if (ini) ini.textContent = '';
+        if (fim) fim.textContent = '';
+    }
+
+    let ponteiroDias = 0; // quantos dias já usados desde posicaoInicial
+    for (const tr of rows) {
+        const duracaoTxt = (tr.querySelector('[name="duracao"]')?.textContent || '00:00').trim();
+        const minutos = hhmmParaMinutos(duracaoTxt);
+        const diasNecessarios = minutos === 0 ? 0 : Math.ceil(minutos / (8 * 60));
+
+        if (diasNecessarios <= 0) continue;
+
+        const inicioIndexNoHeader = posicaoInicial + ponteiroDias; // 0..6 (onde 0 = seg)
+        if (inicioIndexNoHeader > 6) {
+            // já passou o domingo, nada a pintar (conforme sua regra "até o domingo e pronto")
+            continue;
+        }
+
+        const fimIndexNoHeader = Math.min(6, inicioIndexNoHeader + diasNecessarios - 1);
+
+        const diasNomes = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
+        // pinta as células correspondentes
+        for (let idx = inicioIndexNoHeader; idx <= fimIndexNoHeader; idx++) {
+            const nome = diasNomes[idx];
+            const cell = tr.querySelector(`[name="${nome}"]`);
+            if (cell) {
+                cell.style.background = '#ffd10088';
+                cell.textContent = ''; // opcional: mantive vazio mas tu pode colocar algo
+            }
+        }
+
+        // escreve inicio e fim (datas no formato pt-BR)
+        const dtIni = addDias(inicio, inicioIndexNoHeader - posicaoInicial);
+        const dtFim = addDias(inicio, fimIndexNoHeader - posicaoInicial);
+        const tdInicio = tr.querySelector('[name="inicio"]');
+        const tdFim = tr.querySelector('[name="fim"]');
+        if (tdInicio) tdInicio.textContent = dataParaPtBR(dtIni);
+        if (tdFim) tdFim.textContent = dataParaPtBR(dtFim);
+
+        // avança o ponteiro para o próximo item (o próximo começa depois do fim deste)
+        ponteiroDias += (fimIndexNoHeader - inicioIndexNoHeader + 1);
+        // se atingiu o domingo, nenhum outro item será pintado
+        if (posicaoInicial + ponteiroDias > 6) break;
+    }
 }

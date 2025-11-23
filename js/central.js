@@ -1672,11 +1672,11 @@ async function receber(chave) {
     })
 }
 
-async function deletar(chave) {
+async function deletar(caminho) {
     const url = `${api}/deletar`;
     const acesso = JSON.parse(localStorage.getItem('acesso'))
     const objeto = {
-        chave,
+        caminho,
         usuario: acesso.usuario,
         servidor
     }

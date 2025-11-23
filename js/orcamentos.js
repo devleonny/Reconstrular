@@ -1,4 +1,4 @@
-const voltarOrcamentos = `<button style="background-color: #3131ab;" onclick="telaOrcamentos()">Voltar</button>`
+const voltarOrcamentos = `<button onclick="telaOrcamentos()">Voltar</button>`
 let campos = {}
 let idOrcamento = null
 let zona1 = null
@@ -199,12 +199,11 @@ async function confirmarExclusaoOrcamento(idOrcamento) {
 }
 
 async function excluirOrcamento(idOrcamento) {
-
-    await deletar(`dados_orcamentos/${idOrcamento}`)
+    overlayAguarde()
+    deletar(`dados_orcamentos/${idOrcamento}`)
     await deletarDB('dados_orcamentos', idOrcamento)
     const tr = document.getElementById(idOrcamento)
     if (tr) tr.remove()
-    await orcamentos()
     removerPopup()
 }
 
