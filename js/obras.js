@@ -2,7 +2,6 @@ let idObraAtual = null
 
 async function telaObras() {
 
-    mostrarMenus()
     const nomeBase = 'dados_obras'
     titulo.textContent = 'Gerenciar Obras'
     const btnExtras = `<button onclick="adicionarObra()">Adicionar</button>`
@@ -95,16 +94,70 @@ async function adicionarObra(idObra) {
     ]
 
     const botoes = [
-        { funcao: idObra ? `'${idObra}'` : null, img: 'concluido', texto: 'Salvar' }
+        { funcao: idObra ? `salvarObra('${idObra}')` : null, img: 'concluido', texto: 'Salvar' }
     ]
 
-    const form = new formulario({ linhas, botoes, titulo: 'Adicionar Obra' })
+    if (idObra) botoes.push({ funcao: `confirmarExclusaoObra('${idObra}')`, img: 'cancel', texto: 'Excluir' })
+
+    const form = new formulario({ linhas, botoes, titulo: 'Formulário de Obra' })
     form.abrirFormulario()
 
     await carregarSelects({ ...obra })
 
     buscarDados()
 
+}
+
+async function salvarObra(idObra) {
+
+    overlayAguarde()
+
+    idObra = idObra || unicoID()
+    let obra = await recuperarDado('dados_obras', idObra) || {}
+
+    function obVal(name) {
+        const el = document.querySelector(`[name="${name}"]`)
+        if (el) return el.value
+    }
+
+    const camposFixos = ['distrito', 'cidade']
+
+    for (const campo of camposFixos) obra[campo] = obVal(campo)
+
+    const select = document.querySelector('[name="cliente"]')
+    const idCliente = select.options[select.selectedIndex].id
+    obra.cliente = idCliente
+
+    await enviar(`dados_obras/${idObra}`, obra)
+    await inserirDados({ [idObra]: obra }, 'dados_obras')
+
+    criarLinha(obra, idObra, 'dados_obras')
+
+    removerPopup()
+
+}
+
+function confirmarExclusaoObra(idObra) {
+    const acumulado = `
+        <div style="${horizontal}; gap: 0.5rem; background-color: #d2d2d2; padding: 1rem;">
+            <span>Tem certeza que deseja excluir?</span>
+            <button onclick="excluirObra('${idObra}')">Confirmar</button>
+        </div>
+    `
+
+    popup(acumulado, 'Tem certeza?', true)
+}
+
+async function excluirObra(idObra) {
+
+    overlayAguarde()
+    deletar(`dados_obras/${idObra}`)
+    await deletarDB(`dados_obras`, idObra)
+    await telaObras()
+
+    removerPopup()
+    removerPopup()
+    
 }
 
 async function painelVincularOrcamentos(idObra) {
@@ -136,15 +189,17 @@ async function painelVincularOrcamentos(idObra) {
         `
     }
 
-    const acumulado = `
-        <div style="${vertical}; padding: 0.5rem; background-color: #d2d2d2;">
-        
-            ${modeloTabela({
+    const params = {
         colunas: ['Selecione', 'Cliente', 'Contato', 'Visita', 'Valor'],
         body: 'orcs',
         removerPesquisa: true,
         linhas
-    })}
+    }
+
+    const acumulado = `
+        <div style="${vertical}; padding: 0.5rem; background-color: #d2d2d2;">
+        
+            ${modeloTabela(params)}
 
         </div>
     `
@@ -152,6 +207,8 @@ async function painelVincularOrcamentos(idObra) {
     popup(acumulado, 'Orçamentos desta Obra', acumulado)
 
 }
+
+
 
 async function vincularOrcamento(input, idObra, idOrcamento) {
 
@@ -165,7 +222,7 @@ async function vincularOrcamento(input, idObra, idOrcamento) {
     enviar(`dados_obras/${idObra}/orcamentos_vinculados/${idOrcamento}`, input.checked)
 }
 
-async function verAndamento(id) {
+async function verAndamento(id, resetar) {
 
     idObraAtual = id
 
@@ -199,7 +256,7 @@ async function verAndamento(id) {
     `
 
     const acompanhamento = document.querySelector('.acompanhamento')
-    if (!acompanhamento) telaInterna.innerHTML = `<div class="acompanhamento">${acumulado}</div>`
+    if (resetar || !acompanhamento) telaInterna.innerHTML = `<div class="acompanhamento">${acumulado}</div>`
 
     await carregarLinhasAndamento(id)
     await atualizarToolbar()
@@ -252,7 +309,7 @@ async function carregarLinhasAndamento(idObra) {
     const campos = await recuperarDados('campos')
 
     const tabTarefas = document.querySelector('.tabTarefas')
-    if(!tabTarefas) return
+    if (!tabTarefas) return
 
     tabTarefas.innerHTML = ''
 
@@ -262,8 +319,8 @@ async function carregarLinhasAndamento(idObra) {
 
         const orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
 
-        if(!orcamento) continue
-        
+        if (!orcamento) continue
+
         const blocoOrc = document.createElement('div')
         blocoOrc.className = 'orcamento-bloco'
         blocoOrc.innerHTML = `<h2>Orçamento: ${orcamento.nome || idOrcamento}</h2>`
@@ -775,7 +832,7 @@ async function telaCronograma(idObra) {
             <div style="${horizontal}; gap: 2rem;">
                 <button>Gravar</button>
                 <button>PDF</button>
-                <button onclick="verAndamento('${idObra}')">Voltar</button>
+                <button onclick="verAndamento('${idObra}', true)">Voltar</button>
             </div>
 
             ${tabInfos}

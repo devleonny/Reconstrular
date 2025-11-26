@@ -570,121 +570,6 @@ function pesquisarGenerico(coluna, texto, filtro, id) {
 
 }
 
-function telaClientes() {
-
-    mostrarMenus()
-
-    const acumulado = `
-        <div class="painel-despesas">
-            <br>
-            ${btn('pessoas', 'Inserir Cliente', 'formularioCliente()')}
-            ${btn('todos', 'Verificar Clientes', 'verificarClientes()')}
-        </div>
-    `
-
-    telaInterna.innerHTML = acumulado
-
-}
-
-async function verificarClientes() {
-
-    mostrarMenus()
-    const nomeBase = 'dados_clientes'
-    titulo.textContent = 'Verificar Clientes'
-    const acumulado = `
-        ${modeloTabela({ colunas: ['Nome', 'Morada Fiscal', 'Morada de Execução', 'E-mail', 'Telefone', ''], nomeBase, btnExtras: voltarClientes })}
-    `
-    telaInterna.innerHTML = acumulado
-
-    const dados = await recuperarDados(nomeBase)
-    for (const [id, dado] of Object.entries(dados).reverse()) criarLinha(dado, id, nomeBase)
-}
-
-async function formularioCliente(idCliente) {
-
-    mostrarMenus()
-
-    const cliente = await recuperarDado('dados_clientes', idCliente)
-
-    const modelo = (texto, valor) => `
-        <div style="${vertical}; padding: 10px;">
-            <span>${texto}</span>
-            <input oninput="regrasClientes()" placeholder="${texto}" name="${texto}" value="${valor || ''}">
-        </div>
-    `
-    titulo.textContent = 'Cadastro de Cliente'
-    const funcao = idCliente ? `salvarCliente('${idCliente}')` : 'salvarCliente()'
-    const acumulado = `
-    <div class="cabecalho-clientes">
-        ${voltarClientes}
-        <button onclick="${funcao}">Salvar</button>
-    </div>
-    <div class="painel-clientes">
-        ${modelo('Nome', cliente?.nome || '')}
-        ${modelo('Morada Fiscal', cliente?.moradaFiscal || '')}
-        ${modelo('Morada de Execução', cliente?.moradaExecucao || '')}
-        ${modelo('Número de Contribuinte', cliente?.numeroContribuinte || '')}
-        ${modelo('Telefone', cliente?.telefone || '')}
-        ${modelo('E-mail', cliente?.email || '')}
-    </div>
-    `
-
-    telaInterna.innerHTML = acumulado
-    regrasClientes()
-}
-
-function regrasClientes() {
-
-    const campos = ['Telefone', 'Número de Contribuinte']
-    const limite = 9
-    let bloqueio = false
-    for (const campo of campos) {
-
-        const el = document.querySelector(`[name="${campo}"]`)
-        el.value = el.value.replace(/\D/g, '');
-        if (el.value.length > limite) {
-            el.value = el.value.slice(0, limite);
-        }
-
-        if (el.value.length !== limite) {
-            el.classList.add('invalido')
-            bloqueio = true
-        } else {
-            el.classList.remove('invalido')
-        }
-
-    }
-
-    return bloqueio
-
-}
-
-async function salvarCliente(idCliente) {
-
-    if (regrasClientes()) return popup(mensagem('Verifique os campos destacados'), 'Alerta', true)
-
-    const obVal = (texto) => {
-        const el = document.querySelector(`[name="${texto}"]`)
-        return el.value
-    }
-
-    idCliente = idCliente || ID5digitos()
-    let cliente = {
-        nome: obVal('Nome'),
-        moradaFiscal: obVal('Morada Fiscal'),
-        moradaExecucao: obVal('Morada de Execução'),
-        numeroContribuinte: obVal('Número de Contribuinte'),
-        telefone: obVal('Telefone'),
-        email: obVal('E-mail')
-    }
-
-    await enviar(`dados_clientes/${idCliente}`, cliente)
-    await inserirDados({ [idCliente]: cliente }, 'dados_clientes')
-    await verificarClientes()
-    mostrarMenus()
-    popup(mensagem('Salvo com sucesso', 'imagens/concluido.png'), 'Salvo')
-}
-
 function telaConfiguracoes() {
 
     mostrarMenus(false)
@@ -906,36 +791,6 @@ async function carregarSelects({ select, cidade, distrito }) {
     selectCidade.innerHTML = opcoesCidade;
 }
 
-
-async function salvarObra(idObra) {
-
-    overlayAguarde()
-
-    idObra = idObra || unicoID()
-    let obra = await recuperarDado('dados_obras', idObra) || {}
-
-    function obVal(name) {
-        const el = document.querySelector(`[name="${name}"]`)
-        if (el) return el.value
-    }
-
-    const camposFixos = ['distrito', 'cidade']
-
-    for (const campo of camposFixos) obra[campo] = obVal(campo)
-
-    const select = document.querySelector('[name="cliente"]')
-    const idCliente = select.options[select.selectedIndex].id
-    obra.cliente = idCliente
-
-    await enviar(`dados_obras/${idObra}`, obra)
-    await inserirDados({ [idObra]: obra }, 'dados_obras')
-
-    criarLinha(obra, idObra, 'dados_obras')
-
-    removerPopup()
-
-}
-
 function deslogar() {
     localStorage.removeItem('acesso')
     telaLogin()
@@ -1136,16 +991,6 @@ async function criarLinha(dados, id, nomeBase) {
             <td>${dados?.numeroContribuinte || '--'}</td>
             <td>${distrito?.nome || '--'}</td>
             <td>${cidades?.nome || '--'}</td>
-        `
-
-    } else if (nomeBase == 'dados_clientes') {
-        funcao = `formularioCliente('${id}')`
-        tds = `
-            <td>${dados?.nome || '--'}</td>
-            <td>${dados?.moradaFiscal || '--'}</td>
-            <td>${dados?.moradaExecucao || '--'}</td>
-            <td>${dados?.email || '--'}</td>
-            <td>${dados?.telefone || '--'}</td>
         `
     } else if (nomeBase == 'materiais') {
         funcao = `adicionarMateriais('${id}')`
