@@ -1,4 +1,4 @@
-const voltar = `<button style="background-color: #3131ab;" onclick="telaDespesas()">Voltar</button>`
+const voltar = `<button onclick="telaDespesas()">Voltar</button>`
 let filtros = {}
 
 function telaDespesas() {
@@ -135,8 +135,13 @@ async function verificarDespesas() {
 }
 
 function htmlDespesas() {
-    const ano = document.querySelector('[name="ano"]').value
-    const mes = meses[document.querySelector('[name="mes"]').value]
+    const sAno = document.querySelector('[name="ano"]')
+    const sMes = document.querySelector('[name="mes"]')
+
+    if (sMes.value == '' || sAno.value == '') return popup(mensagem('Preencha os filtros'), 'Alerta', true)
+
+    const ano = sAno.value
+    const mes = meses[sMes.value]
     const colunas = ['Fornecedor', 'NIF', 'Valor', 'IVA', 'Ano', 'Mês', 'Data', 'Link Fatura', 'Tipo de Material']
     const linhas = document.querySelectorAll('#body tr')
 
@@ -152,7 +157,7 @@ function htmlDespesas() {
         const linAno = tds[4].textContent
         const linMes = tds[5].textContent
 
-        if (linAno !== ano && linMes !== linMes) continue
+        if (linAno !== ano || linMes !== mes) continue
 
         totais.faturado += conversor(tds[2].textContent)
         totais.iva += conversor(tds[3].textContent)
@@ -221,7 +226,7 @@ function htmlDespesas() {
     `
     const acumulado = `
         <div class="tela-pdf-despesas">
-            <img onclick="gerarPdfDespesas()" src="imagens/pdf.png" style="width: 3rem;">
+            <img onclick="gerarPdfDespesas()" src="imagens/pdf.png" style="position: fixed; bottom: 1rem; left: 1rem; width: 3rem;">
             <div class="pdf-despesas">
                 ${tabela1}
                 <br>
@@ -245,12 +250,18 @@ async function gerarPdfDespesas() {
             <head>
                 <meta charset="UTF-8">
                 <link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/despesas.css">
+                <style>
+                    @page {
+                        size: A4 landscape;
+                    }
+                    body { font-family: 'Poppins', sans-serif; }
+                </style>
             </head>
             <body>
                 ${pdfhtml.outerHTML}
             </body>
         </html>
-  `
+    `
 
     await pdf(html)
 
