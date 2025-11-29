@@ -157,7 +157,7 @@ async function excluirObra(idObra) {
 
     removerPopup()
     removerPopup()
-    
+
 }
 
 async function painelVincularOrcamentos(idObra) {

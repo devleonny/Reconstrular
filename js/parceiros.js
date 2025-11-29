@@ -11,8 +11,7 @@ async function telaUsuarios() {
                 .map(([id, dados]) => `<option id="${id}" value="${dados[chave]}">${dados[chave]}</option>`)
                 .join('')}
             </select>
-        </div>
-    `
+        </div>`
 
         return elemento
     }
@@ -113,50 +112,31 @@ async function editarParceiros(usuario) {
         ...Object.fromEntries(Object.entries(p).filter(([_, v]) => v !== '' && v != null))
     }
 
-    const modelo = (texto, elemento) => `
-        <div class="linha-padrao">
-            <span>${texto}</span>
-            ${elemento}
-        </div>
-    `
-
-    const acumulado = `
-        <div style="${vertical}; padding: 0.5rem; background-color: #d2d2d2;">
-
-            <div class="painel-padrao">
-
-                ${modelo('E-mail', `<input name="email" type="email" placeholder="E-mail" value="${parceiro?.email || ''}">`)}
-                ${modelo('Telefone', `<input name="telefone" placeholder="Telefone" value="${parceiro?.telefone || ''}">`)}
-
-                ${modelo('Função', `
+    const linhas = [
+        { texto: 'E-mail', elemento: `<input name="email" type="email" placeholder="E-mail" value="${parceiro?.email || ''}">` },
+        { texto: 'Telefone', elemento: `<input name="telefone" placeholder="Telefone" value="${parceiro?.telefone || ''}">` },
+        {
+            texto: 'Função', elemento: `
                     <select name="funcao">
                         <option></option>
                         ${Object.entries(funcoes).map(([id, dados]) => `<option id="${id}" ${parceiro?.funcao == id ? 'selected' : ''}>${dados.nome}</option>`).join('')}
                     </select>
-                `)}
+            `},
+        {texto: 'Distrito', elemento: `
+                <select name="distrito" onchange="cidadesDisponiveis(this)">
+                    <option></option>
+                    ${Object.entries(distritos).map(([id, dados]) => `<option id="${id}" ${parceiro?.distrito == id ? 'selected' : ''}>${dados.nome}</option>`).join('')}
+                </select>
+            `},
+        { texto: 'Cidade', elemento: `<select name="cidade"></select>` }
+    ]
 
-                ${modelo('Distrito', `
-                        <select name="distrito" onchange="cidadesDisponiveis(this)">
-                            <option></option>
-                            ${Object.entries(distritos).map(([id, dados]) => `<option id="${id}" ${parceiro?.distrito == id ? 'selected' : ''}>${dados.nome}</option>`).join('')}
-                        </select>
-                    `)}
+    const botoes = [
+        { texto: 'Salvar', img: 'concluido', funcao: `salvarParceiros('${usuario}')` }
+    ]
 
-                ${modelo('Cidade', `<select name="cidade"></select>`)}
-
-            </div>
-    
-        </div>
-        <div class="painel-padrao">
-
-            <div onclick="salvarParceiros('${usuario}')" class="botoes-rodape">
-                <img src="imagens/concluido.png">
-                <span>Salvar</span>
-            </div>
-        </div>
-    `
-
-    popup(acumulado, 'Gerenciar Parceiro', true)
+    const form = new formulario({ linhas, botoes, titulo: 'Gerenciar Parceiro' })
+    form.abrirFormulario()
 
     if (parceiro?.distrito) cidadesDisponiveis({ selectedOptions: [{ id: parceiro.distrito }] }, parceiro?.cidade)
 

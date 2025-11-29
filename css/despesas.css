@@ -36,9 +36,59 @@
     color: black;
 }
 
-@media screen and (orientation: landscape),
-screen and (min-aspect-ratio: 13/9) {
+.tabela-pdf {
+    width: 100%;
+    border-collapse: collapse;
+}
 
+.tabela-pdf td,
+th {
+    text-align: left;
+    border: solid 1px #797979;
+    padding: 5px;
+}
 
+.tabela-pdf .claro,
+th {
+    background-color: #deeaf6;
+}
 
+.tabela-pdf .vermelho {
+    text-align: center;
+    font-weight: bold;
+    font-size: 1rem;
+    color: white;
+    background-color: red;
+}
+
+.tabela-pdf .ver-claro {
+    text-align: center;
+    font-weight: bold;
+    font-size: 1rem;
+    color: red;
+}
+
+.tabela-pdf .escuro {
+    color: white;
+    background-color: #526471;
+}
+
+.tela-pdf-despesas {
+    gap: 1rem;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+    width: 95vw;
+    background-color: white;
+    padding: 0.5rem;
+    overflow: auto;
+}
+
+.pdf-despesas {
+    width: 100%;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
 }

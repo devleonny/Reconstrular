@@ -1,12 +1,34 @@
 async function telaClientes() {
 
-    const nomeBase = 'dados_clientes'
+    const clientes = await recuperarDados('dados_clientes')
+    const distritos = await recuperarDados('dados_distritos')
+
+    const filtros = ({ objeto = {}, chave, texto, config = '' }) => {
+
+        const elemento = `
+        <div class="filtro-tabela" style="${vertical}; gap: 2px; padding: 0.5rem;">
+            <span>${texto}</span>
+            <select onchange="aplicarFiltros()" ${config}>
+                <option value=""></option>
+                ${Object.entries(objeto)
+                .map(([id, dados]) => `<option id="${id}" value="${dados[chave]}">${dados[chave]}</option>`)
+                .join('')}
+            </select>
+        </div>`
+
+        return elemento
+    }
+
     titulo.textContent = 'Clientes'
 
-    const btnExtras = `<button onclick="formularioCliente()">Adicionar</button>`
+    const btnExtras = `
+        <button onclick="formularioCliente()">Adicionar</button>
+        ${filtros({ texto: 'Distrito', config: 'onclick="filtroCidadesCabecalho(this)"', objeto: distritos, chave: 'nome' })}
+        ${filtros({ texto: 'Cidade', config: 'name="cidade_filtro"' })}
+    `
 
     const params = {
-        colunas: ['Nome', 'Morada Fiscal', 'Morada de Execução', 'E-mail', 'Telefone', ''],
+        colunas: ['Nome', 'Morada Fiscal', 'Morada de Execução', 'Distrito', 'Cidade', 'E-mail', 'Telefone', ''],
         btnExtras
     }
 
@@ -14,19 +36,26 @@ async function telaClientes() {
 
     telaInterna.innerHTML = acumulado
 
-    const clientes = await recuperarDados(nomeBase)
-    for (const [idCliente, dados] of Object.entries(clientes).reverse()) criarLinhaClientes(idCliente, dados)
+    for (const [idCliente, dados] of Object.entries(clientes).reverse()) {
+
+        const d = distritos?.[dados?.distrito] || {}
+        const c = d?.cidades?.[dados?.cidade] || {}
+
+        criarLinhaClientes(idCliente, { ...dados, nomeDistrito: d.nome || '-', nomeCidade: c.nome || '-' })
+    }
 
 }
 
 function criarLinhaClientes(idCliente, dados) {
 
     tds = `
-        <td>${dados?.nome || '--'}</td>
-        <td>${dados?.moradaFiscal || '--'}</td>
-        <td>${dados?.moradaExecucao || '--'}</td>
-        <td>${dados?.email || '--'}</td>
-        <td>${dados?.telefone || '--'}</td>
+        <td>${dados?.nome || '-'}</td>
+        <td>${dados?.moradaFiscal || '-'}</td>
+        <td>${dados?.moradaExecucao || '-'}</td>
+        <td>${dados?.nomeDistrito || '-'}
+        <td>${dados?.nomeCidade || '-'}
+        <td>${dados?.email || '-'}</td>
+        <td>${dados?.telefone || '-'}</td>
         <td>
             <img onclick="formularioCliente('${idCliente}')" src="imagens/pesquisar.png">
         </td>
@@ -41,38 +70,57 @@ function criarLinhaClientes(idCliente, dados) {
 async function formularioCliente(idCliente) {
 
     const cliente = await recuperarDado('dados_clientes', idCliente)
-
-    const modelo = (texto, valor) => {
-        return {
-            texto,
-            elemento: `<input oninput="regrasClientes()" placeholder="${texto}" name="${texto}" value="${valor || ''}">`
-        }
-    }
-
     const botoes = [
         { texto: 'Salvar', img: 'concluido', funcao: idCliente ? `salvarCliente('${idCliente}')` : 'salvarCliente()' }
     ]
 
-    if (idCliente) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `` })
+    if (idCliente) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExclusaoCliente('${idCliente}')` })
 
     const linhas = [
-        modelo('Nome', cliente?.nome || ''),
-        modelo('Morada Fiscal', cliente?.moradaFiscal || ''),
-        modelo('Morada de Execução', cliente?.moradaExecucao || ''),
-        modelo('Número de Contribuinte', cliente?.numeroContribuinte || ''),
-        modelo('Telefone', cliente?.telefone || ''),
-        modelo('E-mail', cliente?.email || '')
+        { texto: 'Nome', elemento: `<textarea name="nome">${cliente?.nome || ''}</textarea>` },
+        { texto: 'Morada Fiscal', elemento: `<input oninput="regrasClientes()" name="moradaFiscal" value="${cliente?.moradaFiscal || ''}">` },
+        { texto: 'Morada de Execução', elemento: `<input oninput="regrasClientes()" name="moradaExecucao" value="${cliente?.moradaExecucao || ''}">` },
+        { texto: 'Número de Contribuinte', elemento: `<input oninput="regrasClientes()" name="numeroContribuinte" value="${cliente?.numeroContribuinte || ''}">` },
+        { texto: 'Telefone', elemento: `<input oninput="regrasClientes()" name="telefone" value="${cliente?.telefone || ''}">` },
+        { texto: 'E-mail', elemento: `<input oninput="regrasClientes()" name="email" value="${cliente?.email || ''}">` },
+        { texto: 'Distrito', elemento: `<select name="distrito" onchange="carregarSelects({select: this})"></select>` },
+        { texto: 'Cidade', elemento: `<select name="cidade"></select>` }
     ]
 
     const form = new formulario({ linhas, botoes, titulo: 'Formulário de Cliente' })
     form.abrirFormulario()
 
+    await carregarSelects({ ...cliente })
+
     regrasClientes()
+}
+
+function confirmarExclusaoCliente(idCliente) {
+    const acumulado = `
+        <div style="${horizontal}; gap: 1rem; background-color: #d2d2d2; padding: 1rem;">
+            <span>Tem certeza?</span>
+            <button onclick="excluirCliente('${idCliente}')">Confirmar</button>
+        </div>
+    `
+    popup(acumulado, 'Exclusão de Cliente', true)
+}
+
+async function excluirCliente(idCliente) {
+
+    overlayAguarde()
+
+    deletar(`dados_clientes/${idCliente}`)
+    await deletarDB(`dados_clientes`, idCliente)
+
+    removerPopup()
+    removerPopup()
+    await telaClientes()
+
 }
 
 function regrasClientes() {
 
-    const campos = ['Telefone', 'Número de Contribuinte']
+    const campos = ['telefone', 'numeroContribuinte']
     const limite = 9
     let bloqueio = false
     for (const campo of campos) {
@@ -107,17 +155,17 @@ async function salvarCliente(idCliente) {
 
     idCliente = idCliente || ID5digitos()
     let cliente = {
-        nome: obVal('Nome'),
-        moradaFiscal: obVal('Morada Fiscal'),
-        moradaExecucao: obVal('Morada de Execução'),
-        numeroContribuinte: obVal('Número de Contribuinte'),
-        telefone: obVal('Telefone'),
-        email: obVal('E-mail')
+        nome: obVal('nome'),
+        moradaFiscal: obVal('moradaFiscal'),
+        moradaExecucao: obVal('moradaExecucao'),
+        numeroContribuinte: obVal('numeroContribuinte'),
+        telefone: obVal('telefone'),
+        email: obVal('email'),
+        distrito: obVal('distrito'),
+        cidade: obVal('cidade')
     }
 
-    await enviar(`dados_clientes/${idCliente}`, cliente)
+    enviar(`dados_clientes/${idCliente}`, cliente)
     await inserirDados({ [idCliente]: cliente }, 'dados_clientes')
     await telaClientes()
-    mostrarMenus()
-    popup(mensagem('Salvo com sucesso', 'imagens/concluido.png'), 'Salvo')
 }

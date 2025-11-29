@@ -3,8 +3,6 @@ let filtros = {}
 
 function telaDespesas() {
 
-    mostrarMenus()
-
     const acumulado = `
         <div class="painel-despesas">
             <br>
@@ -26,7 +24,7 @@ async function atualizarDespesas() {
 
 async function verificarDespesas() {
 
-    const colunas = ['Fornecedor', 'Número do Contribuinte', 'Valor', 'IVA', 'Ano', 'Mês', 'Data', 'Imagem da Fatura', 'Upload Fatura', 'Tipo de Material', 'Obra', '']
+    const colunas = ['Fornecedor', 'Número do Contribuinte', 'Valor', 'IVA', 'Ano', 'Mês', 'Data', 'Fatura', 'Tipo de Material', 'Obra', '']
     let cabecalhos = {
         ths: '',
         pesq: ''
@@ -46,7 +44,7 @@ async function verificarDespesas() {
         .map(([numero, mes]) => `<option id="${numero}">${mes}</option>`)
         .join('')
     const opcoesAnos = Object.entries({ '': '', ...anos }).sort()
-        .map(([anoSt, anoNum]) => `<option id="${anoNum}">${anoNum}</option>`)
+        .map(([, anoNum]) => `<option id="${anoNum}">${anoNum}</option>`)
         .join('')
 
     let opcoesObras = ''
@@ -84,6 +82,13 @@ async function verificarDespesas() {
         i++
     }
 
+    const modelo = (titulo, elemento) => `
+        <div style="${vertical}; gap: 2px;">
+            <span>${titulo}</span>
+            ${elemento}
+        </div>
+    `
+
     const acumulado = `
         <div class="blocoTabela">
             <div class="painelBotoes">
@@ -93,7 +98,12 @@ async function verificarDespesas() {
                         <img src="imagens/pesquisar2.png">
                     </div>
                     <button onclick="formularioDespesa()">Adicionar</button>
-                    
+                    <button onclick="telaDespesas()">Votar</button>
+                </div>
+                <div class="campos" style="flex-direction: row; gap: 5px;">
+                    ${modelo('Ano', `<select name="ano"><option></option>${optionsSelect(anos)}</select>`)}
+                    ${modelo('Mês', `<select name="mes"><option></option>${optionsSelect(meses)}</select>`)}
+                    <img onclick="htmlDespesas()" src="imagens/pdf.png" style="width: 3rem;">
                 </div>
                 <img class="atualizar" src="imagens/atualizar.png" onclick="atualizarDespesas()">
             </div>
@@ -112,10 +122,180 @@ async function verificarDespesas() {
 
     telaInterna.innerHTML = acumulado
 
-    const dados = await recuperarDados('dados_despesas')
-    for (const [id, dado] of Object.entries(dados)) {
-        criarLinha(dado, id, 'dados_despesas')
+    const dados_despesas = await recuperarDados('dados_despesas')
+
+    for (const [idDespesa, dados] of Object.entries(dados_despesas)) {
+
+        const fornecedor = fornecedores?.[dados?.fornecedor] || {}
+        const material = materiais?.[dados?.material] || {}
+
+        criarLinhaDespesa(idDespesa, { ...dados, fornecedor, material })
     }
+
+}
+
+function htmlDespesas() {
+    const ano = document.querySelector('[name="ano"]').value
+    const mes = meses[document.querySelector('[name="mes"]').value]
+    const colunas = ['Fornecedor', 'NIF', 'Valor', 'IVA', 'Ano', 'Mês', 'Data', 'Link Fatura', 'Tipo de Material']
+    const linhas = document.querySelectorAll('#body tr')
+
+    let linhasFiltradas = ''
+    const totais = {
+        iva: 0,
+        faturado: 0
+    }
+
+    for (const linha of linhas) {
+
+        const tds = linha.querySelectorAll('td')
+        const linAno = tds[4].textContent
+        const linMes = tds[5].textContent
+
+        if (linAno !== ano && linMes !== linMes) continue
+
+        totais.faturado += conversor(tds[2].textContent)
+        totais.iva += conversor(tds[3].textContent)
+
+        const link = tds[7].querySelector('[name="link"]')
+
+        linhasFiltradas += `
+            <tr>
+                <td>${tds[0].textContent}</td>
+                <td>${tds[1].textContent}</td>
+                <td>${tds[2].textContent}</td>
+                <td>${tds[3].textContent}</td>
+                <td>${tds[4].textContent}</td>
+                <td>${tds[5].textContent}</td>
+                <td>${tds[6].querySelectorAll('span')[1].textContent}</td>
+                <td>
+                ${link ? `<a href="${api}/uploads/RECONST/${link.value}" target="_blank">${link.value}</a>` : ''}
+                </td>
+                <td>${tds[8].textContent}</td>
+            </tr>
+        `
+    }
+
+    const tabela1 = `
+        <table class="tabela-pdf">
+            <tbody>
+                <tr>
+                    <td colspan="2" class="escuro" style="text-align: center; font-size: 1.2rem; font-weight: bold;">Despesas</td>
+                    <td class="vermelho">Ano</td>
+                    <td class="ver-claro">${ano}</td>
+                    <td class="vermelho">Mês</td>
+                    <td class="ver-claro">${mes}</td>
+                </tr>
+                <tr>
+                    <td class="escuro">Empresa</td>
+                    <td class="claro">Enumeratributo Unipessoal Lda</td>
+                    <td class="escuro" rowspan="4">Total <br>Faturado</td>
+                    <td rowspan="4">${dinheiro(totais.faturado)}</td>
+                    <td class="escuro" rowspan="4">Total IVA</td>
+                    <td rowspan="4">${dinheiro(totais.iva)}</td>
+                </tr>
+                <tr>
+                    <td class="escuro">Morada Fiscal</td>
+                    <td class="claro">Rua Nuno Tristão 11-A, 2830-095 Barreiro</td>
+                </tr>
+                <tr>
+                    <td class="escuro">Nif</td>
+                    <td class="claro">517637480</td>
+                </tr>
+                <tr>
+                    <td class="escuro">E-mail</td>
+                    <td class="claro">info@reconstrular.com</td>
+                </tr>
+            </tbody>
+
+        </table>
+    `
+
+    const tabela2 = `
+        <table class="tabela-pdf">
+            <thead>
+                <tr>${colunas.map(col => `<th>${col}</th>`).join('')}</tr>
+            </thead>
+            <tbody>${linhasFiltradas}</tbody>
+        </table>
+    `
+    const acumulado = `
+        <div class="tela-pdf-despesas">
+            <img onclick="gerarPdfDespesas()" src="imagens/pdf.png" style="width: 3rem;">
+            <div class="pdf-despesas">
+                ${tabela1}
+                <br>
+                ${tabela2}
+            </div>
+        </div>
+    `
+
+    popup(acumulado, 'Listagem de Despesas por Mês/Ano', true)
+}
+
+async function gerarPdfDespesas() {
+
+    overlayAguarde()
+
+    const pdfhtml = document.querySelector('.pdf-despesas')
+    if (!pdfhtml) return
+
+    const html = `
+        <html>
+            <head>
+                <meta charset="UTF-8">
+                <link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/despesas.css">
+            </head>
+            <body>
+                ${pdfhtml.outerHTML}
+            </body>
+        </html>
+  `
+
+    await pdf(html)
+
+}
+
+async function criarLinhaDespesa(id, dados) {
+
+    const ax = (link) => {
+        if (!link) return ''
+        return `
+            <img onclick="abrirArquivo('${link}')" src="imagens/contas.png">
+            <input name="link" style="display: none;" value="${link}">
+            `
+    }
+
+    let data = '--'
+    let ano, mes, dia
+    if (dados.data) {
+        [ano, mes, dia] = dados.data.split('-')
+        data = `${dia}/${mes}/${ano}`
+    }
+
+    tds = `
+        <td>${dados.fornecedor?.nome || '--'}</td>
+        <td>${dados.fornecedor?.numeroContribuinte || '--'}</td>
+        <td>${dinheiro(dados?.valor)}</td>
+        <td>${dados?.iva || '--'}</td>
+        <td>${ano}</td>
+        <td>${meses[mes]}</td>
+        <td>
+            <span style="display: none;">${dados?.data}</span>
+            <span>${data}</span>
+        </td>
+        <td>${ax(dados?.fatura)}</td>
+        <td>${dados.material?.nome || '--'}</td>
+        <td>${await infoObra(dados)}</td>
+        <td>
+            <img src="imagens/pesquisar.png" onclick="formularioDespesa('${id}')">
+        </td>
+    `
+
+    const trExistente = document.getElementById(id)
+
+    if (trExistente) return trExistente.innerHTML = tds
+    document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${id}">${tds}</td>`)
 
 }
 
@@ -155,30 +335,72 @@ async function formularioDespesa(idDespesa) {
         { texto: 'Data', elemento: `<input name="data" type="date" value="${despesa?.data || ''}">` },
         { texto: 'Tipo de Material', elemento: `<select name="material"><option></option>${opcoesMateriais}</select>` },
         { texto: 'Obra', elemento: `<select name="obra"><option></option>${opcoesObras}</select>` },
-        { texto: 'Upload Fatura', elemento: `<input name="fatura" type="file">` },
         {
-            texto: 'Imagem da Fatura',
-            elemento: `
-            <div style="${vertical}; gap: 5px;">
-                <img src="imagens/camera.png" class="cam" onclick="abrirCamera()">
-                <div class="cameraDiv">
-                    <button onclick="tirarFoto()">Tirar Foto</button>
-                    <video autoplay playsinline></video>
-                    <canvas style="display: none;"></canvas>
-                </div>
-                <img name="foto" ${despesa?.foto ? src = "${api}/uploads/RECONST/${despesa.foto}" : ''} class="foto">
-            </div>`
-        }
+            texto: 'Upload Fatura', elemento: `
+            <div style="${horizontal}; gap: 1rem;">
+                <select id="modal" onchange="alterarModal()">
+                    <option>Upload</option>
+                    <option>Foto</option>
+                </select>
+                <div id="upload"></div>
+            </div>
+            ` }
     ]
 
     const botoes = [
         { texto: 'Salvar', funcao: idDespesa ? `salvarDespesa('${idDespesa}')` : 'salvarDespesa()', img: 'concluido' }
     ]
 
-    const form = new formulario({ linhas, botoes, titulo: 'Incluir Despesa' })
+    if (idDespesa) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExclusaoDespesa('${idDespesa}')` })
+
+    const form = new formulario({ linhas, botoes, titulo: 'Gerenciar Despesa' })
     form.abrirFormulario()
 
     buscarLocalidadeFornecedor()
+    alterarModal()
+}
+
+function alterarModal() {
+
+    const modal = document.getElementById('modal')
+    const upload = `<input name="fatura" type="file">`
+
+    const foto = `
+        <div style="${vertical}; gap: 5px;">
+            <img src="imagens/camera.png" class="cam" onclick="abrirCamera()">
+            <div class="cameraDiv">
+                <button onclick="tirarFoto()">Tirar Foto</button>
+                <video autoplay playsinline></video>
+                <canvas style="display: none;"></canvas>
+            </div>
+            <img name="foto">
+        </div>
+    `
+    document.getElementById('upload').innerHTML = modal.value == 'Foto' ? foto : upload
+
+}
+
+function confirmarExclusaoDespesa(idDespesa) {
+    const acumulado = `
+        <div style="${horizontal}; gap: 1rem; background-color: #d2d2d2; padding: 1rem;">
+            <span>Tem certeza?</span>
+            <button onclick="excluirDespesa('${idDespesa}')">Confirmar</button>
+        </div>
+    `
+    popup(acumulado, 'Exclusão de Despesa', true)
+}
+
+async function excluirDespesa(idDespesa) {
+
+    overlayAguarde()
+
+    deletar(`dados_despesas/${idDespesa}`)
+    await deletarDB(`dados_despesas`, idDespesa)
+
+    removerPopup()
+    removerPopup()
+    await verificarDespesas()
+
 }
 
 async function salvarDespesa(idDespesa) {
@@ -206,7 +428,7 @@ async function salvarDespesa(idDespesa) {
         const resposta = await importarAnexos({ foto: foto.src });
 
         if (resposta[0].link) {
-            despesa.foto = resposta[0].link;
+            despesa.fatura = resposta[0].link;
         } else {
             removerOverlay();
             return popup(mensagem('Falha no envio da Foto: tente novamente.'), 'Alerta', true);

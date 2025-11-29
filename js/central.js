@@ -769,26 +769,25 @@ async function buscarDados() {
 
 }
 
-async function carregarSelects({ select, cidade, distrito }) {
+async function carregarSelects({ select, cidade, distrito } = {}) {
 
     const selectDistrito = document.querySelector('[name="distrito"]');
     const selectCidade = document.querySelector('[name="cidade"]');
-    const campoVazio = { '': { nome: '' } }
 
     if (!select) {
-        const opcoesDistrito = Object.entries({ ...campoVazio, ...dados_distritos }).reverse()
+        const opcoesDistrito = Object.entries(dados_distritos).reverse()
             .map(([idDistrito, objDistrito]) => `<option value="${idDistrito}" ${distrito == idDistrito ? 'selected' : ''}>${objDistrito.nome}</option>`)
             .join('');
-        selectDistrito.innerHTML = opcoesDistrito;
+        selectDistrito.innerHTML = `<option></option>${opcoesDistrito}`
     }
 
     const selectAtual = select ? select.value : selectDistrito.value
     const cidades = dados_distritos?.[selectAtual]?.cidades || {};
-    const opcoesCidade = Object.entries({ ...campoVazio, ...cidades }).reverse()
+    const opcoesCidade = Object.entries(cidades).reverse()
         .map(([idCidade, objCidade]) => `<option value="${idCidade}" ${cidade == idCidade ? 'selected' : ''}>${objCidade.nome}</option>`)
         .join('');
 
-    selectCidade.innerHTML = opcoesCidade;
+    selectCidade.innerHTML = `<option></option>${opcoesCidade}`
 }
 
 function deslogar() {
@@ -933,39 +932,7 @@ async function criarLinha(dados, id, nomeBase) {
     let tds = ''
     let funcao = ''
 
-    if (nomeBase == 'dados_despesas') {
-
-        const fornecedor = await recuperarDado('fornecedores', dados.fornecedor)
-        const material = await recuperarDado('materiais', dados.material)
-        const foto = dados.foto ? `<img onclick="abrirArquivo('${dados.foto}')" class="cam" src="imagens/contas.png">` : ''
-        const fatura = dados.fatura ? `<img onclick="abrirArquivo('${dados.fatura}')"  class="cam" src="imagens/anexo.png">` : ''
-        let data = '--'
-        let ano, mes, dia
-        if (dados.data) {
-            [ano, mes, dia] = dados.data.split('-')
-            data = `${dia}/${mes}/${ano}`
-        }
-
-        funcao = `formularioDespesa('${id}')`
-
-        tds = `
-            <td>${fornecedor?.nome || '--'}</td>
-            <td>${fornecedor?.numeroContribuinte || '--'}</td>
-            <td>${dinheiro(dados?.valor)}</td>
-            <td>${dados?.iva || '--'}</td>
-            <td>${(ano)}</td>
-            <td>${meses[mes]}</td>
-            <td>
-                <span style="display: none;">${dados?.data}</span>
-                <span>${data}</span>
-            </td>
-            <td>${foto}</td>
-            <td>${fatura}</td>
-            <td>${material?.nome || '--'}</td>
-            <td>${await infoObra()}</td>
-        `
-
-    } else if (nomeBase == 'materiais') {
+    if (nomeBase == 'materiais') {
 
         funcao = `adicionarMateriais('${id}')`
         tds = `<td>${dados?.nome || '--'}</td>`
@@ -1013,22 +980,23 @@ async function criarLinha(dados, id, nomeBase) {
     const body = document.getElementById('body')
     body.insertAdjacentHTML('beforeend', linha)
 
-    async function infoObra() {
+}
 
-        const obra = await recuperarDado('dados_obras', dados.obra) || false
-        let dadosObra = '<span>Sem Obra</span>'
-        if (obra && obra.distrito) {
+async function infoObra(dados) {
 
-            const cliente = await recuperarDado('dados_clientes', obra?.cliente)
-            const distrito = dados_distritos[obra?.distrito]
-            const cidade = distrito?.cidades[obra?.cidade]
-            dadosObra = `<span>${cliente?.nome || '--'} / ${distrito?.nome || '--'} / ${cidade?.nome || '--'}</span>`
-        }
+    const obra = await recuperarDado('dados_obras', dados.obra) || false
+    let dadosObra = '<span>Sem Obra</span>'
+    if (obra && obra.distrito) {
 
-        return dadosObra
+        const cliente = await recuperarDado('dados_clientes', obra?.cliente)
+        const distrito = dados_distritos[obra?.distrito]
+        const cidade = distrito?.cidades[obra?.cidade]
+        dadosObra = `<span>${cliente?.nome || '--'} / ${distrito?.nome || '--'} / ${cidade?.nome || '--'}</span>`
     }
 
+    return dadosObra
 }
+
 
 async function gerenciarUsuario(id) {
 

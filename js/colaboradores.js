@@ -43,21 +43,6 @@ async function telaColaboradores() {
 
 async function criarLinhaColaboradores(id, colaborador) {
 
-    async function infoObra(dados) {
-
-        const obra = await recuperarDado('dados_obras', dados.obra) || false
-        let dadosObra = '<span>Sem Obra</span>'
-        if (obra && obra.distrito) {
-
-            const cliente = await recuperarDado('dados_clientes', obra?.cliente)
-            const distrito = dados_distritos[obra?.distrito]
-            const cidade = distrito?.cidades[obra?.cidade]
-            dadosObra = `<span>${cliente?.nome || '--'} / ${distrito?.nome || '--'} / ${cidade?.nome || '--'}</span>`
-        }
-
-        return dadosObra
-    }
-
     const algoPendente = (!colaborador.epi || !colaborador.exame || !colaborador.contratoObra)
     const especialidades = (colaborador?.especialidade || [])
         .map(op => `<span>• ${op}</span>`)
