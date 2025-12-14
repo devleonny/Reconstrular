@@ -299,7 +299,7 @@ async function verAndamento(id, resetar) {
     titulo.textContent = 'Lista de Tarefas'
 
     const acumulado = `
-
+    <div id="pdf">
         <div class="painel-1-tarefas">
             <input placeholder="Pesquisa" oninput="pesquisarObras(this)">
             <select id="etapas" onchange="atualizarToolbar({nomeTarefa: this.value})"></select>
@@ -322,7 +322,7 @@ async function verAndamento(id, resetar) {
         </div>
 
         <div class="tabTarefas"></div>
-
+    </div>
     `
 
     const acompanhamento = document.querySelector('.acompanhamento')
@@ -390,8 +390,9 @@ async function carregarLinhasAndamento(idObra) {
 
     const obra = await recuperarDado('dados_obras', idObra)
     const campos = await recuperarDados('campos')
+    const dados_orcamentos = await recuperarDados('dados_orcamentos')
 
-    const tabTarefas = document.querySelector('.tabTarefas')
+    const tabTarefas = document.querySelector('.tabela-tarefas')
     if (!tabTarefas) return
 
     tabTarefas.innerHTML = ''
@@ -400,13 +401,15 @@ async function carregarLinhasAndamento(idObra) {
 
         if (!status) continue
 
-        const orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
-
+        const orcamento = dados_orcamentos[idOrcamento]
         if (!orcamento) continue
 
+        const idCliente = orcamento.idCliente
+        const cliente = dados_clientes[idCliente] || {}
         const blocoOrc = document.createElement('div')
+
         blocoOrc.className = 'orcamento-bloco'
-        blocoOrc.innerHTML = `<h2>Orçamento: ${orcamento.nome || idOrcamento}</h2>`
+        blocoOrc.innerHTML = `<h2>Orçamento: ${cliente.nome || idOrcamento} - ${dinheiro(orcamento?.total_geral)}</h2>`
 
         const grupos = {}
 

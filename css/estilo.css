@@ -946,21 +946,6 @@ input[type="file"] {
     width: 3rem;
 }
 
-.painel-1-tarefas {
-    display: grid;
-    grid-template-columns: repeat(1, 1fr);
-    gap: 0.5rem;
-    margin-bottom: 20px;
-}
-
-.riscado {
-    text-decoration: line-through
-}
-
-.tabela-especialidade {
-    margin-bottom: 1rem;
-}
-
 .gerenciar {
     display: flex;
     align-items: center;
@@ -972,30 +957,6 @@ input[type="file"] {
     background-color: #d7d7d7;
     border-radius: 3px;
     padding: 3px;
-}
-
-.tabTarefas {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.tabTarefas table td:nth-child(3),
-.tabTarefas table th:nth-child(3) {
-    width: 35vw;
-}
-
-.tabTarefas td {
-    padding: 8px;
-    border: solid 1px #a7a7a7;
-}
-
-.tabTarefas table {
-    display: table-row;
-    min-width: max-content;
-    border-collapse: collapse;
 }
 
 .fotos {
@@ -1048,13 +1009,6 @@ screen and (min-aspect-ratio: 13/9) {
 
     .painel-clientes {
         grid-template-columns: repeat(3, 1fr);
-    }
-
-    .tabTarefas table {
-        width: max-content;
-        table-layout: fixed;
-        border-collapse: collapse;
-        display: table;
     }
 
     .painel-1-tarefas {

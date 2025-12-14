@@ -45,3 +45,60 @@
     font-size: 4rem;
     color: red;
 }
+
+.painel-1-tarefas {
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 20px;
+}
+
+.riscado {
+    text-decoration: line-through
+}
+
+.tabela-especialidade {
+    margin-bottom: 1rem;
+}
+
+.tabela-tarefas {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.tabela-tarefas table td:nth-child(3),
+.tabela-tarefas table th:nth-child(3) {
+    width: 35vw;
+}
+
+.tabela-tarefas td {
+    padding: 8px;
+    border: solid 1px #a7a7a7;
+}
+
+.tabela-tarefas table {
+    display: table-row;
+    min-width: max-content;
+    border-collapse: collapse;
+}
+
+.tabTarefas {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.tabTarefas table td:nth-child(3),
+.tabTarefas table th:nth-child(3) {
+    width: 35vw;
+}
+
+.tabTarefas td {
+    padding: 8px;
+    border: solid 1px #a7a7a7;
+}
