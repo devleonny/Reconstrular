@@ -820,21 +820,6 @@ input[type="file"] {
     gap: 2px;
 }
 
-.acompanhamento {
-    display: flex;
-    align-items: start;
-    justify-content: start;
-    flex-direction: column;
-    padding: 1rem;
-    background-color: white;
-    color: #222;
-    padding-bottom: 50vh;
-    box-shadow: 0px 0px 3px #222;
-    overflow: auto;
-    height: 80vh;
-    max-width: 90vw;
-}
-
 .edicao {
     display: flex;
     justify-content: start;

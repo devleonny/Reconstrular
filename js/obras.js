@@ -303,7 +303,7 @@ async function verAndamento(id, resetar) {
         <div class="painel-1-tarefas">
             <input placeholder="Pesquisa" oninput="pesquisarObras(this)">
             <select id="etapas" onchange="atualizarToolbar({nomeTarefa: this.value})"></select>
-            <button style="background-color: red;" onclick="pdfCronograma()">Exportar PDF</button>
+            <button style="background-color: red;" onclick="pdfObra('Checklist')">PDF</button>
             <button style="background-color: #ffd100; color: #000000" onclick="telaCronograma('${id}')">Cronograma</button>
             <button onclick="telaObras()">Voltar</button>
         </div>
@@ -340,12 +340,18 @@ async function pdfObra(nome) {
         <html>
         <head>
             <meta charset="UTF-8">
-            <link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/estilo.css">
+            <link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/obras.css">
             <style>
-            @page {
-                size: A4 landscape;
-                margin: 10mm;
-            }
+
+                @page {
+                    size: 440mm 210mm;
+                    margin: 5mm;
+                }
+
+                body {
+                    background: white;
+                }
+
             </style>
         </head>
         <body>
@@ -354,7 +360,7 @@ async function pdfObra(nome) {
         </html>
   `
 
-    await pdf(html, nome)
+   // await pdf(html, nome)
 }
 
 function filtrar() {
@@ -867,32 +873,32 @@ async function telaCronograma(idObra) {
         : new Date()
 
     const tabInfos = `
-        <table class="tabela" style="background:#5b707f">
+        <table class="tabela-obras">
             <tbody>
                 <tr>
-                    <td colspan="2" style="color:#fff;font-size:1.2rem">CRONOGRAMA DE OBRA</td>
-                    <td colspan="2" style="background:red;color:#fff">Dias Úteis Estimados</td>
+                    <td colspan="2" style="background: #5b707f; color: #fff; font-size: 1.2rem;">CRONOGRAMA DE OBRA</td>
+                    <td colspan="2" style="background: red; color: #fff;">Dias Úteis Estimados</td>
                 </tr>
                 <tr>
-                    <td style="color:#fff">Cliente</td>
+                    <td style="background: #5b707f; color:#fff;">Cliente</td>
                     <td style="background:#fff">${cliente?.nome || '--'}</td>
-                    <td rowspan="4" style="background:#fff"></td>
+                    <td rowspan="4"></td>
                 </tr>
                 <tr>
-                    <td style="color:#fff">Morada de Execução</td>
-                    <td style="background:#fff">${cliente?.moradaExecucao || '--'}</td>
+                    <td style="background: #5b707f; color: #fff;">Morada de Execução</td>
+                    <td>${cliente?.moradaExecucao || '--'}</td>
                 </tr>
                 <tr>
-                    <td style="color:#fff">Data de Início</td>
-                    <td style="background:#fff">
+                    <td style="background: #5b707f; color: #fff;">Data de Início</td>
+                    <td>
                         <input type="date" id="dtInicio"
                             value="${obra?.dtInicio || ''}"
                             onchange="salvarDtInicio(this, '${idObra}')">
                     </td>
                 </tr>
                 <tr>
-                    <td style="color:#fff">Data de Fim Previsto</td>
-                    <td style="background:#fff"></td>
+                    <td style="background: #5b707f; color: #fff;">Data de Fim Previsto</td>
+                    <td></td>
                 </tr>
             </tbody>
         </table>
@@ -925,9 +931,9 @@ async function telaCronograma(idObra) {
 
         tabelas += `
             <h3>Semana de ${cursor.toLocaleDateString()}</h3>
-            <table class="tabela">
+            <table class="tabela-obras">
                 <thead>
-                    <tr style="background:#5b707f">
+                    <tr style="background: #5b707f;">
                         ${colunas.map(c => `<th>${c}</th>`).join('')}
                     </tr>
                 </thead>
@@ -941,11 +947,12 @@ async function telaCronograma(idObra) {
     telaInterna.innerHTML = `
         <div style="${horizontal}; gap: 2rem;">
             <button>Gravar</button>
-            <button onclick="pdfObra('Cronograma')">PDF</button>
+            <button style="background-color: red;" onclick="pdfObra('Cronograma')">PDF</button>
             <button onclick="verAndamento('${idObra}', true)">Voltar</button>
         </div>
+        <br>
         <div class="acompanhamento">
-            <div style="${vertical}; gap: 1rem; width: 90vw;">
+            <div style="${vertical}; gap: 1rem;">
                 ${tabInfos}
                 ${tabelas}
             </div>
@@ -957,7 +964,6 @@ async function telaCronograma(idObra) {
 
 function montarSemana(data) {
     const inicio = new Date(data)
-    const dias = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom']
     const ordem = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
 
     const tdsFixos = `<td></td>`.repeat(9)
