@@ -8,6 +8,7 @@ const nomeStore = 'Bases'
 const api = `https://leonny.dev.br`
 const servidor = 'RECONST'
 let dados_distritos = {}
+let funcoes = {}
 let materiais = {}
 let fornecedores = {}
 let ferramentas = {}
@@ -15,7 +16,7 @@ let etapasProvisorias = {}
 let stream;
 let telaInterna = null
 let emAtualizacao = false
-const voltarClientes = `<button style="background-color: #3131ab;" onclick="telaClientes()">Voltar</button>`
+let acesso = {}
 
 function obVal(name) {
     const el = document.querySelector(`[name="${name}"]`);
@@ -118,7 +119,6 @@ async function resetarBases() {
     logs.insertAdjacentHTML('beforeend', '<label>Criando uma nova Base, 0km, novíssima...</label>')
 
     const bases = [
-        'parceiros',
         'funcoes',
         'campos',
         'dados_distritos',
@@ -411,7 +411,7 @@ function overlayAguarde() {
 async function telaPrincipal() {
 
     toolbar.style.display = 'flex'
-    const acesso = JSON.parse(localStorage.getItem('acesso'))
+    acesso = JSON.parse(localStorage.getItem('acesso'))
     const acumulado = `
 
     <div class="menu-container">
@@ -463,7 +463,6 @@ async function atualizarApp() {
     let status = { total: 13, atual: 1 }
 
     const basesAuxiliares = [
-        'parceiros',
         'funcoes',
         'campos',
         'dados_distritos',
@@ -485,6 +484,9 @@ async function atualizarApp() {
     }
 
     dados_distritos = await recuperarDados('dados_distritos')
+    dados_setores = await recuperarDados('dados_setores')
+    acesso = dados_setores[acesso.usuario]
+    localStorage.setItem('acesso', JSON.stringify(acesso))
 
     sincronizarApp({ remover: true })
 
@@ -623,21 +625,13 @@ async function configuracoesEmails() {
 
 }
 
-async function telaNiveis() { //29
+async function telaNiveis() {
 
     titulo.innerHTML = 'Níveis de Acesso'
     const nomeBase = 'funcoes'
     const colunas = [
         'Função',
-        'Colaboradores',
-        'Obras',
-        'Clientes',
-        'Despesas',
-        'Usuários',
-        'Orçamentos',
-        'Configurações',
-        'Registo de Ponto',
-        'Notificações',
+        'Regras',
         ''
     ]
 
@@ -649,7 +643,7 @@ async function telaNiveis() { //29
 
     telaInterna.innerHTML = acumulado
 
-    const funcoes = await recuperarDados('funcoes')
+    funcoes = await recuperarDados('funcoes')
 
     for (const [idFuncao, dados] of Object.entries(funcoes || {})) {
         criarLinhaFuncao(idFuncao, dados)
@@ -659,18 +653,21 @@ async function telaNiveis() { //29
 
 function criarLinhaFuncao(idFuncao, dados) {
 
+    let autorizados = ''
+    for (const id of dados?.regras || []) {
+        autorizados += `<span>• ${funcoes?.[id]?.nome || '...'}</span>`
+    }
+
     const tds = `
         <td>${dados?.nome || ''}</td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
+        <td>
+            <div style="${vertical}; gap: 2px;"> 
+                ${autorizados}
+            </div>
+        </td>
+        <td>
+            <img onclick="adicionarFuncao('${idFuncao}')" src="imagens/pesquisar.png">
+        </td>
     `
 
     const trExistente = document.getElementById(idFuncao)
@@ -683,34 +680,62 @@ function criarLinhaFuncao(idFuncao, dados) {
 
 async function adicionarFuncao(idFuncao) {
 
-    const linhas = [{ texto: 'Função', elemento: `<input name="nomeFuncao" placeholder="Nome da Função">` }]
-    const botoes = [{ funcao: idFuncao ? `salvarFuncao('${idFuncao}')` : null, img: 'concluido', texto: 'Salvar' }]
+    const funcao = funcoes?.[idFuncao] || {}
 
-    const form = new formulario({ linhas, botoes, titulo: 'Adicionar Função' })
+    const opcoes = Object.entries(funcoes)
+        .map(([id, f]) => {
+            if (id == idFuncao) return ''
+            return `
+            <div style="${horizontal}; gap: 5px;">
+                <input name="funcoes" type="checkbox" id="${id}" ${funcao?.regras?.includes(id) ? 'checked' : ''}>
+                <span>${f.nome}</span>
+            </div>
+            `
+        })
+        .join('')
 
+    const linhas = [
+        { texto: 'Função', elemento: `<textarea name="nomeFuncao" placeholder="Nome da Função">${funcao.nome || ''}</textarea>` },
+        {
+            texto: 'Poderá cadastrar',
+            elemento: `<div style="${vertical}; gap: 2px;">${opcoes}</div>`
+        }
+    ]
+
+    const botoes = [
+        { funcao: idFuncao ? `salvarFuncao('${idFuncao}')` : 'salvarFuncao()', img: 'concluido', texto: 'Salvar' }
+    ]
+
+    if (idFuncao) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: '' })
+
+    const titulo = idFuncao ? 'Editar Função' : 'Adicionar Função'
+    const form = new formulario({ linhas, botoes, titulo })
     form.abrirFormulario()
 
 }
 
-async function salvarFuncao(idFuncao) {
-
-    idFuncao = idFuncao || ID5digitos()
+async function salvarFuncao(idFuncao = ID5digitos()) {
 
     overlayAguarde()
 
-    const funcao = await recuperarDado('funcoes', idFuncao) || {}
-
+    const funcao = funcoes[idFuncao] || {}
     const nomeFuncao = document.querySelector('[name="nomeFuncao"]')
 
     funcao.nome = nomeFuncao.value
+    funcao.regras = []
+
+    const inputs = document.querySelectorAll('[name="funcoes"]')
+
+    for (const input of inputs) {
+        if (input.checked) funcao.regras.push(input.id)
+    }
 
     await inserirDados({ [idFuncao]: funcao }, 'funcoes')
-
     enviar(`funcoes/${idFuncao}`, funcao)
 
-    await telaNiveis()
-
     removerPopup()
+
+    await telaNiveis()
 
 }
 
@@ -738,12 +763,12 @@ function verificarClique(event) {
 }
 
 
-async function sincronizarDados(base, overlayOff) {
+async function sincronizarDados(base, overlayOff, resetar) {
 
     if (!overlayOff) overlayAguarde()
 
     let nuvem = await receber(base) || {}
-    await inserirDados(nuvem, base)
+    await inserirDados(nuvem, base, resetar)
 
     if (!overlayOff) removerOverlay()
 }
@@ -1069,7 +1094,6 @@ function encerrarCam() {
 
 }
 
-
 async function tirarFoto() {
     const cameraDiv = document.querySelector('.cameraDiv');
     const canvas = cameraDiv.querySelector('canvas');
@@ -1093,7 +1117,7 @@ async function tirarFoto() {
 }
 
 function verificarRegras() {
-    //REGRAS
+    // REGRAS
     const input = (name) => document.querySelector(`[name="${name}"]`)
     let liberado = true
     let limites = {
@@ -1505,11 +1529,6 @@ function inicialMaiuscula(string) {
 }
 
 async function configuracoes(usuario, campo, valor) {
-
-    let dados_usuario = await recuperarDado('dados_setores', usuario)
-    dados_usuario[campo] = valor
-    await inserirDados({ [usuario]: dados_usuario }, 'dados_setores')
-    criarLinha(dados_usuario, usuario, 'dados_setores')
 
     return new Promise((resolve, reject) => {
         fetch(`${api}/configuracoes`, {

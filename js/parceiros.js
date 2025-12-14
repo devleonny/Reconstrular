@@ -1,54 +1,62 @@
 async function telaUsuarios() {
 
+    mostrarMenus(false)
+
+    dados_setores = await recuperarDados('dados_setores')
     dados_distritos = await recuperarDados('dados_distritos')
-    const funcoes = await recuperarDados('funcoes')
+    funcoes = await recuperarDados('funcoes')
+
+    const idF = acesso?.funcao || ''
+    const f = funcoes[idF] || {}
+    const r = f?.regras || []
+    const btnEdicao = r.length == 0 ? '' : `<button onclick="editarParceiros()">Cadastro</button>`
 
     const btnExtras = `
         <img src="imagens/atualizar.png" style="width: 3rem;">
-        ${fPesq({ texto: 'Função', objeto: funcoes, chave: 'nome' })}
-        ${fPesq({ texto: 'Zona' })}
+        ${btnEdicao}
+        ${fPesq({ texto: 'Função', objeto: funcoes, chave: 'nome', config: 'name="funcao"' })}
+        ${fPesq({ texto: 'Zona', config: 'name="zona"' })}
         ${fPesq({ texto: 'Distrito', config: 'onclick="filtroCidadesCabecalho(this)" name="distrito"', objeto: dados_distritos, chave: 'nome' })}
         ${fPesq({ texto: 'Cidade', config: 'name="cidade"' })}
     `
 
-    const acumulado = `
-        ${modeloTabela({ btnExtras, removerPesquisa: true, colunas: ['Nome Completo', 'Telefone', 'Email', 'Função', 'Zona', 'Distrito', 'Cidade', ''] })}
-    `
+    const acumulado = modeloTabela(
+        {
+            btnExtras,
+            removerPesquisa: true,
+            colunas: ['Nome Completo', 'Telefone', 'Email', 'Função', 'Zona', 'Distrito', 'Cidade', 'Edição']
+        }
+    )
+
     titulo.textContent = 'Parceiros'
     telaInterna.innerHTML = acumulado
 
-    const dados_setores = await recuperarDados('dados_setores')
     for (const [usuario, dados] of Object.entries(dados_setores).reverse()) {
-
-        const d = await recuperarDado('parceiros', usuario) || {}
-
-        const mesclado = {
-            ...dados,
-            ...Object.fromEntries(Object.entries(d).filter(([_, v]) => v !== '' && v != null))
-        }
-
-        criarLinhaUsuarios(usuario, mesclado)
+        criarLinhaUsuarios(usuario, dados)
     }
 
 }
 
-
 async function criarLinhaUsuarios(usuario, dados) {
 
-    const distrito = await recuperarDado('dados_distritos', dados?.distrito)
+    const distrito = dados_distritos[dados?.distrito] || {}
     const cidade = distrito?.cidades?.[dados?.cidade] || {}
     const f = await recuperarDado('funcoes', dados?.funcao)
+
+    const idF = acesso.funcao || ''
+    const r = funcoes?.[idF]?.regras || [] // Regras do usuário;
+    const edicao = (r.includes(dados?.funcao) || idF == 'tL4LM') ? `<img onclick="editarParceiros('${usuario}')" src="imagens/pesquisar.png">` : ''
 
     const tds = `
         <td>${dados?.nome_completo || ''}</td>
         <td>${dados?.telefone || ''}</td>
         <td>${dados?.email || ''}</td>
-        <td>${f?.nome || ''}</td>
-        <td>${dados?.zona || ''}</td>
-        <td>${distrito?.nome || ''}</td>
-        <td>${cidade?.nome || ''}</td>
+        <td name="funcao">${f?.nome || ''}</td>
+        <td name="zona">${dados?.zona || ''}</td>
+        <td name="distrito">${distrito?.nome || ''}</td>
+        <td name="cidade">${cidade?.nome || ''}</td>
         <td>
-            <img onclick="editarParceiros('${usuario}')" src="imagens/pesquisar.png" style="width: 2rem;">
+            ${edicao}
         </td>
     `
 
@@ -63,9 +71,9 @@ function aplicarFiltros() {
     const filtros = document.querySelectorAll('.filtro-tabela select')
     const linhas = document.querySelectorAll('#body tr')
     const valores = {}
-    
+
     filtros.forEach(f => {
-        const valor = f.selectedOptions[0]?.textContent?.trim() 
+        const valor = f.selectedOptions[0]?.textContent?.trim()
         const nome = f.getAttribute('name')
         if (valor && nome) valores[nome] = valor.toLowerCase()
     })
@@ -89,28 +97,36 @@ function aplicarFiltros() {
 
 async function editarParceiros(usuario) {
 
-    const distritos = await recuperarDados('dados_distritos')
-    const funcoes = await recuperarDados('funcoes')
-    const p = await recuperarDado('parceiros', usuario) || {}
-    const parceiro = {
-        ...await recuperarDado('dados_setores', usuario),
-        ...Object.fromEntries(Object.entries(p).filter(([_, v]) => v !== '' && v != null))
-    }
+    funcoes = await recuperarDados('funcoes')
+    const parceiro = dados_setores[usuario] || {}
+
+    const idF = acesso?.funcao || ''
+    const r = funcoes?.[idF]?.regras || []
+
+    const opcoes = Object.entries(funcoes)
+        .map(([id, dados]) => {
+            if (!r.includes(id)) return ''
+            return `<option id="${id}" ${parceiro?.funcao == id ? 'selected' : ''}>${dados.nome}</option>`
+        })
+        .join('')
 
     const linhas = [
         { texto: 'E-mail', elemento: `<input name="email" type="email" placeholder="E-mail" value="${parceiro?.email || ''}">` },
         { texto: 'Telefone', elemento: `<input name="telefone" placeholder="Telefone" value="${parceiro?.telefone || ''}">` },
         {
-            texto: 'Função', elemento: `
-                    <select name="funcao">
-                        <option></option>
-                        ${Object.entries(funcoes).map(([id, dados]) => `<option id="${id}" ${parceiro?.funcao == id ? 'selected' : ''}>${dados.nome}</option>`).join('')}
-                    </select>
+            texto: 'Função',
+            elemento: `
+                <select name="funcao">
+                    <option></option>
+                    ${opcoes}
+                </select>
             `},
-        {texto: 'Distrito', elemento: `
+        {
+            texto: 'Distrito',
+            elemento: `
                 <select name="distrito" onchange="cidadesDisponiveis(this)">
                     <option></option>
-                    ${Object.entries(distritos).map(([id, dados]) => `<option id="${id}" ${parceiro?.distrito == id ? 'selected' : ''}>${dados.nome}</option>`).join('')}
+                    ${Object.entries(dados_distritos).map(([id, dados]) => `<option id="${id}" ${parceiro?.distrito == id ? 'selected' : ''}>${dados.nome}</option>`).join('')}
                 </select>
             `},
         { texto: 'Cidade', elemento: `<select name="cidade"></select>` }
@@ -120,10 +136,39 @@ async function editarParceiros(usuario) {
         { texto: 'Salvar', img: 'concluido', funcao: `salvarParceiros('${usuario}')` }
     ]
 
-    const form = new formulario({ linhas, botoes, titulo: 'Gerenciar Parceiro' })
+    if (usuario) botoes.push({ texto: 'Desativar', img: 'cancel', funcao: `confirmarDesativarUsuario('${usuario}')` })
+
+    const titulo = usuario ? `Gerenciar Parceiro` : `Criar acesso parceiro`
+    const form = new formulario({ linhas, botoes, titulo })
     form.abrirFormulario()
 
     if (parceiro?.distrito) cidadesDisponiveis({ selectedOptions: [{ id: parceiro.distrito }] }, parceiro?.cidade)
+
+}
+
+function confirmarDesativarUsuario(usuario) {
+    const acumulado = `
+    <div style="${horizontal}; padding: 1rem; gap: 1rem; background-color: #d2d2d2;">
+        <span>Deseja desativar o usuário?</span>
+        <button onclick="desativarUsuario('${usuario}')">Confirmar</button>
+    </div>
+    `
+    popup(acumulado, 'Pense bem...', true)
+}
+
+async function desativarUsuario(usuario) {
+
+    removerPopup()
+    removerPopup()
+    overlayAguarde()
+
+    const resposta = await configuracoes(usuario, 'excluído', { usuario: acesso.usuario, data: new Date().toLocaleString() })
+
+    if (resposta.mensagem) return popup(mensagem(resposta.mensagem), 'Alerta', true)
+
+    await deletarDB('dados_setores', usuario)
+    await telaUsuarios()
+    removerOverlay()
 
 }
 
@@ -144,10 +189,7 @@ async function salvarParceiros(usuario) {
     const distrito = el('distrito')?.selectedOptions[0]?.id
     const cidade = el('cidade')?.selectedOptions[0]?.id
 
-    const p = await recuperarDado('parceiros', usuario)
-
-    const parceiro = {
-        ...p,
+    const dNovos = {
         email,
         telefone,
         funcao,
@@ -155,7 +197,20 @@ async function salvarParceiros(usuario) {
         cidade
     }
 
-    await inserirDados({ [usuario]: parceiro }, 'parceiros')
+    const dAtuais = dados_setores[usuario]
+    const parceiro = {
+        ...dAtuais,
+        ...dNovos
+    }
+
+    for (const [chave, dado] of Object.entries(dNovos)) {
+        if (dAtuais[chave] !== dado) {
+            const resposta = await configuracoes(usuario, chave, dado)
+            if (resposta.mensagem) return popup(mensagem(resposta.mensagem), 'Alerta', true)
+        }
+    }
+
+    await inserirDados({ [usuario]: parceiro }, 'dados_setores')
     await telaUsuarios()
 
     removerPopup()
@@ -164,9 +219,7 @@ async function salvarParceiros(usuario) {
 
 async function cidadesDisponiveis(select, idCidade) {
 
-    const distritos = await recuperarDados('dados_distritos')
-
-    const cidades = Object.entries(distritos)
+    const cidades = Object.entries(dados_distritos)
         .filter(([id, dist]) => id == select.selectedOptions[0].id)
         .map(([id, dist]) => dist.cidades)[0]
 
@@ -175,8 +228,8 @@ async function cidadesDisponiveis(select, idCidade) {
             .map(([id, dados]) => `<option ${idCidade == id ? 'selected' : ''} id="${id}">${dados.nome}</option>`)
             .join('')}
         `
-    
-    const selectCidades = document.querySelectorAll('[name="cidade"]')
+    const painel = document.querySelector('.painel-padrao')
+    const selectCidades = painel.querySelectorAll('[name="cidade"]')
     selectCidades.forEach(select => { select.innerHTML = opcoesCidades })
 
 }
