@@ -334,7 +334,7 @@ async function verAndamento(id, resetar) {
 }
 
 async function pdfObra(nome) {
-    const acompanhamento = document.querySelector('.acompanhamento')
+    const htmlPdf = document.querySelector('#pdf')
 
     const html = `
         <html>
@@ -349,18 +349,19 @@ async function pdfObra(nome) {
                 }
 
                 body {
+                    font-family: 'Poppins', sans-serif;
                     background: white;
                 }
 
             </style>
         </head>
         <body>
-            ${acompanhamento.outerHTML}
+            ${htmlPdf.outerHTML}
         </body>
         </html>
   `
 
-   // await pdf(html, nome)
+    await pdf(html, nome)
 }
 
 function filtrar() {
@@ -831,7 +832,7 @@ async function telaCronograma(idObra) {
 
     const colunas = [
         'Ação', 'Zonas', 'Especialidades', 'Descrição do Serviço', 'Medida',
-        'Quantidade', 'Tempo (hh:mm)', 'Início', 'Fim',
+        'Quantidade', 'Tempo (hh:mm)',
         'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'
     ]
 
@@ -872,6 +873,9 @@ async function telaCronograma(idObra) {
         ? new Date(obra.dtInicio + 'T00:00')
         : new Date()
 
+    const dataFinal = avancarDiasUteis(dataInicial, diasUteis - 1)
+    const dataFinalConvertida = dataFinal ? new Date(dataFinal).toLocaleDateString() : '-'
+
     const tabInfos = `
         <table class="tabela-obras">
             <tbody>
@@ -882,7 +886,7 @@ async function telaCronograma(idObra) {
                 <tr>
                     <td style="background: #5b707f; color:#fff;">Cliente</td>
                     <td style="background:#fff">${cliente?.nome || '--'}</td>
-                    <td rowspan="4"></td>
+                    <td rowspan="4" class="dias-uteis">${diasUteis || 0}</td>
                 </tr>
                 <tr>
                     <td style="background: #5b707f; color: #fff;">Morada de Execução</td>
@@ -898,7 +902,7 @@ async function telaCronograma(idObra) {
                 </tr>
                 <tr>
                     <td style="background: #5b707f; color: #fff;">Data de Fim Previsto</td>
-                    <td></td>
+                    <td>${dataFinalConvertida}</td>
                 </tr>
             </tbody>
         </table>
@@ -921,8 +925,6 @@ async function telaCronograma(idObra) {
                     <td>${l.medida}</td>
                     <td>${l.quantidade}</td>
                     <td name="duracao">${l.duracao}</td>
-                    <td></td>
-                    <td></td>
                     ${['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom']
                     .map(d => `<td name="${d}"></td>`).join('')}
                 </tr>
@@ -952,7 +954,7 @@ async function telaCronograma(idObra) {
         </div>
         <br>
         <div class="acompanhamento">
-            <div style="${vertical}; gap: 1rem;">
+            <div id="pdf" style="${vertical}; gap: 1rem;">
                 ${tabInfos}
                 ${tabelas}
             </div>
@@ -966,7 +968,7 @@ function montarSemana(data) {
     const inicio = new Date(data)
     const ordem = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
 
-    const tdsFixos = `<td></td>`.repeat(9)
+    const tdsFixos = `<td></td>`.repeat(7)
     let tdsDias = Array(7).fill('<td></td>')
 
     let d = new Date(inicio)
@@ -985,7 +987,7 @@ function pintarTabelas() {
     const MIN_DIA = 8 * 60
     const diasValidos = ['seg', 'ter', 'qua', 'qui', 'sex']
 
-    const tabelas = [...document.querySelectorAll('.tabela:not(:first-of-type)')]
+    const tabelas = [...document.querySelectorAll('.tabela-obras:not(:first-of-type)')]
 
     if (!tabelas.length) return
 
@@ -1024,7 +1026,6 @@ function pintarTabelas() {
         }
     })
 }
-
 
 async function salvarDtInicio(input, idObra) {
 
