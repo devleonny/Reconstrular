@@ -1,30 +1,14 @@
 async function telaUsuarios() {
 
-    const filtros = ({ objeto = {}, chave, texto, config = '' }) => {
-
-        const elemento = `
-        <div class="filtro-tabela" style="${vertical}; gap: 2px; padding: 0.5rem;">
-            <span>${texto}</span>
-            <select onchange="aplicarFiltros()" ${config}>
-                <option value=""></option>
-                ${Object.entries(objeto)
-                .map(([id, dados]) => `<option id="${id}" value="${dados[chave]}">${dados[chave]}</option>`)
-                .join('')}
-            </select>
-        </div>`
-
-        return elemento
-    }
-
-    const distritos = await recuperarDados('dados_distritos')
+    dados_distritos = await recuperarDados('dados_distritos')
     const funcoes = await recuperarDados('funcoes')
 
     const btnExtras = `
         <img src="imagens/atualizar.png" style="width: 3rem;">
-        ${filtros({ texto: 'Função', objeto: funcoes, chave: 'nome' })}
-        ${filtros({ texto: 'Zona' })}
-        ${filtros({ texto: 'Distrito', config: 'onclick="filtroCidadesCabecalho(this)"', objeto: distritos, chave: 'nome' })}
-        ${filtros({ texto: 'Cidade', config: 'name="cidade_filtro"' })}
+        ${fPesq({ texto: 'Função', objeto: funcoes, chave: 'nome' })}
+        ${fPesq({ texto: 'Zona' })}
+        ${fPesq({ texto: 'Distrito', config: 'onclick="filtroCidadesCabecalho(this)" name="distrito"', objeto: dados_distritos, chave: 'nome' })}
+        ${fPesq({ texto: 'Cidade', config: 'name="cidade"' })}
     `
 
     const acumulado = `
@@ -78,29 +62,30 @@ async function criarLinhaUsuarios(usuario, dados) {
 function aplicarFiltros() {
     const filtros = document.querySelectorAll('.filtro-tabela select')
     const linhas = document.querySelectorAll('#body tr')
-
     const valores = {}
-
+    
     filtros.forEach(f => {
-        const texto = f.selectedOptions[0]?.textContent?.trim() || ''
-        const nome = f.getAttribute('name') || f.parentElement.querySelector('span')?.textContent
-        if (texto) valores[nome] = texto
+        const valor = f.selectedOptions[0]?.textContent?.trim() 
+        const nome = f.getAttribute('name')
+        if (valor && nome) valores[nome] = valor.toLowerCase()
     })
 
-    linhas.forEach(linha => {
-        const tds = [...linha.querySelectorAll('td')].map(td => td.textContent.trim())
+    linhas.forEach(tr => {
         let visivel = true
 
-        for (const chave in valores) {
-            const filtro = valores[chave].toLowerCase()
-            const encontrou = tds.some(texto => texto.toLowerCase().includes(filtro))
-            if (!encontrou) { visivel = false; break }
+        for (const nome in valores) {
+            const alvo = tr.querySelector(`[name="${nome}"]`)
+            const texto = alvo?.textContent?.trim().toLowerCase() || ''
+
+            if (!texto.includes(valores[nome])) {
+                visivel = false
+                break
+            }
         }
 
-        linha.style.display = visivel ? '' : 'none'
+        tr.style.display = visivel ? '' : 'none'
     })
 }
-
 
 async function editarParceiros(usuario) {
 
@@ -190,7 +175,7 @@ async function cidadesDisponiveis(select, idCidade) {
             .map(([id, dados]) => `<option ${idCidade == id ? 'selected' : ''} id="${id}">${dados.nome}</option>`)
             .join('')}
         `
-
+    
     const selectCidades = document.querySelectorAll('[name="cidade"]')
     selectCidades.forEach(select => { select.innerHTML = opcoesCidades })
 
@@ -210,7 +195,7 @@ async function filtroCidadesCabecalho(select) {
             .join('')}
         `
 
-    const selectCidades = document.querySelectorAll('[name="cidade_filtro"]')
+    const selectCidades = document.querySelectorAll('select[name="cidade"]')
     selectCidades.forEach(select => { select.innerHTML = opcoesCidades })
 
 }

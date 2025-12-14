@@ -48,11 +48,6 @@ th {
     padding: 5px;
 }
 
-.tabela-pdf .claro,
-th {
-    background-color: #deeaf6;
-}
-
 .tabela-pdf .vermelho {
     text-align: center;
     font-weight: bold;

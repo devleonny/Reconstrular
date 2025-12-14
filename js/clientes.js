@@ -1,30 +1,30 @@
-async function telaClientes() {
+const fPesq = ({ objeto = {}, chave, texto, config = '' }) => {
 
-    const clientes = await recuperarDados('dados_clientes')
-    const distritos = await recuperarDados('dados_distritos')
-
-    const filtros = ({ objeto = {}, chave, texto, config = '' }) => {
-
-        const elemento = `
+    const elemento = `
         <div class="filtro-tabela" style="${vertical}; gap: 2px; padding: 0.5rem;">
             <span>${texto}</span>
             <select onchange="aplicarFiltros()" ${config}>
                 <option value=""></option>
                 ${Object.entries(objeto)
-                .map(([id, dados]) => `<option id="${id}" value="${dados[chave]}">${dados[chave]}</option>`)
-                .join('')}
+            .map(([id, dados]) => `<option id="${id}" value="${dados[chave]}">${dados[chave]}</option>`)
+            .join('')}
             </select>
         </div>`
 
-        return elemento
-    }
+    return elemento
+}
+
+async function telaClientes() {
+
+    dados_clientes = await recuperarDados('dados_clientes')
+    dados_distritos = await recuperarDados('dados_distritos')
 
     titulo.textContent = 'Clientes'
 
     const btnExtras = `
         <button onclick="formularioCliente()">Adicionar</button>
-        ${filtros({ texto: 'Distrito', config: 'onclick="filtroCidadesCabecalho(this)"', objeto: distritos, chave: 'nome' })}
-        ${filtros({ texto: 'Cidade', config: 'name="cidade_filtro"' })}
+        ${fPesq({ texto: 'Distrito', config: 'onclick="filtroCidadesCabecalho(this)" name="distrito"', objeto: dados_distritos, chave: 'nome' })}
+        ${fPesq({ texto: 'Cidade', config: 'name="cidade"' })}
     `
 
     const params = {
@@ -36,9 +36,9 @@ async function telaClientes() {
 
     telaInterna.innerHTML = acumulado
 
-    for (const [idCliente, dados] of Object.entries(clientes).reverse()) {
+    for (const [idCliente, dados] of Object.entries(dados_clientes).reverse()) {
 
-        const d = distritos?.[dados?.distrito] || {}
+        const d = dados_distritos?.[dados?.distrito] || {}
         const c = d?.cidades?.[dados?.cidade] || {}
 
         criarLinhaClientes(idCliente, { ...dados, nomeDistrito: d.nome || '-', nomeCidade: c.nome || '-' })
@@ -52,8 +52,8 @@ function criarLinhaClientes(idCliente, dados) {
         <td>${dados?.nome || '-'}</td>
         <td>${dados?.moradaFiscal || '-'}</td>
         <td>${dados?.moradaExecucao || '-'}</td>
-        <td>${dados?.nomeDistrito || '-'}
-        <td>${dados?.nomeCidade || '-'}
+        <td name="distrito">${dados?.nomeDistrito || '-'}
+        <td name="cidade">${dados?.nomeCidade || '-'}
         <td>${dados?.email || '-'}</td>
         <td>${dados?.telefone || '-'}</td>
         <td>

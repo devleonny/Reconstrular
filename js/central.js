@@ -8,6 +8,9 @@ const nomeStore = 'Bases'
 const api = `https://leonny.dev.br`
 const servidor = 'RECONST'
 let dados_distritos = {}
+let materiais = {}
+let fornecedores = {}
+let ferramentas = {}
 let etapasProvisorias = {}
 let stream;
 let telaInterna = null

@@ -432,9 +432,9 @@ async function execucoes(id, proximo = 0) {
                 <select onchange="execucoes('${idOrcamento}', this.value)">${opcoesZonas}</select>
             </div>
         </div>
-    `;
+    `
 
-    telaInterna.innerHTML = acumulado;
+    telaInterna.innerHTML = acumulado
 
     for (const [idItem, dados] of Object.entries(zonas?.[zona1] || {})) {
         adicionarLinha(idItem, dados)
@@ -443,9 +443,6 @@ async function execucoes(id, proximo = 0) {
 }
 
 function adicionarLinha(idItem = ID5digitos(), dados = {}) {  
-
-    console.log(dados);
-    
 
     const body = document.getElementById('body')
 
@@ -624,6 +621,7 @@ async function salvarExecucao(tr) {
     }
 
     const especialidade = el('especialidade').value
+    const descricao = el('campo').value
     const campo = el('campo').selectedOptions[0].id
     const descricaoExtra = el('descricaoExtra').value
     const medida = el('medida').textContent
@@ -652,6 +650,7 @@ async function salvarExecucao(tr) {
         materiais: campoRef?.materiais,
         ferramentas: campoRef?.ferramentas,
         especialidade,
+        descricao,
         descricaoExtra,
         medida,
         unidades,
@@ -739,7 +738,7 @@ async function orcamentoFinal(idOrcamento) {
 
     let itens = ''
     for (const [zona, especialidades] of Object.entries(orcamento?.zonas || {})) {
-        for (const [, dados] of Object.entries(especialidades)) {
+        for (const dados of Object.values(especialidades)) {
 
             const dadosCampoEspecifico = campos?.[dados?.campo] || {}
             const quantidade = dados?.quantidade || 0
@@ -756,7 +755,7 @@ async function orcamentoFinal(idOrcamento) {
                         </div>
                     </td>
                     <td>${dados?.especialidade || '...'}</td>
-                    <td>${dadosCampoEspecifico?.descricao || '...'}</td>
+                    <td>${dados?.descricao || '...'}</td>
                     <td>
                         <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
                             <img onclick="editarDescricaoExtra('${idOrcamento}', '${idCampo}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">

@@ -4,9 +4,16 @@ async function telaObras() {
 
     mostrarMenus(false)
 
+    dados_clientes = await recuperarDados('dados_clientes')
+    dados_despesas = await recuperarDados('dados_despesas')
+    dados_distritos = await recuperarDados('dados_distritos')
     const nomeBase = 'dados_obras'
     titulo.textContent = 'Gerenciar Obras'
-    const btnExtras = `<button onclick="adicionarObra()">Adicionar</button>`
+    const btnExtras = `
+    <button onclick="adicionarObra()">Adicionar</button>
+    ${fPesq({ texto: 'Distrito', config: 'onclick="filtroCidadesCabecalho(this)" name="distrito"', objeto: dados_distritos, chave: 'nome' })}
+    ${fPesq({ texto: 'Cidade', config: 'name="cidade"' })}    
+    `
 
     telaInterna.innerHTML = modeloTabela({
         colunas: [
@@ -22,6 +29,7 @@ async function telaObras() {
             'Mão de Obra Real',
             'Mão de Obra Real vs Mão de Obra Orçamentado',
             'Acompanhamento',
+            'Cronograma',
             ''
         ],
         btnExtras
@@ -34,11 +42,18 @@ async function telaObras() {
     }
 }
 
-function calcularTotaisOrcamentos(obra) {
+function calcularTotaisOrcamentos(idObra, obra) {
 
     const totais = {
         materialOrcado: 0,
-        maoObraOrcado: 0
+        maoObraOrcado: 0,
+        materialReal: 0
+    }
+
+    // Despesas vinculadas a esta Obra;
+    for (const despesa of Object.values(dados_despesas)) {
+        if (despesa?.obra !== idObra || !despesa.valor) continue
+        totais.materialReal += despesa.valor
     }
 
     const vinculados = obra.orcamentos_vinculados || {}
@@ -74,13 +89,11 @@ function calcularTotaisOrcamentos(obra) {
 
 async function criarLinhaObras(id, obra) {
 
-    console.log(obra)
-
     const distrito = dados_distritos?.[obra?.distrito] || {}
     const cidades = distrito?.cidades?.[obra?.cidade] || {}
     const resultado = obra?.resultado || {}
     const porcentagem = Number(resultado?.porcentagem || 0)
-    const cliente = await recuperarDado('dados_clientes', obra.cliente)
+    const cliente = dados_clientes?.[obra?.cliente] || {}
     const st = porcentagem == 0
         ? 'Por Iniciar'
         : porcentagem > 0
@@ -89,13 +102,14 @@ async function criarLinhaObras(id, obra) {
 
     const {
         materialOrcado,
-        maoObraOrcado
-    } = calcularTotaisOrcamentos(obra)
+        maoObraOrcado,
+        materialReal
+    } = calcularTotaisOrcamentos(id, obra)
 
     tds = `
         <td>${cliente?.nome || '--'}</td>
-        <td>${distrito?.nome || '--'}</td>
-        <td>${cidades?.nome || '--'}</td>
+        <td name="distrito">${distrito?.nome || '--'}</td>
+        <td name="cidade">${cidades?.nome || '--'}</td>
         <td>
             ${divPorcentagem(porcentagem)}
         </td>
@@ -105,14 +119,18 @@ async function criarLinhaObras(id, obra) {
         </td>
 
         <td>${dinheiro(materialOrcado)}</td>
-        <td></td>
-        <td></td>
+        <td>${dinheiro(materialReal)}</td>
+        <td>
+            ${porcentagemHtml(Number((materialReal / materialOrcado) * 100).toFixed(0))}
+        </td>
         <td>${dinheiro(maoObraOrcado)}</td>
         <td></td>
         <td></td>
-
         <td class="detalhes">
             <img src="imagens/kanban.png" onclick="verAndamento('${id}')">
+        </td>
+        <td class="detalhes">
+            <img src="imagens/relogio.png" onclick="telaCronograma('${id}')">
         </td>
         <td>
             <img src="imagens/pesquisar.png" onclick="adicionarObra('${id}')">
@@ -122,7 +140,7 @@ async function criarLinhaObras(id, obra) {
     const trExistente = document.getElementById(id)
     if (trExistente) return trExistente.innerHTML = tds
 
-    document.getElementById('body').insertAdjacentHTML('beforebegin', `<tr id="${id}">${tds}</tr>`)
+    document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${id}">${tds}</tr>`)
 
 }
 
@@ -285,7 +303,7 @@ async function verAndamento(id, resetar) {
         <div class="painel-1-tarefas">
             <input placeholder="Pesquisa" oninput="pesquisarObras(this)">
             <select id="etapas" onchange="atualizarToolbar({nomeTarefa: this.value})"></select>
-            <button style="background-color: red;" onclick="pdfObra()">Exportar PDF</button>
+            <button style="background-color: red;" onclick="pdfCronograma()">Exportar PDF</button>
             <button style="background-color: #ffd100; color: #000000" onclick="telaCronograma('${id}')">Cronograma</button>
             <button onclick="telaObras()">Voltar</button>
         </div>
@@ -315,22 +333,28 @@ async function verAndamento(id, resetar) {
 
 }
 
-async function pdfObra() {
+async function pdfObra(nome) {
     const acompanhamento = document.querySelector('.acompanhamento')
 
     const html = `
-    <html>
-      <head>
-        <meta charset="UTF-8">
-        <link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/estilo.css">
-      </head>
-      <body>
-        ${acompanhamento.outerHTML}
-      </body>
-    </html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/estilo.css">
+            <style>
+            @page {
+                size: A4 landscape;
+                margin: 10mm;
+            }
+            </style>
+        </head>
+        <body>
+            ${acompanhamento.outerHTML}
+        </body>
+        </html>
   `
 
-    await pdf(html)
+    await pdf(html, nome)
 }
 
 function filtrar() {
@@ -381,7 +405,8 @@ async function carregarLinhasAndamento(idObra) {
 
         // Agrupa por especialidade
         for (const [, dadosZona] of Object.entries(orcamento?.zonas || {})) {
-            for (const [idDescricao, dadosDescricao] of Object.entries(dadosZona)) {
+            for (const dadosDescricao of Object.values(dadosZona)) {
+                const idDescricao = dadosDescricao.campo
                 const campo = campos[idDescricao]
                 const esp = campo?.especialidade || "SEM ESPECIALIDADE"
 
@@ -741,7 +766,7 @@ function porcentagemHtml(percentual) {
   `
 }
 
-async function pdf(html) {
+async function pdf(html, nome = 'documento') {
 
     if (!html) return
 
@@ -762,7 +787,7 @@ async function pdf(html) {
 
         const a = document.createElement('a')
         a.href = url
-        a.download = 'documento.pdf'
+        a.download = `${nome}.pdf`
         a.click()
 
         URL.revokeObjectURL(url)
@@ -778,148 +803,222 @@ async function telaCronograma(idObra) {
 
     const obra = await recuperarDado('dados_obras', idObra)
     const cliente = await recuperarDado('dados_clientes', obra?.cliente)
-    const acompanhamento = document.querySelector('.acompanhamento')
-    titulo.textContent = 'Cronograma'
-
-    if (!acompanhamento) return
-
-    const tabInfos = `
-        <table class="tabela" style="background-color: #5b707f;"> 
-            <tbody>
-                <tr>
-                    <td colspan="2" style="color: white; font-size: 1.2rem;">CRONOGRAMA DE OBRA</td>
-                    <td colspan="2" style="background-color: red; color: white;">Dias Úteis Estimados</td>
-                </tr>
-                <tr>
-                    <td style="color: white;">Cliente</td>
-                    <td style="background-color: white;">${cliente?.nome || '??'}</td>
-                    <td rowspan="4" style="background-color: white;"></td>
-                </tr>
-                <tr>
-                    <td style="color: white;">Morada de Execução</td>
-                    <td style="background-color: white;">${cliente?.moradaExecucao || '??'}</td>
-                </tr>
-                <tr>
-                    <td style="color: white;">Data de Início</td>
-                    <td style="background-color: white;">
-                        <input type="date" id="dtInicio" onchange="salvarDtInicio(this, '${idObra}')" value="${obra?.dtInicio || ''}">
-                    </td>
-                </tr>
-                <tr>
-                    <td style="color: white;">Data de Fim Previsto</td>
-                    <td style="background-color: white;"></td>
-                </tr>
-            </tbody>
-        </table>
-    `
-    const colunas = [
-        'Ação',
-        'Zonas',
-        'Especialidades',
-        'Descrição do Serviço',
-        'Medida',
-        'Quantidade',
-        'Tempo (hh:mm)',
-        'Início',
-        'Fim',
-        'Segunda',
-        'Terça',
-        'Quarta',
-        'Quinta',
-        'Sexta',
-        'Sábado',
-        'Domingo'
-    ]
-
     const campos = await recuperarDados('campos')
 
-    let linhas = montarSemana(obra?.dtInicio || new Date())
+    titulo.textContent = 'Cronograma'
 
-    // Em cada orçamento vinculado;
+    function pMin(hhmm) {
+        if (!hhmm) return 0
+        const [h, m] = hhmm.split(':').map(Number)
+        return (h * 60) + (m || 0)
+    }
+
+    function avancarDiasUteis(data, dias) {
+        const d = new Date(data)
+        while (dias > 0) {
+            d.setDate(d.getDate() + 1)
+            const dia = d.getDay()
+            if (dia !== 0 && dia !== 6) dias--
+        }
+        return d
+    }
+
+    const colunas = [
+        'Ação', 'Zonas', 'Especialidades', 'Descrição do Serviço', 'Medida',
+        'Quantidade', 'Tempo (hh:mm)', 'Início', 'Fim',
+        'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'
+    ]
+
+    let duracaoTotal = 0
+    let linhasBase = []
+
     for (const [idOrcamento, status] of Object.entries(obra?.orcamentos_vinculados || {})) {
-
         if (!status) continue
 
-        const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) //29
+        const orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
 
-        // Em cada zona;
         for (const [zona, itens] of Object.entries(orcamento?.zonas || {})) {
+            for (const dados of Object.values(itens)) {
 
-            // Em cada item;
-            for (const [idDescricao, dados] of Object.entries(itens)) {
+                const campoRef = campos[dados.campo] || {}
+                const minutos = pMin(campoRef?.duracao) * (dados?.quantidade || 0)
+                duracaoTotal += minutos
 
-                const dadosCampo = campos[idDescricao]
-
-                linhas += `
-                    <tr>
-                        <td></td>
-                        <td>${zona}</td>
-                        <td>${dadosCampo?.especialidade || ''}</td>
-                        <td>${dadosCampo?.descricao || ''}</td>
-                        <td>${dadosCampo?.medida || ''}</td>
-                        <td name="qtde">${dados?.unidades || 0}</td>
-                        <td name="duracao">${calcularDuracao(dados?.unidades, dadosCampo?.duracao)}</td>
-                        <td name="inicio"></td>
-                        <td name="fim"></td>
-                        ${['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'].map(op => `<td name="${op}"></td>`).join('')}
-                    </tr>
-                `
+                linhasBase.push({
+                    zona,
+                    especialidade: dados?.especialidade || '',
+                    descricao: dados?.descricao || '',
+                    medida: dados?.medida || '',
+                    quantidade: dados?.quantidade || 0,
+                    duracao: calcularDuracao(dados?.quantidade, campoRef?.duracao)
+                })
             }
         }
     }
 
-    const tabDados = `
-        <table class="tabela">
-            <thead>
-                <tr style="background-color: #5b707f; color: white;">
-                    ${colunas.map(col => `<th>${col}</th>`).join('')}
+    const MINUTOS_DIA = 8 * 60
+    const DIAS_SEMANA = 5
+
+    const diasUteis = Math.ceil(duracaoTotal / MINUTOS_DIA)
+    const semanas = Math.ceil(diasUteis / DIAS_SEMANA)
+
+    const dataInicial = obra?.dtInicio
+        ? new Date(obra.dtInicio + 'T00:00')
+        : new Date()
+
+    const tabInfos = `
+        <table class="tabela" style="background:#5b707f">
+            <tbody>
+                <tr>
+                    <td colspan="2" style="color:#fff;font-size:1.2rem">CRONOGRAMA DE OBRA</td>
+                    <td colspan="2" style="background:red;color:#fff">Dias Úteis Estimados</td>
                 </tr>
-            </thead>
-            <tbody id="itens">${linhas}</tbody>
+                <tr>
+                    <td style="color:#fff">Cliente</td>
+                    <td style="background:#fff">${cliente?.nome || '--'}</td>
+                    <td rowspan="4" style="background:#fff"></td>
+                </tr>
+                <tr>
+                    <td style="color:#fff">Morada de Execução</td>
+                    <td style="background:#fff">${cliente?.moradaExecucao || '--'}</td>
+                </tr>
+                <tr>
+                    <td style="color:#fff">Data de Início</td>
+                    <td style="background:#fff">
+                        <input type="date" id="dtInicio"
+                            value="${obra?.dtInicio || ''}"
+                            onchange="salvarDtInicio(this, '${idObra}')">
+                    </td>
+                </tr>
+                <tr>
+                    <td style="color:#fff">Data de Fim Previsto</td>
+                    <td style="background:#fff"></td>
+                </tr>
+            </tbody>
         </table>
     `
 
-    const acumulado = `
-        <div style="${vertical}; gap: 1rem; width: 90vw;">
-            <div style="${horizontal}; gap: 2rem;">
-                <button>Gravar</button>
-                <button>PDF</button>
-                <button onclick="verAndamento('${idObra}', true)">Voltar</button>
+    let tabelas = ''
+    let cursor = new Date(dataInicial)
+
+    for (let s = 0; s < semanas; s++) {
+
+        let linhas = montarSemana(cursor)
+
+        for (const l of linhasBase) {
+            linhas += `
+                <tr>
+                    <td></td>
+                    <td>${l.zona}</td>
+                    <td>${l.especialidade}</td>
+                    <td>${l.descricao}</td>
+                    <td>${l.medida}</td>
+                    <td>${l.quantidade}</td>
+                    <td name="duracao">${l.duracao}</td>
+                    <td></td>
+                    <td></td>
+                    ${['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom']
+                    .map(d => `<td name="${d}"></td>`).join('')}
+                </tr>
+            `
+        }
+
+        tabelas += `
+            <h3>Semana de ${cursor.toLocaleDateString()}</h3>
+            <table class="tabela">
+                <thead>
+                    <tr style="background:#5b707f">
+                        ${colunas.map(c => `<th>${c}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>${linhas}</tbody>
+            </table>
+        `
+
+        cursor = avancarDiasUteis(cursor, 5)
+    }
+
+    telaInterna.innerHTML = `
+        <div style="${horizontal}; gap: 2rem;">
+            <button>Gravar</button>
+            <button onclick="pdfObra('Cronograma')">PDF</button>
+            <button onclick="verAndamento('${idObra}', true)">Voltar</button>
+        </div>
+        <div class="acompanhamento">
+            <div style="${vertical}; gap: 1rem; width: 90vw;">
+                ${tabInfos}
+                ${tabelas}
             </div>
-
-            ${tabInfos}
-
-            ${tabDados}
         </div>
     `
 
-    acompanhamento.innerHTML = acumulado
-
-    pintarCronograma()
-
+    pintarTabelas()
 }
 
-function montarSemana(dataStr) {
-    const data = new Date(dataStr + 'T00:00')
+function montarSemana(data) {
+    const inicio = new Date(data)
+    const dias = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom']
     const ordem = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
-    const posicaoInicial = ordem[data.getDay()]
 
-    const dias = Array.from({ length: 7 }, () => '')
+    const tdsFixos = `<td></td>`.repeat(9)
+    let tdsDias = Array(7).fill('<td></td>')
 
-    let atual = new Date(data)
-    for (let i = posicaoInicial; i < 7; i++) {
-        dias[i] = atual.toLocaleDateString('pt-BR')
-        atual.setDate(atual.getDate() + 1)
+    let d = new Date(inicio)
+    let pos = ordem[d.getDay()]
+
+    for (let i = pos; i < 7; i++) {
+        tdsDias[i] = `<td>${d.toLocaleDateString('pt-BR')}</td>`
+        d.setDate(d.getDate() + 1)
     }
 
-    let tds = ''
-
-    for (let i = 0; i <= 8; i++) tds += `<td></td>`
-
-    tds += dias.map(d => `<td>${d}</td>`).join('')
-
-    return `<tr>${tds}</tr>`
+    return `<tr class="linha-semana">${tdsFixos}${tdsDias.join('')}</tr>`
 }
+
+function pintarTabelas() {
+
+    const MIN_DIA = 8 * 60
+    const diasValidos = ['seg', 'ter', 'qua', 'qui', 'sex']
+
+    const tabelas = [...document.querySelectorAll('.tabela:not(:first-of-type)')]
+
+    if (!tabelas.length) return
+
+    const linhasBase = [...tabelas[0].querySelectorAll('tbody tr')]
+        .filter(tr => !tr.classList.contains('linha-semana'))
+
+    let cursorGlobal = 0
+
+    linhasBase.forEach((linhaBase, indexLinha) => {
+
+        const duracaoEl = linhaBase.querySelector('[name="duracao"]')
+        if (!duracaoEl) return
+
+        const [h, m] = duracaoEl.textContent.split(':').map(Number)
+        let diasNecessarios = Math.ceil(((h * 60) + m) / MIN_DIA)
+
+        while (diasNecessarios > 0) {
+
+            const tabelaIndex = Math.floor(cursorGlobal / diasValidos.length)
+            const diaIndex = cursorGlobal % diasValidos.length
+
+            const tabela = tabelas[tabelaIndex]
+            if (!tabela) break
+
+            const linhas = [...tabela.querySelectorAll('tbody tr')]
+                .filter(tr => !tr.classList.contains('linha-semana'))
+
+            const linha = linhas[indexLinha]
+            if (!linha) break
+
+            const td = linha.querySelector(`[name="${diasValidos[diaIndex]}"]`)
+            if (td) td.style.background = '#00ffff'
+
+            cursorGlobal++
+            diasNecessarios--
+        }
+    })
+}
+
 
 async function salvarDtInicio(input, idObra) {
 
@@ -938,90 +1037,4 @@ function calcularDuracao(q = 0, d = '00:00') {
         String(Math.floor(total / 60)).padStart(2, '0'),
         String(total % 60).padStart(2, '0')
     ].join(':')
-}
-
-// helpers
-function hhmmParaMinutos(hhmm = '00:00') {
-    const [h = 0, m = 0] = hhmm.split(':').map(Number);
-    return (Number(h) * 60) + Number(m);
-}
-function dataParaPtBR(d) {
-    return d.toLocaleDateString('pt-BR');
-}
-function addDias(data, dias) {
-    const d = new Date(data);
-    d.setDate(d.getDate() + dias);
-    return d;
-}
-
-// pinta os dias do cronograma em sequência, com base na duração (divide por 8h)
-function pintarCronograma() {
-    const dtInicioEl = document.getElementById('dtInicio');
-    const dtInicioVal = dtInicioEl?.value || new Date().toISOString().slice(0, 10);
-    const inicio = new Date(dtInicioVal + 'T00:00');
-
-    const ordem = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 };
-    const posicaoInicial = ordem[inicio.getDay()]; // 0..6 onde 0 -> seg
-
-    const rows = Array.from(document.querySelectorAll('#itens tr')).filter(tr => {
-        // ignora a linha de cabeçalho das datas (se existir como primeira)
-        return tr.querySelector('[name="qtde"]') || tr.querySelector('[name="duracao"]');
-    });
-
-    // zera estilos das colunas de dias antes de pintar
-    for (const tr of rows) {
-        ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'].forEach(dia => {
-            const cell = tr.querySelector(`[name="${dia}"]`);
-            if (cell) {
-                cell.style.background = '';
-                cell.textContent = '';
-            }
-        });
-        // limpa inicio/fim
-        const ini = tr.querySelector('[name="inicio"]');
-        const fim = tr.querySelector('[name="fim"]');
-        if (ini) ini.textContent = '';
-        if (fim) fim.textContent = '';
-    }
-
-    let ponteiroDias = 0; // quantos dias já usados desde posicaoInicial
-    for (const tr of rows) {
-        const duracaoTxt = (tr.querySelector('[name="duracao"]')?.textContent || '00:00').trim();
-        const minutos = hhmmParaMinutos(duracaoTxt);
-        const diasNecessarios = minutos === 0 ? 0 : Math.ceil(minutos / (8 * 60));
-
-        if (diasNecessarios <= 0) continue;
-
-        const inicioIndexNoHeader = posicaoInicial + ponteiroDias; // 0..6 (onde 0 = seg)
-        if (inicioIndexNoHeader > 6) {
-            // já passou o domingo, nada a pintar (conforme sua regra "até o domingo e pronto")
-            continue;
-        }
-
-        const fimIndexNoHeader = Math.min(6, inicioIndexNoHeader + diasNecessarios - 1);
-
-        const diasNomes = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
-        // pinta as células correspondentes
-        for (let idx = inicioIndexNoHeader; idx <= fimIndexNoHeader; idx++) {
-            const nome = diasNomes[idx];
-            const cell = tr.querySelector(`[name="${nome}"]`);
-            if (cell) {
-                cell.style.background = '#ffd10088';
-                cell.textContent = ''; // opcional: mantive vazio mas tu pode colocar algo
-            }
-        }
-
-        // escreve inicio e fim (datas no formato pt-BR)
-        const dtIni = addDias(inicio, inicioIndexNoHeader - posicaoInicial);
-        const dtFim = addDias(inicio, fimIndexNoHeader - posicaoInicial);
-        const tdInicio = tr.querySelector('[name="inicio"]');
-        const tdFim = tr.querySelector('[name="fim"]');
-        if (tdInicio) tdInicio.textContent = dataParaPtBR(dtIni);
-        if (tdFim) tdFim.textContent = dataParaPtBR(dtFim);
-
-        // avança o ponteiro para o próximo item (o próximo começa depois do fim deste)
-        ponteiroDias += (fimIndexNoHeader - inicioIndexNoHeader + 1);
-        // se atingiu o domingo, nenhum outro item será pintado
-        if (posicaoInicial + ponteiroDias > 6) break;
-    }
 }

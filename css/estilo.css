@@ -599,6 +599,7 @@ button {
 }
 
 .tabela th {
+    background-color: #deeaf6;
     font-weight: lighter;
     border: solid 1px #d2d2d2;
     padding: 8px;

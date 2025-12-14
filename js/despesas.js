@@ -15,6 +15,8 @@ function telaDespesas() {
     `
     telaInterna.innerHTML = acumulado
 
+    mostrarMenus(false)
+
 }
 
 async function atualizarDespesas() {
@@ -119,17 +121,16 @@ async function verificarDespesas() {
             <div class="rodapeTabela"></div>
         </div>
     `
-
-    telaInterna.innerHTML = acumulado
+    const tDespAtiva = document.querySelector('.cabecalho-despesas')
+    if (!tDespAtiva) telaInterna.innerHTML = acumulado
 
     const dados_despesas = await recuperarDados('dados_despesas')
 
     for (const [idDespesa, dados] of Object.entries(dados_despesas)) {
 
         const fornecedor = fornecedores?.[dados?.fornecedor] || {}
-        const material = materiais?.[dados?.material] || {}
 
-        criarLinhaDespesa(idDespesa, { ...dados, fornecedor, material })
+        criarLinhaDespesa(idDespesa, { ...dados, fornecedor })
     }
 
 }
@@ -313,25 +314,25 @@ async function criarLinhaDespesa(id, dados) {
 async function formularioDespesa(idDespesa) {
 
     const despesa = await recuperarDado('dados_despesas', idDespesa)
-    const fornecedores = await recuperarDados('fornecedores')
-    const materiais = await recuperarDados('materiais')
-    const dados_obras = await recuperarDados('dados_obras')
-    const clientes = await recuperarDados('dados_clientes')
+    fornecedores = await recuperarDados('fornecedores')
+    materiais = await recuperarDados('materiais')
+    dados_obras = await recuperarDados('dados_obras')
+    dados_clientes = await recuperarDados('dados_clientes')
 
     const opcoesFornecedores = Object.entries(fornecedores)
         .map(([idFornecedor, fornecedor]) => `<option id="${idFornecedor}" ${despesa?.fornecedor == idFornecedor ? 'selected' : ''}>${fornecedor.nome}</option>`)
         .join('')
 
     const opcoesMateriais = Object.entries(materiais)
-        .map(([idMaterial, material]) => `<option id="${idMaterial}" ${despesa?.material == idMaterial ? 'selected' : ''}>${material.nome}</option>`)
+        .map(([idMaterial, material]) => `<option id="${idMaterial}" ${despesa?.material?.id == idMaterial ? 'selected' : ''}>${material.nome}</option>`)
         .join('')
 
     const opcoesObras = Object.entries(dados_obras)
         .map(([idObra, obra]) => {
             const distrito = dados_distritos?.[obra.distrito] || {}
             const cidade = distrito?.cidades?.[obra.cidade] || {}
-            const cliente = clientes?.[obra?.cliente] || {}
-            return `<option value="${idObra}">${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
+            const cliente = dados_clientes?.[obra?.cliente] || {}
+            return `<option value="${idObra}" ${despesa?.obra == idObra ? 'selected' : ''}>${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
         }).join('')
 
     const placeholder = `placeholder="Escolha o fornecedor"`
@@ -422,20 +423,21 @@ async function salvarDespesa(idDespesa) {
 
     const fornecedor = document.querySelector('[name="fornecedor"]');
     const obra = document.querySelector('[name="obra"]');
-    const material = document.querySelector('[name="material"]');
+    const idMaterial = document.querySelector('[name="material"]').selectedOptions[0].id
+    const material = materiais[idMaterial] || {}
 
     let despesa = {
         fornecedor: fornecedor.selectedOptions[0].id,
-        obra: obra.selectedOptions[0].id,
-        material: material.selectedOptions[0].id,
+        obra: obra.selectedOptions[0].value,
+        material,
         iva: Number(obVal('iva')),
         valor: Number(obVal('valor')),
         data: obVal('data')
     };
 
     // Foto da Fatura
-    const foto = document.querySelector('[name="foto"]');
-    if (foto.src && !foto.src.includes(api)) {
+    const foto = document.querySelector('[name="foto"]')
+    if (foto && foto.src && !foto.src.includes(api)) {
         const resposta = await importarAnexos({ foto: foto.src });
 
         if (resposta[0].link) {
