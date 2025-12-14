@@ -134,7 +134,7 @@ function criarLinhasCampos(idCampo, dados) {
         <td>${dados.medida}</td>
         <td>
             <div style="${horizontal};">
-                <img src="imagens/caixa.png" style="width: 1.5rem;" onclick="composicoes('${idCampo}')">
+                <img src="imagens/caixa.png" style="width: 1.5rem;" onclick="composicoes('${idCampo}', true)">
             </div>
         </td>
         <td>${dinheiro(dados?.totalComposicao || 0)}</td>
@@ -261,7 +261,7 @@ async function salvarMargem() {
     removerPopup()
 }
 
-async function composicoes(id) {
+async function composicoes(id, tP) {
 
     idCampo = id
     const campo = await recuperarDado('campos', id)
@@ -291,6 +291,11 @@ async function composicoes(id) {
 
     const acumulado = `
         <div style="${vertical}; padding: 1rem; background-color: #d2d2d2; overflow: auto;">
+
+            <div style="${vertical}; gap: 3px;">
+                <span><b>Total Geral</b></span>
+                <span name="totalComposicao">${dinheiro(campo?.totalComposicao)}</span>
+            </div>
 
             <div class="toolbar-precos">
                 <span id="toolbar_materiais" onclick="toogleTabela('materiais')">Materiais</span>
@@ -327,8 +332,8 @@ async function composicoes(id) {
 
     }
 
-    calcularTotal()
-
+    await calcularTotal()
+    if(tP) await telaPrecos()
 }
 
 async function salvarDuracao(idCampo, input) {
@@ -425,8 +430,8 @@ async function salvarComposicao({ elemento, tabela }) {
 
     tr.id = codigo
 
-    let campo = await recuperarDado('campos', idCampo)
-    if (!campo[tabela]) campo[tabela] = {}
+    const campo = campos[idCampo]
+    campo[tabela] ??= {}
     let categoriaCusto = campo[tabela]
     const qtde = Number(tds[1].querySelector('input').value)
     const preco = Number(tds[2].querySelector('input').value)
@@ -468,11 +473,12 @@ async function calcularTotal() {
         document.getElementById(`total_${tabela}`).textContent = `${totais[tabela]} €`
     }
 
-    let campo = await recuperarDado('campos', idCampo)
+    const campo = campos[idCampo]
     campo.totalComposicao = totais.geral
+
+    document.querySelector('[name="totalComposicao"]').textContent = dinheiro(totais.geral)
 
     enviar(`campos/${idCampo}/totalComposicao`, totais.geral)
 
     await inserirDados({ [idCampo]: campo }, 'campos')
-    await telaPrecos()
 }

@@ -1,3 +1,5 @@
+let dados_colaboradores = {}
+
 async function telaColaboradores() {
 
     const modelo = (titulo, elemento) => `
@@ -17,10 +19,10 @@ async function telaColaboradores() {
             </div>
         </div>
         <div style="${vertical}; gap: 2px;">
-            <button style="width: 100%;" onclick="confimacaoZipPdf()">Trabalhadores.xls</button>
+            <button style="width: 100%;" onclick="excelColaboradores()">Trabalhadores.xlsx</button>
             <div style="${horizontal}; gap: 2px;">
-                ${modelo('Distrito', `<select name="mes"><option></option>${optionsSelect(distritos, 'nome')}</select>`)}
-                ${modelo('Zona', `<select name="mes"></select>`)}
+                ${modelo('Distrito', `<select name="fdistrito"><option></option>${optionsSelect(distritos, 'nome')}</select>`)}
+                ${modelo('Zona', `<select name="fzona"></select>`)}
             </div>
         </div>
         <button onclick="adicionarColaborador()">Adicionar</button>
@@ -28,12 +30,22 @@ async function telaColaboradores() {
     const base = 'dados_colaboradores'
     titulo.textContent = 'Gerenciar Colaboradores'
 
+    const colunas = [
+        'Nome Completo',
+        'Telefone',
+        'Obra Alocada',
+        'Status',
+        'Especialidade',
+        'Folha de Ponto',
+        ''
+    ]
+
     telaInterna.innerHTML = modeloTabela({
-        colunas: ['Nome Completo', 'Telefone', 'Obra Alocada', 'Status', 'Especialidade', 'Folha de Ponto', ''],
+        colunas,
         btnExtras
     })
 
-    const dados_colaboradores = await recuperarDados(base)
+    dados_colaboradores = await recuperarDados(base)
 
     for (const [id, colaborador] of Object.entries(dados_colaboradores).reverse()) {
         criarLinhaColaboradores(id, colaborador)
@@ -79,7 +91,7 @@ async function criarLinhaColaboradores(id, colaborador) {
 
 async function adicionarColaborador(id) {
 
-    const colaborador = await recuperarDado('dados_colaboradores', id) || {}
+    colaborador = dados_colaboradores[id] || {}
     const dados_obras = await recuperarDados('dados_obras')
     const clientes = await recuperarDados('dados_clientes')
 
@@ -178,6 +190,8 @@ async function adicionarColaborador(id) {
         { texto: 'Nome Completo', elemento: `<textarea ${regras} name="nome" placeholder="Nome Completo">${colaborador?.nome || ''}</textarea>` },
         { texto: 'Data de Nascimento', elemento: `<input ${regras} value="${colaborador?.dataNascimento || ''}" type="date" name="dataNascimento">` },
         { texto: 'Morada', elemento: `<textarea ${regras} name="morada" placeholder="Morada">${colaborador?.morada || ''}</textarea>` },
+        { texto: 'Distrito', elemento: `<select name="distrito" onchange="carregarSelects({select: this})"></select>` },
+        { texto: 'Cidade', elemento: `<select name="cidade"></select>` },
         { texto: 'Apólice de Seguro', elemento: `<input value="0010032495" name="apolice" placeholder="Número da Apólice" readOnly>` },
         { texto: 'Telefone', elemento: `<input ${regras} value="${colaborador?.telefone || ''}" name="telefone" placeholder="Telefone">` },
         { texto: 'E-mail', elemento: `<textarea ${regras} name="email" placeholder="E-mail">${colaborador?.email || ''}</textarea>` },
@@ -232,6 +246,193 @@ async function adicionarColaborador(id) {
     const form = new formulario({ linhas, botoes, titulo: 'Cadastro de Colaborador' })
     form.abrirFormulario()
 
+    await carregarSelects({ ...colaborador })
     verificarRegras()
 
+}
+
+
+async function salvarColaborador(idColaborador) {
+    const liberado = verificarRegras();
+    if (!liberado) return popup(mensagem('Verifique os campos inválidos!'), 'Aviso', true);
+
+    overlayAguarde();
+
+    idColaborador = idColaborador || unicoID();
+
+    // Recupera colaborador existente para não sobrescrever anexos
+    let colaboradorExistente = dados_colaboradores[idColaborador] || {};
+
+    let colaborador = { ...colaboradorExistente };
+
+    const camposFixos = ['nome', 'dataNascimento', 'email', 'morada', 'apolice', 'telefone', 'numeroDocumento', 'segurancaSocial', 'obra', 'numeroContribuinte'];
+    for (const campo of camposFixos) colaborador[campo] = obVal(campo);
+
+    const camposRatio = ['status', 'documento'];
+    for (const campo of camposRatio) {
+        colaborador[campo] = document.querySelector(`input[name="${campo}"]:checked`)?.value || '';
+    }
+
+    const especialidades = document.querySelectorAll(`input[name="especialidade"]:checked`)
+    colaborador.especialidade = []
+    for (const especialidade of especialidades) {
+        colaborador.especialidade.push(especialidade.value)
+    }
+
+    // Verificação do PIN;
+    const inputPin = document.querySelector('[name="pin"]')
+    const pinExistente = inputPin.dataset.existente
+
+    if (pinExistente && pinExistente !== inputPin.value) {
+
+        const resposta = await colaboradorPin(colaborador.pin)
+        if (resposta?.mensagem !== 'Pin não localizado') {
+            inputPin.classList.add('invalido')
+            return popup(mensagem('O PIN escolhido já está em uso'), 'Alerta', true)
+        }
+
+    }
+    colaborador.pin = inputPin.value
+
+    const camposAnexos = ['contratoObra', 'exame'];
+    for (const campo of camposAnexos) {
+        const input = document.querySelector(`[name="${campo}"]`);
+        if (!input || !input.files || input.files.length === 0) continue;
+
+        const anexos = await importarAnexos({ input });
+
+        if (!colaborador[campo]) colaborador[campo] = {};
+        for (const anexo of anexos) {
+            let idAnexo;
+            do {
+                idAnexo = ID5digitos();
+            } while (colaborador[campo][idAnexo]); // evita IDs duplicados
+
+            colaborador[campo][idAnexo] = anexo;
+        }
+    }
+
+    // Distrito & Cidade;
+    colaborador.cidade = obVal('cidade')
+    colaborador.distrito = obVal('distrito')
+
+    const foto = document.querySelector('[name="foto"]')
+    if (foto.src && !foto.src.includes(api)) {
+        const resposta = await importarAnexos({ foto: foto.src })
+
+        if (resposta[0].link) {
+            colaborador.foto = resposta[0].link
+        } else {
+            return popup(mensagem('Falha no envio da Foto: tente novamente.'), 'Alerta', true)
+        }
+
+    }
+
+    enviar(`dados_colaboradores/${idColaborador}`, colaborador)
+
+    await inserirDados({ [idColaborador]: colaborador }, 'dados_colaboradores')
+
+    await telaColaboradores()
+    removerPopup()
+}
+
+
+async function excelColaboradores() {
+
+    const linhas = []
+
+    const deletar = ['id', 'obraAlocada', 'obra', 'timestamp', 'contratoObra', 'foto', 'folha', 'epi', 'exame']
+
+    const fdistrito = Number(document.querySelector('[name="fdistrito"]').value)
+
+    for (const linha of Object.values(dados_colaboradores)) {
+
+        if (fdistrito && fdistrito !== linha.distrito) continue
+
+        for (const chave of deletar) delete linha[chave]
+
+        const d = dados_distritos?.[linha.distrito] || {}
+        const c = d?.cidades[linha?.cidade] || {}
+        linha.distrito = d?.nome || ''
+        linha.cidade = c?.nome || ''
+        linha.dataNascimento = dtFormatada(linha.dataNascimento)
+        linha.especialidade = linha.especialidade.map(esp => esp).join(', ')
+
+        linhas.push(linha)
+    }
+
+    await gerarExcel(linhas, `colaboradores-${new Date().getTime()}.xlsx`)
+
+}
+
+async function gerarExcel(dados, nomeArquivo = 'arquivo.xlsx') {
+    if (!Array.isArray(dados) || !dados.length) return
+
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('Dados')
+
+    const colunas = Object.keys(dados[0])
+
+    worksheet.columns = colunas.map(chave => ({
+        header: chave.toUpperCase(),
+        key: chave,
+        width: 20
+    }))
+
+    // Cabeçalho
+    const headerRow = worksheet.getRow(1)
+    headerRow.eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+        cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF2F75B5' }
+        }
+        cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+        }
+        cell.alignment = { vertical: 'middle', horizontal: 'center' }
+    })
+
+    // Dados
+    dados.forEach((linha, index) => {
+        const row = worksheet.addRow(linha)
+
+        row.eachCell(cell => {
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            }
+
+            if (index % 2 === 0) {
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FFF2F2F2' }
+                }
+            }
+        })
+    })
+
+    // Filtro
+    worksheet.autoFilter = {
+        from: { row: 1, column: 1 },
+        to: { row: worksheet.rowCount, column: colunas.length }
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer()
+
+    const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    })
+
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = nomeArquivo
+    link.click()
 }

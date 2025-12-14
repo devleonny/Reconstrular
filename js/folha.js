@@ -259,11 +259,11 @@ async function gerarTodosPDFs(idColaborador, nome) {
     try {
         overlayAguarde()
 
-        const mes = document.querySelector('[name="mes"]').value
-        const ano = document.querySelector('[name="ano"]').value
-        let colaboradores = []
+        const hoje = new Date()
+        const mes = document.querySelector('[name="mes"]').value || hoje.getMonth()
+        const ano = document.querySelector('[name="ano"]').value || hoje.getFullYear()
 
-        if (!ano || !mes) return popup(mensagem('Preencha mês/Ano antes de solicitar os arquivos'), 'Alerta', true)
+        let colaboradores = []
 
         // Se o colaborador específico não for informado, então a função percorre as linhas visíveis;
         if (!idColaborador) {
@@ -277,18 +277,15 @@ async function gerarTodosPDFs(idColaborador, nome) {
             colaboradores = [{ idColaborador, nome }]
         }
 
-        console.log(colaboradores)
-
         const requisicao = {
             colaboradores,
-            documento: 'folha',
             servidor,
             ano,
             mes,
             mesTexto: meses[mes]
         }
 
-        const resposta = await fetch(`${api}/documentos-massa`, {
+        const resposta = await fetch(`${api}/folhas-em-massa`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requisicao)
@@ -300,9 +297,15 @@ async function gerarTodosPDFs(idColaborador, nome) {
             return popup(mensagem(`Erro: ${resposta.status} - Falha ao gerar os PDFs`), 'Erro', true)
         }
 
-        // erro no script servidor;
-        const dados = await resposta.json()
-        if (dados.mensagem) return popup(mensagem(dados.mensagem), 'Alerta', true)
+        const contentType = resposta.headers.get('content-type') || ''
+
+        if (contentType.includes('application/json')) {
+            const dados = await resposta.json()
+            if (dados.mensagem) {
+                removerOverlay()
+                return popup(mensagem(dados.mensagem), 'Alerta', true)
+            }
+        }
 
         // fluxo DOWNLOAD
         const blob = await resposta.blob()

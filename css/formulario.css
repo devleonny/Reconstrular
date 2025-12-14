@@ -49,6 +49,7 @@
     justify-content: center;
     background-color: #757575;
     width: 100%;
+    gap: 1px;
     border-top: 1px solid #6a6a6a;
     border-radius: 0 0 10px 10px;
 }

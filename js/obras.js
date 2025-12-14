@@ -2,6 +2,8 @@ let idObraAtual = null
 
 async function telaObras() {
 
+    mostrarMenus(false)
+
     const nomeBase = 'dados_obras'
     titulo.textContent = 'Gerenciar Obras'
     const btnExtras = `<button onclick="adicionarObra()">Adicionar</button>`
@@ -130,8 +132,7 @@ async function salvarObra(idObra) {
 
     await enviar(`dados_obras/${idObra}`, obra)
     await inserirDados({ [idObra]: obra }, 'dados_obras')
-
-    criarLinha(obra, idObra, 'dados_obras')
+    await telaObras()
 
     removerPopup()
 
@@ -183,7 +184,7 @@ async function painelVincularOrcamentos(idObra) {
                 <td>${nome}</td>
                 <td>${dtFormatada(orcamento?.dataContato)}</td>
                 <td>${dtFormatada(orcamento?.dataVisita)}</td>
-                <td>??</td>
+                <td>${dinheiro(orcamento?.total_geral)}</td>
 
             </tr>
         `
