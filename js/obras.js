@@ -27,13 +27,54 @@ async function telaObras() {
         btnExtras
     })
 
-    const dados_obras = await recuperarDados(nomeBase)
+    dados_orcamentos = await recuperarDados('dados_orcamentos')
+    dados_obras = await recuperarDados(nomeBase)
     for (const [idObra, obra] of Object.entries(dados_obras).reverse()) {
         criarLinhaObras(idObra, obra)
     }
 }
 
+function calcularTotaisOrcamentos(obra) {
+
+    const totais = {
+        materialOrcado: 0,
+        maoObraOrcado: 0
+    }
+
+    const vinculados = obra.orcamentos_vinculados || {}
+
+    for (const idOrcamento of Object.keys(vinculados)) {
+
+        const orc = dados_orcamentos?.[idOrcamento]
+        if (!orc) continue
+
+        const zonas = orc.zonas || {}
+
+        for (const zona of Object.values(zonas)) {
+            for (const campo of Object.values(zona)) {
+
+                if (campo.materiais) {
+                    for (const item of Object.values(campo.materiais)) {
+                        totais.materialOrcado += (Number(item.qtde) || 0) * (Number(item.preco) || 0)
+                    }
+                }
+
+                if (campo.maoObra) {
+                    for (const item of Object.values(campo.maoObra)) {
+                        totais.maoObraOrcado += (Number(item.qtde) || 0) * (Number(item.preco) || 0)
+                    }
+                }
+
+            }
+        }
+    }
+
+    return totais
+}
+
 async function criarLinhaObras(id, obra) {
+
+    console.log(obra)
 
     const distrito = dados_distritos?.[obra?.distrito] || {}
     const cidades = distrito?.cidades?.[obra?.cidade] || {}
@@ -46,6 +87,11 @@ async function criarLinhaObras(id, obra) {
             ? 'Em Andamento'
             : 'Finalizado'
 
+    const {
+        materialOrcado,
+        maoObraOrcado
+    } = calcularTotaisOrcamentos(obra)
+
     tds = `
         <td>${cliente?.nome || '--'}</td>
         <td>${distrito?.nome || '--'}</td>
@@ -57,12 +103,14 @@ async function criarLinhaObras(id, obra) {
             <span class="${st.replace(' ', '_')}">${st}</span>
             ${resultado?.excedente ? '<span class="excedente">Excedente</span>' : ''}
         </td>
+
+        <td>${dinheiro(materialOrcado)}</td>
         <td></td>
         <td></td>
+        <td>${dinheiro(maoObraOrcado)}</td>
         <td></td>
         <td></td>
-        <td></td>
-        <td></td>
+
         <td class="detalhes">
             <img src="imagens/kanban.png" onclick="verAndamento('${id}')">
         </td>
@@ -209,18 +257,21 @@ async function painelVincularOrcamentos(idObra) {
 
 }
 
-
-
 async function vincularOrcamento(input, idObra, idOrcamento) {
 
     const obra = await recuperarDado('dados_obras', idObra)
 
     obra.orcamentos_vinculados ??= {}
-    obra.orcamentos_vinculados[idOrcamento] = input.checked
+
+    if (input.checked) {
+        obra.orcamentos_vinculados[idOrcamento] = true
+    } else {
+        delete obra.orcamentos_vinculados[idOrcamento]
+    }
 
     await inserirDados({ [idObra]: obra }, 'dados_obras')
 
-    enviar(`dados_obras/${idObra}/orcamentos_vinculados/${idOrcamento}`, input.checked)
+    enviar(`dados_obras/${idObra}/orcamentos_vinculados`, obra.orcamentos_vinculados)
 }
 
 async function verAndamento(id, resetar) {

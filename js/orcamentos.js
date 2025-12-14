@@ -442,7 +442,10 @@ async function execucoes(id, proximo = 0) {
 
 }
 
-function adicionarLinha(idItem = ID5digitos(), dados = {}) {
+function adicionarLinha(idItem = ID5digitos(), dados = {}) {  
+
+    console.log(dados);
+    
 
     const body = document.getElementById('body')
 
@@ -479,7 +482,7 @@ function adicionarLinha(idItem = ID5digitos(), dados = {}) {
             </select>
         </td>
         <td>
-            <textarea name="descricaoExtra">${dados?.descricaoExtra || ''}</textarea>
+            <textarea name="descricaoExtra" oninput="filtroValores(this)">${dados?.descricaoExtra || ''}</textarea>
         </td>
         <td>
             <span name="medida">${dados?.medida || ''}</span>
@@ -622,7 +625,7 @@ async function salvarExecucao(tr) {
 
     const especialidade = el('especialidade').value
     const campo = el('campo').selectedOptions[0].id
-    const descricaoExtra = el('descricaoExtra').textContent
+    const descricaoExtra = el('descricaoExtra').value
     const medida = el('medida').textContent
     const unidades = Number(el('unidades').textContent)
     const metroLinear = Number(el('metroLinear').textContent)
@@ -645,6 +648,9 @@ async function salvarExecucao(tr) {
 
     const item = {
         campo,
+        maoObra: campoRef?.maoObra,
+        materiais: campoRef?.materiais,
+        ferramentas: campoRef?.ferramentas,
         especialidade,
         descricaoExtra,
         medida,

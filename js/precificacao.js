@@ -333,7 +333,7 @@ async function composicoes(id, tP) {
     }
 
     await calcularTotal()
-    if(tP) await telaPrecos()
+    if (tP) await telaPrecos()
 }
 
 async function salvarDuracao(idCampo, input) {
@@ -433,12 +433,13 @@ async function salvarComposicao({ elemento, tabela }) {
     const campo = campos[idCampo]
     campo[tabela] ??= {}
     let categoriaCusto = campo[tabela]
+    const descricao = tds[0].querySelector('select').textContent
     const qtde = Number(tds[1].querySelector('input').value)
     const preco = Number(tds[2].querySelector('input').value)
 
-    categoriaCusto[codigo] = { qtde, preco }
+    categoriaCusto[codigo] = { qtde, descricao, preco }
 
-    enviar(`campos/${idCampo}/${tabela}/${codigo}`, { qtde, preco })
+    enviar(`campos/${idCampo}/${tabela}/${codigo}`, { descricao, qtde, preco })
 
     await calcularTotal()
     await inserirDados({ [idCampo]: campo }, 'campos')
