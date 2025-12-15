@@ -13,6 +13,7 @@ let materiais = {}
 let fornecedores = {}
 let ferramentas = {}
 let etapasProvisorias = {}
+let mensagens = {}
 let stream;
 let telaInterna = null
 let emAtualizacao = false
@@ -432,6 +433,7 @@ async function telaPrincipal() {
             ${btn('contas', 'Despesas', 'telaDespesas()')}
             ${btn('orcamentos', 'Orçamentos', 'telaOrcamentos()')}
             ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
+            ${btn('chat', 'Chat', 'painelUsuarios()')}
             ${btn('sair', 'Desconectar', 'deslogar()')}
 
         </div>
@@ -463,6 +465,7 @@ async function atualizarApp() {
     let status = { total: 13, atual: 1 }
 
     const basesAuxiliares = [
+        'mensagens',
         'funcoes',
         'campos',
         'dados_distritos',
@@ -486,11 +489,22 @@ async function atualizarApp() {
     dados_distritos = await recuperarDados('dados_distritos')
     dados_setores = await recuperarDados('dados_setores')
     acesso = dados_setores[acesso.usuario]
+
+    if (acesso.excluído) await removerAcesso()
+
     localStorage.setItem('acesso', JSON.stringify(acesso))
 
     sincronizarApp({ remover: true })
 
     emAtualizacao = false
+}
+
+async function removerAcesso() {
+    await inserirDados({}, 'dados_setores', true)
+    acesso = {}
+    localStorage.removeItem('acesso')
+    await telaLogin()
+    removerOverlay()
 }
 
 function sincronizarApp({ atual, total, remover } = {}) {
@@ -832,7 +846,6 @@ function mostrarMenus(operacao) {
 
     operacao ? menu.add('active') : menu.remove('active')
 }
-
 
 function visibilidade(input, value) {
     const campos = ['quantidade', 'tamanho']
@@ -1402,6 +1415,7 @@ async function receber(chave) {
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
+            usuario: acesso.usuario,
             servidor,
             chave,
             timestamp

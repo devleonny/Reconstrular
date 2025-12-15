@@ -12,7 +12,6 @@ async function telaUsuarios() {
     const btnEdicao = r.length == 0 ? '' : `<button onclick="editarParceiros()">Cadastro</button>`
 
     const btnExtras = `
-        <img src="imagens/atualizar.png" style="width: 3rem;">
         ${btnEdicao}
         ${fPesq({ texto: 'Função', objeto: funcoes, chave: 'nome', config: 'name="funcao"' })}
         ${fPesq({ texto: 'Zona', config: 'name="zona"' })}

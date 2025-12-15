@@ -1,0 +1,94 @@
+.conteinerOnline {
+    width: 70vw;
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    background-color: #d2d2d2;
+    max-height: 70vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.divOnline {
+    margin-bottom: 1rem;
+    gap: 2px;
+    padding: 1rem;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+}
+
+.usuarioOnline {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    gap: 0.5rem;
+    background-color: white;
+    padding: 5px;
+    border-radius: 3px;
+}
+
+.painel-email {
+    gap: 0.5rem;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+    padding: 1rem;
+    background-color: #d2d2d2;
+}
+
+.mensagens-funcao {
+    width: 100%;
+    padding: 0.5rem;
+    gap: 1px;
+    background-color: #d2d2d2;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+}
+
+.etiqueta {
+    width: 100%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    border-radius: 3px;
+    gap: 1rem;
+    min-width: 10rem;
+    padding: 0.5rem;
+    background-color: white;
+}
+
+.etiqueta:hover {
+    color: white;
+    background-color: #222222ec;
+}
+
+.m-sagem-S {
+    width: 100%;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+    text-align: left;
+    background-color: #ffffff;
+    border-radius: 3px;
+    padding: 0.5rem;
+}
+
+.m-sagem-N {
+    width: 100%;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+    text-align: left;
+    background-color: #fff5a8;
+    border-radius: 3px;
+    padding: 0.5rem;
+}
