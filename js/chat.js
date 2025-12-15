@@ -69,9 +69,10 @@ function criarDivMensagem(idMensagem, m) {
     
     const div = `
         <div onclick="abrirMensagem('${idMensagem}')" class="m-sagem-${m.lido || 'N'}">
-            <span><u>${m.remetente}</u> • <b>${m?.assunto || '...'}</b></span>
-            <span>${m.mensagem.slice(0, 10)}...</span>
-            <span style="font-size: 0.7rem"><b>${m.data}</b></span>
+            <span><u>${m.remetente}</u></span>
+            <span style="font-size: 0.6rem;"><b>${m.data}</b></span>
+            <span><b>${m?.assunto || '...'}</b></span>
+            <span>${m.mensagem.slice(0, 50)}...</span>
         </div>
     `
 
@@ -115,7 +116,7 @@ function balaoMensagem(destinatario) {
             <span>Assunto</span>
             <textarea name="assunto"></textarea>
             <hr>
-            <textarea rows="10" name="mensagem" data-destinatario="${destinatario}"></textarea>
+            <textarea rows="5" name="mensagem" data-destinatario="${destinatario}"></textarea>
             <button onclick="enviarMensagem()">Enviar</button>
         </div>
     `

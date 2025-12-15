@@ -216,9 +216,7 @@ async function acessoLogin() {
                 divAcesso.style.display = 'flex'
                 return popup(mensagem(data.mensagem), 'Alerta', true);
 
-            } if (data.permissao == 'novo') {
-                popup(mensagem('Alguém do setor de SUPORTE precisa autorizar sua entrada', 'imagens/concluido.png'), 'ALERTA', true)
-            } else if (data.permissao !== 'novo') {
+            } else {
                 localStorage.setItem('acesso', JSON.stringify(data));
                 telaPrincipal()
                 removerOverlay()
@@ -256,7 +254,7 @@ async function verificarSupervisor(usuario, senha) {
 
         const data = await response.json()
 
-        if (data.permissao) {
+        if (data.funcao) {
             return 'Senha válida'
         } else {
             return 'Senha Supervisão inválida'
@@ -311,22 +309,11 @@ function salvarCadastro() {
                 return response.json();
             })
             .then(data => {
-
-                switch (true) {
-                    case data.mensagem:
-                        popup(mensagem(data.mensagem), 'AVISO', true);
-                        break;
-                    case data.permissao == 'novo':
-                        popup(mensagem('Seu cadastro foi realizado! Alguém do setor de SUPORTE precisa autorizar sua entrada!'), 'ALERTA')
-                        break;
-                    default:
-                        popup(mensagem('Servidor Offline... fale com o Setor de SUPORTE'), 'AVISO', true);
-                }
-
+                return popup(mensagem(data.mensagem || 'Falha... tente novamente.'), 'Aviso', true);
             })
             .catch(error => {
-                popup(mensagem(error.mensagem), 'AVISO', true);
-            });
+                popup(mensagem(error.mensagem), 'Aviso', true);
+            })
 
     }
 
@@ -413,6 +400,7 @@ async function telaPrincipal() {
 
     toolbar.style.display = 'flex'
     acesso = JSON.parse(localStorage.getItem('acesso'))
+    funcoes = await recuperarDados('funcoes')
     const acumulado = `
 
     <div class="menu-container">
@@ -422,7 +410,7 @@ async function telaPrincipal() {
             <br>
 
             <div class="nomeUsuario">
-                <span><strong>${inicialMaiuscula(acesso.permissao)}</strong> ${acesso.usuario}</span>
+                <span><strong>${funcoes?.[acesso?.funcao]?.nome || '...'}</strong> ${acesso.usuario}</span>
             </div>
 
             ${btn('atualizar', 'Sincronizar App', 'atualizarApp()')}
@@ -1038,36 +1026,6 @@ async function infoObra(dados) {
     return dadosObra
 }
 
-
-async function gerenciarUsuario(id) {
-
-    const usuario = await recuperarDado('dados_setores', id)
-
-    const modelo = (texto, elemento) => `
-        <div style="${vertical}; gap: 3px;">
-            <span style="text-align: left;"><strong>${texto}</strong></span>
-            <div>${elemento}</div>
-        </div>
-    `
-
-    const permissoes = ['', 'novo', 'adm', 'user', 'analista']
-        .map(op => `<option ${usuario?.permissao == op ? 'selected' : ''}>${op}</option>`).join('')
-
-    const setores = ['', 'SUPORTE', 'GESTÃO', 'LOGÍSTICA']
-        .map(op => `<option ${usuario?.setor == op ? 'selected' : ''}>${op}</option>`).join('')
-
-    const acumulado = `
-        <div style="${vertical}; gap: 5px; padding: 2vw; background-color: #d2d2d2;">
-            ${modelo('Nome', usuario?.nome_completo || '--')}
-            ${modelo('E-mail', usuario?.email || '--')}
-            ${modelo('Permissão', `<select onchange="configuracoes('${id}', 'permissao', this.value)">${permissoes}</select>`)}
-            ${modelo('Setor', `<select onchange="configuracoes('${id}', 'setor', this.value)">${setores}</select>`)}
-        </div>
-    `
-
-    popup(acumulado, 'Usuário')
-}
-
 function dinheiro(valor) {
     if (!valor) return '€ 0,00';
 
@@ -1076,8 +1034,6 @@ function dinheiro(valor) {
         currency: 'EUR'
     });
 }
-
-
 
 function resetarPin() {
     document.querySelector('[name="pin"]').value = ''
