@@ -120,6 +120,7 @@ async function resetarBases() {
     logs.insertAdjacentHTML('beforeend', '<label>Criando uma nova Base, 0km, novíssima...</label>')
 
     const bases = [
+        'mensagens',
         'funcoes',
         'campos',
         'dados_distritos',
