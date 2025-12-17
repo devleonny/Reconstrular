@@ -422,8 +422,14 @@ async function telaPrincipal() {
             ${btn('contas', 'Despesas', 'telaDespesas()')}
             ${btn('orcamentos', 'Orçamentos', 'telaOrcamentos()')}
             ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
-            ${btn('chat', 'Chat', 'painelUsuarios()')}
-            ${btn('sair', 'Desconectar', 'deslogar()')}
+            ${btn('chat',
+        `<div style="${horizontal}; justify-content: space-between; width: 100%; margin-right: 1rem;">
+                    <span>Chat</span>
+                    <div id="msg"></div>
+                </div>
+                `,
+        'painelUsuarios()')}
+            ${btn('sair', 'Desconectar', 'confirmarSaida()')}
 
         </div>
 
@@ -819,6 +825,16 @@ async function carregarSelects({ select, cidade, distrito } = {}) {
         .join('');
 
     selectCidade.innerHTML = `<option></option>${opcoesCidade}`
+}
+
+function confirmarSaida() {
+    const acumulado = `
+        <div style="${horizontal}; padding: 1rem; gap: 0.5rem; background-color: #d2d2d2;">
+            <span>Tem certeza?</span>
+            <button onclick="deslogar()">Confirmar</button>
+        </div>
+    `
+    popup(acumulado, 'Sair', true)
 }
 
 function deslogar() {
@@ -1317,28 +1333,42 @@ async function salvarSenha() {
 
 }
 
-// API
-function enviar(caminho, info) {
-    return new Promise((resolve) => {
-        let objeto = {
-            caminho: caminho,
-            valor: info,
-            servidor
-        };
+async function enviar(caminho, info, idEvento) {
+    const url = `${api}/salvar`
+    const objeto = { caminho, valor: info, servidor }
 
-        fetch(`${api}/salvar`, {
+    try {
+        const response = await fetch(url, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(objeto)
         })
-            .then(data => resolve(data))
-            .catch(() => {
-                salvarOffline(objeto, 'enviar')
-                resolve();
-            });
-    });
+
+        let data
+        try {
+            data = await response.json()
+        } catch (parseError) {
+            // Erro ao tentar interpretar como JSON;
+            console.error("Resposta não é JSON válido:", parseError)
+            salvarOffline(objeto, 'enviar', idEvento)
+            return null;
+        }
+
+        if (!response.ok) {
+            // Se a API respondeu erro (ex: 400, 500);
+            console.error("Erro HTTP:", response.status, data)
+            salvarOffline(objeto, 'enviar', idEvento)
+            return null
+        }
+
+        if (idEvento) removerOffline('enviar', idEvento)
+
+        return data;
+    } catch (erro) {
+        console.error("Erro na requisição:", erro)
+        salvarOffline(objeto, 'enviar', idEvento)
+        return null
+    }
 }
 
 function erroConexao(mensagem) {
@@ -1402,33 +1432,41 @@ async function receber(chave) {
     })
 }
 
-async function deletar(caminho) {
-    const url = `${api}/deletar`;
-    const acesso = JSON.parse(localStorage.getItem('acesso'))
+async function deletar(caminho, idEvento) {
+
+    const url = `${api}/deletar`
+
     const objeto = {
         caminho,
         usuario: acesso.usuario,
         servidor
     }
 
-    return new Promise((resolve) => {
-        fetch(url, {
+    try {
+        const response = await fetch(url, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(objeto)
         })
-            .then(response => response.json())
-            .then(data => {
-                resolve(data);
-            })
-            .catch((err) => {
-                salvarOffline(objeto, 'deletar', idEvento);
-                popup(mensagem(err), 'Aviso', true)
-                resolve();
-            });
-    });
+
+        if (!response.ok) {
+            console.error(`Falha ao deletar: ${response.status} ${response.statusText}`)
+            const erroServidor = await response.text()
+            console.error(`Resposta do servidor:`, erroServidor)
+            throw new Error(`Erro HTTP ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        if (idEvento) removerOffline('deletar', idEvento)
+
+        return data
+    } catch (erro) {
+        console.error(`Erro ao tentar deletar '${caminho}':`, erro.message || erro)
+        salvarOffline(objeto, 'deletar', idEvento)
+        removerOverlay()
+        return null
+    }
 }
 
 async function cxOpcoes({ name, nomeBase, campos, funcaoAux }) {
@@ -1767,22 +1805,26 @@ function salvarOffline(objeto, operacao, idEvento) {
 }
 
 async function reprocessarOffline() {
-    let dados_offline = JSON.parse(localStorage.getItem('dados_offline')) || {};
+    const dados_offline = JSON.parse(localStorage.getItem('dados_offline')) || {};
 
-    for (let [operacao, operacoes] of Object.entries(dados_offline)) {
-        const ids = Object.keys(operacoes);
+    for (const [operacao, operacoes] of Object.entries(dados_offline)) {
 
-        for (let idEvento of ids) {
-            const evento = operacoes[idEvento];
+        for (const [idEvento, evento] of Object.entries(operacoes)) {
 
-            if (operacao === 'enviar') {
-                await enviar(evento.caminho, evento.valor, idEvento);
-            } else if (operacao === 'deletar', idEvento) {
-                await deletar(evento.chave, idEvento);
+            if (operacao == 'enviar') {
+                await enviar(evento.caminho, evento.valor, idEvento)
+            } else if (operacao == 'deletar', idEvento) {
+                await deletar(evento.chave, idEvento)
             }
 
         }
     }
+}
+
+function removerOffline(operacao, idEvento) {
+    let dados_offline = JSON.parse(localStorage.getItem('dados_offline'))
+    delete dados_offline?.[operacao]?.[idEvento]
+    localStorage.setItem('dados_offline', JSON.stringify(dados_offline))
 }
 
 async function enviarMargens({ codigos, margem }) {

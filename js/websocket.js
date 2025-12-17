@@ -32,6 +32,8 @@ async function connectWebSocket() {
 
             await inserirDados({ [data.id]: data.dados }, data.tabela)
 
+            if(data.tabela == 'mensagens') await alertaMensagens()
+
         } else if (data.tipo == 'status') {
 
             const user = await recuperarDado('dados_setores', data.usuario)

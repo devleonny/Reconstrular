@@ -3,6 +3,9 @@ let margem = 0
 
 async function telaPrecos() {
 
+    materiais = await recuperarDados('materiais')
+    ferramentas = await recuperarDados('ferramentas')
+    maoObra = await recuperarDados('maoObra')
     campos = await recuperarDados('campos')
 
     const tMargem = `
@@ -268,7 +271,7 @@ async function composicoes(id, tP) {
 
     const modeloTabela = (tipoTabela) => {
 
-        const ths = ['Artigo', 'Qtde', 'Preço', '']
+        const ths = ['Artigo', 'Qtde', 'Preço', 'Link', '']
             .map(col => `<th>${col}</th>`)
             .join('')
 
@@ -284,7 +287,7 @@ async function composicoes(id, tP) {
                     </table>
                 </div>
                 <div class="rodapeTabela">
-                    <button onclick="adicionarLinhaComposicoes({tabela: '${tipoTabela}', idCampo: '${idCampo}'})">Adicionar Linha</button>
+                    <button onclick="adicionarLinhaComposicoes({tabela: '${tipoTabela}', baseRef: ${tipoTabela}, idCampo: '${idCampo}'})">Adicionar Linha</button>
                 </div>
             </div>`
     }
@@ -322,17 +325,21 @@ async function composicoes(id, tP) {
 
     toogleTabela('materiais')
 
-    const tabelas = ['materiais', 'ferramentas', 'maoObra']
+    const tabelas = {
+        'materiais': materiais,
+        'ferramentas': ferramentas,
+        'maoObra': maoObra
+    }
 
-    for (const tabela of tabelas) {
+    for (const [tabela, baseRef] of Object.entries(tabelas)) {
 
-        for (const [idMaterial, dados] of Object.entries(campo?.[tabela] || {})) {
-            await adicionarLinhaComposicoes({ tabela, dados, idMaterial })
+        for (const [id, dados] of Object.entries(campo?.[tabela] || {})) {
+            adicionarLinhaComposicoes({ baseRef, tabela, dados, id })
         }
 
     }
 
-    await calcularTotal()
+    await calcularTotal(campo?.totalComposicao)
     if (tP) await telaPrecos()
 }
 
@@ -363,40 +370,81 @@ function toogleTabela(idAtual) {
 
 }
 
-async function adicionarLinhaComposicoes({ tabela, dados, idMaterial }) {
+async function adicionarLinhaComposicoes({ baseRef = {}, tabela, dados, id }) {
 
-    const baseRef = await recuperarDados(tabela) || {}
+    const tbody = document.getElementById(`body_${tabela}`)
+    if (!tbody) return
 
-    new Promise((resolve, reject) => {
-        const tbody = document.getElementById(`body_${tabela}`)
-        if (!tbody) return
+    const dadosRef = baseRef?.[id] || {}
 
-        let opcoes = `<option></option>`
-        opcoes += Object.entries(baseRef)
-            .map(([id, objeto]) => `<option value="${id}" ${idMaterial == id ? 'selected' : ''}>${objeto.nome}</option>`)
-            .join('')
+    let opcoes = `<option></option>`
+    opcoes += Object.entries(baseRef)
+        .map(([idO, objeto]) => `<option value="${id}" ${id == idO ? 'selected' : ''}>${objeto.nome}</option>`)
+        .join('')
 
-        const fnc = `salvarComposicao({ elemento: this, tabela: '${tabela}', idCampo: '${idCampo}' })`
-        const tds = `
+    const fnc = `salvarComposicao({ elemento: this, tabela: '${tabela}', idCampo: '${idCampo}' })`
+    const tds = `
         <td>
             <select onchange="${fnc}">${opcoes}</select>
         </td>
-        <td><input type="number" style="width: 100%;" value="${dados?.qtde || ''}" oninput="${fnc}"></td>
-        <td><input type="number" style="width: 100%;" value="${dados?.preco || ''}" oninput="${fnc}"></td>
-        <td><img style="width: 2rem;" src="imagens/cancel.png" onclick="removerItem(this, '${idCampo}', '${tabela}')"></td>`
+        <td><input type="number" style="width: 5rem;" value="${dados?.qtde || ''}" oninput="${fnc}"></td>
+        <td><input type="number" style="width: 5rem;" value="${dados?.preco || ''}" oninput="${fnc}"></td>
+        <td>
+            <div style="${horizontal}; gap: 5px;">
+                <a target="_blank" href="${dadosRef?.link || ''}" style="min-width: 15rem; text-align: left;">${dadosRef?.link || ''}</a>
+                <img src="imagens/lapis.png" onclick="editarCampo(this, '${tabela}', '${id}')">
+            </div>
+        </td>
+        <td><img style="width: 2rem;" src="imagens/cancel.png" onclick="removerItem(this, '${idCampo}', '${tabela}')"></td>
+        `
 
-        // procura a <tr> pelo idMaterial
-        const trExistente = tbody.querySelector(`tr[id="${idMaterial}"]`)
+    // procura a <tr> pelo idMaterial
+    const trExistente = tbody.querySelector(`tr[id="${id}"]`)
 
-        if (trExistente) {
-            trExistente.innerHTML = tds
-        } else {
-            tbody.insertAdjacentHTML('beforeend', `<tr id="${idMaterial || ''}">${tds}</tr>`)
-        }
+    if (trExistente) {
+        trExistente.innerHTML = tds
+    } else {
+        tbody.insertAdjacentHTML('beforeend', `<tr id="${id || ''}">${tds}</tr>`)
+    }
 
-        resolve()
+}
 
-    })
+async function salvarLink(tabela, id, img) {
+    const a = img.previousElementSibling
+    const texto = a.textContent.trim()
+
+    if (!texto) return
+
+    const url = texto.startsWith('http') ? texto : `https://${texto}`
+
+    a.href = url
+    a.textContent = url
+    a.contentEditable = false
+
+    const mat = await recuperarDado(tabela, id)
+    mat.link = url
+
+    await inserirDados({ [id]: mat }, tabela)
+    enviar(`${tabela}/${id}/link`, url)
+
+    img.style.display = 'none'
+}
+
+function editarCampo(img, tabela, id) {
+    const a = img.previousElementSibling
+
+    // se já está editando → salvar
+    if (a.isContentEditable) {
+        salvarLink(tabela, id, img)
+        img.src = 'imagens/editar.png'
+        return
+    }
+
+    // iniciar edição
+    a.contentEditable = true
+    a.focus()
+    img.src = 'imagens/concluido.png'
+    img.style.display = ''
 }
 
 async function removerItem(img, tabela) {
@@ -441,14 +489,14 @@ async function salvarComposicao({ elemento, tabela }) {
 
     enviar(`campos/${idCampo}/${tabela}/${codigo}`, { descricao, qtde, preco })
 
-    await calcularTotal()
+    await calcularTotal(campo?.totalComposicao)
     await inserirDados({ [idCampo]: campo }, 'campos')
 }
 
-async function calcularTotal() {
+async function calcularTotal(totalAtual = 0) {
     const tabelas = ['materiais', 'ferramentas', 'maoObra']
 
-    let totais = {
+    const totais = {
         geral: 0
     }
 
@@ -473,6 +521,9 @@ async function calcularTotal() {
 
         document.getElementById(`total_${tabela}`).textContent = `${totais[tabela]} €`
     }
+
+    // Só atualiza se for diferente;
+    if (totalAtual == totais.geral) return
 
     const campo = campos[idCampo]
     campo.totalComposicao = totais.geral

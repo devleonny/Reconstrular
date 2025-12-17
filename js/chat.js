@@ -1,7 +1,10 @@
 let mensagensFuncao = {}
 let nLidas = true
+let arquivado = false
 
-async function painelUsuarios() {
+async function painelUsuarios(toggle) {
+
+    if (toggle) arquivado = arquivado ? false : true
 
     mostrarMenus(false)
 
@@ -55,8 +58,9 @@ async function painelUsuarios() {
             <input type="checkbox" onclick="marcarTodos(this)">
             <span style="color: white;">Marcar todos</span>
         </div>
-        <button>Arquivar mensagens</button>
+        <button onclick="confirmarArquivamento()">Arquivar mensagens</button>
         <button onclick="filtrarNLidos(this)">Não lidas</button>
+        <button onclick="painelUsuarios(true)" id="btnArq">Arquivados</button>
         <div class="pesquisa">
             <input oninput="pesquisarEmMensagens(this.value)" placeholder="Pesquisar" style="width: 100%;">
             <img src="imagens/pesquisar2.png">
@@ -80,12 +84,25 @@ async function painelUsuarios() {
     const divOnline = document.querySelector('.divOnline')
     if (!divOnline) telaInterna.innerHTML = acumulado
 
+    const btnArq = document.getElementById('btnArq')
+    if (btnArq) btnArq.textContent = arquivado ? 'Não arquivados' : 'Arquivados'
+
     mensagensFuncao = {}
     mensagens = await recuperarDados('mensagens')
+    const ativos = []
     for (const [idMensagem, mensagem] of Object.entries(mensagens)) {
+
         if (mensagem.remetente == acesso.usuario) continue
+        if (arquivado && !mensagem.arquivado) continue
+        if (!arquivado && mensagem.arquivado == 'S') continue
+
+        ativos.push(idMensagem)
         criarDivMensagem(idMensagem, mensagem)
     }
+
+    // Remoção de linhas de itens não ativos;
+    const divs = document.querySelectorAll('[name="linha"]')
+    for (const d of divs) if (!ativos.includes(d.id)) d.remove()
 
     // Carregara primeira tabela com as pendências por Função;
 
@@ -115,6 +132,19 @@ function pesquisarEmMensagens(texto) {
     }
 }
 
+async function confirmarArquivamento() {
+
+    const acumulado = `
+        <div style="padding: 1rem; background-color: #d2d2d2; gap: 0.5rem; ${horizontal};">
+            <button onclick="arquivarMensagens('S')">Arquivar</button>
+            <button onclick="arquivarMensagens('N')">Desarquivar</button>
+        </div>
+    `
+
+    popup(acumulado, 'Arquivar mensagens', true)
+
+}
+
 function marcarTodos(inputM) {
 
     const inputs = document.querySelectorAll('[name="mensagem"]')
@@ -127,11 +157,11 @@ function filtrarNLidos(button) {
 
     const linhas = document.querySelectorAll('[name="linha"]')
 
-    nLidas = nLidas ? false : true 
+    nLidas = nLidas ? false : true
 
     button.textContent = nLidas ? 'Não Lidas' : 'Lidas'
 
-    for(const linha of linhas) {
+    for (const linha of linhas) {
         const lido = linha.dataset.lido == 'S'
         linha.style.display = lido == nLidas ? 'flex' : 'none'
     }
@@ -174,8 +204,10 @@ async function abrirMensagem(idMensagem) {
     const m = mensagens[idMensagem]
     const acumulado = `
         <div style="${vertical}; min-width: 20rem; background-color: #d2d2d2; gap: 2px; padding: 1rem;">
-            <span><u>${m.remetente}</u></span>
+            <span><b>Remetente:</b> <u>${m.remetente}</u></span>
             <span><b>Assunto:</b> ${m?.assunto || '...'}</span>
+            <hr>
+            <span><b>Mensagem:</b></span>
             <div>${m.mensagem}</div>
         </div>
     `
@@ -183,7 +215,8 @@ async function abrirMensagem(idMensagem) {
     await inserirDados({ [idMensagem]: m }, 'mensagens')
     enviar(`mensagens/${idMensagem}/lido`, 'S')
     popup(acumulado, `Mensagem de ${m.remetente}`, true)
-    await painelUsuarios()
+
+    document.getElementById(idMensagem).classList = `m-sagem-S`
 
 }
 
@@ -235,5 +268,63 @@ async function enviarMensagem() {
     await inserirDados({ [idMensagem]: m }, 'mensagens')
     mensagens[idMensagem] = m
     removerPopup()
+
+}
+
+alertaMensagens()
+
+async function alertaMensagens() {
+
+    mensagens = await recuperarDados('mensagens')
+
+    const total = Object.values(mensagens).filter(m => !(m?.lido == 'S')).length
+
+    const badge = document.getElementById('msg')
+
+    if (badge) badge.innerHTML = `<span class="badge-numero">${total}</span>`
+
+}
+
+async function arquivarMensagens(operacao) {
+
+    overlayAguarde()
+
+    const inputsM = document.querySelectorAll('[name="mensagem"]')
+    const mensagens = []
+    for (const inp of inputsM) {
+        const div = inp.closest('div')
+        if (inp.checked) mensagens.push(div.id)
+    }
+
+    if (mensagens.length == 0) return removerPopup()
+
+    const url = `${api}/arquivar-mensagens`
+
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mensagens, operacao, servidor })
+        })
+
+        if (!response.ok) {
+            popup(mensagem('Falha ao arquivar mensagens, tente novamente mais tarde.'), 'Aviso', true)
+            const erroServidor = await response.text()
+            console.error(`Resposta do servidor:`, erroServidor)
+        }
+
+        const data = await response.json()
+
+        if (data.mensagem) popup(mensagem(data.mensagem), 'Aviso', true)
+        await sincronizarDados('mensagens')
+        await painelUsuarios()
+        removerPopup()
+
+        return
+
+    } catch (erro) {
+        console.log(erro)
+        return popup(mensagem('Falha ao arquivar mensagens, tente novamente mais tarde.'), 'Aviso', true)
+    }
 
 }
