@@ -4,8 +4,10 @@ let idOrcamento = null
 let zona1 = null
 let indiceZona = 0
 let clientes = {}
+let dados_orcamentos = {}
+let finalizado = 'N'
 
-let ambientes = {
+const ambientes = {
     'Quarto': [
         '',
         ...povoarLista(0, 5, 'Quarto Piso'),
@@ -88,7 +90,8 @@ async function telaOrcamentos() {
         <div class="painel-despesas">
             <br>
             ${btn('orcamentos', 'Dados de Orçamento', 'formularioOrcamento()')}
-            ${btn('todos', 'Orçamentos', 'orcamentos()')}
+            ${btn('todos', 'Orçamentos em Aberto', `finalizado = 'N'; orcamentos()`)}
+            ${btn('todos', 'Orçamentos Finalizados', `finalizado = 'S'; orcamentos()`)}
         </div>
     `
 
@@ -142,10 +145,13 @@ async function orcamentos() {
 
     telaInterna.innerHTML = acumulado
 
-    const orcamentos = await recuperarDados('dados_orcamentos')
+    titulo.textContent = finalizado == 'S' ? 'Orçamentos Finalizados' : 'Orçamentos em Aberto'
 
-    for (const [idOrcamento, orcamento] of Object.entries(orcamentos)) {
+    dados_orcamentos = await recuperarDados('dados_orcamentos')
 
+    for (const [idOrcamento, orcamento] of Object.entries(dados_orcamentos)) {
+
+        if (finalizado !== orcamento?.finalizado) continue
         criarLinhaOrcamento(idOrcamento, orcamento)
 
     }
@@ -355,7 +361,7 @@ async function execucoes(id, proximo = 0) {
     idOrcamento = id;
 
     campos = await recuperarDados('campos');
-    let orcamento = await recuperarDado('dados_orcamentos', idOrcamento);
+    const orcamento = dados_orcamentos[idOrcamento]
     let zonas = orcamento?.zonas || {};
 
     const chavesZonas = Object.keys(zonas);
@@ -397,9 +403,6 @@ async function execucoes(id, proximo = 0) {
         'Edição Preço'
     ].map(col => `<th>${col}</th>`).join('')
 
-    const btn = (cor, texto, funcao, branco) =>
-        `<button style="color:${branco ? 'white' : '#222'};background-color:${cor};" onclick="${funcao}">${texto}</button>`;
-
     const opcoesZonas = chavesZonas
         .map(op => `<option ${zona1 == op ? 'selected' : ''}>${op}</option>`)
         .join('')
@@ -410,7 +413,10 @@ async function execucoes(id, proximo = 0) {
                 <div class="painelBotoes">
                     <div style="${horizontal}; justify-content: space-between; width: 90%;">
                         <span style="font-size: 2rem; padding: 0.5rem;">${zona1}</span>
-                        ${btn('#ad0000ff', 'Excluir Zona', `confirmarExcluirZona()`, true)}
+                        <button onclick="confirmarExcluirZona()">
+                            Excluir Zona
+                            <img src="imagens/cancel.png">
+                        </button>
                     </div>
                 </div>
                 <div class="recorteTabela">
@@ -422,14 +428,35 @@ async function execucoes(id, proximo = 0) {
                     </table>
                 </div>
                 <div class="rodapeTabela">
-                    ${btn('green', 'Adicionar Linha', 'adicionarLinha()', true)}
+                    <button onclick="adicionarLinha()">
+                        Adicionar Linha
+                        <img src="imagens/baixar.png">
+                    </button>
+                    <select onchange="execucoes('${idOrcamento}', this.value)">${opcoesZonas}</select>
                 </div>
             </div>
-            <div style="${horizontal}; gap: 1rem;">
-                ${btn('#00FFFF', 'Voltar a Zona', `execucoes('${idOrcamento}', -1)`)}
-                ${btn('#FFFF00', 'Próxima Zona', `execucoes('${idOrcamento}', 1)`)}
-                ${btn('#FF9900', 'Ver Orçamento', `orcamentoFinal('${idOrcamento}')`)}
-                <select onchange="execucoes('${idOrcamento}', this.value)">${opcoesZonas}</select>
+            <div style="${horizontal}; width: 100%; justify-content: space-between; gap: 1rem;">
+                <div style="${horizontal}; gap: 1rem;">
+
+                    <button onclick="execucoes('${idOrcamento}', -1)">
+                        <img src="imagens/anterior.png">
+                        Voltar a Zona
+                    </button>
+
+                    <button onclick="execucoes('${idOrcamento}', 1)">
+                        Próxima Zona
+                        <img src="imagens/proximo.png">
+                    </button>
+
+                    <div id="botaoFinalizacao">
+                        <button onclick="orcamentoFinal('${idOrcamento}')">
+                            Ver Orçamento
+                            <img src="imagens/orcamentos.png">
+                        </button>
+                    </div>
+
+                </div>
+                ${bFinalizacao(orcamento?.finalizado)}
             </div>
         </div>
     `
@@ -442,7 +469,46 @@ async function execucoes(id, proximo = 0) {
 
 }
 
-function adicionarLinha(idItem = ID5digitos(), dados = {}) {  
+function bFinalizacao(status = 'N') {
+
+    const finalizar = `
+        <button onclick="alterarFinalizacao('S')">
+            Concluir Orçamento
+            <img src="imagens/concluido.png">
+        </button>
+    `
+
+    const editar = `
+        <button onclick="alterarFinalizacao('N')">
+            Editar Orçamento
+            <img src="imagens/lapis.png">
+        </button>
+    `
+
+    return status == 'S' ? editar : finalizar
+}
+
+async function alterarFinalizacao(status) {
+
+    overlayAguarde()
+    enviar(`dados_orcamentos/${idOrcamento}/finalizado`, status)
+    const orcamento = dados_orcamentos[idOrcamento]
+    orcamento.finalizado = status
+    await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
+
+    const botaoFinalizacao = document.getElementById('botaoFinalizacao')
+    finalizado = status
+    if (status == 'S') {
+        await orcamentos()
+        removerOverlay()
+    } else {
+        botaoFinalizacao.innerHTML = bFinalizacao('N')
+        removerOverlay()
+    }
+
+}
+
+function adicionarLinha(idItem = ID5digitos(), dados = {}) {
 
     const body = document.getElementById('body')
 
