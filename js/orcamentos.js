@@ -106,7 +106,7 @@ async function orcamentos() {
 
     mostrarMenus(false)
 
-    const colunas = ['Cliente', 'Data de Contato', 'Data de Visita', 'Zonas', 'Editar', 'Orcamento', 'Excluir']
+    const colunas = ['Cliente', 'Data de Contato', 'Data de Visita', 'Zonas', 'Editar', 'Orcamento', 'Versão Atual', 'Excluir']
     let ths = ''
     let pesquisa = ''
 
@@ -163,26 +163,29 @@ function criarLinhaOrcamento(idOrcamento, orcamento) {
     const cliente = clientes?.[orcamento.idCliente] || {}
 
     const dt = (data) => {
-        if (!data) return '--/--/----'
+        if (!data) return '-'
         const [ano, mes, dia] = data.split('-')
         return `${dia}/${mes}/${ano}`
     }
-
+    const versao = orcamento?.versao
     const tds = `
         <td>${cliente?.nome || '...'}</td>
         <td>${dt(orcamento.dataContato)}</td>
         <td>${dt(orcamento.dataVisita)}</td>
         <td>
-            <img src="imagens/planta.png" style="width: 2rem;" onclick="execucoes('${idOrcamento}')">
+            <img src="imagens/planta.png" onclick="execucoes('${idOrcamento}')">
         </td>
         <td>
-            <img src="imagens/pesquisar.png" style="width: 2rem;" onclick="formularioOrcamento('${idOrcamento}')">
+            <img src="imagens/pesquisar.png" onclick="formularioOrcamento('${idOrcamento}')">
         </td>
         <td>
-            <img src="imagens/orcamentos.png" style="width: 2rem;" onclick="orcamentoFinal('${idOrcamento}')">
+            <img src="imagens/orcamentos.png" onclick="orcamentoFinal('${idOrcamento}')">
         </td>
         <td>
-            <img src="imagens/cancel.png" style="width: 2rem;" onclick="confirmarExclusaoOrcamento('${idOrcamento}')">
+            ${versao ? `<span onclick="comparativoRevisoes('${idOrcamento}')" class="etiqueta-revisao">${versao}</span>`: ''}
+        </td> 
+        <td>
+            <img src="imagens/cancel.png" onclick="confirmarExclusaoOrcamento('${idOrcamento}')">
         </td>
     `
 
@@ -213,12 +216,23 @@ async function excluirOrcamento(idOrcamento) {
     removerPopup()
 }
 
-async function formularioOrcamento(idOrcamento) {
-    mostrarMenus()
+async function formularioOrcamento(idOrcamento) { //29
 
-    const orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
-    const clientes = await recuperarDados('dados_clientes')
+    mostrarMenus(false)
 
+    const orcamento = dados_orcamentos[idOrcamento]
+
+    // Verificação antes de Editar;
+    if (orcamento.finalizado == 'S') {
+        return popup(`
+            <div style="${horizontal}; background-color: #d2d2d2; padding: 1rem; gap: 1rem;">
+                <span>Se continuar você irá reabrir o orçamento para edição, <br>tem certeza?</span>
+                <button onclick="idOrcamento = '${idOrcamento}'; alterarFinalizacao('N'); formularioOrcamento('${idOrcamento}'); removerPopup()">Confirmar</button>
+            </div>
+            `, 'Tem certeza?', true)
+    }
+
+    clientes = await recuperarDados('dados_clientes')
     const opcoesClientes = Object.entries({ '': { nome: '' }, ...clientes })
         .map(([idCliente, dados]) => `<option id="${idCliente}" ${orcamento?.idCliente == idCliente ? 'selected' : ''}>${dados.nome}</option>`)
         .join('')
@@ -236,12 +250,6 @@ async function formularioOrcamento(idOrcamento) {
         .map(([ambiente, lista]) => modeloLivre(ambiente, zonas(lista, ambiente)))
         .join('')
 
-    const modelo = (texto, valor) => `
-        <div style="${vertical}; padding: 10px;">
-            <span>${texto}</span>
-            <input oninput="regrasClientes()" placeholder="${texto}" name="${texto}" value="${valor || ''}">
-        </div>
-    `
     const funcao = idOrcamento ? `salvarOrcamento('${idOrcamento}')` : 'salvarOrcamento()'
 
     const acumulado = `
@@ -360,16 +368,28 @@ async function excluirZona() {
 async function execucoes(id, proximo = 0) {
     idOrcamento = id;
 
-    campos = await recuperarDados('campos');
     const orcamento = dados_orcamentos[idOrcamento]
-    let zonas = orcamento?.zonas || {};
 
-    const chavesZonas = Object.keys(zonas);
+    // Verificação antes de Editar;
+    if (orcamento.finalizado == 'S') {
+        return popup(`
+            <div style="${horizontal}; background-color: #d2d2d2; padding: 1rem; gap: 1rem;">
+                <span>Se continuar você irá reabrir o orçamento para edição, <br>tem certeza?</span>
+                <button onclick="alterarFinalizacao('N'); execucoes('${id}'); removerPopup()">Confirmar</button>
+            </div>
+            `, 'Tem certeza?', true)
+    }
+    console.log(orcamento);
+
+    campos = await recuperarDados('campos')
+    let zonas = orcamento?.zonas || {}
+
+    const chavesZonas = Object.keys(zonas)
 
     if (chavesZonas.length === 0) {
         await orcamentos();
         popup(mensagem('Orçamento sem nenhuma zona disponível'), 'Alerta');
-        return;
+        return
     }
 
     // Se for string, tenta localizar a chave
@@ -413,6 +433,10 @@ async function execucoes(id, proximo = 0) {
                 <div class="painelBotoes">
                     <div style="${horizontal}; justify-content: space-between; width: 90%;">
                         <span style="font-size: 2rem; padding: 0.5rem;">${zona1}</span>
+                        <button onclick="orcamentos()">
+                            Voltar para Orçamentos
+                            <img src="imagens/todos.png">
+                        </button>
                         <button onclick="confirmarExcluirZona()">
                             Excluir Zona
                             <img src="imagens/cancel.png">
@@ -456,7 +480,10 @@ async function execucoes(id, proximo = 0) {
                     </div>
 
                 </div>
-                ${bFinalizacao(orcamento?.finalizado)}
+                <button onclick="alterarFinalizacao('S'); finalizado = 'S'; orcamentos();">
+                    Concluir Orçamento
+                    <img src="imagens/concluido.png">
+                </button>
             </div>
         </div>
     `
@@ -469,44 +496,48 @@ async function execucoes(id, proximo = 0) {
 
 }
 
-function bFinalizacao(status = 'N') {
+function proximaRevisao(revisoes = {}) {
+    const nums = Object.keys(revisoes)
+        .map(k => Number(k.replace(/\D/g, '')))
+        .filter(n => !isNaN(n))
 
-    const finalizar = `
-        <button onclick="alterarFinalizacao('S')">
-            Concluir Orçamento
-            <img src="imagens/concluido.png">
-        </button>
-    `
-
-    const editar = `
-        <button onclick="alterarFinalizacao('N')">
-            Editar Orçamento
-            <img src="imagens/lapis.png">
-        </button>
-    `
-
-    return status == 'S' ? editar : finalizar
+    const prox = nums.length ? Math.max(...nums) + 1 : 1
+    return `R${prox}`
 }
 
-async function alterarFinalizacao(status) {
+async function alterarFinalizacao(status) { //29
 
     overlayAguarde()
     enviar(`dados_orcamentos/${idOrcamento}/finalizado`, status)
+
     const orcamento = dados_orcamentos[idOrcamento]
     orcamento.finalizado = status
-    await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
 
-    const botaoFinalizacao = document.getElementById('botaoFinalizacao')
-    finalizado = status
     if (status == 'S') {
-        await orcamentos()
-        removerOverlay()
-    } else {
-        botaoFinalizacao.innerHTML = bFinalizacao('N')
-        removerOverlay()
+
+        orcamento.revisoes ??= {}
+
+        const R = proximaRevisao(orcamento.revisoes)
+
+        orcamento.revisoes[R] = {
+            zonas: orcamento.zonas,
+            idCliente: orcamento.idCliente,
+            dataContato: orcamento.dataContato,
+            dataVisita: orcamento.dataVisita,
+            data: new Date().toLocaleString(),
+            usuario: acesso.usuario
+        }
+
+        orcamento.versao = R
+
+        enviar(`dados_orcamentos/${idOrcamento}/revisoes/${R}`, orcamento.revisoes[R])
+        enviar(`dados_orcamentos/${idOrcamento}/versao`, R)
     }
 
+    await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
+    removerOverlay()
 }
+
 
 function adicionarLinha(idItem = ID5digitos(), dados = {}) {
 
@@ -540,12 +571,15 @@ function adicionarLinha(idItem = ID5digitos(), dados = {}) {
             </div>
         </td>
         <td>
-            <select name="campo" onchange="buscarMedidas(this)">
+            <select style="width: 100%;" name="campo" onchange="buscarMedidas(this)">
                 ${opcoesDescricao}
             </select>
         </td>
-        <td>
-            <textarea name="descricaoExtra" oninput="filtroValores(this)">${dados?.descricaoExtra || ''}</textarea>
+        <td>    
+            <div style="${horizontal}; gap: 5px;">
+                <textarea name="descricaoExtra" style="min-width: 150px;" oninput="this.nextElementSibling.style.display = 'flex';">${dados?.descricaoExtra || ''}</textarea>
+                <img src="imagens/concluido.png" onclick="filtroValores(this); this.style.display = 'none';" style="display: none;">
+            </div>
         </td>
         <td>
             <span name="medida">${dados?.medida || ''}</span>
@@ -731,20 +765,194 @@ async function salvarExecucao(tr) {
     orcamento.zonas[zona1] ??= {}
     orcamento.zonas[zona1][idItem] = item
 
+    const total_geral = totalGeral(orcamento?.zonas)
+    orcamento.total_geral = total_geral
+
     await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos');
     enviar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}/${idItem}`, item)
+    if (total_geral !== orcamento.total_geral) enviar(`dados_orcamentos/${idOrcamento}/total_geral`, total_geral)
+
+    function totalGeral(zonas = {}) {
+        return Object.values(zonas).reduce((total, zona) => {
+            return total + Object.values(zona).reduce((somaZona, item) => {
+                return somaZona + (Number(item.quantidade) || 0) * (Number(item.unitario) || 0)
+            }, 0)
+        }, 0)
+    }
+
 }
+
+function comparativoRevisoes(idOrcamento) {
+
+    const orcamento = dados_orcamentos[idOrcamento]
+    const revisoes = orcamento.revisoes || {}
+    const versaoAtual = orcamento.versao
+
+    const keys = Object.keys(revisoes)
+    if (!keys.length) {
+        return popup(mensagem('Sem revisões'), 'Alerta', true)
+    }
+
+    function render(R) {
+
+        const revAnt = revisoes[R]
+        const revAtual = revisoes[versaoAtual] || orcamento
+
+        if (!revAnt || !revAtual) return ''
+
+        const usuarioAnt = revAnt.usuario || '-'
+        const usuarioAtu = revAtual.usuario || '-'
+
+        const camposGerais = [
+            ['Cliente', revAnt.idCliente, revAtual.idCliente],
+            ['Data contato', revAnt.dataContato, revAtual.dataContato],
+            ['Data visita', revAnt.dataVisita, revAtual.dataVisita]
+        ]
+
+        const dadosGeraisHTML = camposGerais.map(([label, ant, atu]) => {
+
+            let classe = ''
+            if (ant && !atu) classe = 'cmp-removido'
+            else if (!ant && atu) classe = 'cmp-novo'
+            else if (ant !== atu) classe = 'cmp-alterado'
+
+            return `
+                <div class="cmp-linha ${classe}">
+                    <div class="cmp-col cmp-label">${label}</div>
+                    <div class="cmp-col cmp-ant">${ant || '-'}</div>
+                    <div class="cmp-col cmp-atu">${atu || '-'}</div>
+                </div>
+            `
+        }).join('')
+
+        const zonasAnt = revAnt.zonas || {}
+        const zonasAtu = revAtual.zonas || {}
+
+        const todasZonas = new Set([
+            ...Object.keys(zonasAnt),
+            ...Object.keys(zonasAtu)
+        ])
+
+        const zonasHTML = [...todasZonas].map(zona => {
+
+            const itensAnt = zonasAnt[zona] || {}
+            const itensAtu = zonasAtu[zona] || {}
+
+            const todosItens = new Set([
+                ...Object.keys(itensAnt),
+                ...Object.keys(itensAtu)
+            ])
+
+            const itensHTML = [...todosItens].map(id => {
+
+                const ant = itensAnt[id]
+                const atu = itensAtu[id]
+
+                if (ant && !atu) {
+                    return `
+                        <div class="cmp-item cmp-removido">
+                            <span class="cmp-desc">${ant.descricao}</span>
+                            <span class="cmp-info">removido</span>
+                        </div>
+                    `
+                }
+
+                if (!ant && atu) {
+                    return `
+                        <div class="cmp-item cmp-novo">
+                            <span class="cmp-desc">${atu.descricao}</span>
+                            <span class="cmp-info">novo</span>
+                        </div>
+                    `
+                }
+
+                const qtdMudou = Number(ant.quantidade) !== Number(atu.quantidade)
+                const unitMudou = Number(ant.unitario) !== Number(atu.unitario)
+
+                const classe = (qtdMudou || unitMudou) ? 'cmp-alterado' : ''
+
+                return `
+                    <div class="cmp-item ${classe}">
+                        <span class="cmp-desc">${atu.descricao || ant.descricao}</span>
+                        ${classe ? `
+                            <span class="cmp-info">
+                                qtd ${ant.quantidade} → ${atu.quantidade} |
+                                unit ${ant.unitario} → ${atu.unitario}
+                            </span>
+                        ` : ''}
+                    </div>
+                `
+            }).join('')
+
+            return `
+                <div class="cmp-zona">
+                    <div class="cmp-zona-titulo">${zona}</div>
+                    <div class="cmp-itens">${itensHTML}</div>
+                </div>
+            `
+        }).join('')
+
+        return `
+            <div class="cmp-header">
+                <div>Revisão: <strong>${R}</strong> × Atual: <strong>${versaoAtual}</strong></div>
+                <div class="cmp-usuarios">
+                    <span>Alterado por: ${usuarioAnt}</span>
+                    <span>Atual: ${usuarioAtu}</span>
+                </div>
+            </div>
+
+            <div class="cmp-bloco">
+                <div class="cmp-subtitulo">Dados gerais</div>
+                <div class="cmp-tabela">
+                    <div class="cmp-linha cmp-head">
+                        <div class="cmp-col">Campo</div>
+                        <div class="cmp-col">Antes</div>
+                        <div class="cmp-col">Depois</div>
+                    </div>
+                    ${dadosGeraisHTML}
+                </div>
+            </div>
+
+            <div class="cmp-bloco">
+                <div class="cmp-subtitulo">Zonas</div>
+                ${zonasHTML}
+            </div>
+        `
+    }
+
+    const selectHTML = `
+        <select id="cmp-select" class="cmp-select">
+            ${keys.map(k => `<option value="${k}">${k}</option>`).join('')}
+        </select>
+    `
+    popup(`
+        <div class="comparativo-revisoes">
+            <div class="cmp-topo">
+                ${selectHTML}
+            </div>
+            <div id="cmp-conteudo">
+                ${render(keys[0])}
+            </div>
+        </div>
+    `, 'Comparativo de Revisões', true)
+
+    document.getElementById('cmp-select').onchange = e => {
+        document.getElementById('cmp-conteudo').innerHTML = render(e.target.value)
+    }
+}
+
 
 async function orcamentoFinal(idOrcamento) {
 
     campos = await recuperarDados('campos')
-    let orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
-    let idCliente = orcamento?.idCliente || ''
-    let cliente = await recuperarDado('dados_clientes', idCliente)
+    const orcamento = dados_orcamentos[idOrcamento]
+    const idCliente = orcamento?.idCliente || ''
+    const cliente = clientes[idCliente]
+
     let total = 0
 
     const dt = (data) => {
-        if (!data) return '--/--/----'
+        if (!data) return '-'
         const [ano, mes, dia] = data.split('-')
         return `${dia}/${mes}/${ano}`
     }
@@ -859,12 +1067,6 @@ async function orcamentoFinal(idOrcamento) {
     `
 
     telaInterna.innerHTML = acumulado
-
-    if (orcamento.total_geral !== total) {
-        orcamento.total_geral = total
-        await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
-        enviar(`dados_orcamentos/${idOrcamento}/total_geral`, total)
-    }
 
     document.querySelector('.total-valor').textContent = dinheiro(total)
 

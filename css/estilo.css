@@ -921,6 +921,15 @@ input[type="file"] {
     width: 100%;
 }
 
+.etiqueta-revisao {
+    cursor: pointer;
+    color: white;
+    border-radius: 3px;
+    border: solid 1px #ff0000;
+    background-color: #ff0000b0;
+    padding: 0 3px 0 3px;
+}
+
 .toolbar {
     display: flex;
     align-items: center;
@@ -998,6 +1007,148 @@ input[type="file"] {
     border-radius: 10px;
     width: 100%;
 }
+
+.comparativo-revisoes {
+    display: flex;
+    justify-content: start;
+    align-items: start;
+    padding: 1rem;
+    background-color: #d2d2d2;
+}
+
+/* topo */
+.cmp-topo {
+    position: absolute;
+    top: 4rem;
+    left: 4rem;
+}
+
+.cmp-select {
+    padding: 6px 8px;
+    font-size: 13px;
+}
+
+/* header */
+.cmp-header {
+    background: white;
+    display: flex;
+    justify-content: end;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 14px;
+    padding: 6px;
+    border-bottom: 1px solid #ddd;
+}
+
+.cmp-usuarios span {
+    margin-left: 12px;
+    font-size: 12px;
+    color: #555;
+}
+
+/* blocos */
+.cmp-bloco {
+    margin-bottom: 18px;
+}
+
+.cmp-subtitulo {
+    font-weight: bold;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    font-size: 12px;
+    color: #444;
+}
+
+/* tabela comparativa */
+.cmp-tabela {
+    border: 1px solid #ddd;
+}
+
+.cmp-linha {
+    display: grid;
+    grid-template-columns: 160px 1fr 1fr;
+    border-top: 1px solid #eee;
+}
+
+.cmp-linha:first-child {
+    border-top: none;
+}
+
+.cmp-head {
+    background: #f3f3f3;
+    font-weight: bold;
+}
+
+.cmp-col {
+    padding: 6px 8px;
+    text-align: left;
+}
+
+.cmp-label {
+    background: white;
+    font-weight: 600;
+}
+
+.cmp-ant {
+    background: white;
+}
+
+.cmp-atu {
+    background: white;
+}
+
+/* zonas */
+.cmp-zona {
+    border: 1px solid #ddd;
+    margin-bottom: 10px;
+}
+
+.cmp-zona-titulo {
+    background: #f7f7f7;
+    padding: 6px 8px;
+    font-weight: bold;
+}
+
+/* itens */
+.cmp-item {
+    background-color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px dashed #eee;
+}
+
+.cmp-item:last-child {
+    border-bottom: none;
+}
+
+.cmp-desc {
+    padding: 0 1rem 0 1rem;;
+    flex: 1;
+}
+
+.cmp-info {
+    font-size: 11px;
+    color: #555;
+    margin: 0 2rem 0 2rem;
+    white-space: nowrap;
+}
+
+/* estados */
+.cmp-novo {
+    background: #91ffa2;
+}
+
+.cmp-removido {
+    background: #ffb6b6;
+    text-decoration: line-through;
+}
+
+.cmp-alterado {
+    background: #ffe093;
+}
+
 
 @media screen and (orientation: landscape),
 screen and (min-aspect-ratio: 13/9) {
