@@ -106,7 +106,20 @@ async function orcamentos() {
 
     mostrarMenus(false)
 
-    const colunas = ['Cliente', 'Data de Contato', 'Data de Visita', 'Zonas', 'Editar', 'Orcamento', 'Versão Atual', 'Excluir']
+    const colunas = [
+        'Cliente',
+        'Data de Contato',
+        'Data de Visita',
+        'E-mail enviado',
+        'Data/Hora do Envio (E-mail)',
+        'Listagem do Material',
+        'Listagem de Ferramentas',
+        'Zonas',
+        'Editar',
+        'Orcamento',
+        'Versão Atual',
+        'Excluir'
+    ]
     let ths = ''
     let pesquisa = ''
 
@@ -173,6 +186,18 @@ function criarLinhaOrcamento(idOrcamento, orcamento) {
         <td>${dt(orcamento.dataContato)}</td>
         <td>${dt(orcamento.dataVisita)}</td>
         <td>
+            ${orcamento.emailEnviado ? `<img src="imagens/carta.png">` : ''}
+        </td>
+        <td>
+            ${orcamento?.emailEnviado?.data || ''}
+        </td>
+        <td>
+            <img src="imagens/pdf.png">
+        </td>
+        <td>
+            <img src="imagens/pdf.png">
+        </td>
+        <td>
             <img src="imagens/planta.png" onclick="execucoes('${idOrcamento}')">
         </td>
         <td>
@@ -182,7 +207,7 @@ function criarLinhaOrcamento(idOrcamento, orcamento) {
             <img src="imagens/orcamentos.png" onclick="orcamentoFinal('${idOrcamento}')">
         </td>
         <td>
-            ${versao ? `<span onclick="comparativoRevisoes('${idOrcamento}')" class="etiqueta-revisao">${versao}</span>`: ''}
+            ${versao ? `<span onclick="comparativoRevisoes('${idOrcamento}')" class="etiqueta-revisao">${versao}</span>` : ''}
         </td> 
         <td>
             <img src="imagens/cancel.png" onclick="confirmarExclusaoOrcamento('${idOrcamento}')">
@@ -379,7 +404,6 @@ async function execucoes(id, proximo = 0) {
             </div>
             `, 'Tem certeza?', true)
     }
-    console.log(orcamento);
 
     campos = await recuperarDados('campos')
     let zonas = orcamento?.zonas || {}
@@ -979,8 +1003,8 @@ async function orcamentoFinal(idOrcamento) {
             <tr>
                 <td colspan="2" style="background-color: #5b707f;">
                     <div class="titulo-orcamento">
-                        <img class="btnAcmp" src="imagens/lapis.png" onclick="formularioOrcamento('${idOrcamento}')">
-                        <span>${titulo}</span>
+                        <img name="editaveis" class="btnAcmp" src="imagens/lapis.png" onclick="formularioOrcamento('${idOrcamento}')">
+                        <span ${titulo == 'Selecionar Zonas' ? 'name="titulo"' : ''}>${titulo}</span>
                     </div>
                 </td>
                 <td class="total-orcamento">${dado}</td>
@@ -1024,7 +1048,7 @@ async function orcamentoFinal(idOrcamento) {
                 <tr>
                     <td>
                         <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
-                            <img onclick="execucoes('${idOrcamento}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">
+                            <img name="editaveis" onclick="execucoes('${idOrcamento}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">
                             <span>${zona}</span>
                         </div>
                     </td>
@@ -1032,7 +1056,7 @@ async function orcamentoFinal(idOrcamento) {
                     <td>${dados?.descricao || '...'}</td>
                     <td>
                         <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
-                            <img onclick="editarDescricaoExtra('${idOrcamento}', '${idCampo}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">
+                            <img name="editaveis" name="editaveis" onclick="editarDescricaoExtra('${idOrcamento}', '${idCampo}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">
                             <span>${dados?.descricaoExtra || '...'}</span>
                         </div>
                     </td>
@@ -1045,30 +1069,212 @@ async function orcamentoFinal(idOrcamento) {
     }
 
     const acumulado = `
-        <div style="width: 100%; padding: 1rem;">
-            <div style="width: 100%; ${horizontal}; justify-content: space-between; width: 100%; padding: 0.5rem;">
+        <div class="tela-orcamento">
+            <div style="width: 100%; ${horizontal}; justify-content: start; gap: 3px; padding: 0.5rem;">
                 <button onclick="orcamentos()">Voltar para Orçamentos</button>
+                <button onclick="imprimirRecorte()">Imprimir</button>
+                <button onclick="pdfOrcamento()">Exportar</button>
+                <button onclick="enviarOrcamentoPorEmail('${idOrcamento}')">Enviar</button>
                 <button onclick="execucoes('${idOrcamento}')">Voltar para Zonas</button>
             </div>
-            <table class="tabela-orcamento">
-                <tbody>
-                    ${linhas}
-                </tbody>
-            </table>
 
-            <br>
+            <div class="orcamento-documento">
+                <table class="tabela-orcamento">
+                    <tbody>
+                        ${linhas}
+                    </tbody>
+                </table>
 
-            <table class="tabela-orcamento-2">
-                <thead>${colunas}</thead>
-                <tbody>${itens}</tbody>
-            </table>
+                <br>
 
+                <table class="tabela-orcamento-2">
+                    <thead>${colunas}</thead>
+                    <tbody>${itens}</tbody>
+                </table>
+            </div>
         </div>
     `
 
     telaInterna.innerHTML = acumulado
 
     document.querySelector('.total-valor').textContent = dinheiro(total)
+
+}
+
+function imprimirRecorte() {
+
+    esconderEditaveis(true)
+
+    const origem = document.querySelector('.orcamento-documento')
+    if (!origem) return
+
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'fixed'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+
+    document.body.appendChild(iframe)
+
+    const doc = iframe.contentWindow.document
+    doc.open()
+    doc.write('<html><head><meta charset="UTF-8"></head><body></body></html>')
+    doc.close()
+
+    const destino = origem.cloneNode(true)
+    doc.body.appendChild(destino)
+
+    copiarEstilos(origem, destino)
+
+    const style = doc.createElement('style')
+    style.textContent = `
+        @page {
+            size: A4 portrait;
+            margin: 5mm;
+        }
+        * {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+    `
+    doc.head.appendChild(style)
+
+    iframe.contentWindow.focus()
+    iframe.contentWindow.print()
+
+    setTimeout(() => iframe.remove(), 500)
+
+    esconderEditaveis(false)
+}
+
+async function enviarOrcamentoPorEmail(idOrcamento) {
+
+    overlayAguarde()
+
+    const orcamento = dados_orcamentos[idOrcamento]
+    const idCliente = orcamento?.idCliente || ''
+    const cliente = clientes[idCliente]
+    const emails = [] // Incluir outros e-mails;
+    const titulo = cliente?.nome ? `Orçamento disponível - ${cliente.nome}` : 'Orçamento disponível'
+
+    if (cliente.email) emails.push(cliente.email)
+
+    const htmlContent = `
+            <div style="${vertical}; gap: 2px;">
+            
+            <h1>Orçamento em anexo</h1>
+            <span><b>Nome:</b> ${cliente?.nome || '...'}</span>
+            <span><b>Total do Orçamento:</b> ${dinheiro(orcamento?.total_geral)}</span>
+
+            </div>
+    `
+    esconderEditaveis(true)
+    const htmlPdf = document.querySelector('.orcamento-documento')
+
+    const html = `
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/orcamentos.css">
+            <style>
+
+                @page {
+                    size: A4;
+                    margin: 5mm;
+                }
+
+                body {
+                    font-family: 'Poppins', sans-serif;
+                    background: white;
+                }
+
+            </style>
+        </head>
+        <body>
+            ${htmlPdf.outerHTML}
+        </body>
+        </html>
+  `
+
+    const resposta = await pdfEmail({ html, emails, htmlContent, titulo })
+    esconderEditaveis(false)
+
+    if (resposta.mensagem) return popup(mensagem(JSON.stringify(resposta.mensagem)), 'Aviso', true)
+
+    if (resposta.success) {
+
+        orcamento.emailEnviado = {
+            usuario: acesso.usuario,
+            data: new Date().toLocaleString()
+        }
+
+        await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
+        enviar(`dados_orcamentos/${idOrcamento}/emailEnviado`, orcamento.emailEnviado)
+        await orcamentos(finalizado)
+        return popup(mensagem('Enviado com sucesso', 'imagens/concluido.png'), 'Feito', true)
+    }
+
+}
+
+function copiarEstilos(origem, destino) {
+
+    const origemEls = origem.querySelectorAll('*')
+    const destinoEls = destino.querySelectorAll('*')
+
+    origemEls.forEach((el, i) => {
+        const estilo = getComputedStyle(el)
+        const destinoEl = destinoEls[i]
+
+        for (const prop of estilo) {
+            destinoEl.style[prop] = estilo.getPropertyValue(prop)
+        }
+    })
+}
+
+
+async function pdfOrcamento() {
+
+    esconderEditaveis(true)
+    const htmlPdf = document.querySelector('.orcamento-documento')
+
+    const html = `
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/orcamentos.css">
+            <style>
+
+                @page {
+                    size: A4;
+                    margin: 5mm;
+                }
+
+                body {
+                    font-family: 'Poppins', sans-serif;
+                    background: white;
+                }
+
+            </style>
+        </head>
+        <body>
+            ${htmlPdf.outerHTML}
+        </body>
+        </html>
+  `
+    await pdf(html, `Orçamento-${new Date().getTime()}`)
+    esconderEditaveis(false)
+}
+
+function esconderEditaveis(gatilho) {
+
+    const editaveis = document.querySelectorAll('[name="editaveis"]')
+    const titulo = document.querySelector('[name="titulo"]')
+
+    titulo.textContent = gatilho ? 'ORÇAMENTO' : 'Selecionar Zonas'
+
+    editaveis.forEach(e => {
+        e.style.display = gatilho ? 'none' : ''
+    })
 
 }
 

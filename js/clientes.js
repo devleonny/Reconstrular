@@ -16,6 +16,8 @@ const fPesq = ({ objeto = {}, chave, texto, config = '' }) => {
 
 async function telaClientes() {
 
+    mostrarMenus(false)
+
     dados_clientes = await recuperarDados('dados_clientes')
     dados_distritos = await recuperarDados('dados_distritos')
 
@@ -83,14 +85,14 @@ async function formularioCliente(idCliente) {
         { texto: 'Número de Contribuinte', elemento: `<input oninput="regrasClientes()" name="numeroContribuinte" value="${cliente?.numeroContribuinte || ''}">` },
         { texto: 'Telefone', elemento: `<input oninput="regrasClientes()" name="telefone" value="${cliente?.telefone || ''}">` },
         { texto: 'E-mail', elemento: `<input oninput="regrasClientes()" name="email" value="${cliente?.email || ''}">` },
-        { texto: 'Distrito', elemento: `<select name="distrito" onchange="carregarSelects({select: this})"></select>` },
+        { texto: 'Distrito', elemento: `<select name="distrito" onchange="carregarSelects({select: this, painel: true})"></select>` },
         { texto: 'Cidade', elemento: `<select name="cidade"></select>` }
     ]
 
     const form = new formulario({ linhas, botoes, titulo: 'Formulário de Cliente' })
     form.abrirFormulario()
 
-    await carregarSelects({ ...cliente })
+    await carregarSelects({ painel: true, ...cliente })
 
     regrasClientes()
 }
@@ -149,7 +151,8 @@ async function salvarCliente(idCliente) {
     if (regrasClientes()) return popup(mensagem('Verifique os campos destacados'), 'Alerta', true)
 
     const obVal = (texto) => {
-        const el = document.querySelector(`[name="${texto}"]`)
+        const painel = document.querySelector('.painel-padrao')
+        const el = painel.querySelector(`[name="${texto}"]`)
         return el.value
     }
 
@@ -168,4 +171,5 @@ async function salvarCliente(idCliente) {
     enviar(`dados_clientes/${idCliente}`, cliente)
     await inserirDados({ [idCliente]: cliente }, 'dados_clientes')
     await telaClientes()
+    removerPopup()
 }

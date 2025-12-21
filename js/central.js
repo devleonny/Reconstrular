@@ -806,10 +806,12 @@ async function buscarDados() {
 
 }
 
-async function carregarSelects({ select, cidade, distrito } = {}) {
+async function carregarSelects({ select, painel = false, cidade, distrito } = {}) {
 
-    const selectDistrito = document.querySelector('[name="distrito"]');
-    const selectCidade = document.querySelector('[name="cidade"]');
+    // Se painel existir, então busca-se do painel de formulario, do contrário do documento mesmo;
+    const local = painel ? document.querySelector('.painel-padrao') : document
+    const selectDistrito = local.querySelector('[name="distrito"]')
+    const selectCidade = local.querySelector('[name="cidade"]')
 
     if (!select) {
         const opcoesDistrito = Object.entries(dados_distritos).reverse()
@@ -831,7 +833,7 @@ function confirmarSaida() {
     const acumulado = `
         <div style="${horizontal}; padding: 1rem; gap: 0.5rem; background-color: #d2d2d2;">
             <span>Tem certeza?</span>
-            <button onclick="deslogar()">Confirmar</button>
+            <button onclick="deslogar(); removerPopup();">Confirmar</button>
         </div>
     `
     popup(acumulado, 'Sair', true)
@@ -1915,4 +1917,35 @@ function divPorcentagem(porcentagem) {
             </div>
         </div>
     `
+}
+
+async function pdfEmail({ html, emails, htmlContent = 'Documento em anexo', titulo = 'Documento' }) {
+
+    if (!html || emails.length == 0) return
+
+    overlayAguarde()
+
+    try {
+
+        const response = await fetch(`${api}/pdf-email`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ html, emails, htmlContent, titulo })
+        })
+
+        if (!response.ok) {
+            const err = await response.json()
+            throw err
+        }
+
+        const data = await response.json()
+
+        return data
+        
+    } catch (err) {
+        return { mensagem: err.message }
+    }
+
 }
