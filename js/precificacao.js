@@ -1,5 +1,6 @@
 let idCampo = null
 let margem = 0
+let desativado = 'N'
 
 async function telaPrecos() {
 
@@ -15,9 +16,16 @@ async function telaPrecos() {
             <img onclick="editarMargemEmMassa()" src="imagens/lapis.png" style="width: 1.5rem;">
         </div>
     `
-    const ths = ['Especialidade', 'Descrição', 'Unidade de Medida', 'Composição', 'Sub-Total', tMargem, 'Total']
-        .map(col => `<th>${col}</th>`)
-        .join('')
+    const ths = [
+        `<div style="${horizontal}; gap: 2px;"><input type="checkbox" onchange="marcarTodosDesativar(this)"><span>Todos</span></div>`,
+        'Especialidade',
+        'Descrição',
+        'Unidade de Medida',
+        'Composição',
+        'Sub-Total',
+        tMargem,
+        'Total'
+    ].map(col => `<th>${col}</th>`).join('')
 
     const acumulado = `
         <div class="blocoTabela">
@@ -28,6 +36,7 @@ async function telaPrecos() {
                         <img src="imagens/pesquisar2.png">
                     </div>
                     <button onclick="edicaoItem()">Criar Item</button>
+                    <button onclick="confirmarDesativacao()">Desativar Itens</button>
                 </div>
                 <img class="atualizar" src="imagens/atualizar.png" onclick="atualizarCampos()">
             </div>
@@ -46,11 +55,60 @@ async function telaPrecos() {
     const telaInterna = document.querySelector('.telaInterna')
     if (!blocoTabela) telaInterna.innerHTML = acumulado
 
+    const ativos = []
     for (const [idCampo, dados] of Object.entries(campos)) {
+        if (desativado !== (dados?.desativado || 'N')) continue
+        ativos.push(idCampo)
         criarLinhasCampos(idCampo, dados)
     }
 
+    // Remoção de linhas;
+    const trs = document.querySelectorAll(`#body tr`)
+    for (const tr of trs) if (!ativos.includes(tr.id)) tr.remove()
+
 }
+
+function confirmarDesativacao() {
+    const acumulado = `
+        <div style="${horizontal}; background-color: #d2d2d2; padding: 1rem; gap: 1rem;">
+            <span>Deseja desativar todos os itens marcados?</span>
+            <button onclick="desativarEmMassa()">Confirmar</button>
+        </div>
+    `
+    popup(acumulado, 'Desativar Itens', true)
+}
+
+async function desativarEmMassa() {
+
+    removerPopup()
+    overlayAguarde()
+    const inpDes = document.querySelectorAll('[name="desativar"]')
+    const desativar = []
+    for (const inp of inpDes) {
+        const tr = inp.closest('tr')
+        if (inp.checked) desativar.push(tr.id)
+    }
+
+    const resposta = await desativarCampos(desativar)
+
+    if (resposta.mensagem) return popup(mensagem(resposta.mensagem), 'Aviso', true)
+    await sincronizarDados('campos')
+    await telaPrecos()
+    removerOverlay()
+}
+
+function marcarTodosDesativar(inpMaster) {
+    const inpDes = document.querySelectorAll('[name="desativar"]')
+
+    for (const inp of inpDes) {
+        const tr = inp.closest('tr')
+        if (!tr) continue
+
+        const visivel = tr.offsetParent !== null
+        inp.checked = visivel ? inpMaster.checked : false
+    }
+}
+
 
 function editarMargemEmMassa() {
 
@@ -127,6 +185,7 @@ function criarLinhasCampos(idCampo, dados) {
     const total = dados.margem ? (1 + (dados.margem / 100)) * dados.totalComposicao : dados?.totalComposicao || 0
 
     const tds = `
+        <td><input name="desativar" type="checkbox"></td>
         <td>${dados.especialidade}</td>
         <td>
             <div style="${horizontal}; gap: 5px;">
@@ -161,7 +220,7 @@ async function edicaoItem(idCampo) {
 
     idCampo = idCampo || ID5digitos()
 
-    const campo = await recuperarDado('campos', idCampo)
+    const campo = campos[idCampo]
 
     const opcoesMedidas = ['', 'und', 'ml', 'm2', 'm3']
         .map(op => `<option ${op == campo?.medida ? 'selected' : ''}>${op}</option>`)
@@ -267,7 +326,9 @@ async function salvarMargem() {
 async function composicoes(id, tP) {
 
     idCampo = id
-    const campo = await recuperarDado('campos', id)
+    const campo = campos[id]
+
+    console.log(campo)
 
     const modeloTabela = (tipoTabela) => {
 
@@ -288,6 +349,7 @@ async function composicoes(id, tP) {
                 </div>
                 <div class="rodapeTabela">
                     <button onclick="adicionarLinhaComposicoes({tabela: '${tipoTabela}', baseRef: ${tipoTabela}, idCampo: '${idCampo}'})">Adicionar Linha</button>
+                    <button onclick="salvarComposicao({tabela: '${tipoTabela}'})">Salvar</button>
                 </div>
             </div>`
     }
@@ -375,27 +437,26 @@ async function adicionarLinhaComposicoes({ baseRef = {}, tabela, dados, id }) {
     const tbody = document.getElementById(`body_${tabela}`)
     if (!tbody) return
 
-    const dadosRef = baseRef?.[id] || {}
-
-    let opcoes = `<option></option>`
-    opcoes += Object.entries(baseRef)
-        .map(([idO, objeto]) => `<option value="${id}" ${id == idO ? 'selected' : ''}>${objeto.nome}</option>`)
+    const opcoes = Object.entries(baseRef)
+        .map(([idO, objeto]) => `<option id="${idO}" ${id == idO ? 'selected' : ''}>${objeto.nome}</option>`)
         .join('')
 
-    const fnc = `salvarComposicao({ elemento: this, tabela: '${tabela}', idCampo: '${idCampo}' })`
     const tds = `
         <td>
-            <select onchange="${fnc}">${opcoes}</select>
+            <select onchange="verificarItemRepetido(this, '${tabela}')">
+                <option></option>
+                ${opcoes}
+            </select>
         </td>
-        <td><input type="number" style="width: 5rem;" value="${dados?.qtde || ''}" oninput="${fnc}"></td>
-        <td><input type="number" style="width: 5rem;" value="${dados?.preco || ''}" oninput="${fnc}"></td>
+        <td><input type="number" style="width: 5rem;" value="${dados?.qtde || ''}"></td>
+        <td><input type="number" style="width: 5rem;" value="${dados?.preco || ''}"></td>
         <td>
             <div style="${horizontal}; gap: 5px;">
-                <a target="_blank" href="${dadosRef?.link || ''}" style="min-width: 15rem; text-align: left;">${dadosRef?.link || ''}</a>
-                <img src="imagens/lapis.png" onclick="editarCampo(this, '${tabela}', '${id}')">
+                <textarea oninput="this.nextElementSibling.style.display = 'block'">${dados?.link || ''}</textarea>
+                <img src="imagens/visitar.png" style="display: ${dados?.link ? 'block' : 'none'};" onclick="visitarSite(this)">
             </div>
         </td>
-        <td><img style="width: 2rem;" src="imagens/cancel.png" onclick="removerItem(this, '${idCampo}', '${tabela}')"></td>
+        <td><img style="width: 2rem;" src="imagens/cancel.png" onclick="removerItem(this, '${id}', '${idCampo}', '${tabela}')"></td>
         `
 
     // procura a <tr> pelo idMaterial
@@ -409,89 +470,88 @@ async function adicionarLinhaComposicoes({ baseRef = {}, tabela, dados, id }) {
 
 }
 
-async function salvarLink(tabela, id, img) {
-    const a = img.previousElementSibling
-    const texto = a.textContent.trim()
+function visitarSite(img) {
 
-    if (!texto) return
+    const link = img.previousElementSibling.value
+    if (!link) return
 
-    const url = texto.startsWith('http') ? texto : `https://${texto}`
-
-    a.href = url
-    a.textContent = url
-    a.contentEditable = false
-
-    const mat = await recuperarDado(tabela, id)
-    mat.link = url
-
-    await inserirDados({ [id]: mat }, tabela)
-    enviar(`${tabela}/${id}/link`, url)
-
-    img.style.display = 'none'
+    const url = link.startsWith('http') ? link : `https://${link}`
+    window.open(url, '_blank')
 }
 
-function editarCampo(img, tabela, id) {
-    const a = img.previousElementSibling
+function verificarItemRepetido(select, tabela) {
 
-    // se já está editando → salvar
-    if (a.isContentEditable) {
-        salvarLink(tabela, id, img)
-        img.src = 'imagens/editar.png'
-        return
+    const trs = document.querySelectorAll(`#body_${tabela} tr`)
+
+    for (const tr of trs) {
+
+        const selectNaTabela = tr.querySelector('select')
+        if (!selectNaTabela || selectNaTabela === select) continue
+
+        if (select.value && select.value === selectNaTabela.value) {
+            popup(mensagem('Item duplicado, já existe nesta tabela!'), 'Aviso', true)
+            select.value = ''
+            return true
+        }
     }
 
-    // iniciar edição
-    a.contentEditable = true
-    a.focus()
-    img.src = 'imagens/concluido.png'
-    img.style.display = ''
+    return false
 }
 
-async function removerItem(img, tabela) {
+async function removerItem(img, idMaterial, idCampo, tabela) {
 
     const tr = img.closest('tr')
-    const idMaterial = tr.id
-    let campo = await recuperarDado('campos', idCampo)
 
+    const campo = campos[idCampo]
     delete campo[tabela][idMaterial]
 
     deletar(`campos/${idCampo}/${tabela}/${idMaterial}`)
 
     await inserirDados({ [idCampo]: campo }, 'campos')
-
+    await calcularTotal()
     tr.remove()
 
 }
 
-async function salvarComposicao({ elemento, tabela }) {
-    const tr = elemento.closest('tr')
-    const tds = tr.querySelectorAll('td')
-    const select = tr.querySelector('select')
-    const codigo = select.value
+async function salvarComposicao({ tabela }) { //29
 
-    // se já existe outra <tr> com mesmo id, remove a atual
-    const existente = tr.parentElement.querySelector(`tr[id="${codigo}"]`)
-    if (existente && existente !== tr) {
-        tr.remove()
-        return popup(mensagem('Este item já existe nesta tabela'), 'Alerta', true)
+    overlayAguarde()
+
+    const trs = document.querySelectorAll(`#body_${tabela} tr`)
+    const campo = campos[idCampo] ?? {}
+
+    campo[tabela] ??= {}
+
+    for (const tr of trs) {
+
+        const tds = tr.querySelectorAll('td')
+        const select = tr.querySelector('select')
+
+        if (!select) continue
+        const codigo = select.selectedOptions?.[0]?.id
+        if (!codigo) continue
+
+
+        const descricao = tds[0]?.querySelector('select')?.value || ''
+        const qtde = Number(tds[1]?.querySelector('input')?.value || 0)
+        const preco = Number(tds[2]?.querySelector('input')?.value || 0)
+        const link = tds[3].querySelector('textarea').value
+
+        const dados = { descricao, qtde, preco, link }
+        campo[tabela][codigo] = dados
+
+        enviar(`campos/${idCampo}/${tabela}/${codigo}`, dados)
     }
 
-    tr.id = codigo
+    campos[idCampo] = campo
 
-    const campo = campos[idCampo]
-    campo[tabela] ??= {}
-    let categoriaCusto = campo[tabela]
-    const descricao = tds[0].querySelector('select').textContent
-    const qtde = Number(tds[1].querySelector('input').value)
-    const preco = Number(tds[2].querySelector('input').value)
-
-    categoriaCusto[codigo] = { qtde, descricao, preco }
-
-    enviar(`campos/${idCampo}/${tabela}/${codigo}`, { descricao, qtde, preco })
-
-    await calcularTotal(campo?.totalComposicao)
+    await calcularTotal(campo.totalComposicao)
     await inserirDados({ [idCampo]: campo }, 'campos')
+    await telaPrecos()
+
+    removerOverlay()
 }
+
 
 async function calcularTotal(totalAtual = 0) {
     const tabelas = ['materiais', 'ferramentas', 'maoObra']

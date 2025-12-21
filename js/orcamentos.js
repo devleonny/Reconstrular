@@ -192,13 +192,13 @@ function criarLinhaOrcamento(idOrcamento, orcamento) {
             ${orcamento?.emailEnviado?.data || ''}
         </td>
         <td>
-            <img src="imagens/pdf.png">
+            <img src="imagens/pdf.png" onclick="listagem('${idOrcamento}', 'materiais')">
         </td>
         <td>
-            <img src="imagens/pdf.png">
+            <img src="imagens/pdf.png" onclick="listagem('${idOrcamento}', 'ferramentas')">
         </td>
         <td>
-            <img src="imagens/planta.png" onclick="execucoes('${idOrcamento}')">
+            <img src="imagens/planta.png" onclick="execucoes('${idOrcamento}', 'ferramentas')">
         </td>
         <td>
             <img src="imagens/pesquisar.png" onclick="formularioOrcamento('${idOrcamento}')">
@@ -393,6 +393,7 @@ async function excluirZona() {
 async function execucoes(id, proximo = 0) {
     idOrcamento = id;
 
+    dados_orcamentos = await recuperarDados('dados_orcamentos')
     const orcamento = dados_orcamentos[idOrcamento]
 
     // Verificação antes de Editar;
@@ -789,12 +790,12 @@ async function salvarExecucao(tr) {
     orcamento.zonas[zona1] ??= {}
     orcamento.zonas[zona1][idItem] = item
 
-    const total_geral = totalGeral(orcamento?.zonas)
-    orcamento.total_geral = total_geral
-
     await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos');
     enviar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}/${idItem}`, item)
+
+    const total_geral = totalGeral(orcamento?.zonas)
     if (total_geral !== orcamento.total_geral) enviar(`dados_orcamentos/${idOrcamento}/total_geral`, total_geral)
+    orcamento.total_geral = total_geral
 
     function totalGeral(zonas = {}) {
         return Object.values(zonas).reduce((total, zona) => {
@@ -965,8 +966,133 @@ function comparativoRevisoes(idOrcamento) {
     }
 }
 
+async function listagem(idOrcamento, tabela) {
 
-async function orcamentoFinal(idOrcamento) {
+    campos = await recuperarDados('campos')
+    const orcamento = dados_orcamentos[idOrcamento]
+    const idCliente = orcamento?.idCliente || ''
+    const cliente = clientes[idCliente]
+
+    let total = 0
+    const dados = {
+        'PEDIDO DE MATERIAIS': 'TOTAL (c/iva)',
+        'Empresa': cliente?.nome || '',
+        'Morada de Execução': cliente?.moradaExecucao || '',
+        'Nif': cliente?.numeroContribuinte || '',
+        'E-mail': cliente?.email || '',
+        'Contacto': cliente?.telefone || ''
+    }
+
+    let linhas = ''
+    let i = 0
+    for (const [titulo, dado] of Object.entries(dados)) {
+
+        if (i == 0) {
+            linhas += `
+            <tr>
+                <td colspan="2" style="background-color: #5b707f;">
+                    <div class="titulo-orcamento">
+                        <span>${titulo}</span>
+                    </div>
+                </td>
+                <td class="total-orcamento">${dado}</td>
+            </tr>
+            `
+
+        } else {
+
+            linhas += `
+            <tr>
+                <td style="background-color: #5b707f; color: white;">${titulo}</td>
+                <td style="background-color: #DCE6F5;">${dado}</td>
+                ${i == 1
+                    ? `
+                    <td rowspan="9" style="background-color: white;">
+                        <div class="total-valor"></div>
+                    </td>
+                    `
+                    : ''}
+            </tr>`
+        }
+
+        i++
+    }
+
+    const colunas = [
+        'Especialidade',
+        'Descrição do Material',
+        'Quantidade',
+        'Preço Unitário',
+        'Total',
+        'Link'
+    ].map(col => `<th>${col}</th>`).join('')
+
+    let itens = ''
+
+    for (const [, especialidades] of Object.entries(orcamento?.zonas || {})) {
+        for (const dados of Object.values(especialidades)) {
+
+            const campo = campos?.[dados?.campo] || {}
+            const materiais = campo[tabela] || {}
+
+            for (const material of Object.values(materiais)) {
+
+                const unitario = material?.preco || 0
+                const qtde = material?.qtde || 0
+                const totalLinha = unitario * qtde
+                const link = material?.link
+
+                itens += `
+                    <tr>
+                        <td>${campo?.descricao || ''}</td>
+                        <td style="text-align: left;">${material.descricao || '-'}</td>
+                        <td>${qtde}</td>
+                        <td>${dinheiro(unitario)}</td>
+                        <td>${dinheiro(totalLinha)}</td>
+                        <td>${link ? `<a href="${link}">${link}</a>` : ''}</td>
+                    </tr>
+                    `
+
+                total += totalLinha
+
+            }
+        }
+    }
+
+    const acumulado = `
+        <div class="tela-orcamento">
+            <div style="width: 100%; ${horizontal}; justify-content: start; gap: 3px; padding: 0.5rem;">
+                <button onclick="imprimirRecorte()">Imprimir</button>
+                <button onclick="pdfOrcamento('${tabela}')">Exportar</button>
+            </div>
+
+            <div class="orcamento-documento">
+                <table class="tabela-orcamento">
+                    <tbody>
+                        ${linhas}
+                    </tbody>
+                </table>
+
+                <br>
+
+                <table class="tabela-orcamento-2">
+                    <thead>${colunas}</thead>
+                    <tbody>${itens}</tbody>
+                </table>
+            </div>
+        </div>
+    `
+
+    popup(acumulado, 'Listagem de Materiais', true)
+
+
+    document.querySelector('.total-valor').textContent = dinheiro(total)
+
+
+
+}
+
+async function orcamentoFinal(idOrcamento, emJanela) {
 
     campos = await recuperarDados('campos')
     const orcamento = dados_orcamentos[idOrcamento]
@@ -1070,13 +1196,17 @@ async function orcamentoFinal(idOrcamento) {
 
     const acumulado = `
         <div class="tela-orcamento">
+
+            ${emJanela
+            ? ''
+            : `
             <div style="width: 100%; ${horizontal}; justify-content: start; gap: 3px; padding: 0.5rem;">
                 <button onclick="orcamentos()">Voltar para Orçamentos</button>
                 <button onclick="imprimirRecorte()">Imprimir</button>
-                <button onclick="pdfOrcamento()">Exportar</button>
+                <button onclick="pdfOrcamento('Orçamento')">Exportar</button>
                 <button onclick="enviarOrcamentoPorEmail('${idOrcamento}')">Enviar</button>
                 <button onclick="execucoes('${idOrcamento}')">Voltar para Zonas</button>
-            </div>
+            </div>`}
 
             <div class="orcamento-documento">
                 <table class="tabela-orcamento">
@@ -1095,7 +1225,12 @@ async function orcamentoFinal(idOrcamento) {
         </div>
     `
 
-    telaInterna.innerHTML = acumulado
+    if (emJanela) {
+        popup(acumulado, 'Orçamento', true)
+        esconderEditaveis(true)
+    } else {
+        telaInterna.innerHTML = acumulado
+    }
 
     document.querySelector('.total-valor').textContent = dinheiro(total)
 
@@ -1232,7 +1367,7 @@ function copiarEstilos(origem, destino) {
 }
 
 
-async function pdfOrcamento() {
+async function pdfOrcamento(nome = 'Documento') {
 
     esconderEditaveis(true)
     const htmlPdf = document.querySelector('.orcamento-documento')
@@ -1261,7 +1396,7 @@ async function pdfOrcamento() {
         </body>
         </html>
   `
-    await pdf(html, `Orçamento-${new Date().getTime()}`)
+    await pdf(html, `${nome}-${new Date().getTime()}`)
     esconderEditaveis(false)
 }
 
@@ -1270,7 +1405,7 @@ function esconderEditaveis(gatilho) {
     const editaveis = document.querySelectorAll('[name="editaveis"]')
     const titulo = document.querySelector('[name="titulo"]')
 
-    titulo.textContent = gatilho ? 'ORÇAMENTO' : 'Selecionar Zonas'
+    if (titulo) titulo.textContent = gatilho ? 'ORÇAMENTO' : 'Selecionar Zonas'
 
     editaveis.forEach(e => {
         e.style.display = gatilho ? 'none' : ''

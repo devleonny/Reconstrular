@@ -2,6 +2,8 @@ let dados_colaboradores = {}
 
 async function telaColaboradores() {
 
+    mostrarMenus(false)
+
     const modelo = (titulo, elemento) => `
         <div class="campos">
             <span>${titulo}</span>
@@ -25,7 +27,7 @@ async function telaColaboradores() {
                 ${modelo('Zona', `<select name="fzona"></select>`)}
             </div>
         </div>
-        <button onclick="adicionarColaborador()">Adicionar</button>
+        <button data-colaboradores="inserir" onclick="adicionarColaborador()">Adicionar</button>
     `
     const base = 'dados_colaboradores'
     titulo.textContent = 'Gerenciar Colaboradores'
@@ -79,7 +81,7 @@ async function criarLinhaColaboradores(id, colaborador) {
             <img src="imagens/relogio.png" onclick="mostrarFolha('${id}')">
         </td>
         <td>
-            <img src="imagens/pesquisar.png" onclick="adicionarColaborador('${id}')">
+            <img src="imagens/pesquisar.png" data-colaboradores="inserir" onclick="adicionarColaborador('${id}')">
         </td>
     `
 

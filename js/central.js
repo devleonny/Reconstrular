@@ -593,7 +593,8 @@ function telaConfiguracoes() {
     const acumulado = `
         <div class="painel-despesas">
             <br>
-            ${btn('preco', 'Configuração da Tarefas', 'telaPrecos()')}
+            ${btn('preco', 'Configuração da Tarefas', `desativado = 'N'; telaPrecos()`)}
+            ${btn('preco_neg', 'Tarefas Desativadas', `desativado = 'S'; telaPrecos()`)}
             ${btn('niveis', 'Níveis de Acesso', 'telaNiveis()')}
         </div>
     `
@@ -641,7 +642,14 @@ async function telaNiveis() {
     const colunas = [
         'Função',
         'Regras',
-        ''
+        'Colaboradores',
+        'Obras',
+        'Clientes',
+        'Despesas',
+        'Parceiros',
+        'Orçamentos',
+        'Configurações',
+        'Registro de Ponto'
     ]
 
     const btnExtras = `
@@ -660,6 +668,57 @@ async function telaNiveis() {
 
 }
 
+function validarRegrasAcesso() {
+
+    const colunas = [
+        'colaboradores',
+        'obras',
+        'clientes',
+        'despesas',
+        'parceiros',
+        'orçamentos',
+        'configurações',
+        'registro_de_ponto'
+    ]
+
+    const permissao = funcoes?.[acesso.funcao]
+    if (!permissao) return
+
+    colunas.forEach(coluna => {
+
+        const elementos = document.querySelectorAll(`[data-${coluna}]`)
+        const regra = permissao[coluna]
+
+        elementos.forEach(el => {
+
+            const acao = el.dataset[coluna] // inserir | editar | apagar
+            let permitir = false
+
+            switch (regra) {
+
+                case '✅ Total acesso':
+                case '🟢 Permissão Parcial (Apaga, insere e edita)':
+                    permitir = true
+                    break
+
+                case '✏️ Pode Editar/Inserir':
+                    permitir = acao === 'editar' || acao === 'inserir'
+                    break
+
+                case '👁️ Visualizador':
+                    permitir = false
+                    break
+
+                case '❌ Sem acesso':
+                default:
+                    permitir = false
+            }
+
+            el.style.display = permitir ? '' : 'none'
+        })
+    })
+}
+
 function criarLinhaFuncao(idFuncao, dados) {
 
     let autorizados = ''
@@ -667,16 +726,35 @@ function criarLinhaFuncao(idFuncao, dados) {
         autorizados += `<span>• ${funcoes?.[id]?.nome || '...'}</span>`
     }
 
+    const colunas = ['colaboradores', 'obras', 'clientes', 'despesas', 'parceiros', 'orçamentos', 'configurações', 'registro_de_ponto']
+    const opcoes = [
+        '',
+        '✅ Total acesso',
+        '🟢 Permissão Parcial (Apaga, insere e edita)',
+        '👁️ Visualizador',
+        '✏️ Pode Editar/Inserir',
+        '❌ Sem acesso'
+    ]
+
+    const tdsExtras = colunas.map(col => `
+            <td style="text-align: left; min-width: 200px;">
+                <select onchange="atualizarRegra(this, '${col}', '${idFuncao}')">
+                    ${opcoes.map(op => `<option ${dados[col] == op ? 'selected' : ''}>${op}</option>`).join('')}
+                </select>
+            </td>`)
+        .join('')
+
     const tds = `
         <td>${dados?.nome || ''}</td>
         <td>
-            <div style="${vertical}; gap: 2px;"> 
-                ${autorizados}
+            <div style="${horizontal}; justify-content: space-between; align-items: start; gap: 0.5rem;"> 
+                <div style="${vertical}; gap: 2px;"> 
+                    ${autorizados}
+                </div>
+                <img onclick="adicionarFuncao('${idFuncao}')" src="imagens/pesquisar.png">
             </div>
         </td>
-        <td>
-            <img onclick="adicionarFuncao('${idFuncao}')" src="imagens/pesquisar.png">
-        </td>
+        ${tdsExtras}
     `
 
     const trExistente = document.getElementById(idFuncao)
@@ -684,6 +762,15 @@ function criarLinhaFuncao(idFuncao, dados) {
     if (trExistente) return trExistente.innerHTML = tds
 
     document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${idFuncao}">${tds}</tr>`)
+
+}
+
+async function atualizarRegra(select, coluna, idFuncao) {
+
+    const funcao = funcoes[idFuncao]
+    funcao[coluna] = select.value
+    await inserirDados({ [idFuncao]: funcao }, 'funcoes')
+    enviar(`funcoes/${idFuncao}/${coluna}`, select.value)
 
 }
 
@@ -1943,7 +2030,36 @@ async function pdfEmail({ html, emails, htmlContent = 'Documento em anexo', titu
         const data = await response.json()
 
         return data
-        
+
+    } catch (err) {
+        return { mensagem: err.message }
+    }
+
+}
+
+async function desativarCampos(desativar) {
+
+    if (desativar.length == 0) return
+
+    try {
+
+        const response = await fetch(`${api}/desativar-campos`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ desativar, servidor })
+        })
+
+        if (!response.ok) {
+            const err = await response.json()
+            throw err
+        }
+
+        const data = await response.json()
+
+        return data
+
     } catch (err) {
         return { mensagem: err.message }
     }

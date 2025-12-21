@@ -10,7 +10,7 @@ async function telaObras() {
     const nomeBase = 'dados_obras'
     titulo.textContent = 'Gerenciar Obras'
     const btnExtras = `
-    <button onclick="adicionarObra()">Adicionar</button>
+    <button onclick="adicionarObra()" data-obras="inserir">Adicionar</button>
     ${fPesq({ texto: 'Distrito', config: 'onclick="filtroCidadesCabecalho(this)" name="distrito"', objeto: dados_distritos, chave: 'nome' })}
     ${fPesq({ texto: 'Cidade', config: 'name="cidade"' })}    
     `
@@ -133,7 +133,7 @@ async function criarLinhaObras(id, obra) {
             <img src="imagens/relogio.png" onclick="telaCronograma('${id}')">
         </td>
         <td>
-            <img src="imagens/pesquisar.png" onclick="adicionarObra('${id}')">
+            <img src="imagens/pesquisar.png" data-obras="editar" onclick="adicionarObra('${id}')">
         </td>
     `
 
@@ -147,18 +147,19 @@ async function criarLinhaObras(id, obra) {
 async function adicionarObra(idObra) {
 
     const obra = await recuperarDado('dados_obras', idObra)
-    const clientes = await recuperarDados('dados_clientes')
+    clientes = await recuperarDados('dados_clientes')
+    dados_orcamentos = await recuperarDados('dados_orcamentos')
     const opcoesClientes = Object.entries(clientes)
         .map(([idCliente, cliente]) => `<option id="${idCliente}" ${obra?.cliente == idCliente ? 'selected' : ''}>${cliente.nome}</option>`)
         .join('')
 
     const linhas = [
+        { texto: 'Cliente', elemento: `<select name="cliente" onchange="buscarDados(this)"><option></option>${opcoesClientes}</select>` },
         { texto: 'Distrito', elemento: `<select name="distrito" onchange="carregarSelects({select: this})"></select>` },
         { texto: 'Cidade', elemento: `<select name="cidade"></select>` },
-        { texto: 'Cliente', elemento: `<select name="cliente" onchange="buscarDados(this)"><option></option>${opcoesClientes}</select>` },
-        { texto: 'Vincular Orçamento', elemento: `<img onclick="painelVincularOrcamentos('${idObra}')" src="imagens/link.png">` },
         { texto: 'Telefone', elemento: `<span name="telefone"></span>` },
-        { texto: 'E-mail', elemento: `<span name="email"></span>` }
+        { texto: 'E-mail', elemento: `<span name="email"></span>` },
+        { texto: 'Vincular Orçamento', elemento: `<img onclick="painelVincularOrcamentos('${idObra}')" src="imagens/link.png">` }
     ]
 
     const botoes = [
@@ -170,7 +171,7 @@ async function adicionarObra(idObra) {
     const form = new formulario({ linhas, botoes, titulo: 'Formulário de Obra' })
     form.abrirFormulario()
 
-    await carregarSelects({ ...obra })
+    await carregarSelects({ ...obra, painel: true })
 
     buscarDados()
 
@@ -230,17 +231,17 @@ async function excluirObra(idObra) {
 async function painelVincularOrcamentos(idObra) {
 
     overlayAguarde()
-
-    const orcamentos = await recuperarDados('dados_orcamentos')
-    const clientes = await recuperarDados('dados_clientes')
     const obra = await recuperarDado('dados_obras', idObra)
 
     let linhas = ''
 
-    for (const [idOrcamento, orcamento] of Object.entries(orcamentos)) {
+    for (const [idOrcamento, orcamento] of Object.entries(dados_orcamentos)) {
 
         if (orcamento.idCliente !== obra?.cliente) continue
         const nome = clientes?.[orcamento?.idCliente]?.nome || 'N/A'
+
+        console.log(orcamento);
+        
 
         linhas += `
             <tr>
@@ -251,13 +252,13 @@ async function painelVincularOrcamentos(idObra) {
                 <td>${dtFormatada(orcamento?.dataContato)}</td>
                 <td>${dtFormatada(orcamento?.dataVisita)}</td>
                 <td>${dinheiro(orcamento?.total_geral)}</td>
-
+                <td><img src="imagens/obras.png" onclick="orcamentoFinal('${idOrcamento}', true)"></td>
             </tr>
         `
     }
 
     const params = {
-        colunas: ['Selecione', 'Cliente', 'Contato', 'Visita', 'Valor'],
+        colunas: ['Selecione', 'Cliente', 'Contato', 'Visita', 'Valor', 'Orçamento'],
         body: 'orcs',
         removerPesquisa: true,
         linhas
@@ -304,7 +305,7 @@ async function verAndamento(id, resetar) {
             <input placeholder="Pesquisa" oninput="pesquisarObras(this)">
             <select id="etapas" onchange="atualizarToolbar({nomeTarefa: this.value})"></select>
             <button style="background-color: red;" onclick="pdfObra('Checklist')">PDF</button>
-            <button style="background-color: #ffd100; color: #000000" onclick="telaCronograma('${id}')">Cronograma</button>
+            <button onclick="telaCronograma('${id}')">Cronograma</button>
             <button onclick="telaObras()">Voltar</button>
         </div>
 
