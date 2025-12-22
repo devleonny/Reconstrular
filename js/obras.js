@@ -2,6 +2,8 @@ let idObraAtual = null
 
 async function telaObras() {
 
+    telaAtiva = 'obras'
+
     mostrarMenus(false)
 
     dados_clientes = await recuperarDados('dados_clientes')
@@ -10,7 +12,7 @@ async function telaObras() {
     const nomeBase = 'dados_obras'
     titulo.textContent = 'Gerenciar Obras'
     const btnExtras = `
-    <button onclick="adicionarObra()" data-obras="inserir">Adicionar</button>
+    <button onclick="adicionarObra()" data-controle="inserir">Adicionar</button>
     ${fPesq({ texto: 'Distrito', config: 'onclick="filtroCidadesCabecalho(this)" name="distrito"', objeto: dados_distritos, chave: 'nome' })}
     ${fPesq({ texto: 'Cidade', config: 'name="cidade"' })}    
     `
@@ -40,6 +42,10 @@ async function telaObras() {
     for (const [idObra, obra] of Object.entries(dados_obras).reverse()) {
         criarLinhaObras(idObra, obra)
     }
+
+    // Regras de validação;
+    validarRegrasAcesso()
+
 }
 
 function calcularTotaisOrcamentos(idObra, obra) {
@@ -108,8 +114,8 @@ async function criarLinhaObras(id, obra) {
 
     tds = `
         <td>${cliente?.nome || '--'}</td>
-        <td name="distrito">${distrito?.nome || '--'}</td>
-        <td name="cidade">${cidades?.nome || '--'}</td>
+        <td name="distrito" data-cod="${obra?.distrito}">${distrito?.nome || '--'}</td>
+        <td name="cidade" data-cod="${obra?.cidade}">${cidades?.nome || '--'}</td>
         <td>
             ${divPorcentagem(porcentagem)}
         </td>
@@ -133,7 +139,7 @@ async function criarLinhaObras(id, obra) {
             <img src="imagens/relogio.png" onclick="telaCronograma('${id}')">
         </td>
         <td>
-            <img src="imagens/pesquisar.png" data-obras="editar" onclick="adicionarObra('${id}')">
+            <img src="imagens/pesquisar.png" data-controle="editar" onclick="adicionarObra('${id}')">
         </td>
     `
 
@@ -239,9 +245,6 @@ async function painelVincularOrcamentos(idObra) {
 
         if (orcamento.idCliente !== obra?.cliente) continue
         const nome = clientes?.[orcamento?.idCliente]?.nome || 'N/A'
-
-        console.log(orcamento);
-        
 
         linhas += `
             <tr>

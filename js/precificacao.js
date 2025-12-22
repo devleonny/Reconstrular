@@ -12,12 +12,15 @@ async function telaPrecos() {
     const tMargem = `
         <div style="${horizontal}; gap: 5px;">
             <span>Margem</span>
-            <input type="checkbox" onclick="marcarTodosMargem(this)">
-            <img onclick="editarMargemEmMassa()" src="imagens/lapis.png" style="width: 1.5rem;">
+            <input data-controle="editar" type="checkbox" onclick="marcarTodosMargem(this)">
+            <img data-controle="editar" onclick="editarMargemEmMassa()" src="imagens/lapis.png" style="width: 1.5rem;">
         </div>
     `
     const ths = [
-        `<div style="${horizontal}; gap: 2px;"><input type="checkbox" onchange="marcarTodosDesativar(this)"><span>Todos</span></div>`,
+        `<div style="${horizontal}; gap: 2px;">
+            <input data-controle="editar" type="checkbox" onchange="marcarTodosDesativar(this)">
+            <span data-controle="editar">Todos</span>
+        </div>`,
         'Especialidade',
         'Descrição',
         'Unidade de Medida',
@@ -35,8 +38,9 @@ async function telaPrecos() {
                         <input oninput="pesquisar(this, 'body')" placeholder="Pesquisar" style="width: 100%;">
                         <img src="imagens/pesquisar2.png">
                     </div>
-                    <button onclick="edicaoItem()">Criar Item</button>
-                    <button onclick="confirmarDesativacao()">Desativar Itens</button>
+                    <button onclick="telaConfiguracoes()">Voltar</button>
+                    <button data-controle="inserir" onclick="edicaoItem()">Criar Item</button>
+                    <button data-controle="editar" onclick="confirmarDesativacao()">Desativar Itens</button>
                 </div>
                 <img class="atualizar" src="imagens/atualizar.png" onclick="atualizarCampos()">
             </div>
@@ -65,6 +69,9 @@ async function telaPrecos() {
     // Remoção de linhas;
     const trs = document.querySelectorAll(`#body tr`)
     for (const tr of trs) if (!ativos.includes(tr.id)) tr.remove()
+
+    // Regras de validação;
+    validarRegrasAcesso()
 
 }
 
@@ -185,26 +192,26 @@ function criarLinhasCampos(idCampo, dados) {
     const total = dados.margem ? (1 + (dados.margem / 100)) * dados.totalComposicao : dados?.totalComposicao || 0
 
     const tds = `
-        <td><input name="desativar" type="checkbox"></td>
+        <td><input data-controle="editar" name="desativar" type="checkbox"></td>
         <td>${dados.especialidade}</td>
         <td>
             <div style="${horizontal}; gap: 5px;">
-                <img onclick="edicaoItem('${idCampo}')" src="imagens/lapis.png" style="width: 1.5rem;">
+                <img data-controle="editar" onclick="edicaoItem('${idCampo}')" src="imagens/lapis.png" style="width: 1.5rem;">
                 <span style="width: 200px; text-align: left;">${dados.descricao}</span>
             </div>
         </td>
         <td>${dados.medida}</td>
         <td>
             <div style="${horizontal};">
-                <img src="imagens/caixa.png" style="width: 1.5rem;" onclick="composicoes('${idCampo}', true)">
+                <img data-controle="editar" src="imagens/caixa.png" style="width: 1.5rem;" onclick="composicoes('${idCampo}', true)">
             </div>
         </td>
         <td>${dinheiro(dados?.totalComposicao || 0)}</td>
         <td>
             <div style="${horizontal}; gap: 0.5rem;">
-                <img src="imagens/lapis.png" style="width: 1.5rem;" onclick="painelMargem('${idCampo}')">
+                <img data-controle="editar" src="imagens/lapis.png" style="width: 1.5rem;" onclick="painelMargem('${idCampo}')">
                 <span>${dados?.margem || '0'} %</span>
-                <input type="checkbox" name="margem">
+                <input data-controle="editar" type="checkbox" name="margem">
             </div>
         </td>
         <td>${dinheiro(total)}</td>

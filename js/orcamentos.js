@@ -3,7 +3,7 @@ let campos = {}
 let idOrcamento = null
 let zona1 = null
 let indiceZona = 0
-let clientes = {}
+let dados_clientes = {}
 let dados_orcamentos = {}
 let finalizado = 'N'
 
@@ -80,7 +80,7 @@ function povoarLista(ini, lim, texto) {
 
 async function telaOrcamentos() {
 
-    clientes = await recuperarDados('dados_clientes')
+    dados_clientes = await recuperarDados('dados_clientes')
 
     mostrarMenus(false)
 
@@ -101,6 +101,8 @@ async function telaOrcamentos() {
 
 async function orcamentos() {
 
+    telaAtiva = 'orçamentos'
+
     zona1 = null
     indiceZona = 0
 
@@ -108,6 +110,8 @@ async function orcamentos() {
 
     const colunas = [
         'Cliente',
+        'Distrito',
+        'Cidade',
         'Data de Contato',
         'Data de Visita',
         'E-mail enviado',
@@ -169,20 +173,28 @@ async function orcamentos() {
 
     }
 
+    // Regras de validação;
+    validarRegrasAcesso()
+
 }
 
 function criarLinhaOrcamento(idOrcamento, orcamento) {
 
-    const cliente = clientes?.[orcamento.idCliente] || {}
+    const cliente = dados_clientes?.[orcamento.idCliente] || {}
+    const d = dados_distritos?.[cliente?.distrito] || {}
+    const c = d?.cidades?.[cliente?.cidade] || {}
 
     const dt = (data) => {
         if (!data) return '-'
         const [ano, mes, dia] = data.split('-')
         return `${dia}/${mes}/${ano}`
     }
+
     const versao = orcamento?.versao
     const tds = `
         <td>${cliente?.nome || '...'}</td>
+        <td name="distrito" data-cod="${cliente?.distrito}">${d?.nome || '-'}
+        <td name="cidade" data-cod="${cliente?.cidade}">${c?.nome || '-'}
         <td>${dt(orcamento.dataContato)}</td>
         <td>${dt(orcamento.dataVisita)}</td>
         <td>
@@ -198,10 +210,10 @@ function criarLinhaOrcamento(idOrcamento, orcamento) {
             <img src="imagens/pdf.png" onclick="listagem('${idOrcamento}', 'ferramentas')">
         </td>
         <td>
-            <img src="imagens/planta.png" onclick="execucoes('${idOrcamento}', 'ferramentas')">
+            <img data-controle="editar" src="imagens/planta.png" onclick="execucoes('${idOrcamento}', 'ferramentas')">
         </td>
         <td>
-            <img src="imagens/pesquisar.png" onclick="formularioOrcamento('${idOrcamento}')">
+            <img data-controle="editar" src="imagens/pesquisar.png" onclick="formularioOrcamento('${idOrcamento}')">
         </td>
         <td>
             <img src="imagens/orcamentos.png" onclick="orcamentoFinal('${idOrcamento}')">
@@ -210,7 +222,7 @@ function criarLinhaOrcamento(idOrcamento, orcamento) {
             ${versao ? `<span onclick="comparativoRevisoes('${idOrcamento}')" class="etiqueta-revisao">${versao}</span>` : ''}
         </td> 
         <td>
-            <img src="imagens/cancel.png" onclick="confirmarExclusaoOrcamento('${idOrcamento}')">
+            <img data-controle="excluir" src="imagens/cancel.png" onclick="confirmarExclusaoOrcamento('${idOrcamento}')">
         </td>
     `
 
@@ -257,8 +269,8 @@ async function formularioOrcamento(idOrcamento) { //29
             `, 'Tem certeza?', true)
     }
 
-    clientes = await recuperarDados('dados_clientes')
-    const opcoesClientes = Object.entries({ '': { nome: '' }, ...clientes })
+    dados_clientes = await recuperarDados('dados_clientes')
+    const opcoesClientes = Object.entries({ '': { nome: '' }, ...dados_clientes })
         .map(([idCliente, dados]) => `<option id="${idCliente}" ${orcamento?.idCliente == idCliente ? 'selected' : ''}>${dados.nome}</option>`)
         .join('')
 
@@ -971,7 +983,7 @@ async function listagem(idOrcamento, tabela) {
     campos = await recuperarDados('campos')
     const orcamento = dados_orcamentos[idOrcamento]
     const idCliente = orcamento?.idCliente || ''
-    const cliente = clientes[idCliente]
+    const cliente = dados_clientes[idCliente]
 
     let total = 0
     const dados = {
@@ -1085,10 +1097,7 @@ async function listagem(idOrcamento, tabela) {
 
     popup(acumulado, 'Listagem de Materiais', true)
 
-
     document.querySelector('.total-valor').textContent = dinheiro(total)
-
-
 
 }
 
@@ -1097,7 +1106,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
     campos = await recuperarDados('campos')
     const orcamento = dados_orcamentos[idOrcamento]
     const idCliente = orcamento?.idCliente || ''
-    const cliente = clientes[idCliente]
+    const cliente = dados_clientes[idCliente]
 
     let total = 0
 
@@ -1129,7 +1138,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
             <tr>
                 <td colspan="2" style="background-color: #5b707f;">
                     <div class="titulo-orcamento">
-                        <img name="editaveis" class="btnAcmp" src="imagens/lapis.png" onclick="formularioOrcamento('${idOrcamento}')">
+                        <img data-controle="editar" name="editaveis" class="btnAcmp" src="imagens/lapis.png" onclick="formularioOrcamento('${idOrcamento}')">
                         <span ${titulo == 'Selecionar Zonas' ? 'name="titulo"' : ''}>${titulo}</span>
                     </div>
                 </td>
@@ -1174,7 +1183,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
                 <tr>
                     <td>
                         <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
-                            <img name="editaveis" onclick="execucoes('${idOrcamento}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">
+                            <img data-controle="editar" name="editaveis" onclick="execucoes('${idOrcamento}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">
                             <span>${zona}</span>
                         </div>
                     </td>
@@ -1182,7 +1191,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
                     <td>${dados?.descricao || '...'}</td>
                     <td>
                         <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
-                            <img name="editaveis" name="editaveis" onclick="editarDescricaoExtra('${idOrcamento}', '${idCampo}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">
+                            <img data-controle="editar" name="editaveis" name="editaveis" onclick="editarDescricaoExtra('${idOrcamento}', '${idCampo}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">
                             <span>${dados?.descricaoExtra || '...'}</span>
                         </div>
                     </td>
@@ -1205,7 +1214,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
                 <button onclick="imprimirRecorte()">Imprimir</button>
                 <button onclick="pdfOrcamento('Orçamento')">Exportar</button>
                 <button onclick="enviarOrcamentoPorEmail('${idOrcamento}')">Enviar</button>
-                <button onclick="execucoes('${idOrcamento}')">Voltar para Zonas</button>
+                <button data-controle="editar" onclick="execucoes('${idOrcamento}')">Voltar para Zonas</button>
             </div>`}
 
             <div class="orcamento-documento">
@@ -1233,6 +1242,9 @@ async function orcamentoFinal(idOrcamento, emJanela) {
     }
 
     document.querySelector('.total-valor').textContent = dinheiro(total)
+
+    // Regras de validação;
+    validarRegrasAcesso()
 
 }
 

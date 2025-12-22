@@ -4,6 +4,7 @@
     display: flex;
     align-items: start;
     justify-content: space-between;
+    flex-direction: column;
     background-color: #d2d2d2;
     max-height: 70vh;
     overflow-y: auto;
@@ -111,4 +112,24 @@
     border-radius: 9999px;
     background: #e53935;
     color: #fff;
+}
+
+.menu-chat-superior {
+    display: flex;
+    align-items: start;
+    justify-content: center;
+    flex-direction: column;
+    gap: 5px;
+}
+
+@media screen and (orientation: landscape),
+screen and (min-aspect-ratio: 13/9) {
+    .tela-inferior-mensagens {
+        flex-direction: row;
+    }
+
+    .menu-chat-superior {
+        flex-direction: row;
+    }
+
 }

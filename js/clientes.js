@@ -16,6 +16,8 @@ const fPesq = ({ objeto = {}, chave, texto, config = '' }) => {
 
 async function telaClientes() {
 
+    telaAtiva = 'clientes'
+
     mostrarMenus(false)
 
     dados_clientes = await recuperarDados('dados_clientes')
@@ -24,8 +26,8 @@ async function telaClientes() {
     titulo.textContent = 'Clientes'
 
     const btnExtras = `
-        <button onclick="formularioCliente()">Adicionar</button>
-        ${fPesq({ texto: 'Distrito', config: 'onclick="filtroCidadesCabecalho(this)" name="distrito"', objeto: dados_distritos, chave: 'nome' })}
+        <button data-controle="inserir" onclick="formularioCliente()">Adicionar</button>
+        ${fPesq({ texto: 'Distrito', config: 'onchange="filtroCidadesCabecalho(this)" name="distrito"', objeto: dados_distritos, chave: 'nome' })}
         ${fPesq({ texto: 'Cidade', config: 'name="cidade"' })}
     `
 
@@ -46,6 +48,9 @@ async function telaClientes() {
         criarLinhaClientes(idCliente, { ...dados, nomeDistrito: d.nome || '-', nomeCidade: c.nome || '-' })
     }
 
+    // Regras de validação;
+    validarRegrasAcesso()
+
 }
 
 function criarLinhaClientes(idCliente, dados) {
@@ -54,12 +59,12 @@ function criarLinhaClientes(idCliente, dados) {
         <td>${dados?.nome || '-'}</td>
         <td>${dados?.moradaFiscal || '-'}</td>
         <td>${dados?.moradaExecucao || '-'}</td>
-        <td name="distrito">${dados?.nomeDistrito || '-'}
-        <td name="cidade">${dados?.nomeCidade || '-'}
+        <td name="distrito" data-cod="${dados?.distrito}">${dados?.nomeDistrito || '-'}
+        <td name="cidade" data-cod="${dados?.cidade}">${dados?.nomeCidade || '-'}
         <td>${dados?.email || '-'}</td>
         <td>${dados?.telefone || '-'}</td>
         <td>
-            <img onclick="formularioCliente('${idCliente}')" src="imagens/pesquisar.png">
+            <img data-controle="editar" onclick="formularioCliente('${idCliente}')" src="imagens/pesquisar.png">
         </td>
     `
 

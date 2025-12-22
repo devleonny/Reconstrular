@@ -2,15 +2,19 @@ let dados_colaboradores = {}
 
 async function telaColaboradores() {
 
+    telaAtiva = 'colaboradores'
+
     mostrarMenus(false)
 
     const modelo = (titulo, elemento) => `
-        <div class="campos">
+        <div style="${vertical}; gap: 2px; padding: 0.5rem;">
             <span>${titulo}</span>
             ${elemento}
         </div>
     `
-    const distritos = await recuperarDados('dados_distritos')
+
+    dados_colaboradores = await recuperarDados('dados_colaboradores')
+    dados_distritos = await recuperarDados('dados_distritos')
 
     const btnExtras = `
         <div style="${vertical}; gap: 2px;">
@@ -23,19 +27,21 @@ async function telaColaboradores() {
         <div style="${vertical}; gap: 2px;">
             <button style="width: 100%;" onclick="excelColaboradores()">Trabalhadores.xlsx</button>
             <div style="${horizontal}; gap: 2px;">
-                ${modelo('Distrito', `<select name="fdistrito"><option></option>${optionsSelect(distritos, 'nome')}</select>`)}
-                ${modelo('Zona', `<select name="fzona"></select>`)}
+                ${fPesq({ texto: 'Distrito', config: 'onclick="filtroCidadesCabecalho(this)" name="distrito"', objeto: dados_distritos, chave: 'nome' })}
+                ${fPesq({ texto: 'Cidade', config: 'name="cidade"' })}
             </div>
         </div>
-        <button data-colaboradores="inserir" onclick="adicionarColaborador()">Adicionar</button>
+        <button data-controle="inserir" onclick="adicionarColaborador()">Adicionar</button>
     `
-    const base = 'dados_colaboradores'
+
     titulo.textContent = 'Gerenciar Colaboradores'
 
     const colunas = [
         'Nome Completo',
         'Telefone',
         'Obra Alocada',
+        'Distrito',
+        'Cidade',
         'Status',
         'Especialidade',
         'Folha de Ponto',
@@ -47,11 +53,16 @@ async function telaColaboradores() {
         btnExtras
     })
 
-    dados_colaboradores = await recuperarDados(base)
-
     for (const [id, colaborador] of Object.entries(dados_colaboradores).reverse()) {
-        criarLinhaColaboradores(id, colaborador)
+
+        const d = dados_distritos?.[colaborador?.distrito] || {}
+        const c = d?.cidades?.[colaborador?.cidade] || {}
+
+        criarLinhaColaboradores(id, { ...colaborador, nomeDistrito: d.nome || '-', nomeCidade: c.nome || '-' })
     }
+
+    // Regras de validação;
+    validarRegrasAcesso()
 
 }
 
@@ -62,7 +73,9 @@ async function criarLinhaColaboradores(id, colaborador) {
         .map(op => `<span>• ${op}</span>`)
         .join('')
 
-    tds = `
+    const
+
+        tds = `
         <td>
             <div class="camposTd">
                 <img src="imagens/${algoPendente ? 'exclamacao' : 'doublecheck'}.png">
@@ -70,7 +83,9 @@ async function criarLinhaColaboradores(id, colaborador) {
             </div>
         </td>
         <td>${colaborador?.telefone || ''}</td>
-        <td>${await infoObra(colaborador)}</td>
+        <td>${infoObra(colaborador)}</td>
+        <td name="distrito" data-cod="${colaborador?.distrito}">${colaborador?.nomeDistrito || '-'}
+        <td name="cidade" data-cod="${colaborador?.cidade}">${colaborador?.nomeCidade || '-'}
         <td><span class="${colaborador?.status}">${colaborador?.status || ''}</span></td>
         <td>
             <div style="${vertical}; gap: 2px;">
@@ -81,7 +96,7 @@ async function criarLinhaColaboradores(id, colaborador) {
             <img src="imagens/relogio.png" onclick="mostrarFolha('${id}')">
         </td>
         <td>
-            <img src="imagens/pesquisar.png" data-colaboradores="inserir" onclick="adicionarColaborador('${id}')">
+            <img src="imagens/pesquisar.png" data-controle="editar" onclick="adicionarColaborador('${id}')">
         </td>
     `
 
@@ -248,7 +263,7 @@ async function adicionarColaborador(id) {
     const form = new formulario({ linhas, botoes, titulo: 'Cadastro de Colaborador' })
     form.abrirFormulario()
 
-    await carregarSelects({ ...colaborador })
+    await carregarSelects({ ...colaborador, painel: true })
     verificarRegras()
 
 }

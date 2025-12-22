@@ -9,7 +9,7 @@ class formulario {
     abrirFormulario() {
 
         const botaoPadrao = ({ funcao, img, texto }) => `
-            <div onclick="${funcao}" class="botoes-rodape">
+            <div ${texto == 'Excluir' ? 'data-controle="excluir"' : ''} onclick="${funcao}" class="botoes-rodape">
                 <img src="imagens/${img}.png">
                 <span>${texto}</span>
             </div>
@@ -46,6 +46,8 @@ class formulario {
         `
 
         popup(acumulado, this.titulo, true)
+
+        validarControlesAcesso()
 
     }
 

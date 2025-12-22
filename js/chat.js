@@ -53,7 +53,7 @@ async function painelUsuarios(toggle) {
     }
 
     const menus = `
-    <div style="${horizontal}; gap: 5px;">
+    <div class="menu-chat-superior">
         <div style="${horizontal}; gap: 5px;">
             <input type="checkbox" onclick="marcarTodos(this)">
             <span style="color: white;">Marcar todos</span>

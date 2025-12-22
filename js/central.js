@@ -18,6 +18,7 @@ let stream;
 let telaInterna = null
 let emAtualizacao = false
 let acesso = {}
+let telaAtiva = null
 
 function obVal(name) {
     const el = document.querySelector(`[name="${name}"]`);
@@ -481,6 +482,7 @@ async function atualizarApp() {
         status.atual++
     }
 
+    funcoes = await recuperarDados('funcoes')
     dados_distritos = await recuperarDados('dados_distritos')
     dados_setores = await recuperarDados('dados_setores')
     acesso = dados_setores[acesso.usuario]
@@ -586,6 +588,8 @@ function pesquisarGenerico(coluna, texto, filtro, id) {
 
 function telaConfiguracoes() {
 
+    telaAtiva = 'configurações'
+
     mostrarMenus(false)
 
     titulo.textContent = 'Configurações'
@@ -653,7 +657,7 @@ async function telaNiveis() {
     ]
 
     const btnExtras = `
-        <button onclick="adicionarFuncao()">Adicionar Função</button>
+        <button data-controle="inserir" onclick="adicionarFuncao()">Adicionar Função</button>
     `
 
     const acumulado = modeloTabela({ colunas, nomeBase, btnExtras })
@@ -666,57 +670,97 @@ async function telaNiveis() {
         criarLinhaFuncao(idFuncao, dados)
     }
 
-}
+    // Regras de validação;
+    validarRegrasAcesso()
 
+}
+//29
 function validarRegrasAcesso() {
 
-    const colunas = [
-        'colaboradores',
-        'obras',
-        'clientes',
-        'despesas',
-        'parceiros',
-        'orçamentos',
-        'configurações',
-        'registro_de_ponto'
-    ]
+    const coluna = telaAtiva
+    const permissao = funcoes?.[acesso.funcao]?.[coluna]
+    const [uCidade, uZona, uDistrito] = [acesso.cidade, acesso.zona, acesso.distrito]
 
-    const permissao = funcoes?.[acesso.funcao]
     if (!permissao) return
 
-    colunas.forEach(coluna => {
+    const { regra, filtros = {} } = permissao
+    const trs = document.querySelectorAll('tr')
 
-        const elementos = document.querySelectorAll(`[data-${coluna}]`)
-        const regra = permissao[coluna]
+    for (const tr of trs) {
 
-        elementos.forEach(el => {
+        const cidade = tr.querySelector('[name="cidade"]')?.dataset?.cod
+        const distrito = tr.querySelector('[name="distrito"]')?.dataset?.cod
+        const zona = tr.querySelector('[name="zona"]')?.dataset?.cod
 
-            const acao = el.dataset[coluna] // inserir | editar | apagar
-            let permitir = false
+        let permitir = false
 
-            switch (regra) {
+        // regra base
+        switch (regra) {
+            case '✅ Total acesso':
+            case '🟢 Permissão Parcial (Apaga, insere e edita)':
+            case '✏️ Pode Editar/Inserir':
+            case '👁️ Visualizador':
+                permitir = true
+                break
+            default:
+                permitir = false
+        }
 
-                case '✅ Total acesso':
-                case '🟢 Permissão Parcial (Apaga, insere e edita)':
-                    permitir = true
-                    break
+        // filtros hierárquicos
+        if (permitir && filtros.zona === 'S' && zona && zona !== uZona) {
+            permitir = false
+        }
 
-                case '✏️ Pode Editar/Inserir':
-                    permitir = acao === 'editar' || acao === 'inserir'
-                    break
+        if (permitir && filtros.distrito === 'S' && distrito && distrito !== uDistrito) {
+            permitir = false
+        }
 
-                case '👁️ Visualizador':
-                    permitir = false
-                    break
+        if (permitir && filtros.cidade === 'S' && cidade && cidade !== uCidade) {
+            permitir = false
+        }
 
-                case '❌ Sem acesso':
-                default:
-                    permitir = false
-            }
+        tr.style.display = permitir ? '' : 'none'
+    }
 
-            el.style.display = permitir ? '' : 'none'
-        })
-    })
+    validarControlesAcesso()
+}
+
+function validarControlesAcesso() {
+
+    // Tela Ativa precisa ser chamada em cada tela;
+    const coluna = telaAtiva
+    const permissao = funcoes?.[acesso.funcao]?.[coluna]
+
+    if (!permissao) return
+
+    const { regra } = permissao
+
+    const controles = document.querySelectorAll('[data-controle]')
+
+    for (const el of controles) {
+
+        const acao = el.dataset.controle // inserir | editar | apagar
+        let permitir = false
+
+        switch (regra) {
+
+            case '✅ Total acesso':
+            case '🟢 Permissão Parcial (Apaga, insere e edita)':
+                permitir = true
+                break
+
+            case '✏️ Pode Editar/Inserir':
+                permitir = acao === 'inserir' || acao === 'editar'
+                break
+
+            case '👁️ Visualizador':
+            case '❌ Sem acesso':
+            default:
+                permitir = false
+        }
+
+        el.style.display = permitir ? '' : 'none'
+    }
 }
 
 function criarLinhaFuncao(idFuncao, dados) {
@@ -726,6 +770,33 @@ function criarLinhaFuncao(idFuncao, dados) {
         autorizados += `<span>• ${funcoes?.[id]?.nome || '...'}</span>`
     }
 
+    const filtrosPorColuna = {
+        obras: ['distrito', 'cidade', 'zona', 'autorizado'],
+        clientes: ['distrito', 'cidade', 'zona', 'autorizado'],
+        despesas: ['zona', 'distrito'],
+        parceiros: ['zona', 'distrito'],
+        orcamentos: ['distrito', 'autorizado']
+    }
+
+    // Modelo
+    function montarFiltros({ idFuncao, dados, coluna }) {
+
+        const filtros = filtrosPorColuna[coluna]
+        if (!filtros) return ''
+
+        return filtros.map(chave => `
+        <div style="${horizontal}; gap: 2px;">
+            <input
+                type="checkbox"
+                ${dados?.[coluna]?.filtros?.[chave] === 'S' ? 'checked' : ''}
+                onchange="alterarFiltro(this, '${idFuncao}', '${coluna}', '${chave}')"
+            >
+            <span>Apenas ${inicialMaiuscula(chave)}</span>
+        </div>
+    `).join('')
+    }
+
+    // Esquemas (2)
     const colunas = ['colaboradores', 'obras', 'clientes', 'despesas', 'parceiros', 'orçamentos', 'configurações', 'registro_de_ponto']
     const opcoes = [
         '',
@@ -736,13 +807,19 @@ function criarLinhaFuncao(idFuncao, dados) {
         '❌ Sem acesso'
     ]
 
+    // Lançamentos
     const tdsExtras = colunas.map(col => `
-            <td style="text-align: left; min-width: 200px;">
-                <select onchange="atualizarRegra(this, '${col}', '${idFuncao}')">
-                    ${opcoes.map(op => `<option ${dados[col] == op ? 'selected' : ''}>${op}</option>`).join('')}
-                </select>
-            </td>`)
-        .join('')
+    <td style="text-align: left; min-width: 200px;">
+        <div style="${vertical}; gap: 2px;">
+            <select onchange="atualizarRegra(this, '${col}', '${idFuncao}')">
+                ${opcoes.map(op =>
+        `<option ${dados?.[col]?.regra === op ? 'selected' : ''}>${op}</option>`
+    ).join('')}
+            </select>
+            ${montarFiltros({ idFuncao, dados, coluna: col })}
+        </div>
+    </td>`).join('')
+
 
     const tds = `
         <td>${dados?.nome || ''}</td>
@@ -765,12 +842,31 @@ function criarLinhaFuncao(idFuncao, dados) {
 
 }
 
+async function alterarFiltro(input, idFuncao, coluna, chave) {
+
+    const valor = input.checked ? 'S' : 'N'
+
+    funcoes[idFuncao] ||= {}
+
+    if (typeof funcoes[idFuncao][coluna] !== 'object' || !funcoes[idFuncao][coluna]) {
+        funcoes[idFuncao][coluna] = {}
+    }
+
+    funcoes[idFuncao][coluna].filtros ||= {}
+    funcoes[idFuncao][coluna].filtros[chave] = valor
+
+    await inserirDados({ [idFuncao]: funcoes[idFuncao] }, 'funcoes')
+    enviar(`funcoes/${idFuncao}/${coluna}/filtros/${chave}`, valor)
+
+}
+
 async function atualizarRegra(select, coluna, idFuncao) {
 
     const funcao = funcoes[idFuncao]
-    funcao[coluna] = select.value
+    funcao[coluna] ??= {}
+    funcao[coluna].regra = select.value
     await inserirDados({ [idFuncao]: funcao }, 'funcoes')
-    enviar(`funcoes/${idFuncao}/${coluna}`, select.value)
+    enviar(`funcoes/${idFuncao}/${coluna}/regra`, select.value)
 
 }
 
@@ -857,7 +953,6 @@ function verificarClique(event) {
     const menu = document.querySelector('.side-menu');
     if (menu && menu.classList.contains('active') && !menu.contains(event.target)) menu.classList.remove('active')
 }
-
 
 async function sincronizarDados(base, overlayOff, resetar) {
 
@@ -1117,13 +1212,13 @@ async function criarLinha(dados, id, nomeBase) {
 
 }
 
-async function infoObra(dados) {
+function infoObra(dados) {
 
-    const obra = await recuperarDado('dados_obras', dados.obra) || false
+    const obra = dados_obras[dados.obra]
     let dadosObra = '<span>Sem Obra</span>'
     if (obra && obra.distrito) {
 
-        const cliente = await recuperarDado('dados_clientes', obra?.cliente)
+        const cliente = dados_clientes[obra?.cliente]
         const distrito = dados_distritos[obra?.distrito]
         const cidade = distrito?.cidades[obra?.cidade]
         dadosObra = `<span>${cliente?.nome || '--'} / ${distrito?.nome || '--'} / ${cidade?.nome || '--'}</span>`
@@ -1195,7 +1290,7 @@ function verificarRegras() {
     // REGRAS
     const input = (name) => document.querySelector(`[name="${name}"]`)
     let liberado = true
-    let limites = {
+    const limites = {
         'nome': { tipo: 'A' },
         'numeroContribuinte': { limite: 9, tipo: 1 },
         'segurancaSocial': { limite: 11, tipo: 1 },
@@ -1210,7 +1305,7 @@ function verificarRegras() {
         if (!campo) continue;
 
         //Tipo
-        if (regra.tipo === 1) {//29
+        if (regra.tipo === 1) {
             campo.value = campo.value.replace(/\D/g, '');
         } else if (regra.tipo === 'A') {
             campo.value = campo.value.replace(/[0-9]/g, '');
@@ -1627,28 +1722,36 @@ function inicialMaiuscula(string) {
 }
 
 async function configuracoes(usuario, campo, valor) {
-
-    return new Promise((resolve, reject) => {
-        fetch(`${api}/configuracoes`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+    try {
+        const response = await fetch(`${api}/configuracoes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ usuario, campo, valor, servidor })
         })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                resolve(data);
-            })
-            .catch(err => {
-                console.log(err)
-                reject()
-            });
-    })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+            return {
+                ok: false,
+                mensagem: data?.mensagem || `Erro ${response.status}`
+            }
+        }
+
+        return {
+            ok: true,
+            mensagem: data?.mensagem || null
+        }
+
+    } catch (err) {
+        console.error(err)
+        return {
+            ok: false,
+            mensagem: 'Erro de conexão'
+        }
+    }
 }
+
 
 function pesquisar(input, idTbody) {
     const termo = input.value.trim().toLowerCase();

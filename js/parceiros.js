@@ -1,5 +1,7 @@
 async function telaUsuarios() {
 
+    telaAtiva = 'parceiros'
+
     mostrarMenus(false)
 
     dados_setores = await recuperarDados('dados_setores')
@@ -9,7 +11,7 @@ async function telaUsuarios() {
     const idF = acesso?.funcao || ''
     const f = funcoes[idF] || {}
     const r = f?.regras || []
-    const btnEdicao = r.length == 0 ? '' : `<button onclick="editarParceiros()">Cadastro</button>`
+    const btnEdicao = r.length == 0 ? '' : `<button data-controle="inserir" onclick="editarParceiros()">Cadastro</button>`
 
     const btnExtras = `
         ${btnEdicao}
@@ -34,6 +36,9 @@ async function telaUsuarios() {
         criarLinhaUsuarios(usuario, dados)
     }
 
+    // Regras de validação;
+    validarRegrasAcesso()
+
 }
 
 async function criarLinhaUsuarios(usuario, dados) {
@@ -42,20 +47,16 @@ async function criarLinhaUsuarios(usuario, dados) {
     const cidade = distrito?.cidades?.[dados?.cidade] || {}
     const f = await recuperarDado('funcoes', dados?.funcao)
 
-    const idF = acesso.funcao || ''
-    const r = funcoes?.[idF]?.regras || [] // Regras do usuário;
-    const edicao = (r.includes(dados?.funcao) || idF == 'tL4LM') ? `<img onclick="editarParceiros('${usuario}')" src="imagens/pesquisar.png">` : ''
-
     const tds = `
         <td>${dados?.nome_completo || ''}</td>
         <td>${dados?.telefone || ''}</td>
         <td>${dados?.email || ''}</td>
         <td name="funcao">${f?.nome || ''}</td>
-        <td name="zona">${dados?.zona || ''}</td>
-        <td name="distrito">${distrito?.nome || ''}</td>
-        <td name="cidade">${cidade?.nome || ''}</td>
+        <td name="zona" data-cod="${dados?.zona}">${dados?.zona || ''}</td>
+        <td name="distrito" data-cod="${dados?.distrito}">${distrito?.nome || ''}</td>
+        <td name="cidade" data-cod="${dados?.cidade}">${cidade?.nome || ''}</td>
         <td>
-            ${edicao}
+            <img data-controle="editar" onclick="editarParceiros('${usuario}')" src="imagens/pesquisar.png">
         </td>
     `
 
@@ -109,6 +110,7 @@ async function editarParceiros(usuario) {
         })
         .join('')
 
+
     const linhas = [
         { texto: 'E-mail', elemento: `<input name="email" type="email" placeholder="E-mail" value="${parceiro?.email || ''}">` },
         { texto: 'Telefone', elemento: `<input name="telefone" placeholder="Telefone" value="${parceiro?.telefone || ''}">` },
@@ -135,7 +137,7 @@ async function editarParceiros(usuario) {
         { texto: 'Salvar', img: 'concluido', funcao: `salvarParceiros('${usuario}')` }
     ]
 
-    if (usuario) botoes.push({ texto: 'Desativar', img: 'cancel', funcao: `confirmarDesativarUsuario('${usuario}')` })
+    if (usuario) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarDesativarUsuario('${usuario}')` })
 
     const titulo = usuario ? `Gerenciar Parceiro` : `Criar acesso parceiro`
     const form = new formulario({ linhas, botoes, titulo })
@@ -205,9 +207,13 @@ async function salvarParceiros(usuario) {
     for (const [chave, dado] of Object.entries(dNovos)) {
         if (dAtuais[chave] !== dado) {
             const resposta = await configuracoes(usuario, chave, dado)
-            if (resposta.mensagem) return popup(mensagem(resposta.mensagem), 'Alerta', true)
+            if (resposta.mensagem) {
+                popup(mensagem(resposta.mensagem), 'Alerta', true)
+                continue
+            }
         }
     }
+
 
     await inserirDados({ [usuario]: parceiro }, 'dados_setores')
     await telaUsuarios()
