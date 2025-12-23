@@ -1,5 +1,3 @@
-let dados_colaboradores = {}
-
 async function telaColaboradores() {
 
     telaAtiva = 'colaboradores'

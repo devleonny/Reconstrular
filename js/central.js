@@ -8,6 +8,8 @@ const nomeStore = 'Bases'
 const api = `https://leonny.dev.br`
 const servidor = 'RECONST'
 let dados_distritos = {}
+let dados_colaboradores = {}
+let dados_obras = {}
 let funcoes = {}
 let materiais = {}
 let fornecedores = {}
@@ -653,7 +655,7 @@ async function telaNiveis() {
         'Parceiros',
         'Orçamentos',
         'Configurações',
-        'Registro de Ponto'
+        'Registo de Ponto'
     ]
 
     const btnExtras = `
@@ -674,7 +676,7 @@ async function telaNiveis() {
     validarRegrasAcesso()
 
 }
-//29
+
 function validarRegrasAcesso() {
 
     const coluna = telaAtiva

@@ -40,6 +40,7 @@ const optionsSelect = (obj, chave) => {
 async function mostrarFolha(idColaborador) {
 
     titulo.textContent = 'Registo de Ponto'
+    telaAtiva = 'registro_de_ponto'
 
     const colaborador = await recuperarDado('dados_colaboradores', idColaborador)
 
@@ -182,6 +183,7 @@ async function criarFolha(idColaborador) {
     let trs = ''
     let diasUteis = 0
     let minutosRealizados = 0
+
     for (let i = 1; i <= ultimoDia; i++) {
         const dia = i < 10 ? `0${i}` : i
         const data = new Date(ano, mes - 1, i)
@@ -200,12 +202,21 @@ async function criarFolha(idColaborador) {
         if (!fds) diasUteis++
 
         trs += `
-        <tr>
+        <tr data-colaborador="${idColaborador}" data-dia="${dia}" data-mes="${mesString}" data-ano="${ano}">
             <td>${data.toLocaleDateString()}</td>
             <td style="${fds ? 'font-weight: bold;' : ''}">${diaDaSemana}</td>
-            <td><span class="${estilo(hora1, 'entrada')}">${hora1}</span></td>
-            <td><span class="${estilo(hora2, 'saida')}">${hora2}</span></td>
-            <td><span class="${estilo(resultado.total, 'total')}">${resultado.total}</span></td>
+            <td>
+                <span class="${estilo(hora1, 'entrada')}">${hora1}</span>
+            </td>
+            <td>
+                <span class="${estilo(hora2, 'saida')}">${hora2}</span>
+            </td>
+            <td>
+                <div style="${horizontal}; gap: 0.5rem;">
+                    <img data-controle="editar" style="width: 1.5rem;" onclick="registroHoras(this)" src="imagens/lapis.png">
+                    <span class="${estilo(resultado.total, 'total')}">${resultado.total}</span>
+                </div>
+            </td>
             <td><span class="${estiloDiferenca}">${resultado.diferenca}</span></td>
         </tr>   
         `
@@ -225,6 +236,67 @@ async function criarFolha(idColaborador) {
     obVal('Horas Estimadas Dias Úteis').textContent = `${horasDiarias * diasUteis}:00`
 
     body.innerHTML = trs
+
+    // Regras de validação;
+    validarRegrasAcesso()
+
+}
+
+let sData = {}
+
+async function registroHoras(img) {
+
+    const tr = img.closest('tr')
+
+    const dia = tr.dataset.dia
+    const mes = tr.dataset.mes
+    const ano = tr.dataset.ano
+    const idColaborador = tr.dataset.colaborador
+
+    // Salve Data;
+    sData = { dia, mes, ano, idColaborador }
+
+    const colaborador = await recuperarDado('dados_colaboradores', idColaborador)
+    let marcacoes = colaborador?.folha?.[ano]?.[mes]?.[dia] || ['00:00', '00:00']
+    if (marcacoes.lenght == 1) marcacoes.push('00:00')
+    const inputs = marcacoes.map(m => `<input name="horas" type="time" value="${m}">`).join('')
+
+    const acumulado = `
+        <div style="background-color: #d2d2d2; min-width: 200px; ${vertical}; gap: 0.5rem; padding: 1rem;">
+
+            <span>Marcações</span>
+            <hr>
+            <div style="${horizontal}; gap: 2rem;">
+                ${inputs}
+                <img onclick="salvarHoras('${idColaborador}')" src="imagens/concluido.png">
+            </div>
+
+        </div>
+    `
+
+    popup(acumulado, 'Edição de Horas', true)
+}
+
+
+async function salvarHoras() {
+
+    overlayAguarde()
+
+    const inputs = document.querySelectorAll('[name="horas"]')
+    const horas = []
+    for (const inp of inputs) horas.push(inp.value)
+
+    const colaborador = await recuperarDado('dados_colaboradores', sData.idColaborador)
+    colaborador.folha ??= {}
+    colaborador.folha[sData.ano] ??= {}
+    colaborador.folha[sData.ano][sData.mes] ??= {}
+    colaborador.folha[sData.ano][sData.mes][sData.dia] = horas
+    await inserirDados({ [sData.idColaborador]: colaborador }, 'dados_colaboradores')
+    enviar(`dados_colaboradores/${sData.idColaborador}/folha/${sData.ano}/${sData.mes}/${sData.dia}`, horas)
+
+    await mostrarFolha(sData.idColaborador)
+
+    removerPopup()
 
 }
 
@@ -301,6 +373,8 @@ async function gerarTodosPDFs(idColaborador, nome) {
 
         if (contentType.includes('application/json')) {
             const dados = await resposta.json()
+            console.log(dados);
+
             if (dados.mensagem) {
                 removerOverlay()
                 return popup(mensagem(dados.mensagem), 'Alerta', true)

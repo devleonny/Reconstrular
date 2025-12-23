@@ -97,7 +97,7 @@ canvas {
 .ticketPonto {
     background-color: #d2d2d2;
     gap: 5px;
-    padding: 2vw;
+    padding: 2rem;
     display: flex;
     align-items: start;
     justify-content: start;

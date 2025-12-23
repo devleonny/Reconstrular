@@ -57,13 +57,9 @@ async function verificarColaborador() {
 
     overlayAguarde()
     const pin = document.querySelector('[name="pin"]')
-
     const resposta = await colaboradorPin(pin.value)
 
-    if (resposta.mensagem) {
-        telaRegistroPonto()
-        return popup(mensagem(resposta.mensagem), 'Alerta', true)
-    }
+    if (resposta.mensagem) return popup(mensagem(resposta.mensagem), 'Aviso', true)
 
     usuarioAtual = resposta
 
@@ -209,30 +205,20 @@ async function enviarPonto() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ idColaborador: usuarioAtual.idColaborador, data, servidor: 'RECONST' })
-        });
+            body: JSON.stringify({ idColaborador: usuarioAtual.idColaborador, data, servidor })
+        })
 
-        const resposta = await response.json();
-        const acumulado = `
+        const resposta = await response.json()        
+        if (resposta.mensagem) return popup(mensagem(resposta.mensagem), 'Aviso', true)
+
+        popup(`
             <div class="ticketPonto">
                 <span>${usuarioAtual.nome}</span>
                 <span><strong>${data}</strong></span>
-                <span>${resposta.mensagem}</span>
+                <span>Realizado</span>
             </div>
-        `;
+        `, 'Marcação realizada', true)
 
-        const sucesso = resposta.mensagem.includes('Realizado')
-        const imagem = sucesso ? 'concluido' : 'cancel'
-        const texto = sucesso ? 'Registada Entrada' : 'Registo Indisponível'
-
-        const titulo = `
-            <div class="sucesso">
-                <img src="imagens/${imagem}.png">
-                <span>${texto}</span>
-            </div>
-        `
-
-        popup(acumulado, titulo);
     } catch (err) {
         popup(mensagem(`Erro na API: ${err}`));
         throw err;

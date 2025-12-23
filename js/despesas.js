@@ -111,7 +111,6 @@ async function verificarDespesas() {
                     ${modelo('Ano', `<select name="ano"><option></option>${optionsSelect(anos)}</select>`)}
                     ${modelo('Mês', `<select name="mes"><option></option>${optionsSelect(meses)}</select>`)}
                     <img onclick="htmlDespesas()" src="imagens/pdf.png">
-                    <img data-controle="excluir" src="imagens/carta.png" onclick="">
                 </div>
                 <img class="atualizar" src="imagens/atualizar.png" onclick="atualizarDespesas()">
             </div>
