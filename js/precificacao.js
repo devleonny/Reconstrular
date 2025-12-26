@@ -6,7 +6,7 @@ async function telaPrecos() {
 
     materiais = await recuperarDados('materiais')
     ferramentas = await recuperarDados('ferramentas')
-    maoObra = await recuperarDados('maoObra')
+    mao_obra = await recuperarDados('mao_obra')
     campos = await recuperarDados('campos')
 
     const tMargem = `
@@ -39,7 +39,7 @@ async function telaPrecos() {
                         <img src="imagens/pesquisar2.png">
                     </div>
                     <button onclick="telaConfiguracoes()">Voltar</button>
-                    <button data-controle="inserir" onclick="edicaoItem()">Criar Item</button>
+                    <button data-controle="inserir" onclick="edicaoItem()">Criar Campo</button>
                     <button data-controle="editar" onclick="confirmarDesativacao()">Desativar Itens</button>
                 </div>
                 <img class="atualizar" src="imagens/atualizar.png" onclick="atualizarCampos()">
@@ -160,7 +160,6 @@ async function aplicarEmMassa() {
     }
 
     const resposta = await enviarMargens({ codigos, margem: margemNum })
-    console.log(resposta);
 
     if (resposta.mensagem) return popup(resposta.mensagem, 'Alerta', true)
 
@@ -206,7 +205,7 @@ function criarLinhasCampos(idCampo, dados) {
                 <img data-controle="editar" src="imagens/caixa.png" style="width: 1.5rem;" onclick="composicoes('${idCampo}', true)">
             </div>
         </td>
-        <td>${dinheiro(dados?.totalComposicao || 0)}</td>
+        <td style="white-space: nowrap;">${dinheiro(dados?.totalComposicao || 0)}</td>
         <td>
             <div style="${horizontal}; gap: 0.5rem;">
                 <img data-controle="editar" src="imagens/lapis.png" style="width: 1.5rem;" onclick="painelMargem('${idCampo}')">
@@ -214,7 +213,7 @@ function criarLinhasCampos(idCampo, dados) {
                 <input data-controle="editar" type="checkbox" name="margem">
             </div>
         </td>
-        <td>${dinheiro(total)}</td>
+        <td style="white-space: nowrap;">${dinheiro(total)}</td>
     `
 
     const trExistente = document.getElementById(idCampo)
@@ -225,22 +224,14 @@ function criarLinhasCampos(idCampo, dados) {
 
 async function edicaoItem(idCampo) {
 
-    idCampo = idCampo || ID5digitos()
-
-    const campo = campos[idCampo]
+    const campo = campos[idCampo] || {}
 
     const opcoesMedidas = ['', 'und', 'ml', 'm2', 'm3']
         .map(op => `<option ${op == campo?.medida ? 'selected' : ''}>${op}</option>`)
         .join('')
 
-    const modelo = (texto, elemento) => `
-        <div style="${vertical}">
-            <span>${texto}</span>
-            <div>${elemento}</div>
-        </div>
-    `
-    let especialidades = []
-    for (const [idCampo, campo] of Object.entries(campos)) {
+    const especialidades = []
+    for (const campo of Object.values(campos)) {
         if (!especialidades.includes(campo.especialidade)) especialidades.push(campo.especialidade)
     }
 
@@ -248,22 +239,34 @@ async function edicaoItem(idCampo) {
         .map(op => `<option>${op}</option>`)
         .join('')
 
-    const acumulado = `
-        <div style="${vertical}; background-color: #d2d2d2; padding: 0.5rem; gap: 0.5rem;">
-            ${modelo('Descrição', `<textarea name="descricao">${campo?.descricao || ''}</textarea>`)}
-            ${modelo('Medida', `<select name="medida">${opcoesMedidas}</select>`)}
-            ${modelo('Especialidade', `
+    const linhas = [
+        {
+            texto: 'Descrição',
+            elemento: `<textarea name="descricao">${campo?.descricao || ''}</textarea>`
+        },
+        {
+            texto: 'Medida',
+            elemento: `<select name="medida">${opcoesMedidas}</select>`
+        },
+        {
+            texto: 'Especialidade',
+            elemento: `
                 <input name="especialidade" list="especialidade" value="${campo?.especialidade || ''}">
-                <datalist id="especialidade">${opcoesEspecialidade}</datalist>`)}
-            <hr style="width: 100%;">
-            <button onclick="salvarCampo('${idCampo}')">Salvar</button>
-        </div>
-    `
+                <datalist id="especialidade">${opcoesEspecialidade}</datalist>
+            `
+        }
+    ]
+    const botoes = [
+        { texto: 'Salvar', img: 'concluido', funcao: idCampo ? `salvarCampo('${idCampo}')` : 'salvarCampo()' }
+    ]
 
-    popup(acumulado, 'Edição de Campo', true)
+    const titulo = idCampo ? 'Editar Campo' : 'Criar Campo'
+
+    const form = new formulario({ linhas, botoes, titulo })
+    form.abrirFormulario()
 }
 
-async function salvarCampo(idCampo) {
+async function salvarCampo(idCampo = ID5digitos()) {
 
     let campo = {}
     const cmps = ['descricao', 'medida', 'especialidade']
@@ -335,11 +338,9 @@ async function composicoes(id, tP) {
     idCampo = id
     const campo = campos[id]
 
-    console.log(campo)
-
     const modeloTabela = (tipoTabela) => {
 
-        const ths = ['Artigo', 'Qtde', 'Preço', 'Link', '']
+        const ths = ['Artigo', 'Qtde', 'Preço', 'Total', 'Link', '']
             .map(col => `<th>${col}</th>`)
             .join('')
 
@@ -356,13 +357,13 @@ async function composicoes(id, tP) {
                 </div>
                 <div class="rodapeTabela">
                     <button onclick="adicionarLinhaComposicoes({tabela: '${tipoTabela}', baseRef: ${tipoTabela}, idCampo: '${idCampo}'})">Adicionar Linha</button>
-                    <button onclick="salvarComposicao({tabela: '${tipoTabela}'})">Salvar</button>
+                    <button onclick="salvarComposicao('${tipoTabela}')">Salvar</button>
                 </div>
             </div>`
     }
 
     const acumulado = `
-        <div style="${vertical}; padding: 1rem; background-color: #d2d2d2; overflow: auto;">
+        <div style="${vertical}; min-width: 500px; padding: 1rem; background-color: #d2d2d2; overflow: auto;">
 
             <div style="${vertical}; gap: 3px;">
                 <span><b>Total Geral</b></span>
@@ -372,13 +373,13 @@ async function composicoes(id, tP) {
             <div class="toolbar-precos">
                 <span id="toolbar_materiais" onclick="toogleTabela('materiais')">Materiais</span>
                 <span id="toolbar_ferramentas" onclick="toogleTabela('ferramentas')">Ferramentas</span>
-                <span id="toolbar_maoObra" onclick="toogleTabela('maoObra')">Mão de Obra</span>
+                <span id="toolbar_mao_obra" onclick="toogleTabela('mao_obra')">Mão de Obra</span>
                 <span id="toolbar_duracao" onclick="toogleTabela('duracao')">Duração</span>
             </div>
 
             ${modeloTabela('materiais')}
             ${modeloTabela('ferramentas')}
-            ${modeloTabela('maoObra')}
+            ${modeloTabela('mao_obra')}
 
             <div id="duracao" class="edicao-duracao">
                 <div style="${vertical}; padding: 2rem;">
@@ -397,7 +398,7 @@ async function composicoes(id, tP) {
     const tabelas = {
         'materiais': materiais,
         'ferramentas': ferramentas,
-        'maoObra': maoObra
+        'mao_obra': mao_obra
     }
 
     for (const [tabela, baseRef] of Object.entries(tabelas)) {
@@ -425,7 +426,7 @@ async function salvarDuracao(idCampo, input) {
 
 function toogleTabela(idAtual) {
 
-    const tabelas = ['materiais', 'ferramentas', 'maoObra', 'duracao']
+    const tabelas = ['materiais', 'ferramentas', 'mao_obra', 'duracao']
 
     for (const tabela of tabelas) {
         const tabHtml = document.getElementById(tabela)
@@ -444,26 +445,24 @@ async function adicionarLinhaComposicoes({ baseRef = {}, tabela, dados, id }) {
     const tbody = document.getElementById(`body_${tabela}`)
     if (!tbody) return
 
-    const opcoes = Object.entries(baseRef)
-        .map(([idO, objeto]) => `<option id="${idO}" ${id == idO ? 'selected' : ''}>${objeto.nome}</option>`)
-        .join('')
+    const itemRef = baseRef?.[id] || {}
+    const codSpan = ID5digitos()
 
     const tds = `
         <td>
-            <select onchange="verificarItemRepetido(this, '${tabela}')">
-                <option></option>
-                ${opcoes}
-            </select>
+            <span ${id ? `id="${id}"` : ''} class="opcoes" name="${codSpan}" onclick="cxOpcoes('${codSpan}', '${tabela}', ['nome', 'preco[dinheiro]', 'preencherItem()'])">${itemRef.nome || 'Selecionar'}</span>
         </td>
-        <td><input type="number" style="width: 5rem;" value="${dados?.qtde || ''}"></td>
-        <td><input type="number" style="width: 5rem;" value="${dados?.preco || ''}"></td>
+        <td><input oninput="preencherItem()" type="number" style="width: 5rem;" value="${dados?.qtde || ''}"></td>
+        <td>${dinheiro(itemRef?.preco)}</td>
         <td>
-            <div style="${horizontal}; gap: 5px;">
-                <textarea oninput="this.nextElementSibling.style.display = 'block'">${dados?.link || ''}</textarea>
-                <img src="imagens/visitar.png" style="display: ${dados?.link ? 'block' : 'none'};" onclick="visitarSite(this)">
-            </div>
+            ${dinheiro(itemRef?.preco * dados?.qtde || 0)}
         </td>
-        <td><img style="width: 2rem;" src="imagens/cancel.png" onclick="removerItem(this, '${id}', '${idCampo}', '${tabela}')"></td>
+        <td>
+            <a href="${itemRef?.link}">${itemRef?.link || ''}</a>
+        </td>
+        <td>
+            <img style="width: 2rem;" src="imagens/cancel.png" onclick="removerItem(this, '${id}', '${idCampo}', '${tabela}')">
+        </td>
         `
 
     // procura a <tr> pelo idMaterial
@@ -472,7 +471,7 @@ async function adicionarLinhaComposicoes({ baseRef = {}, tabela, dados, id }) {
     if (trExistente) {
         trExistente.innerHTML = tds
     } else {
-        tbody.insertAdjacentHTML('beforeend', `<tr id="${id || ''}">${tds}</tr>`)
+        tbody.insertAdjacentHTML('beforeend', `<tr data-tabela="${tabela}" id="${id || ''}">${tds}</tr>`)
     }
 
 }
@@ -486,23 +485,30 @@ function visitarSite(img) {
     window.open(url, '_blank')
 }
 
-function verificarItemRepetido(select, tabela) {
+async function preencherItem() {
 
-    const trs = document.querySelectorAll(`#body_${tabela} tr`)
+    const tabelas = ['materiais', 'ferramentas', 'mao_obra']
 
-    for (const tr of trs) {
+    for (const tabela of tabelas) {
 
-        const selectNaTabela = tr.querySelector('select')
-        if (!selectNaTabela || selectNaTabela === select) continue
+        const trs = document.querySelectorAll(`#body_${tabela} tr`)
 
-        if (select.value && select.value === selectNaTabela.value) {
-            popup(mensagem('Item duplicado, já existe nesta tabela!'), 'Aviso', true)
-            select.value = ''
-            return true
+        for (const tr of trs) {
+
+            const idItem = tr.querySelector('.opcoes').id
+            const dTabela = await recuperarDados(tabela)
+            const item = dTabela[idItem] || {}
+            const tds = tr.querySelectorAll('td')
+            const qtde = Number(tds[1].querySelector('input').value)
+            const total = item?.preco * qtde
+
+            tds[2].textContent = dinheiro(item?.preco)
+            tds[3].textContent = dinheiro(total)
+            tds[4].querySelector('a').textContent = item?.link || ''
+            tds[4].querySelector('a').href = item?.link || ''
+
         }
     }
-
-    return false
 }
 
 async function removerItem(img, idMaterial, idCampo, tabela) {
@@ -520,48 +526,45 @@ async function removerItem(img, idMaterial, idCampo, tabela) {
 
 }
 
-async function salvarComposicao({ tabela }) { //29
+async function salvarComposicao(tabela) {
 
     overlayAguarde()
 
     const trs = document.querySelectorAll(`#body_${tabela} tr`)
-    const campo = campos[idCampo] ?? {}
 
-    campo[tabela] ??= {}
+    const dados = {}
 
     for (const tr of trs) {
 
         const tds = tr.querySelectorAll('td')
-        const select = tr.querySelector('select')
+        const item = tr.querySelector('.opcoes')
+        if (!item.id) continue
 
-        if (!select) continue
-        const codigo = select.selectedOptions?.[0]?.id
-        if (!codigo) continue
-
-
-        const descricao = tds[0]?.querySelector('select')?.value || ''
         const qtde = Number(tds[1]?.querySelector('input')?.value || 0)
-        const preco = Number(tds[2]?.querySelector('input')?.value || 0)
-        const link = tds[3].querySelector('textarea').value
+        const descricao = item.textContent
+        const preco = conversor(tds[2].textContent)
 
-        const dados = { descricao, qtde, preco, link }
-        campo[tabela][codigo] = dados
+        if (!dados[item.id]) {
+            dados[item.id] = { descricao, preco, qtde }
+        } else {
+            dados[item.id].qtde += qtde
+        }
 
-        enviar(`campos/${idCampo}/${tabela}/${codigo}`, dados)
     }
 
-    campos[idCampo] = campo
+    campos[idCampo][tabela] = dados
+    enviar(`campos/${idCampo}/${tabela}`, dados)
 
-    await calcularTotal(campo.totalComposicao)
-    await inserirDados({ [idCampo]: campo }, 'campos')
+    await calcularTotal()
+    await inserirDados({ [idCampo]: campos[idCampo] }, 'campos')
     await telaPrecos()
 
     removerOverlay()
 }
 
 
-async function calcularTotal(totalAtual = 0) {
-    const tabelas = ['materiais', 'ferramentas', 'maoObra']
+async function calcularTotal() {
+    const tabelas = ['materiais', 'ferramentas', 'mao_obra']
 
     const totais = {
         geral: 0
@@ -578,7 +581,7 @@ async function calcularTotal(totalAtual = 0) {
             const tds = tr.querySelectorAll('td')
 
             const qtde = Number(tds[1].querySelector('input').value)
-            const preco = Number(tds[2].querySelector('input').value)
+            const preco = conversor(tds[2].textContent)
             const totalLinha = (qtde * preco)
 
             totais.geral += totalLinha
@@ -586,13 +589,13 @@ async function calcularTotal(totalAtual = 0) {
 
         }
 
-        document.getElementById(`total_${tabela}`).textContent = `${totais[tabela]} €`
+        document.getElementById(`total_${tabela}`).textContent = dinheiro(totais[tabela])
     }
 
-    // Só atualiza se for diferente;
-    if (totalAtual == totais.geral) return
-
     const campo = campos[idCampo]
+    // Só atualiza se for diferente;
+    if (campo.totalComposicao == totais.geral) return
+    
     campo.totalComposicao = totais.geral
 
     document.querySelector('[name="totalComposicao"]').textContent = dinheiro(totais.geral)

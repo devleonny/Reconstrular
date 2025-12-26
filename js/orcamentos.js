@@ -783,7 +783,7 @@ async function salvarExecucao(tr) {
 
     const item = {
         campo,
-        maoObra: campoRef?.maoObra,
+        mao_obra: campoRef?.mao_obra,
         materiais: campoRef?.materiais,
         ferramentas: campoRef?.ferramentas,
         especialidade,

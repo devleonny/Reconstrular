@@ -1159,61 +1159,6 @@ async function salvarEpi(idColaborador) {
 
 }
 
-async function criarLinha(dados, id, nomeBase) {
-
-    let tds = ''
-    let funcao = ''
-
-    if (nomeBase == 'materiais') {
-
-        funcao = `adicionarMateriais('${id}')`
-        tds = `<td>${dados?.nome || '--'}</td>`
-
-    } else if (nomeBase == 'ferramentas') {
-
-        funcao = `adicionarFerramentas('${id}')`
-        tds = `<td>${dados?.nome || '--'}</td>`
-
-    } else if (nomeBase == 'maoObra') {
-
-        funcao = `adicionarMaoObra('${id}')`
-        tds = `<td>${modelo(dados?.nome || '--')}</td>`
-
-    } else if (nomeBase == 'fornecedores') {
-
-        const distrito = dados_distritos?.[dados?.distrito] || {}
-        const cidades = distrito?.cidades?.[dados?.cidade] || {}
-
-        funcao = `adicionarFornecedor('${id}')`
-        tds = `
-            <td>${dados?.nome || '--'}</td>
-            <td>${dados?.numeroContribuinte || '--'}</td>
-            <td>${distrito?.nome || '--'}</td>
-            <td>${cidades?.nome || '--'}</td>
-        `
-    } else if (nomeBase == 'materiais') {
-        funcao = `adicionarMateriais('${id}')`
-        tds = `
-            <td>${dados?.nome || '--'}</td>
-        `
-    }
-
-    const linha = `
-        <tr id="${id}">
-            ${tds}
-            <td class="detalhes">
-                <img onclick="${funcao}" src="imagens/pesquisar.png">
-            </td>
-        </tr>
-    `
-
-    const tr = document.getElementById(id)
-    if (tr) return tr.innerHTML = linha
-    const body = document.getElementById('body')
-    body.insertAdjacentHTML('beforeend', linha)
-
-}
-
 function infoObra(dados) {
 
     const obra = dados_obras[dados.obra]
@@ -1655,42 +1600,83 @@ async function deletar(caminho, idEvento) {
     }
 }
 
-async function cxOpcoes({ name, nomeBase, campos, funcaoAux }) {
+async function cxOpcoes(name, nomeBase, campos, funcaoAux) {
 
-    let base = await recuperarDados(nomeBase)
+    function getValorPorCaminho(obj, caminho) {
+        const partes = caminho.split('/')
+        const ultima = partes[partes.length - 1]
+        let func = null
+
+        // Se o último pedaço tiver [funcao]
+        if (/\[.*\]$/.test(ultima)) {
+            const [chave, nomeFunc] = ultima.match(/^([^\[]+)\[(.+)\]$/).slice(1)
+            partes[partes.length - 1] = chave
+            func = nomeFunc
+        }
+
+        // percorre o caminho
+        let valor = partes.reduce((acc, chave) => acc?.[chave], obj)
+
+        // aplica a função se existir
+        if (valor != null && func && typeof window[func] === 'function') {
+            valor = window[func](valor)
+        }
+
+        return valor
+    }
+
+    const base = await recuperarDados(nomeBase)
     let opcoesDiv = ''
 
-    for ([cod, dado] of Object.entries(base)) {
+    for (const [cod, dado] of Object.entries(base)) {
+
+        if (dado.origem && origem !== dado?.origem) continue
 
         const labels = campos
-            .map(campo => `${(dado[campo] && dado[campo] !== '') ? `<label>${dado[campo]}</label>` : ''}`)
+            .map(campo => {
+                const valor = getValorPorCaminho(dado, campo)
+                return valor ? `<div>${valor}</div>` : ''
+            })
             .join('')
 
+        const descricao = campos
+            .map(c => getValorPorCaminho(dado, c))
+            .find(v => v !== undefined && v !== null && v !== '')
+
         opcoesDiv += `
-            <div name="camposOpcoes" class="atalhos-opcoes" onclick="selecionar('${name}', '${cod}', '${dado[campos[0]]}' ${funcaoAux ? `, '${funcaoAux}'` : ''})" style="${vertical}; gap: 2px; max-width: 40vw;">
+        <div 
+            name="camposOpcoes" 
+            class="atalhos-opcoes" 
+            onclick="selecionar('${name}', '${cod}', '${encodeURIComponent(descricao)}', ${funcaoAux ? `'${funcaoAux}'` : false})">
+            <img src="${dado.imagem || 'imagens/visitar.png'}" style="width: 3rem;">
+            <div style="${vertical}; gap: 2px;">
                 ${labels}
-            </div>`
+            </div>
+        </div>`
     }
 
     const acumulado = `
-        <div style="${horizontal}; justify-content: left; background-color: #b1b1b1;">
+        <div style="${vertical}; justify-content: left; background-color: #b1b1b1;">
+
             <div style="${horizontal}; padding-left: 0.5rem; padding-right: 0.5rem; margin: 5px; background-color: white; border-radius: 10px;">
-                <input oninput="pesquisarCX(this)" placeholder="Pesquisar itens" style="width: 100%;">
-                <img src="imagens/pesquisar2.png" style="width: 1.5rem;">
+                <input oninput="pesquisarCX(this)" placeholder="Pesquisar itens" style="border: none; width: 100%;">
+                <img src="imagens/pesquisar2.png" style="padding: 0.5rem;"> 
             </div>
-        </div>
-        <div style="padding: 0.5rem; gap: 5px; ${vertical}; background-color: #d2d2d2; width: 30vw; max-height: 40vh; height: max-content; overflow-y: auto; overflow-x: hidden;">
-            ${opcoesDiv}
+
+            <div style="padding: 1rem; gap: 5px; ${vertical}; background-color: #d2d2d2; width: 30vw; max-height: 40vh; height: max-content; overflow-y: auto; overflow-x: hidden;">
+                ${opcoesDiv}
+            </div>
+
         </div>
     `
 
     popup(acumulado, 'Selecione o item', true)
-
 }
 
 async function selecionar(name, id, termo, funcaoAux) {
+    termo = decodeURIComponent(termo)
     const elemento = document.querySelector(`[name='${name}']`)
-    elemento.textContent = termo
+    elemento.textContent = termo || id
     elemento.id = id
     removerPopup()
 
@@ -1698,19 +1684,19 @@ async function selecionar(name, id, termo, funcaoAux) {
 }
 
 function pesquisarCX(input) {
+    const termoPesquisa = String(input.value)
+        .toLowerCase()
+        .replace(/[./-]/g, ''); // remove ponto, traço e barra
 
-    const termoPesquisa = String(input.value).toLowerCase()
-
-    const divs = document.querySelectorAll(`[name='camposOpcoes']`)
+    const divs = document.querySelectorAll(`[name='camposOpcoes']`);
 
     for (const div of divs) {
+        const termoDiv = String(div.textContent)
+            .toLowerCase()
+            .replace(/[./-]/g, ''); // mesma limpeza no conteúdo
 
-        const termoDiv = String(div.textContent).toLocaleLowerCase()
-
-        div.style.display = (termoDiv.includes(termoPesquisa) || termoPesquisa == '') ? '' : 'none'
-
+        div.style.display = (termoDiv.includes(termoPesquisa) || termoPesquisa === '') ? '' : 'none';
     }
-
 }
 
 function inicialMaiuscula(string) {

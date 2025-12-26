@@ -80,8 +80,8 @@ function calcularTotaisOrcamentos(idObra, obra) {
                     }
                 }
 
-                if (campo.maoObra) {
-                    for (const item of Object.values(campo.maoObra)) {
+                if (campo.mao_obra) {
+                    for (const item of Object.values(campo.mao_obra)) {
                         totais.maoObraOrcado += (Number(item.qtde) || 0) * (Number(item.preco) || 0)
                     }
                 }

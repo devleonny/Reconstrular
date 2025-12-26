@@ -17,7 +17,8 @@
     margin: 0.5rem;
     padding: 5px;
     border-radius: 3px;
-    background-color: orange;
+    color: white;
+    background: linear-gradient(45deg, #222, #526471);
 }
 
 .edicao-duracao {
