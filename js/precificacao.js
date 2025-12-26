@@ -288,22 +288,30 @@ async function painelMargem(id) {
 
     idCampo = id
 
-    let campo = await recuperarDado('campos', idCampo)
+    const campo = await recuperarDado('campos', idCampo)
 
-    const acumulado = `
-        <div style="${vertical}; background-color: #d2d2d2; padding: 1rem; width: max-content;">
-            <span>Defina uma margem (%):</span>
-            <input oninput="calcularValorFinal('${campo.totalComposicao ? dinheiro(campo.totalComposicao) : ''}', this)" type="number" placeholder="0">
-            <hr style="width: 100%;">
+    const linhas = [
+        {
+            texto: `Defina uma margem (%):`,
+            elemento: `<input oninput="calcularValorFinal('${campo.totalComposicao ? dinheiro(campo.totalComposicao) : ''}', this)" type="number" placeholder="0">`
+        },
+        {
+            elemento: `
+            <div style="${vertical}; gap: 2px;">
+                <span>Sub total do Item: <b>${campo.totalComposicao ? dinheiro(campo.totalComposicao) : '--'}</b></span>
+                <span>Preço Final será: <b><span id="novoTotal"></span></b></span>
+            </div>
+            `
+        }
 
-            <span>Sub total do Item: <b>${campo.totalComposicao ? dinheiro(campo.totalComposicao) : '--'}</b></span>
-            <span>Preço Final será: <b><span id="novoTotal"></span></b></span>
+    ]
 
-            <hr style="width: 100%;">
-            <button onclick="salvarMargem()">Salvar</button>
-        </div>
-    `
-    popup(acumulado, 'Incluir margem', true)
+    const botoes = [
+        { texto: 'Salvar', img: 'concluido', funcao: 'salvarMargem()' }
+    ]
+
+    const form = new formulario({ linhas, botoes, titulo: 'Gerenciar Margem' })
+    form.abrirFormulario()
 }
 
 function calcularValorFinal(subtotal, input) {
@@ -409,7 +417,7 @@ async function composicoes(id, tP) {
 
     }
 
-    await calcularTotal(campo?.totalComposicao)
+    await calcularTotal()
     if (tP) await telaPrecos()
 }
 
@@ -450,7 +458,8 @@ async function adicionarLinhaComposicoes({ baseRef = {}, tabela, dados, id }) {
 
     const tds = `
         <td>
-            <span ${id ? `id="${id}"` : ''} class="opcoes" name="${codSpan}" onclick="cxOpcoes('${codSpan}', '${tabela}', ['nome', 'preco[dinheiro]', 'preencherItem()'])">${itemRef.nome || 'Selecionar'}</span>
+            <span ${id ? `id="${id}"` : ''} class="opcoes" name="${codSpan}" 
+            onclick="cxOpcoes('${codSpan}', '${tabela}', ['nome', 'preco[dinheiro]'], 'preencherItem()')">${itemRef.nome || 'Selecionar'}</span>
         </td>
         <td><input oninput="preencherItem()" type="number" style="width: 5rem;" value="${dados?.qtde || ''}"></td>
         <td>${dinheiro(itemRef?.preco)}</td>
@@ -594,8 +603,12 @@ async function calcularTotal() {
 
     const campo = campos[idCampo]
     // Só atualiza se for diferente;
+
+
+    totais.geral = Number(totais.geral.toFixed(2))
+
     if (campo.totalComposicao == totais.geral) return
-    
+
     campo.totalComposicao = totais.geral
 
     document.querySelector('[name="totalComposicao"]').textContent = dinheiro(totais.geral)

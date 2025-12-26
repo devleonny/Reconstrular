@@ -1679,7 +1679,7 @@ async function selecionar(name, id, termo, funcaoAux) {
     elemento.textContent = termo || id
     elemento.id = id
     removerPopup()
-
+    
     if (funcaoAux) await eval(funcaoAux)
 }
 
