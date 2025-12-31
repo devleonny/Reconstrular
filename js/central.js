@@ -130,6 +130,7 @@ async function resetarBases() {
         'dados_clientes',
         'fornecedores',
         'materiais',
+        'mao_obra',
         'dados_obras',
         'ferramentas',
         'dados_colaboradores',
@@ -460,7 +461,7 @@ async function atualizarApp() {
 
     mostrarMenus(true)
     sincronizarApp()
-    let status = { total: 13, atual: 1 }
+    let status = { total: 14, atual: 1 }
 
     const basesAuxiliares = [
         'mensagens',
@@ -472,6 +473,7 @@ async function atualizarApp() {
         'materiais',
         'dados_obras',
         'ferramentas',
+        'mao_obra',
         'dados_colaboradores',
         'dados_despesas',
         'dados_orcamentos',
@@ -721,7 +723,7 @@ function validarRegrasAcesso() {
             permitir = false
         }
 
-        tr.style.display = permitir ? '' : 'none'
+        if (!permitir) tr.remove()
     }
 
     validarControlesAcesso()
@@ -1679,7 +1681,7 @@ async function selecionar(name, id, termo, funcaoAux) {
     elemento.textContent = termo || id
     elemento.id = id
     removerPopup()
-    
+
     if (funcaoAux) await eval(funcaoAux)
 }
 
@@ -2007,14 +2009,14 @@ function removerOffline(operacao, idEvento) {
     localStorage.setItem('dados_offline', JSON.stringify(dados_offline))
 }
 
-async function enviarMargens({ codigos, margem }) {
+async function enviarMargens({ codigos, margem, tabela}) {
     return new Promise((resolve) => {
         fetch(`${api}/margens`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ codigos, margem, servidor })
+            body: JSON.stringify({ codigos, margem, tabela, servidor })
         })
             .then(response => response.json())
             .then(data => {

@@ -105,13 +105,14 @@ async function editarParceiros(usuario) {
 
     const opcoes = Object.entries(funcoes)
         .map(([id, dados]) => {
-            if (!r.includes(id)) return ''
+            if (!r.includes(id) && id !== 'tL4LM') return ''
             return `<option id="${id}" ${parceiro?.funcao == id ? 'selected' : ''}>${dados.nome}</option>`
         })
         .join('')
 
 
     const linhas = [
+        { texto: 'Nome', elemento: `<input name="nome_completo" placeholder="Nome Completo" value="${parceiro?.nome_completo || ''}">` },
         { texto: 'E-mail', elemento: `<input name="email" type="email" placeholder="E-mail" value="${parceiro?.email || ''}">` },
         { texto: 'Telefone', elemento: `<input name="telefone" placeholder="Telefone" value="${parceiro?.telefone || ''}">` },
         {
@@ -184,6 +185,7 @@ async function salvarParceiros(usuario) {
         return elemento || null
     }
 
+    const nome_completo = el('nome_completo').value
     const email = el('email').value
     const telefone = el('telefone').value
     const funcao = el('funcao')?.selectedOptions[0]?.id
@@ -191,6 +193,7 @@ async function salvarParceiros(usuario) {
     const cidade = el('cidade')?.selectedOptions[0]?.id
 
     const dNovos = {
+        nome_completo,
         email,
         telefone,
         funcao,
@@ -205,7 +208,7 @@ async function salvarParceiros(usuario) {
     }
 
     for (const [chave, dado] of Object.entries(dNovos)) {
-        if (dAtuais[chave] !== dado) {
+        if (dAtuais?.[chave] !== dado) {
             const resposta = await configuracoes(usuario, chave, dado)
             if (resposta.mensagem) {
                 popup(mensagem(resposta.mensagem), 'Alerta', true)
