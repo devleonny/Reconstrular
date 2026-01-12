@@ -132,10 +132,10 @@ async function criarLinhaObras(id, obra) {
         <td>${dinheiro(maoObraOrcado)}</td>
         <td></td>
         <td></td>
-        <td class="detalhes">
+        <td>
             <img src="imagens/kanban.png" onclick="verAndamento('${id}')">
         </td>
-        <td class="detalhes">
+        <td>
             <img src="imagens/relogio.png" onclick="telaCronograma('${id}')">
         </td>
         <td>

@@ -112,6 +112,7 @@ async function editarParceiros(usuario) {
 
 
     const linhas = [
+        { texto: 'Usuário', elemento: `<input ${usuario ? 'readOnly="true"' : ''} name="usuario" placeholder="Usuário" value="${usuario || ''}">` },
         { texto: 'Nome', elemento: `<input name="nome_completo" placeholder="Nome Completo" value="${parceiro?.nome_completo || ''}">` },
         { texto: 'E-mail', elemento: `<input name="email" type="email" placeholder="E-mail" value="${parceiro?.email || ''}">` },
         { texto: 'Telefone', elemento: `<input name="telefone" placeholder="Telefone" value="${parceiro?.telefone || ''}">` },
@@ -135,7 +136,7 @@ async function editarParceiros(usuario) {
     ]
 
     const botoes = [
-        { texto: 'Salvar', img: 'concluido', funcao: `salvarParceiros('${usuario}')` }
+        { texto: 'Salvar', img: 'concluido', funcao: `salvarParceiros()` }
     ]
 
     if (usuario) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarDesativarUsuario('${usuario}')` })
@@ -164,9 +165,7 @@ async function desativarUsuario(usuario) {
     removerPopup()
     overlayAguarde()
 
-    const resposta = await configuracoes(usuario, 'excluído', { usuario: acesso.usuario, data: new Date().toLocaleString() })
-
-    if (resposta.mensagem) return popup(mensagem(resposta.mensagem), 'Alerta', true)
+    deletar(`dados_setores/${usuario}`)
 
     await deletarDB('dados_setores', usuario)
     await telaUsuarios()
@@ -174,7 +173,7 @@ async function desativarUsuario(usuario) {
 
 }
 
-async function salvarParceiros(usuario) {
+async function salvarParceiros() {
 
     overlayAguarde()
 
@@ -185,6 +184,7 @@ async function salvarParceiros(usuario) {
         return elemento || null
     }
 
+    const usuario = el('usuario').value
     const nome_completo = el('nome_completo').value
     const email = el('email').value
     const telefone = el('telefone').value
@@ -192,7 +192,10 @@ async function salvarParceiros(usuario) {
     const distrito = el('distrito')?.selectedOptions[0]?.id
     const cidade = el('cidade')?.selectedOptions[0]?.id
 
-    const dNovos = {
+    if (!usuario || !nome_completo || !email) return popup(mensagem('Não deixe Usuário/Nome ou E-mail em branco'), 'Alerta', true)
+
+    const parceiro = {
+        ...dados_setores[usuario],
         nome_completo,
         email,
         telefone,
@@ -201,23 +204,7 @@ async function salvarParceiros(usuario) {
         cidade
     }
 
-    const dAtuais = dados_setores[usuario]
-    const parceiro = {
-        ...dAtuais,
-        ...dNovos
-    }
-
-    for (const [chave, dado] of Object.entries(dNovos)) {
-        if (dAtuais?.[chave] !== dado) {
-            const resposta = await configuracoes(usuario, chave, dado)
-            if (resposta.mensagem) {
-                popup(mensagem(resposta.mensagem), 'Alerta', true)
-                continue
-            }
-        }
-    }
-
-
+    enviar(`dados_setores/${usuario}`, parceiro)
     await inserirDados({ [usuario]: parceiro }, 'dados_setores')
     await telaUsuarios()
 

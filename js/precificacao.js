@@ -69,8 +69,16 @@ async function telaPrecos() {
     const telaInterna = document.querySelector('.telaInterna')
     if (!blocoTabela) telaInterna.innerHTML = acumulado
 
+    const camposOrdenados = 
+        Object.entries(campos)
+            .sort(([, a], [, b]) =>
+                (a.especialidade || '')
+                    .localeCompare(b.especialidade || '', 'pt-BR')
+            )
+
+
     const ativos = []
-    for (const [idCampo, dados] of Object.entries(campos)) {
+    for (const [idCampo, dados] of camposOrdenados) {
         if (desativado !== (dados?.desativado || 'N')) continue
         ativos.push(idCampo)
         criarLinhasCampos(idCampo, dados)

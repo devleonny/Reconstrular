@@ -158,7 +158,12 @@ async function adicionarColaborador(id) {
     const regras = `oninput="verificarRegras()"`
     const caixaStatus = retornarCaixas('status')
     const caixaEspecialidades = retornarCaixas('especialidade')
-    const caixaDocumentos = `${retornarCaixas('documento')} <input ${regras} value="${colaborador?.numeroDocumento || ''}" name="numeroDocumento" placeholder="Número do documento">`
+    const caixaDocumentos = `
+        <div style="${vertical}; gap: 1rem;">
+            ${retornarCaixas('documento')} 
+            <input ${regras} value="${colaborador?.numeroDocumento || ''}" name="numeroDocumento" placeholder="Número do documento">
+        </div>
+        `
     const divAnexos = (chave) => {
         const anexos = colaborador?.[chave] || {}
         let anexoString = ''
@@ -205,7 +210,7 @@ async function adicionarColaborador(id) {
         { texto: 'Nome Completo', elemento: `<textarea ${regras} name="nome" placeholder="Nome Completo">${colaborador?.nome || ''}</textarea>` },
         { texto: 'Data de Nascimento', elemento: `<input ${regras} value="${colaborador?.dataNascimento || ''}" type="date" name="dataNascimento">` },
         { texto: 'Morada', elemento: `<textarea ${regras} name="morada" placeholder="Morada">${colaborador?.morada || ''}</textarea>` },
-        { texto: 'Distrito', elemento: `<select name="distrito" onchange="carregarSelects({select: this})"></select>` },
+        { texto: 'Distrito', elemento: `<select name="distrito" onchange="carregarSelects({select: this, painel: true})"></select>` },
         { texto: 'Cidade', elemento: `<select name="cidade"></select>` },
         { texto: 'Apólice de Seguro', elemento: `<input value="0010032495" name="apolice" placeholder="Número da Apólice" readOnly>` },
         { texto: 'Telefone', elemento: `<input ${regras} value="${colaborador?.telefone || ''}" name="telefone" placeholder="Telefone">` },
@@ -258,6 +263,8 @@ async function adicionarColaborador(id) {
         { funcao: id ? `salvarColaborador('${id}')` : null, texto: 'Salvar', img: 'concluido' }
     ]
 
+    if (id) botoes.push({ img: 'cancel', texto: 'Excluir', funcao: `confirmarExclusaoColaborador('${id}')` })
+
     const form = new formulario({ linhas, botoes, titulo: 'Cadastro de Colaborador' })
     form.abrirFormulario()
 
@@ -266,6 +273,33 @@ async function adicionarColaborador(id) {
 
 }
 
+function confirmarExclusaoColaborador(id) {
+
+    const acumulado = `
+    <div style="${horizontal}; background-color: #d2d2d2; gap: 1rem; padding: 1rem;">
+        <span>Você tem certeza?</span>
+        <button onclick="excluirColaborador('${id}')">Confirmar</button>
+    </div>
+    `
+
+    popup(acumulado, 'Excluir colaborador', true)
+}
+
+async function excluirColaborador(id) {
+
+    removerPopup()
+    removerPopup()
+    overlayAguarde()
+
+    deletar(`dados_colaboradores/${id}`)
+
+    await deletarDB('dados_colaboradores', id)
+
+    const existente = document.getElementById(id)
+    if (existente) existente.remove()
+
+    removerOverlay()
+}
 
 async function salvarColaborador(idColaborador) {
     const liberado = verificarRegras();
