@@ -47,8 +47,10 @@
 }
 
 .painel-1-tarefas {
-    display: grid;
-    grid-template-columns: repeat(1, 1fr);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
     gap: 0.5rem;
     margin-bottom: 20px;
 }
@@ -108,7 +110,7 @@
 screen and (min-aspect-ratio: 13/9) {
 
     .painel-1-tarefas {
-        grid-template-columns: repeat(6, 1fr);
+        flex-direction: row;
     }
 
     .acompanhamento {

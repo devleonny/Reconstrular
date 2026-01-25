@@ -315,30 +315,31 @@ async function verAndamento(id, resetar) {
     titulo.textContent = 'Lista de Tarefas'
 
     const acumulado = `
-    <div id="pdf">
-        <div class="painel-1-tarefas">
-            <input placeholder="Pesquisa" oninput="pesquisarObras(this)">
-            <select id="etapas" onchange="atualizarToolbar({nomeTarefa: this.value})"></select>
-            <button style="background-color: red;" onclick="pdfObra('Checklist')">PDF</button>
-            <button onclick="telaCronograma('${id}')">Cronograma</button>
-            <button onclick="telaObras()">Voltar</button>
-        </div>
-
-        <div id="resumo" class="painel-1-tarefas"></div>
-
-        <div style="${horizontal}; gap: 1rem;">
-            <div style="${horizontal}; gap: 1rem;">
-                <input type="checkbox" name="etapa" onchange="filtrar()">
-                <span>Exibir somente as etapas</span>
+        <div style="${vertical}; gap: 1rem;">
+            <div class="painel-1-tarefas">
+                <input placeholder="Pesquisa" oninput="pesquisarObras(this)">
+                <select id="etapas" onchange="atualizarToolbar({nomeTarefa: this.value})"></select>
+                <button style="background-color: red;" onclick="pdfObra('Checklist')">PDF</button>
+                <button onclick="telaCronograma('${id}')">Cronograma</button>
+                <button onclick="telaObras()">Voltar</button>
             </div>
-            <div style="${horizontal}; gap: 1rem;">
-                <input type="checkbox" name="concluido" onchange="filtrar()">
-                <span>Ocultar etapa concluídas</span>
-            </div>
-        </div>
 
-        <div class="tabTarefas"></div>
-    </div>
+            <div style="${horizontal}; gap: 1rem;">
+                <div style="${horizontal}; gap: 1rem;">
+                    <input type="checkbox" name="etapa" onchange="filtrar()">
+                    <span>Exibir somente as etapas</span>
+                </div>
+                <div style="${horizontal}; gap: 1rem;">
+                    <input type="checkbox" name="concluido" onchange="filtrar()">
+                    <span>Ocultar etapa concluídas</span>
+                </div>
+            </div>
+            
+            <div id="pdf">
+                <div id="resumo" class="painel-1-tarefas"></div>
+                <div class="tabTarefas"></div>
+            </div>
+        <div>
     `
 
     const acompanhamento = document.querySelector('.acompanhamento')
@@ -352,11 +353,20 @@ async function verAndamento(id, resetar) {
 async function pdfObra(nome) {
     const htmlPdf = document.querySelector('#pdf')
 
+    const estilos = [
+        'estilo',
+        'obras'
+    ]
+
+    const mapEstilos = estilos
+        .map(e => `<link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/${e}.css">`)
+        .join('')
+
     const html = `
         <html>
         <head>
             <meta charset="UTF-8">
-            <link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/obras.css">
+            ${mapEstilos}
             <style>
 
                 @page {
