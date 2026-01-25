@@ -1,3 +1,12 @@
+const el = (name) => {
+    return (
+        document.querySelector(`.painel-padrao [name="${name}"]`) ||
+        document.querySelector(`.filtro-tabela [name="${name}"]`) ||
+        document.querySelector(`[name="${name}"]`) ||
+        null
+    )
+}
+
 async function telaUsuarios() {
 
     telaAtiva = 'parceiros'
@@ -5,7 +14,7 @@ async function telaUsuarios() {
     mostrarMenus(false)
 
     dados_setores = await recuperarDados('dados_setores')
-    dados_distritos = await recuperarDados('dados_distritos')
+    cidades = await recuperarDados('cidades')
     funcoes = await recuperarDados('funcoes')
 
     const idF = acesso?.funcao || ''
@@ -13,12 +22,20 @@ async function telaUsuarios() {
     const r = f?.regras || []
     const btnEdicao = r.length == 0 ? '' : `<button data-controle="inserir" onclick="editarParceiros()">Cadastro</button>`
 
+    const distritos = Object
+        .values(cidades)
+        .map(c => c.distrito)
+
+    const zonas = Object
+        .values(cidades)
+        .map(c => c.zona)
+
     const btnExtras = `
         ${btnEdicao}
-        ${fPesq({ texto: 'Função', objeto: funcoes, chave: 'nome', config: 'name="funcao"' })}
-        ${fPesq({ texto: 'Zona', config: 'name="zona"' })}
-        ${fPesq({ texto: 'Distrito', config: 'onclick="filtroCidadesCabecalho(this)" name="distrito"', objeto: dados_distritos, chave: 'nome' })}
-        ${fPesq({ texto: 'Cidade', config: 'name="cidade"' })}
+        ${fPesq({ texto: 'Função', name: 'funcao', objeto: funcoes, chave: 'nome' })}
+        ${fPesq({ texto: 'Zona', name: 'zona', lista: [...new Set(zonas)] })}
+        ${fPesq({ texto: 'Distrito', name: 'distrito', config: 'filtroCidadesCabecalho(this)', lista: [...new Set(distritos)] })}
+        ${fPesq({ texto: 'Cidade', name: 'cidade', objeto: cidades, chave: 'nome' })}
     `
 
     const acumulado = modeloTabela(
@@ -43,8 +60,8 @@ async function telaUsuarios() {
 
 async function criarLinhaUsuarios(usuario, dados) {
 
-    const distrito = dados_distritos[dados?.distrito] || {}
-    const cidade = distrito?.cidades?.[dados?.cidade] || {}
+    const { cidade } = dados
+    const nCidade = cidades?.[cidade] || {}
     const f = await recuperarDado('funcoes', dados?.funcao)
 
     const tds = `
@@ -52,9 +69,9 @@ async function criarLinhaUsuarios(usuario, dados) {
         <td>${dados?.telefone || ''}</td>
         <td>${dados?.email || ''}</td>
         <td name="funcao">${f?.nome || ''}</td>
-        <td name="zona" data-cod="${dados?.zona}">${dados?.zona || ''}</td>
-        <td name="distrito" data-cod="${dados?.distrito}">${distrito?.nome || ''}</td>
-        <td name="cidade" data-cod="${dados?.cidade}">${cidade?.nome || ''}</td>
+        <td name="zona" data-cod="${nCidade?.zona}">${nCidade?.zona || ''}</td>
+        <td name="distrito">${nCidade?.distrito || ''}</td>
+        <td name="cidade" data-cod="${cidade}">${nCidade.nome}</td>
         <td>
             <img data-controle="editar" onclick="editarParceiros('${usuario}')" src="imagens/pesquisar.png">
         </td>
@@ -99,6 +116,7 @@ async function editarParceiros(usuario) {
 
     funcoes = await recuperarDados('funcoes')
     const parceiro = dados_setores[usuario] || {}
+    const cidade = cidades?.[parceiro?.cidade]
 
     const idF = acesso?.funcao || ''
     const r = funcoes?.[idF]?.regras || []
@@ -110,6 +128,14 @@ async function editarParceiros(usuario) {
         })
         .join('')
 
+    const distritos = Object
+        .values(cidades)
+        .map(c => c.distrito)
+
+    const opcoesDistrito = [...new Set(distritos)]
+        .sort((a, b) => a.localeCompare(b))
+        .map(d => `<option ${cidade?.distrito == d ? 'selected' : ''}>${d}</option>`)
+        .join('')
 
     const linhas = [
         { texto: 'Usuário', elemento: `<input ${usuario ? 'readOnly="true"' : ''} name="usuario" placeholder="Usuário" value="${usuario || ''}">` },
@@ -127,9 +153,9 @@ async function editarParceiros(usuario) {
         {
             texto: 'Distrito',
             elemento: `
-                <select name="distrito" onchange="cidadesDisponiveis(this)">
+                <select name="distrito" onchange="filtroCidadesCabecalho(this)">
                     <option></option>
-                    ${Object.entries(dados_distritos).map(([id, dados]) => `<option id="${id}" ${parceiro?.distrito == id ? 'selected' : ''}>${dados.nome}</option>`).join('')}
+                    ${opcoesDistrito}
                 </select>
             `},
         { texto: 'Cidade', elemento: `<select name="cidade"></select>` }
@@ -145,14 +171,18 @@ async function editarParceiros(usuario) {
     const form = new formulario({ linhas, botoes, titulo })
     form.abrirFormulario()
 
-    if (parceiro?.distrito) cidadesDisponiveis({ selectedOptions: [{ id: parceiro.distrito }] }, parceiro?.cidade)
+    if (cidade) {
+        const lista = resolverCidadesPorDistrito(cidade.distrito)
+        const selectCidade = el('cidade')
+        aplicarCidadesNoSelect(lista, selectCidade, parceiro.cidade)
+    }
 
 }
 
 function confirmarDesativarUsuario(usuario) {
     const acumulado = `
     <div style="${horizontal}; padding: 1rem; gap: 1rem; background-color: #d2d2d2;">
-        <span>Deseja desativar o usuário?</span>
+        <span>Deseja excluir o usuário?</span>
         <button onclick="desativarUsuario('${usuario}')">Confirmar</button>
     </div>
     `
@@ -165,7 +195,9 @@ async function desativarUsuario(usuario) {
     removerPopup()
     overlayAguarde()
 
-    deletar(`dados_setores/${usuario}`)
+    const resposta = await deletar(`dados_setores/${usuario}`)
+
+    if (resposta.mensagem) return popup(mensagem(`Falha ao excluir: ${resposta.mensagem}`), 'Alerta', true)
 
     await deletarDB('dados_setores', usuario)
     await telaUsuarios()
@@ -177,20 +209,12 @@ async function salvarParceiros() {
 
     overlayAguarde()
 
-    const painelPadrao = document.querySelector('.painel-padrao')
-
-    const el = (id) => {
-        const elemento = painelPadrao.querySelector(`[name="${id}"]`)
-        return elemento || null
-    }
-
     const usuario = el('usuario').value
     const nome_completo = el('nome_completo').value
     const email = el('email').value
     const telefone = el('telefone').value
     const funcao = el('funcao')?.selectedOptions[0]?.id
-    const distrito = el('distrito')?.selectedOptions[0]?.id
-    const cidade = el('cidade')?.selectedOptions[0]?.id
+    const cidade = el('cidade')?.selectedOptions[0]?.value
 
     if (!usuario || !nome_completo || !email) return popup(mensagem('Não deixe Usuário/Nome ou E-mail em branco'), 'Alerta', true)
 
@@ -200,7 +224,6 @@ async function salvarParceiros() {
         email,
         telefone,
         funcao,
-        distrito,
         cidade
     }
 
@@ -212,38 +235,42 @@ async function salvarParceiros() {
 
 }
 
-async function cidadesDisponiveis(select, idCidade) {
-
-    const cidades = Object.entries(dados_distritos)
-        .filter(([id, dist]) => id == select.selectedOptions[0].id)
-        .map(([id, dist]) => dist.cidades)[0]
-
-    const opcoesCidades = `<option></option>
-    ${Object.entries(cidades || {})
-            .map(([id, dados]) => `<option ${idCidade == id ? 'selected' : ''} id="${id}">${dados.nome}</option>`)
-            .join('')}
-        `
-    const painel = document.querySelector('.painel-padrao')
-    const selectCidades = painel.querySelectorAll('[name="cidade"]')
-    selectCidades.forEach(select => { select.innerHTML = opcoesCidades })
-
+function resolverCidadesPorDistrito(distrito) {
+    return Object.entries(cidades)
+        .filter(([, c]) => c.distrito == distrito)
+        .sort(([, a], [, b]) => a.nome.localeCompare(b.nome))
 }
 
-async function filtroCidadesCabecalho(select) {
+function aplicarCidadesNoSelect(lista, selectCidade, cidadeSelecionada) {
+    selectCidade.innerHTML =
+        `<option></option>` +
+        lista.map(([id, c]) =>
+            `<option value="${id}" ${id == cidadeSelecionada ? 'selected' : ''}>${c.nome}</option>`
+        ).join('')
+}
 
-    const distritos = await recuperarDados('dados_distritos')
+function filtroCidadesCabecalho(select) {
 
-    const cidades = Object.entries(distritos)
-        .filter(([id, dist]) => id == select.selectedOptions[0].id)
-        .map(([id, dist]) => dist.cidades)[0]
+    if (select.name !== 'distrito') return
 
-    const opcoesCidades = `<option></option>
-    ${Object.entries(cidades || {})
-            .map(([id, dados]) => `<option id="${id}">${dados.nome}</option>`)
-            .join('')}
-        `
+    const painelBotoes = document.querySelector('.painelBotoes')
+    const painel = document.querySelector('.painel-padrao')
 
-    const selectCidades = document.querySelectorAll('select[name="cidade"]')
-    selectCidades.forEach(select => { select.innerHTML = opcoesCidades })
+    const selectCidade =
+        painel?.querySelector('[name="cidade"]') ||
+        painelBotoes?.querySelector('.filtro-tabela [name="cidade"]')
+        
 
+    if (!selectCidade) return
+
+    if (!select.value) {
+        selectCidade.innerHTML = '<option></option>'
+        selectCidade.value = ''
+        aplicarFiltros()
+        return
+    }
+
+    const lista = resolverCidadesPorDistrito(select.value)
+    aplicarCidadesNoSelect(lista, selectCidade)
+    aplicarFiltros()
 }

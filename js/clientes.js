@@ -1,13 +1,30 @@
-const fPesq = ({ objeto = {}, chave, texto, config = '' }) => {
+const fPesq = ({ objeto = null, lista = [], chave, name = null, texto, config = '' }) => {
+
+
+    let opcoes = ''
+
+    if (objeto) {
+        opcoes = Object
+            .entries(objeto)
+            .sort(([, a], [, b]) => a[chave].localeCompare(b[chave]))
+            .map(([id, dados]) => `<option id="${id}" value="${dados[chave]}">${dados[chave]}</option>`)
+            .join('')
+
+    } else {
+
+        opcoes = lista
+            .map(ìtem => `<option>${ìtem}</option>`)
+            .sort((a, b) => a.localeCompare(b))
+            .join('')
+
+    }
 
     const elemento = `
         <div class="filtro-tabela" style="${vertical}; gap: 2px; padding: 0.5rem;">
             <span>${texto}</span>
-            <select onchange="aplicarFiltros()" ${config}>
+            <select name="${name}" onchange="aplicarFiltros(); ${config}">
                 <option value=""></option>
-                ${Object.entries(objeto)
-            .map(([id, dados]) => `<option id="${id}" value="${dados[chave]}">${dados[chave]}</option>`)
-            .join('')}
+                ${opcoes}
             </select>
         </div>`
 
@@ -21,14 +38,18 @@ async function telaClientes() {
     mostrarMenus(false)
 
     dados_clientes = await recuperarDados('dados_clientes')
-    dados_distritos = await recuperarDados('dados_distritos')
+    cidades = await recuperarDados('cidades')
+
+    const distritos = Object
+        .values(cidades)
+        .map(c => c.distrito)
 
     titulo.textContent = 'Clientes'
 
     const btnExtras = `
         <button data-controle="inserir" onclick="formularioCliente()">Adicionar</button>
-        ${fPesq({ texto: 'Distrito', config: 'onchange="filtroCidadesCabecalho(this)" name="distrito"', objeto: dados_distritos, chave: 'nome' })}
-        ${fPesq({ texto: 'Cidade', config: 'name="cidade"' })}
+        ${fPesq({ texto: 'Distrito', name: 'distrito', config: 'filtroCidadesCabecalho(this)', lista: [...new Set(distritos)] })}
+        ${fPesq({ texto: 'Cidade', name: 'cidade', config: `filtroCidadesCabecalho(this, 'cidade')`, objeto: cidades, chave: 'nome' })}
     `
 
     const params = {
@@ -41,11 +62,7 @@ async function telaClientes() {
     telaInterna.innerHTML = acumulado
 
     for (const [idCliente, dados] of Object.entries(dados_clientes).reverse()) {
-
-        const d = dados_distritos?.[dados?.distrito] || {}
-        const c = d?.cidades?.[dados?.cidade] || {}
-
-        criarLinhaClientes(idCliente, { ...dados, nomeDistrito: d.nome || '-', nomeCidade: c.nome || '-' })
+        criarLinhaClientes(idCliente, dados)
     }
 
     // Regras de validação;
@@ -55,12 +72,14 @@ async function telaClientes() {
 
 function criarLinhaClientes(idCliente, dados) {
 
+    const cidade = cidades?.[dados?.cidade] || {}
+
     tds = `
         <td>${dados?.nome || '-'}</td>
         <td>${dados?.moradaFiscal || '-'}</td>
         <td>${dados?.moradaExecucao || '-'}</td>
-        <td name="distrito" data-cod="${dados?.distrito}">${dados?.nomeDistrito || '-'}
-        <td name="cidade" data-cod="${dados?.cidade}">${dados?.nomeCidade || '-'}
+        <td name="distrito">${cidade?.distrito || '-'}
+        <td name="cidade" data-cod="${dados?.cidade}">${cidade?.nome || '-'}
         <td>${dados?.email || '-'}</td>
         <td>${dados?.telefone || '-'}</td>
         <td>
@@ -77,6 +96,14 @@ function criarLinhaClientes(idCliente, dados) {
 async function formularioCliente(idCliente) {
 
     const cliente = await recuperarDado('dados_clientes', idCliente)
+    const cidade = cidades?.[cliente?.cidade] || {}
+    const distritos = Object
+        .values(cidades)
+        .map(c => c.distrito)
+    const opcoesDistrito = [...new Set(distritos)]
+        .sort((a, b) => a.localeCompare(b))
+        .map(d => `<option ${cidade?.distrito == d ? 'selected' : ''}>${d}</option>`)
+        .join('')
     const botoes = [
         { texto: 'Salvar', img: 'concluido', funcao: idCliente ? `salvarCliente('${idCliente}')` : 'salvarCliente()' }
     ]
@@ -90,14 +117,25 @@ async function formularioCliente(idCliente) {
         { texto: 'Número de Contribuinte', elemento: `<input oninput="regrasClientes()" name="numeroContribuinte" value="${cliente?.numeroContribuinte || ''}">` },
         { texto: 'Telefone', elemento: `<input oninput="regrasClientes()" name="telefone" value="${cliente?.telefone || ''}">` },
         { texto: 'E-mail', elemento: `<input oninput="regrasClientes()" name="email" value="${cliente?.email || ''}">` },
-        { texto: 'Distrito', elemento: `<select name="distrito" onchange="carregarSelects({select: this, painel: true})"></select>` },
-        { texto: 'Cidade', elemento: `<select name="cidade"></select>` }
+        {
+            texto: 'Distrito',
+            elemento: `
+                <select name="distrito" onchange="filtroCidadesCabecalho(this)">
+                    <option></option>
+                    ${opcoesDistrito}
+                </select>
+            `},
+        { texto: 'Cidade', elemento: `<select name="cidade"></select>` },
     ]
 
     const form = new formulario({ linhas, botoes, titulo: 'Formulário de Cliente' })
     form.abrirFormulario()
 
-    await carregarSelects({ painel: true, ...cliente })
+    if (cidade) {
+        const lista = resolverCidadesPorDistrito(cidade.distrito)
+        const selectCidade = el('cidade')
+        aplicarCidadesNoSelect(lista, selectCidade, cliente?.cidade)
+    }
 
     regrasClientes()
 }

@@ -58,6 +58,7 @@
 }
 
 .tabela-especialidade {
+    border-collapse: collapse;
     margin-bottom: 1rem;
 }
 
@@ -101,4 +102,17 @@
 .tabTarefas td {
     padding: 8px;
     border: solid 1px #a7a7a7;
+}
+
+@media screen and (orientation: landscape),
+screen and (min-aspect-ratio: 13/9) {
+
+    .painel-1-tarefas {
+        grid-template-columns: repeat(6, 1fr);
+    }
+
+    .acompanhamento {
+        flex-direction: row;
+    }
+
 }

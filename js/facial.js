@@ -70,7 +70,7 @@ async function verificarColaborador() {
 
 }
 
-async function colaboradorPin(pin) {
+async function colaboradorPin(pin, idColaborador) {
     try {
 
         const url = `${api}/colaborador`
@@ -79,10 +79,10 @@ async function colaboradorPin(pin) {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ pin, servidor: 'RECONST' })
+            body: JSON.stringify({ idColaborador, pin, servidor: 'RECONST' })
         };
 
-        const response = await fetch(url, requisicao);
+        const response = await fetch(url, requisicao)
 
         if (!response.ok) {
             throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);

@@ -11,8 +11,14 @@ async function telaColaboradores() {
         </div>
     `
 
+    cidades = await recuperarDados('cidades')
     dados_colaboradores = await recuperarDados('dados_colaboradores')
-    dados_distritos = await recuperarDados('dados_distritos')
+    dados_obras = await recuperarDados('dados_obras')
+    clientes = await recuperarDados('dados_clientes')
+
+    const distritos = Object
+        .values(cidades)
+        .map(c => c.distrito)
 
     const btnExtras = `
         <div style="${vertical}; gap: 2px;">
@@ -22,11 +28,11 @@ async function telaColaboradores() {
                 ${modelo('Mês', `<select name="mes"><option></option>${optionsSelect(meses)}</select>`)}
             </div>
         </div>
-        <div style="${vertical}; gap: 2px;">
+        <div class="${vertical}; gap: 2px;">
             <button style="width: 100%;" onclick="excelColaboradores()">Trabalhadores.xlsx</button>
             <div style="${horizontal}; gap: 2px;">
-                ${fPesq({ texto: 'Distrito', config: 'onclick="filtroCidadesCabecalho(this)" name="distrito"', objeto: dados_distritos, chave: 'nome' })}
-                ${fPesq({ texto: 'Cidade', config: 'name="cidade"' })}
+                ${fPesq({ texto: 'Distrito', name: 'distrito', config: 'filtroCidadesCabecalho(this)', lista: [...new Set(distritos)] })}
+                ${fPesq({ texto: 'Cidade', name: 'cidade', config: `filtroCidadesCabecalho(this, 'cidade')`, objeto: cidades, chave: 'nome' })}
             </div>
         </div>
         <button data-controle="inserir" onclick="adicionarColaborador()">Adicionar</button>
@@ -52,11 +58,7 @@ async function telaColaboradores() {
     })
 
     for (const [id, colaborador] of Object.entries(dados_colaboradores).reverse()) {
-
-        const d = dados_distritos?.[colaborador?.distrito] || {}
-        const c = d?.cidades?.[colaborador?.cidade] || {}
-
-        criarLinhaColaboradores(id, { ...colaborador, nomeDistrito: d.nome || '-', nomeCidade: c.nome || '-' })
+        criarLinhaColaboradores(id, colaborador)
     }
 
     // Regras de validação;
@@ -65,6 +67,10 @@ async function telaColaboradores() {
 }
 
 async function criarLinhaColaboradores(id, colaborador) {
+
+    const dCidade = cidades[colaborador.cidade]
+    const cidade = dCidade?.nome || ''
+    const distrito = dCidade?.distrito || ''
 
     const algoPendente = (!colaborador.epi || !colaborador.exame || !colaborador.contratoObra)
     const especialidades = (colaborador?.especialidade || [])
@@ -82,8 +88,8 @@ async function criarLinhaColaboradores(id, colaborador) {
         </td>
         <td>${colaborador?.telefone || ''}</td>
         <td>${infoObra(colaborador)}</td>
-        <td name="distrito" data-cod="${colaborador?.distrito}">${colaborador?.nomeDistrito || '-'}
-        <td name="cidade" data-cod="${colaborador?.cidade}">${colaborador?.nomeCidade || '-'}
+        <td name="distrito">${distrito}</td>
+        <td name="cidade" data-cod="${colaborador?.cidade}">${cidade}</td>
         <td><span class="${colaborador?.status}">${colaborador?.status || ''}</span></td>
         <td>
             <div style="${vertical}; gap: 2px;">
@@ -107,8 +113,6 @@ async function criarLinhaColaboradores(id, colaborador) {
 async function adicionarColaborador(id) {
 
     colaborador = dados_colaboradores[id] || {}
-    const dados_obras = await recuperarDados('dados_obras')
-    const clientes = await recuperarDados('dados_clientes')
 
     const listas = {
         status: ['Ativo', 'Baixa Médica', 'Não Ativo', 'Impedido'],
@@ -149,10 +153,9 @@ async function adicionarColaborador(id) {
 
     const opcoesObras = Object.entries(dados_obras)
         .map(([idObra, obra]) => {
-            const distrito = dados_distritos?.[obra.distrito] || {}
-            const cidade = distrito?.cidades?.[obra.cidade] || {}
+            const cidade = cidades?.[obra?.cidade] || {}
             const cliente = clientes?.[obra?.cliente] || {}
-            return `<option value="${idObra}">${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
+            return `<option value="${idObra}">${cliente?.nome || '--'} / ${cidade.distrito || '--'} / ${cidade.nome || '--'}</option>`
         }).join('')
 
     const regras = `oninput="verificarRegras()"`
@@ -206,12 +209,30 @@ async function adicionarColaborador(id) {
     `
     }
 
+    const distritos = Object
+        .values(cidades)
+        .map(c => c.distrito)
+
+    const cidade = cidades?.[colaborador?.cidade] || {}
+
+    const opcoesDistrito = [...new Set(distritos)]
+        .sort((a, b) => a.localeCompare(b))
+        .map(d => `<option ${cidade?.distrito == d ? 'selected' : ''}>${d}</option>`)
+        .join('')
+
     const linhas = [
         { texto: 'Nome Completo', elemento: `<textarea ${regras} name="nome" placeholder="Nome Completo">${colaborador?.nome || ''}</textarea>` },
         { texto: 'Data de Nascimento', elemento: `<input ${regras} value="${colaborador?.dataNascimento || ''}" type="date" name="dataNascimento">` },
         { texto: 'Morada', elemento: `<textarea ${regras} name="morada" placeholder="Morada">${colaborador?.morada || ''}</textarea>` },
-        { texto: 'Distrito', elemento: `<select name="distrito" onchange="carregarSelects({select: this, painel: true})"></select>` },
-        { texto: 'Cidade', elemento: `<select name="cidade"></select>` },
+        {
+            texto: 'Distrito',
+            elemento: `
+                <select ${regras} name="distrito" onchange="filtroCidadesCabecalho(this)">
+                    <option></option>
+                    ${opcoesDistrito}
+                </select>
+            `},
+        { texto: 'Cidade', elemento: `<select ${regras} name="cidade"></select>` },
         { texto: 'Apólice de Seguro', elemento: `<input value="0010032495" name="apolice" placeholder="Número da Apólice" readOnly>` },
         { texto: 'Telefone', elemento: `<input ${regras} value="${colaborador?.telefone || ''}" name="telefone" placeholder="Telefone">` },
         { texto: 'E-mail', elemento: `<textarea ${regras} name="email" placeholder="E-mail">${colaborador?.email || ''}</textarea>` },
@@ -260,7 +281,7 @@ async function adicionarColaborador(id) {
     ]
 
     const botoes = [
-        { funcao: id ? `salvarColaborador('${id}')` : null, texto: 'Salvar', img: 'concluido' }
+        { funcao: id ? `salvarColaborador('${id}')` : 'salvarColaborador()', texto: 'Salvar', img: 'concluido' }
     ]
 
     if (id) botoes.push({ img: 'cancel', texto: 'Excluir', funcao: `confirmarExclusaoColaborador('${id}')` })
@@ -268,7 +289,11 @@ async function adicionarColaborador(id) {
     const form = new formulario({ linhas, botoes, titulo: 'Cadastro de Colaborador' })
     form.abrirFormulario()
 
-    await carregarSelects({ ...colaborador, painel: true })
+    if (cidade) {
+        const lista = resolverCidadesPorDistrito(cidade.distrito)
+        const selectCidade = el('cidade')
+        aplicarCidadesNoSelect(lista, selectCidade, colaborador.cidade)
+    }
     verificarRegras()
 
 }
@@ -334,13 +359,15 @@ async function salvarColaborador(idColaborador) {
 
     if (pinExistente && pinExistente !== inputPin.value) {
 
-        const resposta = await colaboradorPin(colaborador.pin)
-        if (resposta?.mensagem !== 'Pin não localizado') {
+        const resposta = await colaboradorPin(colaborador.pin, idColaborador)
+
+        if (resposta?.mensagem) {
             inputPin.classList.add('invalido')
-            return popup(mensagem('O PIN escolhido já está em uso'), 'Alerta', true)
+            return popup(mensagem(resposta?.mensagem), 'Alerta', true)
         }
 
     }
+
     colaborador.pin = inputPin.value
 
     const camposAnexos = ['contratoObra', 'exame'];
@@ -361,9 +388,8 @@ async function salvarColaborador(idColaborador) {
         }
     }
 
-    // Distrito & Cidade;
+    // Cidade;
     colaborador.cidade = obVal('cidade')
-    colaborador.distrito = obVal('distrito')
 
     const foto = document.querySelector('[name="foto"]')
     if (foto.src && !foto.src.includes(api)) {
@@ -390,22 +416,28 @@ async function excelColaboradores() {
 
     const linhas = []
 
-    const deletar = ['id', 'obraAlocada', 'obra', 'timestamp', 'contratoObra', 'foto', 'folha', 'epi', 'exame']
+    const trs = document.querySelectorAll('tbody tr')
 
-    const fdistrito = Number(document.querySelector('[name="fdistrito"]').value)
+    const ids = [...trs]
+        .filter(tr => tr.style.display !== 'none')
+        .map(tr => tr.id)
 
-    for (const linha of Object.values(dados_colaboradores)) {
+    for (const [idColaborador, colaborador] of Object.entries(dados_colaboradores)) {
 
-        if (fdistrito && fdistrito !== linha.distrito) continue
+        if (!ids.includes(idColaborador)) continue
 
-        for (const chave of deletar) delete linha[chave]
+        const { cidade, contratoObra, epi, exame, excluido, obra, folha, foto, id, obraAlocada, pin, timestamp, ...resto } = colaborador
+        const c = cidades?.[colaborador?.cidade] || {}
+        const nomeCidade = c.nome || ''
+        const distrito = c.distrito || ''
 
-        const d = dados_distritos?.[linha.distrito] || {}
-        const c = d?.cidades[linha?.cidade] || {}
-        linha.distrito = d?.nome || ''
-        linha.cidade = c?.nome || ''
-        linha.dataNascimento = dtFormatada(linha.dataNascimento)
-        linha.especialidade = linha.especialidade.map(esp => esp).join(', ')
+        const linha = {
+            ...resto,
+            distrito,
+            cidade: nomeCidade,
+            dataNascimento: dtFormatada(colaborador.dataNascimento),
+            especialidade: colaborador.especialidade.map(esp => esp).join(', ')
+        }
 
         linhas.push(linha)
     }

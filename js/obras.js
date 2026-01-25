@@ -8,13 +8,18 @@ async function telaObras() {
 
     dados_clientes = await recuperarDados('dados_clientes')
     dados_despesas = await recuperarDados('dados_despesas')
-    dados_distritos = await recuperarDados('dados_distritos')
+    cidades = await recuperarDados('cidades')
+
+    const distritos = Object
+        .values(cidades)
+        .map(c => c.distrito)
+
     const nomeBase = 'dados_obras'
     titulo.textContent = 'Gerenciar Obras'
     const btnExtras = `
     <button onclick="adicionarObra()" data-controle="inserir">Adicionar</button>
-    ${fPesq({ texto: 'Distrito', config: 'onclick="filtroCidadesCabecalho(this)" name="distrito"', objeto: dados_distritos, chave: 'nome' })}
-    ${fPesq({ texto: 'Cidade', config: 'name="cidade"' })}    
+        ${fPesq({ texto: 'Distrito', name: 'distrito', config: 'filtroCidadesCabecalho(this)', lista: [...new Set(distritos)] })}
+        ${fPesq({ texto: 'Cidade', name: 'cidade', config: `filtroCidadesCabecalho(this, 'cidade')`, objeto: cidades, chave: 'nome' })}
     `
 
     telaInterna.innerHTML = modeloTabela({
@@ -28,8 +33,6 @@ async function telaObras() {
             'Material Real',
             'Material Real vs Material Orçamentado',
             'Mão de Obra Orçamentado',
-            'Mão de Obra Real',
-            'Mão de Obra Real vs Mão de Obra Orçamentado',
             'Acompanhamento',
             'Cronograma',
             ''
@@ -95,8 +98,7 @@ function calcularTotaisOrcamentos(idObra, obra) {
 
 async function criarLinhaObras(id, obra) {
 
-    const distrito = dados_distritos?.[obra?.distrito] || {}
-    const cidades = distrito?.cidades?.[obra?.cidade] || {}
+    const cidade = cidades?.[obra?.cidade] || {}
     const resultado = obra?.resultado || {}
     const porcentagem = Number(resultado?.porcentagem || 0)
     const cliente = dados_clientes?.[obra?.cliente] || {}
@@ -113,9 +115,9 @@ async function criarLinhaObras(id, obra) {
     } = calcularTotaisOrcamentos(id, obra)
 
     tds = `
-        <td>${cliente?.nome || '--'}</td>
-        <td name="distrito" data-cod="${obra?.distrito}">${distrito?.nome || '--'}</td>
-        <td name="cidade" data-cod="${obra?.cidade}">${cidades?.nome || '--'}</td>
+        <td>${cliente?.nome || ''}</td>
+        <td name="distrito">${cidade.distrito || ''}</td>
+        <td name="cidade" data-cod="${obra?.cidade}">${cidade?.nome || ''}</td>
         <td>
             ${divPorcentagem(porcentagem)}
         </td>
@@ -127,11 +129,9 @@ async function criarLinhaObras(id, obra) {
         <td>${dinheiro(materialOrcado)}</td>
         <td>${dinheiro(materialReal)}</td>
         <td>
-            ${porcentagemHtml(Number((materialReal / materialOrcado) * 100).toFixed(0))}
+            ${porcentagemHtml(materialOrcado  ? Number((materialReal / materialOrcado) * 100).toFixed(0) : 0)}
         </td>
         <td>${dinheiro(maoObraOrcado)}</td>
-        <td></td>
-        <td></td>
         <td>
             <img src="imagens/kanban.png" onclick="verAndamento('${id}')">
         </td>
@@ -152,16 +152,31 @@ async function criarLinhaObras(id, obra) {
 
 async function adicionarObra(idObra) {
 
-    const obra = await recuperarDado('dados_obras', idObra)
+    const obra = await recuperarDado('dados_obras', idObra) || {}
+    const cidade = cidades?.[obra?.cidade] || {}
+    const distritos = Object
+        .values(cidades)
+        .map(c => c.distrito)
     clientes = await recuperarDados('dados_clientes')
     dados_orcamentos = await recuperarDados('dados_orcamentos')
+    const opcoesDistrito = [...new Set(distritos)]
+        .sort((a, b) => a.localeCompare(b))
+        .map(d => `<option ${cidade?.distrito == d ? 'selected' : ''}>${d}</option>`)
+        .join('')
     const opcoesClientes = Object.entries(clientes)
         .map(([idCliente, cliente]) => `<option id="${idCliente}" ${obra?.cliente == idCliente ? 'selected' : ''}>${cliente.nome}</option>`)
         .join('')
 
     const linhas = [
         { texto: 'Cliente', elemento: `<select name="cliente" onchange="buscarDados(this)"><option></option>${opcoesClientes}</select>` },
-        { texto: 'Distrito', elemento: `<select name="distrito" onchange="carregarSelects({select: this})"></select>` },
+        {
+            texto: 'Distrito',
+            elemento: `
+                <select name="distrito" onchange="filtroCidadesCabecalho(this)">
+                    <option></option>
+                    ${opcoesDistrito}
+                </select>
+            `},
         { texto: 'Cidade', elemento: `<select name="cidade"></select>` },
         { texto: 'Telefone', elemento: `<span name="telefone"></span>` },
         { texto: 'E-mail', elemento: `<span name="email"></span>` },
@@ -169,7 +184,7 @@ async function adicionarObra(idObra) {
     ]
 
     const botoes = [
-        { funcao: idObra ? `salvarObra('${idObra}')` : null, img: 'concluido', texto: 'Salvar' }
+        { funcao: idObra ? `salvarObra('${idObra}')` : 'salvarObra()', img: 'concluido', texto: 'Salvar' }
     ]
 
     if (idObra) botoes.push({ funcao: `confirmarExclusaoObra('${idObra}')`, img: 'cancel', texto: 'Excluir' })
@@ -177,27 +192,24 @@ async function adicionarObra(idObra) {
     const form = new formulario({ linhas, botoes, titulo: 'Formulário de Obra' })
     form.abrirFormulario()
 
-    await carregarSelects({ ...obra, painel: true })
+    if (cidade) {
+        const lista = resolverCidadesPorDistrito(cidade.distrito)
+        const selectCidade = el('cidade')
+        aplicarCidadesNoSelect(lista, selectCidade, obra.cidade)
+    }
 
     buscarDados()
 
 }
 
-async function salvarObra(idObra) {
+async function salvarObra(idObra = unicoID()) {
 
     overlayAguarde()
 
-    idObra = idObra || unicoID()
-    let obra = await recuperarDado('dados_obras', idObra) || {}
+    const obra = await recuperarDado('dados_obras', idObra) || {}
 
-    function obVal(name) {
-        const el = document.querySelector(`[name="${name}"]`)
-        if (el) return el.value
-    }
-
-    const camposFixos = ['distrito', 'cidade']
-
-    for (const campo of camposFixos) obra[campo] = obVal(campo)
+    // cidade
+    obra.cidade = obVal('cidade')
 
     const select = document.querySelector('[name="cliente"]')
     const idCliente = select.options[select.selectedIndex].id
@@ -393,10 +405,10 @@ function filtrar() {
 async function carregarLinhasAndamento(idObra) {
 
     const obra = await recuperarDado('dados_obras', idObra)
-    const campos = await recuperarDados('campos')
-    const dados_orcamentos = await recuperarDados('dados_orcamentos')
+    campos = await recuperarDados('campos')
+    dados_orcamentos = await recuperarDados('dados_orcamentos')
 
-    const tabTarefas = document.querySelector('.tabela-tarefas')
+    const tabTarefas = document.querySelector('.tabTarefas')
     if (!tabTarefas) return
 
     tabTarefas.innerHTML = ''
@@ -478,7 +490,7 @@ async function carregarLinhasAndamento(idObra) {
 
                 const ordem = `1.${index}`
                 const qtdeRealizada = obra?.andamento?.[idOrcamento]?.[item.idDescricao]?.realizado || 0
-                const totalOrcado = item?.dados?.unidades || 0
+                const totalOrcado = item?.dados?.quantidade || 0
 
                 const riscado = !!obra?.andamento?.[idOrcamento]?.[item.idDescricao]?.removido
                 const estilo = riscado ? 'style="text-decoration: line-through"' : ''
@@ -817,7 +829,7 @@ async function telaCronograma(idObra) {
 
     const obra = await recuperarDado('dados_obras', idObra)
     const cliente = await recuperarDado('dados_clientes', obra?.cliente)
-    const campos = await recuperarDados('campos')
+    campos = await recuperarDados('campos')
 
     titulo.textContent = 'Cronograma'
 
@@ -847,13 +859,13 @@ async function telaCronograma(idObra) {
     let linhasBase = []
 
     for (const [idOrcamento, status] of Object.entries(obra?.orcamentos_vinculados || {})) {
+
         if (!status) continue
 
         const orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
 
         for (const [zona, itens] of Object.entries(orcamento?.zonas || {})) {
             for (const dados of Object.values(itens)) {
-
                 const campoRef = campos[dados.campo] || {}
                 const minutos = pMin(campoRef?.duracao) * (dados?.quantidade || 0)
                 duracaoTotal += minutos
@@ -921,7 +933,6 @@ async function telaCronograma(idObra) {
     for (let s = 0; s < semanas; s++) {
 
         let linhas = montarSemana(cursor)
-
         for (const l of linhasBase) {
             linhas += `
                 <tr>
@@ -973,16 +984,12 @@ async function telaCronograma(idObra) {
 
 function montarSemana(data) {
     const inicio = new Date(data)
-    const ordem = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
-
-    const tdsFixos = `<td></td>`.repeat(7)
-    let tdsDias = Array(7).fill('<td></td>')
+    const tdsFixos = `<td></td>`.repeat(7) // colunas fixas
+    let tdsDias = []
 
     let d = new Date(inicio)
-    let pos = ordem[d.getDay()]
-
-    for (let i = pos; i < 7; i++) {
-        tdsDias[i] = `<td>${d.toLocaleDateString('pt-BR')}</td>`
+    for (let i = 0; i < 7; i++) {
+        tdsDias.push(`<td>${d.toLocaleDateString('pt-BR')}</td>`)
         d.setDate(d.getDate() + 1)
     }
 
@@ -995,13 +1002,12 @@ function pintarTabelas() {
     const diasValidos = ['seg', 'ter', 'qua', 'qui', 'sex']
 
     const tabelas = [...document.querySelectorAll('.tabela-obras:not(:first-of-type)')]
-
     if (!tabelas.length) return
 
     const linhasBase = [...tabelas[0].querySelectorAll('tbody tr')]
         .filter(tr => !tr.classList.contains('linha-semana'))
 
-    let cursorGlobal = 0
+    let cursorGlobal = 0 // cursor geral entre tabelas
 
     linhasBase.forEach((linhaBase, indexLinha) => {
 
@@ -1033,6 +1039,7 @@ function pintarTabelas() {
         }
     })
 }
+
 
 async function salvarDtInicio(input, idObra) {
 

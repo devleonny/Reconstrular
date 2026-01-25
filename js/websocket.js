@@ -19,8 +19,6 @@ async function connectWebSocket() {
 
         const data = JSON.parse(event.data)
 
-        console.log(data);
-
         if (data.tipo == 'exclusao') { // Só se for no nível
             await deletarDB(data.tabela, data.id)
 

@@ -74,7 +74,7 @@ th {
     align-items: start;
     justify-content: start;
     flex-direction: column;
-    width: 95vw;
+    width: 100%;
     background-color: white;
     padding: 0.5rem;
     overflow: auto;

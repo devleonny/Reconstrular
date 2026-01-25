@@ -1,10 +1,29 @@
 let mensagensFuncao = {}
 let nLidas = true
 let arquivado = false
+let filtroMensagens = 'todas' // 'todas', 'lidas', 'nLidas'
 
-async function painelUsuarios(toggle) {
+function aplicarFiltroMensagens() {
+    const linhas = document.querySelectorAll('div[name="linha"]')
 
-    if (toggle) arquivado = arquivado ? false : true
+    for (const linha of linhas) {
+        const lido = linha.dataset.lido == 'S'
+
+        switch (filtroMensagens) {
+            case 'nLidas':
+                linha.style.display = lido ? 'none' : 'flex'
+                break
+            case 'lidas':
+                linha.style.display = lido ? 'flex' : 'none'
+                break
+            default:
+                linha.style.display = 'flex'
+        }
+    }
+}
+
+
+async function painelUsuarios() {
 
     mostrarMenus(false)
 
@@ -13,8 +32,11 @@ async function painelUsuarios(toggle) {
 
     funcoes = await recuperarDados('funcoes')
     dados_setores = await recuperarDados('dados_setores') || {}
+    const uOrganizados = Object
+        .entries(dados_setores)
+        .sort((a, b) => a[0].localeCompare(b[0]))
 
-    for (const [usuario, d] of Object.entries(dados_setores).sort((a, b) => a[0].localeCompare(b[0]))) {
+    for (const [usuario, d] of uOrganizados) {
 
         const status = d?.status || 'offline'
         if (!stringUsuarios[status]) stringUsuarios[status] = { quantidade: 0, linhas: '' }
@@ -59,8 +81,9 @@ async function painelUsuarios(toggle) {
             <span style="color: white;">Marcar todos</span>
         </div>
         <button onclick="confirmarArquivamento()">Arquivar mensagens</button>
-        <button onclick="filtrarNLidos(this)">Não lidas</button>
-        <button onclick="painelUsuarios(true)" id="btnArq">Arquivados</button>
+        <button onclick="filtrarNLidos()">Não Lidas</button>
+        <button onclick="filtrarLidas()">Lidas</button>
+        <button onclick="mostrarTodasMensagens()">Todas</button>
         <div class="pesquisa">
             <input oninput="pesquisarEmMensagens(this.value)" placeholder="Pesquisar" style="width: 100%;">
             <img src="imagens/pesquisar2.png">
@@ -89,11 +112,13 @@ async function painelUsuarios(toggle) {
 
     mensagensFuncao = {}
     mensagens = await recuperarDados('mensagens')
+    const organizado = Object.entries(mensagens)
+        .sort(([, a], [, b]) => a.timestamp - b.timestamp)
+
     const ativos = []
-    for (const [idMensagem, mensagem] of Object.entries(mensagens)) {
+    for (const [idMensagem, mensagem] of organizado) {
 
         if (mensagem.remetente == acesso.usuario) continue
-        if (arquivado && !mensagem.arquivado) continue
         if (!arquivado && mensagem.arquivado == 'S') continue
 
         ativos.push(idMensagem)
@@ -153,27 +178,28 @@ function marcarTodos(inputM) {
     }
 }
 
-function filtrarNLidos(button) {
-
-    const linhas = document.querySelectorAll('[name="linha"]')
-
-    nLidas = nLidas ? false : true
-
-    button.textContent = nLidas ? 'Não Lidas' : 'Lidas'
-
-    for (const linha of linhas) {
-        const lido = linha.dataset.lido == 'S'
-        linha.style.display = lido == nLidas ? 'flex' : 'none'
-    }
-
+function filtrarNLidos() {
+    filtroMensagens = 'nLidas'
+    aplicarFiltroMensagens()
 }
+
+function filtrarLidas() {
+    filtroMensagens = 'lidas'
+    aplicarFiltroMensagens()
+}
+
+function mostrarTodasMensagens() {
+    filtroMensagens = 'todas'
+    aplicarFiltroMensagens()
+}
+
 
 function criarDivMensagem(idMensagem, m) {
 
     const divExistente = document.getElementById(idMensagem)
 
     // Acumular mensagens por função; Apenas não lidas;
-    const remF = dados_setores?.[m.remetente].funcao
+    const remF = dados_setores?.[m.remetente]?.funcao || '...'
     const nFun = funcoes?.[remF]?.nome
     if (nFun && m.lido !== 'S') {
         mensagensFuncao[nFun] ??= {}
@@ -186,7 +212,7 @@ function criarDivMensagem(idMensagem, m) {
         <span><u>${m.remetente}</u></span>
         <span style="font-size: 0.6rem;"><b>${m.data}</b></span>
         <span><b>${m?.assunto || '...'}</b></span>
-        <span>${m.mensagem.slice(0, 50)}...</span>
+        <span>${String(m.mensagem).slice(0, 50)}...</span>
     `
 
     if (divExistente) return divExistente.innerHTML = div
@@ -200,7 +226,6 @@ function criarDivMensagem(idMensagem, m) {
 }
 
 async function abrirMensagem(idMensagem) {
-
     const m = mensagens[idMensagem]
     const acumulado = `
         <div style="${vertical}; min-width: 20rem; background-color: #d2d2d2; gap: 2px; padding: 1rem;">
@@ -211,19 +236,17 @@ async function abrirMensagem(idMensagem) {
             <div>${m.mensagem}</div>
         </div>
     `
+
     m.lido = 'S'
     await inserirDados({ [idMensagem]: m }, 'mensagens')
     enviar(`mensagens/${idMensagem}/lido`, 'S')
     popup(acumulado, `Mensagem de ${m.remetente}`, true)
 
-    document.getElementById(idMensagem).classList = `m-sagem-S`
+    const divMsg = document.getElementById(idMensagem)
+    divMsg.classList = `m-sagem-S`
+    divMsg.dataset.lido = 'S'
 
-}
-
-function togglePastas(div) {
-    const el = div.nextElementSibling
-    const aberto = getComputedStyle(el).display !== 'none'
-    el.style.display = aberto ? 'none' : 'flex'
+    aplicarFiltroMensagens() // atualiza visibilidade conforme filtro atual
 }
 
 function balaoMensagem(destinatario) {
@@ -271,17 +294,19 @@ async function enviarMensagem() {
 
 }
 
-alertaMensagens()
-
 async function alertaMensagens() {
 
     mensagens = await recuperarDados('mensagens')
 
-    const total = Object.values(mensagens).filter(m => !(m?.lido == 'S')).length
+    const total = Object
+        .values(mensagens)
+        .filter(m => !m?.lido).length
 
     const badge = document.getElementById('msg')
 
-    if (badge) badge.innerHTML = `<span class="badge-numero">${total}</span>`
+    if (badge) badge.innerHTML = total == 0
+        ? ''
+        : `<span class="badge-numero">${total}</span>`
 
 }
 

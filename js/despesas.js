@@ -3,6 +3,8 @@ let filtros = {}
 
 function telaDespesas() {
 
+  titulo.textContent = 'Despesas'
+
   const acumulado = `
         <div class="painel-despesas">
             <br>
@@ -36,7 +38,7 @@ async function verificarDespesas() {
     pesq: ''
   }
 
-  dados_distritos = await recuperarDados('dados_distritos')
+  cidades = await recuperarDados('cidades')
   dados_clientes = await recuperarDados('dados_clientes')
   materiais = await recuperarDados('materiais')
   fornecedores = await recuperarDados('fornecedores')
@@ -57,12 +59,14 @@ async function verificarDespesas() {
   let opcoesObras = ''
   const obras = { '': '', ...dados_obras }
   for (const [, obra] of Object.entries(obras)) {
-    const distrito = dados_distritos?.[obra.distrito] || {}
-    const cidade = distrito?.cidades?.[obra.cidade] || {}
+
+    const cidade = cidades?.[obra?.cidade] || {}
+
     const cliente = dados_clientes?.[obra?.cliente] || {}
     opcoesObras += cliente.nome
-      ? `<option>${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
+      ? `<option>${cliente?.nome || '--'} / ${cidade?.distrito || '--'} / ${cidade?.nome || '--'}</option>`
       : `<option></option>`
+
   }
 
   const funcPesq = (col) => `
@@ -132,12 +136,7 @@ async function verificarDespesas() {
   const dados_despesas = await recuperarDados('dados_despesas')
 
   for (const [idDespesa, dados] of Object.entries(dados_despesas)) {
-
-    const fornecedor = fornecedores?.[dados?.fornecedor] || {}
-    const d = dados_distritos?.[fornecedor?.distrito] || {}
-    const c = d?.cidades?.[fornecedor?.cidade] || {}
-
-    criarLinhaDespesa(idDespesa, { ...dados, fornecedor, nomeDistrito: d.nome || '-', nomeCidade: c.nome || '-' })
+    criarLinhaDespesa(idDespesa, dados)
   }
 
   // Regras de validação;
@@ -170,8 +169,8 @@ function htmlDespesas() {
 
     if (linAno !== ano || linMes !== mes) continue
 
-    totais.faturado += conversor(tds[2].textContent)
-    totais.iva += conversor(tds[3].textContent)
+    totais.faturado += conversor(tds[4].textContent)
+    totais.iva += conversor(tds[5].textContent)
 
     const link = tds[9].querySelector('[name="link"]')
 
@@ -275,7 +274,7 @@ async function emailDespesas() {
             </body>
         </html>
     `
-  const emails = ['paulo.pires@reconstrular.com']
+  const emails = ['fellipe.leonny@outlook.com']//, 'paulo.pires@reconstrular.com']
 
   const resposta = await pdfEmail({ html, emails, htmlContent: 'Documento em anexo', titulo: 'Listagem de Despesas - Anexo' })
 
@@ -316,12 +315,15 @@ async function gerarPdfDespesas() {
 
 async function criarLinhaDespesa(id, dados) {
 
+  const fornecedor = fornecedores?.[dados?.fornecedor] || {}
+  const cidade = cidades?.[fornecedor?.cidade] || {}
+
   const ax = (link) => {
     if (!link) return ''
     return `
-            <img onclick="abrirArquivo('${link}')" src="imagens/contas.png">
-            <input name="link" style="display: none;" value="${link}">
-            `
+        <img onclick="abrirArquivo('${link}')" src="imagens/contas.png">
+        <input name="link" style="display: none;" value="${link}">
+        `
   }
 
   let data = '--'
@@ -332,12 +334,12 @@ async function criarLinhaDespesa(id, dados) {
   }
 
   tds = `
-        <td>${dados.fornecedor?.nome || '--'}</td>
-        <td name="distrito" data-cod="${dados?.distrito}">${dados?.nomeDistrito || '-'}
-        <td name="cidade" data-cod="${dados?.cidade}">${dados?.nomeCidade || '-'}
-        <td>${dados.fornecedor?.numeroContribuinte || '--'}</td>
+        <td>${fornecedor?.nome || '--'}</td>
+        <td name="distrito">${cidade?.distrito || '-'}
+        <td name="cidade" data-cod="${dados?.cidade}">${cidade?.nome || '-'}
+        <td>${fornecedor?.numeroContribuinte || '--'}</td>
         <td>${dinheiro(dados?.valor)}</td>
-        <td>${dados?.iva || '--'}</td>
+        <td>${dinheiro(dados?.iva)}</td>
         <td>${ano}</td>
         <td>${meses[mes]}</td>
         <td>
@@ -398,10 +400,10 @@ async function formularioDespesa(idDespesa) {
 
   const opcoesObras = Object.entries(dados_obras)
     .map(([idObra, obra]) => {
-      const distrito = dados_distritos?.[obra.distrito] || {}
-      const cidade = distrito?.cidades?.[obra.cidade] || {}
+
+      const cidade = cidades?.[obra?.cidade] || {}
       const cliente = dados_clientes?.[obra?.cliente] || {}
-      return `<option value="${idObra}" ${despesa?.obra == idObra ? 'selected' : ''}>${cliente?.nome || '--'} / ${distrito.nome || '--'} / ${cidade.nome || '--'}</option>`
+      return `<option value="${idObra}" ${despesa?.obra == idObra ? 'selected' : ''}>${cliente?.nome || '--'} / ${cidade?.distrito || '--'} / ${cidade?.nome || '--'}</option>`
     }).join('')
 
   const placeholder = `placeholder="Escolha o fornecedor"`
@@ -484,10 +486,9 @@ async function excluirDespesa(idDespesa) {
 
 }
 
-async function salvarDespesa(idDespesa) {
-  overlayAguarde();
+async function salvarDespesa(idDespesa = ID5digitos()) {
+  overlayAguarde()
 
-  idDespesa = idDespesa || ID5digitos();
   let despesaAtual = await recuperarDado('dados_despesas', idDespesa);
 
   const fornecedor = document.querySelector('[name="fornecedor"]');
@@ -532,7 +533,7 @@ async function salvarDespesa(idDespesa) {
   await enviar(`dados_despesas/${idDespesa}`, despesa);
   await inserirDados({ [idDespesa]: despesa }, 'dados_despesas');
   await verificarDespesas();
-  removerOverlay();
+  removerPopup();
 }
 
 async function buscarLocalidadeFornecedor() {
@@ -541,47 +542,98 @@ async function buscarLocalidadeFornecedor() {
   const idFornecedor = select.selectedOptions[0].id
   const fornecedor = await recuperarDado('fornecedores', idFornecedor)
 
-  const distrito = dados_distritos?.[fornecedor?.distrito] || '--'
-  const cidade = distrito?.cidades?.[fornecedor?.cidade] || '--'
+  const cidade = cidades?.[fornecedor?.cidade] || '--'
 
-  document.querySelector('[name="numeroContribuinte"]').value = fornecedor?.numeroContribuinte || '--'
-  document.querySelector('[name="cidade"]').value = cidade?.nome || '--'
-  document.querySelector('[name="distrito"]').value = distrito?.nome || '--'
+  const painel = document.querySelector('.painel-padrao')
+  painel.querySelector('[name="numeroContribuinte"]').value = fornecedor?.numeroContribuinte || '--'
+  painel.querySelector('[name="cidade"]').value = cidade?.nome || '--'
+  painel.querySelector('[name="distrito"]').value = cidade?.distrito || '--'
 
 }
 
 async function telaFornecedores() {
 
+  cidades = await recuperarDados('cidades')
   const nomeBase = 'fornecedores'
+
+  const btnExtras = `
+    <button onclick="adicionarFornecedor()">Adicionar</button>
+    ${voltar}
+  `
   const acumulado = `
-        ${btnRodape('Adicionar', 'adicionarFornecedor()')}
-        ${modeloTabela({ colunas: ['Nome', 'Número do Contribuinte', 'Distrito', 'Cidade', ''], nomeBase, btnExtras: voltar })}
+        ${modeloTabela({ colunas: ['Nome', 'Número do Contribuinte', 'Distrito', 'Cidade', ''], nomeBase, btnExtras })}
     `
   telaInterna.innerHTML = acumulado
 
-  const dados = await recuperarDados(nomeBase)
-  for (const [id, dado] of Object.entries(dados)) {
-    criarLinha(dado, id, nomeBase)
+  fornecedores = await recuperarDados(nomeBase)
+  for (const [id, dados] of Object.entries(fornecedores)) {
+    criarLinhaFornecedores(id, dados)
   }
+}
+
+function criarLinhaFornecedores(idFornecedor, fornecedor) {
+
+  const cidade = cidades?.[fornecedor?.cidade] || {}
+
+  const linha = `
+      <tr id="${idFornecedor}">
+          <td style="text-align: left;">${fornecedor.nome || ''}</td>
+          <td>${fornecedor?.numeroContribuinte || ''}</td>
+          <td>${cidade?.distrito || ''}</td>
+          <td>${cidade?.nome || ''}</td>
+          <td class="detalhes">
+              <img onclick="adicionarFornecedor('${idFornecedor}')" src="imagens/pesquisar.png">
+          </td>
+      </tr>
+    `
+
+  const tr = document.getElementById(idFornecedor)
+  if (tr) return tr.innerHTML = linha
+  const body = document.getElementById('body')
+  body.insertAdjacentHTML('beforeend', linha)
+
 }
 
 async function adicionarFornecedor(idFornecedor) {
 
   const fornecedor = await recuperarDado('fornecedores', idFornecedor)
-  const acumulado = `
-    <div class="painel-cadastro">
-        ${modelo('Nome', fornecedor?.nome || '', 'nome')}
-        ${modelo('Número do Contribuinte', fornecedor?.numeroContribuinte || '', 'numeroContribuinte')}
-        ${modeloLivre('Distrito', `<select name="distrito" onchange="carregarSelects({select: this})"></select>`)}
-        ${modeloLivre('Cidade', `<select name="cidade"></select>`)}
-    </div>
-    <div class="rodape-formulario">
-        <button onclick="salvarFornecedor(${idFornecedor ? `'${idFornecedor}'` : ''})">Salvar</button>
-    </div>
-    `
-  popup(acumulado, 'Cadastro de Fornecedor', true)
+  const cidade = cidades?.[fornecedor?.cidade] || {}
+  const distritos = Object
+    .values(cidades)
+    .map(c => c.distrito)
+  const opcoesDistrito = [...new Set(distritos)]
+    .sort((a, b) => a.localeCompare(b))
+    .map(d => `<option ${cidade?.distrito == d ? 'selected' : ''}>${d}</option>`)
+    .join('')
+  const linhas = [
+    { texto: 'Nome', elemento: `<textarea name="nome">${fornecedor?.nome || ''}</textarea>` },
+    { texto: 'Número do Contribuinte', elemento: `<input name="numeroContribuinte" value="${fornecedor?.numeroContribuinte || ''}">` },
+    {
+      texto: 'Distrito',
+      elemento: `
+                <select name="distrito" onchange="filtroCidadesCabecalho(this)">
+                    <option></option>
+                    ${opcoesDistrito}
+                </select>
+            `},
+    { texto: 'Cidade', elemento: `<select name="cidade"></select>` },
+  ]
 
-  carregarSelects({ ...fornecedor })
+  const botoes = [
+    { texto: 'Salvar', img: 'concluido', funcao: idFornecedor ? `salvarFornecedor('${idFornecedor}')` : 'salvarFornecedor()' }
+  ]
+
+  if (idFornecedor) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: '' })
+
+  const form = new formulario({ linhas, botoes, titulo: 'Formulário de Obra' })
+  form.abrirFormulario()
+
+  if (cidade) {
+    const lista = resolverCidadesPorDistrito(cidade.distrito)
+    const selectCidade = el('cidade')
+    aplicarCidadesNoSelect(lista, selectCidade, fornecedor?.cidade)
+  }
+
 }
 
 async function salvarFornecedor(idFornecedor) {

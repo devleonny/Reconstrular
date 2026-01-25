@@ -630,6 +630,7 @@ button {
     padding-bottom: 5px;
     width: 100%;
     background-color: #d2d2d2;
+    cursor: pointer;
 }
 
 .btnLateral img {
@@ -946,18 +947,7 @@ input[type="file"] {
 .menu-btn {
     padding: 8px;
     gap: 0px;
-    flex-direction: column;
-    background: none;
-    border: none;
-    cursor: pointer;
-}
-
-.menu-btn div {
-    width: 25px;
-    height: 2px;
-    background: white;
-    margin: 3px 0;
-    transition: 0.4s;
+    width: 3rem;
 }
 
 .atualizar {
@@ -1169,10 +1159,6 @@ screen and (min-aspect-ratio: 13/9) {
 
     .painel-clientes {
         grid-template-columns: repeat(3, 1fr);
-    }
-
-    .painel-1-tarefas {
-        grid-template-columns: repeat(6, 1fr);
     }
 
     .loginBloco {

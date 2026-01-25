@@ -31,8 +31,10 @@ const anos = {
 const optionsSelect = (obj, chave) => {
     if (!obj) return
     let elemento = ''
+    const ano = new Date().getFullYear()
     for (const [id, info] of Object.entries(obj).sort()) {
-        elemento += `<option id="${id}" value="${id}">${chave ? info[chave] : info}</option>`
+        const valor = chave ? info[chave] : info
+        elemento += `<option id="${id}" ${ano == valor ? 'selected' : ''} value="${id}">${valor}</option>`
     }
     return elemento
 }
@@ -348,6 +350,9 @@ async function gerarTodosPDFs(idColaborador, nome) {
         } else {
             colaboradores = [{ idColaborador, nome }]
         }
+
+        console.log(colaboradores);
+        
 
         const requisicao = {
             colaboradores,

@@ -15,8 +15,6 @@
 .painel-padrao textarea {
     border-radius: 3px;
     padding: 8px;
-    border: 1px solid #696969;
-    background-color: #f9f9f9;
     font-size: 14px;
     transition: 0.15s ease;
 }

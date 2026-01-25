@@ -3,11 +3,9 @@ const toolbar = document.querySelector('.toolbar')
 const titulo = toolbar.querySelector('span')
 const horizontal = `display: flex; align-items: center; justify-content: center;`
 const vertical = `display: flex; align-items: start; justify-content: start; flex-direction: column`
-const nomeBaseCentral = 'Reconstrular'
-const nomeStore = 'Bases'
 const api = `https://leonny.dev.br`
 const servidor = 'RECONST'
-let dados_distritos = {}
+let cidades = {}
 let dados_colaboradores = {}
 let dados_obras = {}
 let funcoes = {}
@@ -21,9 +19,11 @@ let telaInterna = null
 let emAtualizacao = false
 let acesso = {}
 let telaAtiva = null
+let priExec = true
 
 function obVal(name) {
-    const el = document.querySelector(`[name="${name}"]`);
+    const painel = document.querySelector('.painel-padrao')
+    const el = painel.querySelector(`[name="${name}"]`)
     return el ? el.value : '';
 }
 
@@ -126,7 +126,7 @@ async function resetarBases() {
         'mensagens',
         'funcoes',
         'campos',
-        'dados_distritos',
+        'cidades',
         'dados_clientes',
         'fornecedores',
         'materiais',
@@ -139,8 +139,10 @@ async function resetarBases() {
         'dados_setores'
     ]
 
+    await resetarTudo()
+
     for (const base of bases) {
-        await sincronizarDados(base, true, true) // Nome base, overlay off e resetar bases;
+        await sincronizarDados(base, false, true) // Nome base, overlay off e resetar bases;
         logs.insertAdjacentHTML('beforeend', `<label>Sincronizando: ${base}</label>`)
     }
 
@@ -405,6 +407,7 @@ async function telaPrincipal() {
 
     toolbar.style.display = 'flex'
     acesso = JSON.parse(localStorage.getItem('acesso'))
+    if (!acesso) return removerAcesso()
     funcoes = await recuperarDados('funcoes')
     const acumulado = `
 
@@ -420,7 +423,7 @@ async function telaPrincipal() {
 
             ${btn('atualizar', 'Sincronizar App', 'atualizarApp()')}
             ${btn('perfil', 'Parceiros', 'telaUsuarios()')}
-            ${btn('colaborador', 'Colaboradores', 'telaColaboradores()')}
+            ${btn('cracha', 'Colaboradores', 'telaColaboradores()')}
             ${btn('obras', 'Obras', 'telaObras()')}
             ${btn('pessoas', 'Clientes', 'telaClientes()')}
             ${btn('contas', 'Despesas', 'telaDespesas()')}
@@ -449,7 +452,11 @@ async function telaPrincipal() {
     tela.innerHTML = acumulado
     telaInterna = document.querySelector('.telaInterna')
 
-    atualizarApp()
+    if (priExec) overlayAguarde()
+    await atualizarApp()
+    await alertaMensagens()
+    priExec = false
+    removerOverlay()
 
 }
 
@@ -467,7 +474,7 @@ async function atualizarApp() {
         'mensagens',
         'funcoes',
         'campos',
-        'dados_distritos',
+        'cidades',
         'dados_clientes',
         'fornecedores',
         'materiais',
@@ -482,16 +489,13 @@ async function atualizarApp() {
 
     for (const base of basesAuxiliares) {
         sincronizarApp(status)
-        await sincronizarDados(base, true)
+        await sincronizarDados(base)
         status.atual++
     }
 
     funcoes = await recuperarDados('funcoes')
-    dados_distritos = await recuperarDados('dados_distritos')
+    cidades = await recuperarDados('cidades')
     dados_setores = await recuperarDados('dados_setores')
-    acesso = dados_setores[acesso.usuario]
-
-    if (acesso.excluído) await removerAcesso()
 
     localStorage.setItem('acesso', JSON.stringify(acesso))
 
@@ -958,16 +962,6 @@ function verificarClique(event) {
     if (menu && menu.classList.contains('active') && !menu.contains(event.target)) menu.classList.remove('active')
 }
 
-async function sincronizarDados(base, overlayOff, resetar) {
-
-    if (!overlayOff) overlayAguarde()
-
-    let nuvem = await receber(base) || {}
-    await inserirDados(nuvem, base, resetar)
-
-    if (!overlayOff) removerOverlay()
-}
-
 async function atualizarDados(base) {
 
     overlayAguarde()
@@ -990,29 +984,6 @@ async function buscarDados() {
     document.querySelector('[name="telefone"]').textContent = cliente.telefone
     document.querySelector('[name="email"]').textContent = cliente.email
 
-}
-
-async function carregarSelects({ select, painel = false, cidade, distrito } = {}) {
-
-    // Se painel existir, então busca-se do painel de formulario, do contrário do documento mesmo;
-    const local = painel ? document.querySelector('.painel-padrao') : document
-    const selectDistrito = local.querySelector('[name="distrito"]')
-    const selectCidade = local.querySelector('[name="cidade"]')
-
-    if (!select) {
-        const opcoesDistrito = Object.entries(dados_distritos).reverse()
-            .map(([idDistrito, objDistrito]) => `<option value="${idDistrito}" ${distrito == idDistrito ? 'selected' : ''}>${objDistrito.nome}</option>`)
-            .join('');
-        selectDistrito.innerHTML = `<option></option>${opcoesDistrito}`
-    }
-
-    const selectAtual = select ? select.value : selectDistrito.value
-    const cidades = dados_distritos?.[selectAtual]?.cidades || {};
-    const opcoesCidade = Object.entries(cidades).reverse()
-        .map(([idCidade, objCidade]) => `<option value="${idCidade}" ${cidade == idCidade ? 'selected' : ''}>${objCidade.nome}</option>`)
-        .join('');
-
-    selectCidade.innerHTML = `<option></option>${opcoesCidade}`
 }
 
 function confirmarSaida() {
@@ -1163,15 +1134,14 @@ async function salvarEpi(idColaborador) {
 
 function infoObra(dados) {
 
-    const obra = dados_obras[dados.obra]
+    const obra = dados_obras?.[dados.obra] || {}
     let dadosObra = '<span>Sem Obra</span>'
-    if (obra && obra.distrito) {
 
-        const cliente = dados_clientes[obra?.cliente]
-        const distrito = dados_distritos[obra?.distrito]
-        const cidade = distrito?.cidades[obra?.cidade]
-        dadosObra = `<span>${cliente?.nome || '--'} / ${distrito?.nome || '--'} / ${cidade?.nome || '--'}</span>`
-    }
+    if (!obra?.cidade) return dadosObra
+
+    const cliente = dados_clientes?.[obra?.cliente]
+    const cidade = cidades?.[obra?.cidade]
+    dadosObra = `<span>${cliente?.nome || '--'} / ${cidade?.distrito || '--'} / ${cidade?.nome || '--'}</span>`
 
     return dadosObra
 }
@@ -1237,8 +1207,10 @@ async function tirarFoto() {
 
 function verificarRegras() {
     // REGRAS
-    const input = (name) => document.querySelector(`[name="${name}"]`)
+    const painel = document.querySelector('.painel-padrao')
+    const input = (name) => painel.querySelector(`[name="${name}"]`)
     let liberado = true
+
     const limites = {
         'nome': { tipo: 'A' },
         'numeroContribuinte': { limite: 9, tipo: 1 },
@@ -1279,9 +1251,9 @@ function verificarRegras() {
     }
 
     //Pins
-    const pin = document.querySelector('[name="pin"]')
-    const pinEspelho = document.querySelector('[name="pinEspelho"]')
-    const rodapeAlerta = document.querySelector('.rodape-alerta')
+    const pin = painel.querySelector('[name="pin"]')
+    const pinEspelho = painel.querySelector('[name="pinEspelho"]')
+    const rodapeAlerta = painel.querySelector('.rodape-alerta')
     const mensagem = (img, msg) => `
         <div class="rodape-alerta">
             <img src="imagens/${img}.png">
@@ -1299,11 +1271,20 @@ function verificarRegras() {
         rodapeAlerta.innerHTML = mensagem('concluido', 'Pins iguais')
     }
 
+    //Cidade
+    const cidade = input('cidade')
+    if (!cidade || cidade.selectedIndex <= 0 || !cidade.value) {
+        cidade.classList.add('invalido')
+        liberado = false
+    } else {
+        cidade.classList.remove('invalido')
+    }
+
     //Campos Fixos
     const camposFixos = ['documento', 'especialidade', 'status']
     for (const campo of camposFixos) {
-        const ativo = document.querySelector(`input[name="${campo}"]:checked`)
-        const bloco = document.querySelector(`[name="${campo}_bloco"]`)
+        const ativo = painel.querySelector(`input[name="${campo}"]:checked`)
+        const bloco = painel.querySelector(`[name="${campo}_bloco"]`)
         if (!ativo) {
             bloco.classList.add('invalido')
             liberado = false
@@ -1326,7 +1307,7 @@ function verificarRegras() {
 
     //Documento
     const numeroDocumento = input('numeroDocumento')
-    const docAtivo = document.querySelector('input[name="documento"]:checked')
+    const docAtivo = painel.querySelector('input[name="documento"]:checked')
     if (docAtivo && docAtivo.value == 'Cartão de Cidadão') {
         if (numeroDocumento.value.length > 8) numeroDocumento.value = numeroDocumento.value.slice(0, 8)
         numeroDocumento.value = numeroDocumento.value.replace(/\D/g, '')
@@ -1357,8 +1338,12 @@ function unicoID() {
 
 function telaLogin() {
 
-    const acesso = JSON.parse(localStorage.getItem('acesso'))
-    if (acesso) return telaPrincipal()
+    try {
+        acesso = JSON.parse(localStorage.getItem('acesso'))
+        if (acesso) return telaPrincipal()
+    } catch {
+        removerAcesso()
+    }
 
     toolbar.style.display = 'none'
 
@@ -1466,44 +1451,6 @@ async function salvarSenha() {
 
 }
 
-async function enviar(caminho, info, idEvento) {
-    const url = `${api}/salvar`
-    const objeto = { caminho, valor: info, servidor }
-
-    try {
-        const response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(objeto)
-        })
-
-        let data
-        try {
-            data = await response.json()
-        } catch (parseError) {
-            // Erro ao tentar interpretar como JSON;
-            console.error("Resposta não é JSON válido:", parseError)
-            salvarOffline(objeto, 'enviar', idEvento)
-            return null;
-        }
-
-        if (!response.ok) {
-            // Se a API respondeu erro (ex: 400, 500);
-            console.error("Erro HTTP:", response.status, data)
-            salvarOffline(objeto, 'enviar', idEvento)
-            return null
-        }
-
-        if (idEvento) removerOffline('enviar', idEvento)
-
-        return data;
-    } catch (erro) {
-        console.error("Erro na requisição:", erro)
-        salvarOffline(objeto, 'enviar', idEvento)
-        return null
-    }
-}
-
 function erroConexao(mensagem) {
     const acumulado = `
         <div id="erroConexao" style="${horizontal}; gap: 1rem; background-color: #d2d2d2; padding: 1rem;">
@@ -1517,89 +1464,6 @@ function erroConexao(mensagem) {
     sincronizarApp({ remover: true })
     emAtualizacao = false
 
-}
-
-async function receber(chave) {
-
-    const chavePartes = chave.split('/')
-    let timestamp = 0
-    const dados = await recuperarDados(chavePartes[0]) || {}
-
-    for (const [, objeto] of Object.entries(dados)) {
-        if (objeto.timestamp && objeto.timestamp > timestamp) timestamp = objeto.timestamp
-    }
-
-    const obs = {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            usuario: acesso.usuario,
-            servidor,
-            chave,
-            timestamp
-        })
-    }
-
-    return new Promise((resolve, reject) => {
-        fetch(`${api}/dados`, obs)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.mensagem) {
-                    erroConexao(data?.mensagem || `<b>Falha ao carregar</b>: ${chave}`)
-                    reject()
-                }
-                resolve(data)
-            })
-            .catch(err => {
-                const msg = (err && err.message) ? err.message : `<b>Falha ao carregar</b>: ${chave}`
-                erroConexao(msg)
-                reject()
-            })
-    })
-}
-
-async function deletar(caminho, idEvento) {
-
-    const url = `${api}/deletar`
-
-    const objeto = {
-        caminho,
-        usuario: acesso.usuario,
-        servidor
-    }
-
-    try {
-        const response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(objeto)
-        })
-
-        if (!response.ok) {
-            console.error(`Falha ao deletar: ${response.status} ${response.statusText}`)
-            const erroServidor = await response.text()
-            console.error(`Resposta do servidor:`, erroServidor)
-            throw new Error(`Erro HTTP ${response.status}`)
-        }
-
-        const data = await response.json()
-
-        if (idEvento) removerOffline('deletar', idEvento)
-
-        return data
-    } catch (erro) {
-        console.error(`Erro ao tentar deletar '${caminho}':`, erro.message || erro)
-        salvarOffline(objeto, 'deletar', idEvento)
-        removerOverlay()
-        return null
-    }
 }
 
 async function cxOpcoes(name, nomeBase, campos, funcaoAux) {
@@ -1976,16 +1840,6 @@ async function fotoTarefa() {
 
 }
 
-function salvarOffline(objeto, operacao, idEvento) {
-    let dados_offline = JSON.parse(localStorage.getItem('dados_offline')) || {}
-    idEvento = idEvento || ID5digitos()
-
-    if (!dados_offline[operacao]) dados_offline[operacao] = {}
-    dados_offline[operacao][idEvento] = objeto
-
-    localStorage.setItem('dados_offline', JSON.stringify(dados_offline))
-}
-
 async function reprocessarOffline() {
     const dados_offline = JSON.parse(localStorage.getItem('dados_offline')) || {};
 
@@ -2009,7 +1863,7 @@ function removerOffline(operacao, idEvento) {
     localStorage.setItem('dados_offline', JSON.stringify(dados_offline))
 }
 
-async function enviarMargens({ codigos, margem, tabela}) {
+async function enviarMargens({ codigos, margem, tabela }) {
     return new Promise((resolve) => {
         fetch(`${api}/margens`, {
             method: "POST",

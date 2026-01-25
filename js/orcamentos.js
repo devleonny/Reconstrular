@@ -181,8 +181,7 @@ async function orcamentos() {
 function criarLinhaOrcamento(idOrcamento, orcamento) {
 
     const cliente = dados_clientes?.[orcamento.idCliente] || {}
-    const d = dados_distritos?.[cliente?.distrito] || {}
-    const c = d?.cidades?.[cliente?.cidade] || {}
+    const cidade = cidades?.[cliente?.cidade] || {}
 
     const dt = (data) => {
         if (!data) return '-'
@@ -193,8 +192,8 @@ function criarLinhaOrcamento(idOrcamento, orcamento) {
     const versao = orcamento?.versao
     const tds = `
         <td>${cliente?.nome || '...'}</td>
-        <td name="distrito" data-cod="${cliente?.distrito}">${d?.nome || '-'}
-        <td name="cidade" data-cod="${cliente?.cidade}">${c?.nome || '-'}
+        <td name="distrito">${cidade?.distrito || '-'}
+        <td name="cidade" data-cod="${cliente?.cidade}">${cidade?.nome || '-'}
         <td>${dt(orcamento.dataContato)}</td>
         <td>${dt(orcamento.dataVisita)}</td>
         <td>
@@ -247,6 +246,7 @@ async function confirmarExclusaoOrcamento(idOrcamento) {
 async function excluirOrcamento(idOrcamento) {
     overlayAguarde()
     deletar(`dados_orcamentos/${idOrcamento}`)
+    delete dados_orcamentos[idOrcamento]
     await deletarDB('dados_orcamentos', idOrcamento)
     const tr = document.getElementById(idOrcamento)
     if (tr) tr.remove()
@@ -260,7 +260,7 @@ async function formularioOrcamento(idOrcamento) { //29
     const orcamento = dados_orcamentos[idOrcamento]
 
     // Verificação antes de Editar;
-    if (orcamento.finalizado == 'S') {
+    if (orcamento?.finalizado == 'S') {
         return popup(`
             <div style="${horizontal}; background-color: #d2d2d2; padding: 1rem; gap: 1rem;">
                 <span>Se continuar você irá reabrir o orçamento para edição, <br>tem certeza?</span>
@@ -356,12 +356,16 @@ async function salvarOrcamento(idOrcamento) {
         zonas: { ...zonas }
     }
 
+    let zonasNovas = {}
+
     for (const ambiente of Object.keys(ambientes)) {
         const el = document.querySelector(`[name="${ambiente}"]`)
-        if (el && el.value !== '') {
-            if (!orcamentoAtualizado.zonas[el.value]) orcamentoAtualizado.zonas[el.value] = {}
+        if (el && el.value) {
+            zonasNovas[el.value] = orcamento?.zonas?.[el.value] || {}
         }
     }
+
+    orcamentoAtualizado.zonas = zonasNovas
 
     await inserirDados({ [idOrcamento]: orcamentoAtualizado }, 'dados_orcamentos')
 
@@ -493,7 +497,9 @@ async function execucoes(id, proximo = 0) {
                         Adicionar Linha
                         <img src="imagens/baixar.png">
                     </button>
-                    <select onchange="execucoes('${idOrcamento}', this.value)">${opcoesZonas}</select>
+                    <select onchange="salvarExecucao().then(() => execucoes('${idOrcamento}', this.value))">
+                        ${opcoesZonas}
+                    </select>
                 </div>
             </div>
             <div style="${horizontal}; width: 100%; justify-content: space-between; gap: 1rem;">
@@ -530,6 +536,8 @@ async function execucoes(id, proximo = 0) {
     for (const [idItem, dados] of Object.entries(zonas?.[zona1] || {})) {
         adicionarLinha(idItem, dados)
     }
+
+    await atualizarMedidas()
 
 }
 
@@ -583,7 +591,10 @@ function adicionarLinha(idItem = ID5digitos(), dados = {}) {
     const especialidades = []
     let opcoesDescricao = `<option></option>`
 
-    for (const [idCampo, d] of Object.entries(campos)) {
+    const organizado = Object.entries(campos)
+        .sort(([, a], [, b]) => a.descricao.localeCompare(b.descricao))
+
+    for (const [idCampo, d] of organizado) {
 
         especialidades.push(d.especialidade)
 
@@ -592,6 +603,7 @@ function adicionarLinha(idItem = ID5digitos(), dados = {}) {
     }
 
     const opcoesEspecialidade = [...new Set(especialidades)]
+        .sort((a, b) => a.localeCompare(b))
         .map(op => `<option ${dados?.especialidade == op ? 'selected' : ''}>${op}</option>`)
         .join('')
 
@@ -601,21 +613,21 @@ function adicionarLinha(idItem = ID5digitos(), dados = {}) {
         <td>
             <div style="${horizontal}; gap: 5px;">
                 <img onclick="removerLinhaZona(this)" src="imagens/cancel.png" style="width: 2rem;">
-                <select name="especialidade" onchange="buscarCampos(this)">
+                <select name="especialidade" onchange="atualizarMedidas()">
                     <option></option>
                     ${opcoesEspecialidade}
                 </select>
             </div>
         </td>
         <td>
-            <select style="width: 100%;" name="campo" onchange="buscarMedidas(this)">
+            <select style="width: 100%; min-width: 200px;" name="campo" onchange="atualizarMedidas()">
                 ${opcoesDescricao}
             </select>
         </td>
         <td>    
             <div style="${horizontal}; gap: 5px;">
                 <textarea name="descricaoExtra" style="min-width: 150px;" oninput="this.nextElementSibling.style.display = 'flex';">${dados?.descricaoExtra || ''}</textarea>
-                <img src="imagens/concluido.png" onclick="filtroValores(this); this.style.display = 'none';" style="display: none;">
+                <img src="imagens/concluido.png" onclick="atualizarMedidas(); this.style.display = 'none';" style="display: none;">
             </div>
         </td>
         <td>
@@ -623,7 +635,7 @@ function adicionarLinha(idItem = ID5digitos(), dados = {}) {
         </td>
         ${auxC.map(c => `
             <td>
-                <span ${dados?.[c] ? 'class="campo-on" contentEditable="true"' : 'class="campo-off" contentEditable="false"'} oninput="filtroValores(this)" name="${c}">${dados?.[c] || ''}</span>
+                <span ${dados?.[c] ? 'class="campo-on" contentEditable="true"' : 'class="campo-off" contentEditable="false"'} oninput="atualizarMedidas()" name="${c}">${dados?.[c] || ''}</span>
             </td>
             `).join('')
         }
@@ -638,23 +650,28 @@ function adicionarLinha(idItem = ID5digitos(), dados = {}) {
     const trExistente = document.getElementById(idItem)
     if (trExistente) return trExistente.innerHTML = tds
 
-    body.insertAdjacentHTML('beforeend', `<tr id="${idItem}">${tds}</tr>`)
+    body.insertAdjacentHTML(
+        'beforeend',
+        `<tr id="${idItem}" data-zona="${zona1}">${tds}</tr>`
+    )
 
 }
 
 async function removerLinhaZona(img) {
 
     const tr = img.closest('tr')
-    let orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
+
     const idItem = tr.id
-    delete orcamento.zonas[zona1][idItem]
+    delete dados_orcamentos[idOrcamento].zonas[zona1][idItem]
     deletar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}/${idItem}`)
-    await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
+    await inserirDados({ [idOrcamento]: dados_orcamentos[idOrcamento] }, 'dados_orcamentos')
 
     tr.remove()
+
+    salvarExecucao()
 }
 
-function buscarCampos(select) {
+async function buscarCampos(select) {
 
     const tr = select.closest('tr')
     const selectDescricao = tr.querySelector('[name="campo"]')
@@ -676,22 +693,11 @@ function buscarCampos(select) {
 
     selectDescricao.innerHTML = opcoesDescricao
 
-    filtroValores(select)
+    await atualizarMedidas()
 
 }
 
-function buscarMedidas(select) {
-
-    const medida = select.selectedOptions[0].dataset.medida
-    const tr = select.closest('tr')
-    tr.querySelector('[name="medida"]').textContent = medida
-
-    filtroValores(select)
-}
-
-function filtroValores(elemento) {
-
-    const tr = elemento.closest('tr')
+async function atualizarMedidas(salvar = true ) {
 
     const esquema = {
         '': [],
@@ -701,122 +707,121 @@ function filtroValores(elemento) {
         'und': [4]
     }
 
-    const tds = tr.querySelectorAll('td')
-    const medida = tr.querySelector('[name="medida"]').textContent
-    // conta campos preenchidos (apenas m2)
-    let preenchidos = 0
-    if (medida === 'm2') {
-        for (const i of esquema.m2) {
-            const span = tds[i].querySelector('span')
-            if (span.textContent.trim() !== '') preenchidos++
-        }
-    }
+    const trs = document.querySelectorAll('#body tr')
 
-    for (let i = 4; i <= 8; i++) {
+    for (const tr of trs) {
+        const tds = tr.querySelectorAll('td')
+        const campo = tr.querySelector('[name="campo"]')?.selectedOptions[0]?.id
+        const campoRef = campos[campo]
 
-        const span = tds[i].querySelector('span')
+        const medida = campoRef?.medida || ''
+        tr.querySelector('[name="medida"]').textContent = medida
 
-        if (!esquema[medida].includes(i)) {
-            span.classList = 'campo-off'
-            span.textContent = ''
-            span.contentEditable = false
-            continue
-        }
+        if (!medida) continue
 
-        // regra especial do m2
+        let preenchidos = 0
         if (medida === 'm2') {
+            for (const i of esquema.m2) {
+                const span = tds[i].querySelector('span')
+                if (span.textContent.trim() !== '') preenchidos++
+            }
+        }
 
-            if (preenchidos >= 2 && span.textContent.trim() === '') {
+        for (let i = 4; i <= 8; i++) {
+            const span = tds[i].querySelector('span')
+
+            if (!esquema[medida].includes(i)) {
+                span.classList = 'campo-off'
+                span.textContent = ''
+                span.contentEditable = false
+                continue
+            }
+
+            if (medida === 'm2' && preenchidos >= 2 && span.textContent.trim() === '') {
                 span.classList = 'campo-off'
                 span.contentEditable = false
             } else {
                 span.classList = 'campo-on'
                 span.contentEditable = true
             }
-
-        } else {
-            span.classList = 'campo-on'
-            span.contentEditable = true
         }
     }
 
-    salvarExecucao(tr)
-
+    if(salvar) await salvarExecucao()
 }
 
-async function salvarExecucao(tr) {
+async function salvarExecucao() {
+    const trs = document.querySelectorAll('#body tr')
+    if (!trs.length) return
+
     let orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
     if (!orcamento || !zona1) return
     orcamento.zonas ??= {}
 
-    const idItem = tr.id
+    const itensZona = {}
 
-    const el = (campo) => {
-        const elemento = tr.querySelector(`[name="${campo}"]`)
-        if (!elemento) return ''
-        return elemento
+    for (const tr of trs) {
+
+        const el = (campo) => tr.querySelector(`[name="${campo}"]`) || { value: '', textContent: '' }
+
+        const especialidade = el('especialidade').value
+        const descricao = el('campo').value
+        const campo = el('campo').selectedOptions?.[0]?.id || ''
+        const descricaoExtra = el('descricaoExtra').value
+        const medida = el('medida').textContent
+        const unidades = Number(el('unidades').textContent)
+        const metroLinear = Number(el('metroLinear').textContent)
+        const comprimento = Number(el('comprimento').textContent)
+        const largura = Number(el('largura').textContent)
+        const altura = Number(el('altura').textContent)
+
+        let quantidade = 0
+        if (medida == 'und' || medida == 'ml') quantidade = unidades || metroLinear
+        if (medida == 'm2' || medida == 'm3') quantidade = (altura || 1) * (largura || 1) * (comprimento || 1)
+
+        const campoRef = campos[campo] || {}
+        const unitario = campoRef?.total || 0
+        const total = quantidade * unitario
+
+        // atualiza a tabela
+        el('quantidade').textContent = quantidade
+        el('unitario').textContent = dinheiro(unitario)
+        el('total').textContent = dinheiro(total)
+        el('edicao').innerHTML = campo ? `<img onclick="composicoes('${campo}')" src="imagens/lapis.png">` : ''
+
+        // monta objeto para salvar depois
+        itensZona[tr.id] = {
+            campo,
+            mao_obra: campoRef?.mao_obra,
+            materiais: campoRef?.materiais,
+            ferramentas: campoRef?.ferramentas,
+            especialidade,
+            descricao,
+            descricaoExtra,
+            medida,
+            unidades,
+            metroLinear,
+            comprimento,
+            largura,
+            altura,
+            quantidade,
+            unitario
+        }
     }
 
-    const especialidade = el('especialidade').value
-    const descricao = el('campo').value
-    const campo = el('campo').selectedOptions[0].id
-    const descricaoExtra = el('descricaoExtra').value
-    const medida = el('medida').textContent
-    const unidades = Number(el('unidades').textContent)
-    const metroLinear = Number(el('metroLinear').textContent)
-    const comprimento = Number(el('comprimento').textContent)
-    const largura = Number(el('largura').textContent)
-    const altura = Number(el('altura').textContent)
+    // salva toda a zona de uma vez
+    orcamento.zonas[zona1] = itensZona
 
-    let quantidade = 0
-    if (medida == 'und' || medida == 'ml') quantidade = unidades || metroLinear
-    if (medida == 'm2' || medida == 'm3') quantidade = (altura || 1) * (largura || 1) * (comprimento || 1)
+    await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
+    enviar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}`, itensZona)
 
-    const campoRef = campos[campo] || {}
-    const unitario = campoRef?.totalComposicao || 0
-    const total = (quantidade * unitario)
+    // recalcula total geral
+    const total_geral = Object.values(orcamento.zonas).reduce((total, zona) => {
+        return total + Object.values(zona).reduce((soma, item) => soma + (Number(item.quantidade) || 0) * (Number(item.unitario) || 0), 0)
+    }, 0)
 
-    el('edicao').innerHTML = campo ? `<img onclick="composicoes('${campo}')" src="imagens/lapis.png">` : ''
-    el('quantidade').textContent = quantidade
-    el('unitario').textContent = dinheiro(unitario)
-    el('total').textContent = dinheiro(total)
-
-    const item = {
-        campo,
-        mao_obra: campoRef?.mao_obra,
-        materiais: campoRef?.materiais,
-        ferramentas: campoRef?.ferramentas,
-        especialidade,
-        descricao,
-        descricaoExtra,
-        medida,
-        unidades,
-        metroLinear,
-        comprimento,
-        largura,
-        altura,
-        quantidade,
-        unitario
-    }
-
-    orcamento.zonas[zona1] ??= {}
-    orcamento.zonas[zona1][idItem] = item
-
-    await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos');
-    enviar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}/${idItem}`, item)
-
-    const total_geral = totalGeral(orcamento?.zonas)
     if (total_geral !== orcamento.total_geral) enviar(`dados_orcamentos/${idOrcamento}/total_geral`, total_geral)
     orcamento.total_geral = total_geral
-
-    function totalGeral(zonas = {}) {
-        return Object.values(zonas).reduce((total, zona) => {
-            return total + Object.values(zona).reduce((somaZona, item) => {
-                return somaZona + (Number(item.quantidade) || 0) * (Number(item.unitario) || 0)
-            }, 0)
-        }, 0)
-    }
-
 }
 
 function comparativoRevisoes(idOrcamento) {
@@ -1104,7 +1109,7 @@ async function listagem(idOrcamento, tabela) {
 async function orcamentoFinal(idOrcamento, emJanela) {
 
     campos = await recuperarDados('campos')
-    const orcamento = dados_orcamentos[idOrcamento]
+    const orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
     const idCliente = orcamento?.idCliente || ''
     const cliente = dados_clientes[idCliente]
 
@@ -1171,12 +1176,13 @@ async function orcamentoFinal(idOrcamento, emJanela) {
 
     let itens = ''
     for (const [zona, especialidades] of Object.entries(orcamento?.zonas || {})) {
-        for (const dados of Object.values(especialidades)) {
+        for (const [idLancamento, dados] of Object.entries(especialidades)) {
 
             const dadosCampoEspecifico = campos?.[dados?.campo] || {}
             const quantidade = dados?.quantidade || 0
-            const totalComposicao = dadosCampoEspecifico?.totalComposicao || 0
+            const totalComposicao = dadosCampoEspecifico?.total || 0
             const totalLinha = totalComposicao * quantidade
+
             total += totalLinha
 
             itens += `
@@ -1191,7 +1197,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
                     <td>${dados?.descricao || '...'}</td>
                     <td>
                         <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
-                            <img data-controle="editar" name="editaveis" name="editaveis" onclick="editarDescricaoExtra('${idOrcamento}', '${idCampo}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">
+                            <img data-controle="editar" name="editaveis" name="editaveis" onclick="editarDescricaoExtra('${idOrcamento}', '${idLancamento}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">
                             <span>${dados?.descricaoExtra || '...'}</span>
                         </div>
                     </td>
@@ -1425,30 +1431,30 @@ function esconderEditaveis(gatilho) {
 
 }
 
-async function editarDescricaoExtra(idOrcamento, idCampo, zona) {
+async function editarDescricaoExtra(idOrcamento, idLancamento, zona) {
+
+    const orcamento = dados_orcamentos[idOrcamento]
 
     const acumulado = `
         <div style="${vertical}; background-color: #d2d2d2; padding: 1rem;">
             <span>Acrescente uma descrição extra</span>
             <hr style="width: 100%;">
-            <textarea id="descricaoExtra"></textarea>
+            <textarea id="descricaoExtra">${orcamento.zonas?.[zona]?.[idLancamento]?.descricaoExtra || ''}</textarea>
             <br>
-            <button onclick="salvarDescricao('${idOrcamento}', '${idCampo}', '${zona}')">Salvar</button>
+            <button onclick="salvarDescricao('${idOrcamento}', '${idLancamento}', '${zona}')">Salvar</button>
         </div>
     `
 
     popup(acumulado, 'Editar descrição extra', true)
 }
 
-async function salvarDescricao(idOrcamento, idCampo, zona) {
-
-    let orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
+async function salvarDescricao(idOrcamento, idLancamento, zona) {
 
     const descricaoExtra = document.getElementById('descricaoExtra')
 
-    orcamento.zonas[zona][idCampo].descricaoExtra = descricaoExtra.value
+    dados_orcamentos[idOrcamento].zonas[zona][idLancamento].descricaoExtra = descricaoExtra.value
 
-    await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
+    await inserirDados({ [idOrcamento]: dados_orcamentos[idOrcamento] }, 'dados_orcamentos')
 
     await orcamentoFinal(idOrcamento)
 
