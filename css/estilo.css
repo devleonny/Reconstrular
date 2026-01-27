@@ -12,12 +12,26 @@ html {
     font-size: 0.9rem;
 }
 
+#tela {
+    justify-content: center;
+    align-items: center;
+    display: flex;
+    width: 100%;
+}
+
 hr {
     width: 100%;
 }
 
 img {
     width: 2rem;
+}
+
+.logo {
+    box-shadow: 0 0 5px #222;
+    overflow: auto;
+    width: 7rem;
+    border-radius: 5px;
 }
 
 .cabecalho-clientes {
@@ -96,7 +110,7 @@ img {
     justify-content: center;
     flex-direction: column;
     height: 80vh;
-    width: 90vw;
+    width: 100%;
     background-color: #0000005e;
     border-radius: 5px;
     color: white;
@@ -165,11 +179,13 @@ img {
 }
 
 .nomeUsuario {
+    margin-bottom: 0.5rem;
     padding: 5px;
-    width: 80%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: start;
     background-color: #5b707f;
-    border-top-right-radius: 10px;
-    border-bottom-right-radius: 10px;
     color: white;
 }
 
@@ -272,14 +288,6 @@ img {
     justify-content: start;
     flex-direction: column;
     gap: 1rem;
-}
-
-.nomeUsuario {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-    width: 100%;
-    margin-bottom: 5vw;
 }
 
 .nomeUsuario span {
@@ -581,8 +589,7 @@ button {
     border-right: 1px solid #797979;
     height: max-content;
     max-height: 70vh;
-    min-width: 100%;
-    max-width: 80vw;
+    width: 100%;
     overflow: auto;
 }
 
@@ -639,31 +646,29 @@ button {
 }
 
 .menu-container {
-    position: relative;
-    height: 100%;
-    overflow: hidden;
+    margin-top: 3rem;
+    width: 100%;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+}
+
+.telaInterna {
+    width: 80%;
+    padding: 2vw 1vw;
 }
 
 .side-menu {
-    position: fixed;
-    top: 0;
-    left: -250px;
-    width: 250px;
-    height: 100%;
+    width: 200px;
+    height: 100vh;
     background: #222222ec;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
-    transition: 0.3s;
-    z-index: 200;
     display: flex;
     align-items: center;
     justify-content: start;
     flex-direction: column;
     gap: 1px;
     overflow: auto;
-}
-
-.side-menu.active {
-    left: 0;
 }
 
 .side-menu::-webkit-scrollbar {
@@ -897,10 +902,6 @@ input[type="file"] {
     width: 10vw;
 }
 
-.telaInterna {
-    padding: 2vw 1vw;
-}
-
 .camposCadastro {
     display: flex;
     flex-direction: column;
@@ -933,6 +934,9 @@ input[type="file"] {
 }
 
 .toolbar {
+    left: 0;
+    top: 0;
+    position: fixed;
     display: flex;
     align-items: center;
     justify-content: start;
@@ -1115,7 +1119,8 @@ input[type="file"] {
 }
 
 .cmp-desc {
-    padding: 0 1rem 0 1rem;;
+    padding: 0 1rem 0 1rem;
+    ;
     flex: 1;
 }
 

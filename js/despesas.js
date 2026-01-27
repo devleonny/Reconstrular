@@ -369,7 +369,7 @@ async function criarLinha(dados, id, nomeBase) {
             <td style="text-align: left;">${dados.nome || ''}</td>
             <td>${dinheiro(dados.preco)}</td>
             <td style="text-align: left;"><a href="${dados.link || ''}">${dados.link || ''}</a></td>
-            <td class="detalhes">
+            <td>
                 <img onclick="adicionarGenerico('${nomeBase}', '${id}')" src="imagens/pesquisar.png">
             </td>
         </tr>
@@ -581,7 +581,7 @@ function criarLinhaFornecedores(idFornecedor, fornecedor) {
           <td>${fornecedor?.numeroContribuinte || ''}</td>
           <td>${cidade?.distrito || ''}</td>
           <td>${cidade?.nome || ''}</td>
-          <td class="detalhes">
+          <td>
               <img onclick="adicionarFornecedor('${idFornecedor}')" src="imagens/pesquisar.png">
           </td>
       </tr>

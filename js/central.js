@@ -409,6 +409,7 @@ async function telaPrincipal() {
     acesso = JSON.parse(localStorage.getItem('acesso'))
     if (!acesso) return removerAcesso()
     funcoes = await recuperarDados('funcoes')
+
     const acumulado = `
 
     <div class="menu-container">
@@ -428,6 +429,7 @@ async function telaPrincipal() {
             ${btn('pessoas', 'Clientes', 'telaClientes()')}
             ${btn('contas', 'Despesas', 'telaDespesas()')}
             ${btn('orcamentos', 'Orçamentos', 'telaOrcamentos()')}
+            ${btn('niveis', 'Níveis de Acesso', 'telaNiveis()')}
             ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
             ${btn('chat',
         `<div style="${horizontal}; justify-content: space-between; width: 100%; margin-right: 1rem;">
@@ -442,7 +444,7 @@ async function telaPrincipal() {
 
         <div class="telaInterna">
             <div class="plano-fundo">
-                <h1>Reconstrular</h1>
+                <img src="imagens/logo.jpeg" class="logo">
                 <p>Seja bem vindo!</p>
             </div>
         </div>
@@ -497,7 +499,11 @@ async function atualizarApp() {
     cidades = await recuperarDados('cidades')
     dados_setores = await recuperarDados('dados_setores')
 
-    localStorage.setItem('acesso', JSON.stringify(acesso))
+    const user = dados_setores[acesso.usuario]
+    if (user) {
+        acesso = user
+        localStorage.setItem('acesso', JSON.stringify(acesso))
+    }
 
     sincronizarApp({ remover: true })
 
@@ -607,7 +613,6 @@ function telaConfiguracoes() {
             <br>
             ${btn('preco', 'Configuração da Tarefas', `desativado = 'N'; telaPrecos()`)}
             ${btn('preco_neg', 'Tarefas Desativadas', `desativado = 'S'; telaPrecos()`)}
-            ${btn('niveis', 'Níveis de Acesso', 'telaNiveis()')}
         </div>
     `
 
