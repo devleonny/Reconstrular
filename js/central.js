@@ -821,28 +821,18 @@ function criarLinhaFuncao(idFuncao, dados) {
     ]
 
     // Lançamentos
-    const tdsExtras = colunas.map(col => `
-    <td style="text-align: left; min-width: 200px;">
-        <div style="${vertical}; gap: 2px;">
-            <select onchange="atualizarRegra(this, '${col}', '${idFuncao}')">
-                ${opcoes.map(op =>
-        `<option ${dados?.[col]?.regra === op ? 'selected' : ''}>${op}</option>`
-    ).join('')}
-            </select>
-            ${montarFiltros({ idFuncao, dados, coluna: col })}
-        </div>
-    </td>`).join('')
+    const tdsExtras = colunas
+        .map(col => `
+            <td>
+                <img src="imagens/pesquisar.png">
+            </td>`)
+        .join('')
 
 
     const tds = `
         <td>${dados?.nome || ''}</td>
         <td>
-            <div style="${horizontal}; justify-content: space-between; align-items: start; gap: 0.5rem;"> 
-                <div style="${vertical}; gap: 2px;"> 
-                    ${autorizados}
-                </div>
-                <img onclick="adicionarFuncao('${idFuncao}')" src="imagens/pesquisar.png">
-            </div>
+            <img onclick="adicionarFuncao('${idFuncao}')" src="imagens/pesquisar.png">
         </td>
         ${tdsExtras}
     `
@@ -1082,13 +1072,14 @@ async function formularioEPI(idColaborador) {
             </table>
             <br>
 
-            ${senhas('Pin Colaborador', 4)}
+            <div style="${horizontal}; justify-content: space-evenly; width: 100%;">
+                <div style="${vertical}">
+                    ${senhas('Pin Colaborador', 4)}
+                    ${senhas('Senha Supervisor')}
+                </div>
+                <button onclick="salvarEpi('${idColaborador}')">Inserir</button>
+            </div>
 
-            ${senhas('Senha Supervisor')}
-
-        </div>
-        <div class="rodape-formulario">
-            <button onclick="salvarEpi('${idColaborador}')">Inserir</button>
         </div>
     `
 
@@ -1101,7 +1092,8 @@ async function salvarEpi(idColaborador) {
 
     const pinInput = document.getElementById('pin')
 
-    if (pinInput.dataset.pin !== pinInput.value) return popup(mensagem('Pin do colaborador não confere'), 'Alerta', true)
+    if (pinInput.dataset.pin !== pinInput.value) 
+        return popup(mensagem('Pin do colaborador não confere'), 'Alerta', true)
 
     let colaborador = await recuperarDado('dados_colaboradores', idColaborador)
     const inputsAtivos = document.querySelectorAll('input[name="camposEpi"]:checked')
@@ -1125,7 +1117,8 @@ async function salvarEpi(idColaborador) {
     const acesso = JSON.parse(localStorage.getItem('acesso'))
     const resposta = await verificarSupervisor(acesso.usuario, senhaSupervisor.value)
 
-    if (resposta !== 'Senha válida') return popup(mensagem(resposta), 'Alerta', true)
+    if (resposta !== 'Senha válida') 
+        return popup(mensagem(resposta), 'Alerta', true)
 
     await enviar(`dados_colaboradores/${idColaborador}/epi`, epi)
     await inserirDados({ [idColaborador]: colaborador }, 'dados_colaboradores')
