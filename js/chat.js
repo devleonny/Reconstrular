@@ -159,14 +159,12 @@ function pesquisarEmMensagens(texto) {
 
 async function confirmarArquivamento() {
 
-    const acumulado = `
-        <div style="padding: 1rem; background-color: #d2d2d2; gap: 0.5rem; ${horizontal};">
-            <button onclick="arquivarMensagens('S')">Arquivar</button>
-            <button onclick="arquivarMensagens('N')">Desarquivar</button>
-        </div>
-    `
+    const botoes = [
+        { texto: 'Arquivar', img: 'concluido', funcao: `arquivarMensagens('S')` },
+        { texto: 'Desarquivar', img: 'desarquivar', funcao: `arquivarMensagens('N')` }
+    ]
 
-    popup(acumulado, 'Arquivar mensagens', true)
+    popup({ mensagem: 'Arquivar mensagens?', botoes, titulo: 'Arquivar mensagens' })
 
 }
 
@@ -227,7 +225,7 @@ function criarDivMensagem(idMensagem, m) {
 
 async function abrirMensagem(idMensagem) {
     const m = mensagens[idMensagem]
-    const acumulado = `
+    const elemento = `
         <div style="${vertical}; min-width: 20rem; background-color: #d2d2d2; gap: 2px; padding: 1rem;">
             <span><b>Remetente:</b> <u>${m.remetente}</u></span>
             <span><b>Assunto:</b> ${m?.assunto || '...'}</span>
@@ -240,7 +238,7 @@ async function abrirMensagem(idMensagem) {
     m.lido = 'S'
     await inserirDados({ [idMensagem]: m }, 'mensagens')
     enviar(`mensagens/${idMensagem}/lido`, 'S')
-    popup(acumulado, `Mensagem de ${m.remetente}`, true)
+    popup({ elemento, titulo: `Mensagem de ${m.remetente}` })
 
     const divMsg = document.getElementById(idMensagem)
     divMsg.classList = `m-sagem-S`
@@ -251,7 +249,7 @@ async function abrirMensagem(idMensagem) {
 
 function balaoMensagem(destinatario) {
 
-    const acumulado = `
+    const elemento = `
         <div class="painel-email">
             <span><b>Para:</b> ${destinatario}</span>
             <span>Assunto</span>
@@ -263,18 +261,20 @@ function balaoMensagem(destinatario) {
         </div>
     `
 
-    popup(acumulado, 'Enviar mensagem', true)
+    popup({ elemento, titulo: 'Enviar mensagem' })
 }
 
 async function enviarMensagem() {
 
     overlayAguarde()
     const msg = document.querySelector('[name="mensagem"]')
-    if (!msg.value) return popup(mensagem('Mensagem em branco...'), 'Alerta', true)
+    if (!msg.value)
+        return popup({ mensagem: 'Mensagem em branco...' })
 
     const assunto = document.querySelector('[name="assunto"]').value
 
-    if (!assunto) return popup(mensagem('Assunto em branco...'), 'Alerta', true)
+    if (!assunto)
+        return popup({ mensagem: 'Assunto em branco...' })
 
     const destinatario = msg.dataset.destinatario
     const idMensagem = unicoID()
@@ -333,14 +333,16 @@ async function arquivarMensagens(operacao) {
         })
 
         if (!response.ok) {
-            popup(mensagem('Falha ao arquivar mensagens, tente novamente mais tarde.'), 'Aviso', true)
+            popup({ mensagem: 'Falha ao arquivar mensagens, tente novamente mais tarde.' })
             const erroServidor = await response.text()
             console.error(`Resposta do servidor:`, erroServidor)
         }
 
         const data = await response.json()
 
-        if (data.mensagem) popup(mensagem(data.mensagem), 'Aviso', true)
+        if (data.mensagem)
+            return popup({ mensagem: data.mensagem })
+
         await sincronizarDados('mensagens')
         await painelUsuarios()
         removerPopup()
@@ -349,7 +351,7 @@ async function arquivarMensagens(operacao) {
 
     } catch (erro) {
         console.log(erro)
-        return popup(mensagem('Falha ao arquivar mensagens, tente novamente mais tarde.'), 'Aviso', true)
+        return popup({ mensagem: 'Falha ao arquivar mensagens, tente novamente mais tarde.' })
     }
 
 }

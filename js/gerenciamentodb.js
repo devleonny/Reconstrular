@@ -321,6 +321,7 @@ async function deletar(caminho, idEvento) {
 
     const objeto = {
         caminho,
+        servidor,
         usuario: acesso.usuario
     }
 

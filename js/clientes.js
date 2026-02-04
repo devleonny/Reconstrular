@@ -128,8 +128,7 @@ async function formularioCliente(idCliente) {
         { texto: 'Cidade', elemento: `<select name="cidade"></select>` },
     ]
 
-    const form = new formulario({ linhas, botoes, titulo: 'Formulário de Cliente' })
-    form.abrirFormulario()
+    popup({ linhas, botoes, titulo: 'Formulário de Cliente' })
 
     if (cidade) {
         const lista = resolverCidadesPorDistrito(cidade.distrito)
@@ -191,7 +190,8 @@ function regrasClientes() {
 
 async function salvarCliente(idCliente) {
 
-    if (regrasClientes()) return popup(mensagem('Verifique os campos destacados'), 'Alerta', true)
+    if (regrasClientes())
+        return popup({ mensagem: 'Verifique os campos destacados' })
 
     const obVal = (texto) => {
         const painel = document.querySelector('.painel-padrao')
@@ -200,7 +200,7 @@ async function salvarCliente(idCliente) {
     }
 
     idCliente = idCliente || ID5digitos()
-    let cliente = {
+    const cliente = {
         nome: obVal('nome'),
         moradaFiscal: obVal('moradaFiscal'),
         moradaExecucao: obVal('moradaExecucao'),

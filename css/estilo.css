@@ -662,7 +662,6 @@ button {
     width: 200px;
     height: 100vh;
     background: #222222ec;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
     display: flex;
     align-items: center;
     justify-content: start;
@@ -782,19 +781,6 @@ input[type="file"] {
 
 .aguarde img {
     width: 35vw;
-}
-
-.mensagem {
-    background-color: #d2d2d2;
-    display: flex;
-    gap: 10px;
-    padding: 2vw;
-    align-items: center;
-    justify-content: center;
-}
-
-.mensagem img {
-    width: 3rem;
 }
 
 .pesquisa {

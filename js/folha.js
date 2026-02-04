@@ -263,7 +263,7 @@ async function registroHoras(img) {
     if (marcacoes.lenght == 1) marcacoes.push('00:00')
     const inputs = marcacoes.map(m => `<input name="horas" type="time" value="${m}">`).join('')
 
-    const acumulado = `
+    const elemento = `
         <div style="background-color: #d2d2d2; min-width: 200px; ${vertical}; gap: 0.5rem; padding: 1rem;">
 
             <span>Marcações</span>
@@ -276,7 +276,7 @@ async function registroHoras(img) {
         </div>
     `
 
-    popup(acumulado, 'Edição de Horas', true)
+    popup({ elemento, titulo: 'Edição de Horas' })
 }
 
 
@@ -352,7 +352,7 @@ async function gerarTodosPDFs(idColaborador, nome) {
         }
 
         console.log(colaboradores);
-        
+
 
         const requisicao = {
             colaboradores,
@@ -371,18 +371,17 @@ async function gerarTodosPDFs(idColaborador, nome) {
         // erro HTTP
         if (!resposta.ok) {
             removerOverlay()
-            return popup(mensagem(`Erro: ${resposta.status} - Falha ao gerar os PDFs`), 'Erro', true)
+            return popup({ mensagem: `Erro: ${resposta.status} - Falha ao gerar os PDFs` })
         }
 
         const contentType = resposta.headers.get('content-type') || ''
 
         if (contentType.includes('application/json')) {
             const dados = await resposta.json()
-            console.log(dados);
-
+ 
             if (dados.mensagem) {
                 removerOverlay()
-                return popup(mensagem(dados.mensagem), 'Alerta', true)
+                return popup({ mensagem: dados.mensagem })
             }
         }
 
@@ -398,6 +397,6 @@ async function gerarTodosPDFs(idColaborador, nome) {
         return
 
     } catch (err) {
-        popup(mensagem(`Falha ao gerar PDFs<br><small>${err.message}</small>`), 'Erro', true)
+        popup({ mensagem: `Falha ao gerar PDFs<br><small>${err.message}</small>` })
     }
 }

@@ -69,7 +69,7 @@ async function telaPrecos() {
     const telaInterna = document.querySelector('.telaInterna')
     if (!blocoTabela) telaInterna.innerHTML = acumulado
 
-    const camposOrdenados = 
+    const camposOrdenados =
         Object.entries(campos)
             .sort(([, a], [, b]) =>
                 (a.especialidade || '')
@@ -94,13 +94,10 @@ async function telaPrecos() {
 }
 
 function confirmarDesativacao() {
-    const acumulado = `
-        <div style="${horizontal}; background-color: #d2d2d2; padding: 1rem; gap: 1rem;">
-            <span>Deseja desativar todos os itens marcados?</span>
-            <button onclick="desativarEmMassa()">Confirmar</button>
-        </div>
-    `
-    popup(acumulado, 'Desativar Itens', true)
+    const botoes = [
+        { texto: 'Confirmar', img: 'concluido', funcao: `desativarEmMassa()` }
+    ]
+    popup({ botoes, mensagem: 'Desativar itens?', nra: false })
 }
 
 async function desativarEmMassa() {
@@ -116,7 +113,9 @@ async function desativarEmMassa() {
 
     const resposta = await desativarCampos(desativar)
 
-    if (resposta.mensagem) return popup(mensagem(resposta.mensagem), 'Aviso', true)
+    if (resposta.mensagem)
+        return popup({ mensagem: resposta.mensagem })
+
     await sincronizarDados('campos')
     await telaPrecos()
     removerOverlay()
@@ -153,8 +152,7 @@ function editarMargemEmMassa(tabela) {
         { texto: 'Salvar', img: 'concluido', funcao: `aplicarEmMassa('${tabela}')` }
     ]
 
-    const form = new formulario({ botoes, linhas, titulo: 'Aplicar margem em massa' })
-    form.abrirFormulario()
+    popup({ botoes, linhas, titulo: 'Aplicar margem em massa' })
 
 }
 
@@ -163,7 +161,9 @@ async function aplicarEmMassa(tabela) {
     overlayAguarde()
 
     const margemMassa = document.querySelector(`[name="margemMassa_${tabela}"]`)
-    if (!margemMassa) return popup(mensagem('O campo margem não pode ficar vazio!'), 'Alerta', true)
+    if (!margemMassa)
+        return popup({ mensagem: 'O campo margem não pode ficar vazio!' })
+
     const margemNum = Number(margemMassa.value)
 
     campos = await recuperarDados('campos')
@@ -183,7 +183,8 @@ async function aplicarEmMassa(tabela) {
 
     const resposta = await enviarMargens({ codigos, margem: margemNum, tabela })
 
-    if (resposta.mensagem) return popup(mensagem(resposta.mensagem), 'Alerta', true)
+    if (resposta.mensagem)
+        return popup({ mensagem: resposta.mensagem })
 
     removerPopup()
     await inserirDados(campos, 'campos')
@@ -306,8 +307,8 @@ async function edicaoItem(idCampo) {
 
     const titulo = idCampo ? 'Editar Campo' : 'Criar Campo'
 
-    const form = new formulario({ linhas, botoes, titulo })
-    form.abrirFormulario()
+    popup({ linhas, botoes, titulo })
+
 }
 
 async function salvarCampo(idCampo = ID5digitos()) {
@@ -356,8 +357,8 @@ async function painelMargem(id, tabela) {
         { texto: 'Salvar', img: 'concluido', funcao: `salvarMargem('${tabela}')` }
     ]
 
-    const form = new formulario({ linhas, botoes, titulo: 'Gerenciar Margem' })
-    form.abrirFormulario()
+    popup({ linhas, botoes, titulo: 'Gerenciar Margem' })
+
 }
 
 function calcularValorFinal(subtotal, input) {
@@ -427,7 +428,7 @@ async function composicoes(id, tP) {
             </div>`
     }
 
-    const acumulado = `
+    const elemento = `
         <div style="${vertical}; min-width: 500px; padding: 1rem; background-color: #d2d2d2; overflow: auto;">
 
             <div style="${vertical}; gap: 3px;">
@@ -456,7 +457,7 @@ async function composicoes(id, tP) {
         </div>
     `
 
-    popup(acumulado, 'Configuração da Tarefa', true)
+    popup({ elemento, titulo: 'Configuração da Tarefa'})
 
     toogleTabela('materiais')
 

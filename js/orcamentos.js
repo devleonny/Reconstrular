@@ -234,13 +234,10 @@ function criarLinhaOrcamento(idOrcamento, orcamento) {
 
 async function confirmarExclusaoOrcamento(idOrcamento) {
 
-    const acumulado = `
-        <div style="${vertical}; gap: 1rem; padding: 1rem; background-color: #d2d2d2;">
-            <span>Tem certeza que deseja excluir o Orçamento?</span>
-            <button onclick="excluirOrcamento('${idOrcamento}')">Confirmar</button>
-        </div>
-    `
-    popup(acumulado, 'Tem certeza?', true)
+    const botoes = [
+        { texto: 'Confirmar', img: 'concluido', funcao: `excluirOrcamento('${idOrcamento}')` }
+    ]
+    popup({ botoes, mensagem: 'Deseja excluir o orçamento?', nra: false })
 }
 
 async function excluirOrcamento(idOrcamento) {
@@ -261,12 +258,11 @@ async function formularioOrcamento(idOrcamento) { //29
 
     // Verificação antes de Editar;
     if (orcamento?.finalizado == 'S') {
-        return popup(`
-            <div style="${horizontal}; background-color: #d2d2d2; padding: 1rem; gap: 1rem;">
-                <span>Se continuar você irá reabrir o orçamento para edição, <br>tem certeza?</span>
-                <button onclick="idOrcamento = '${idOrcamento}'; alterarFinalizacao('N'); formularioOrcamento('${idOrcamento}'); removerPopup()">Confirmar</button>
-            </div>
-            `, 'Tem certeza?', true)
+
+        const botoes = [
+            { texto: 'Confirmar', img: 'concluido', funcao: `idOrcamento = '${idOrcamento}'; alterarFinalizacao('N'); formularioOrcamento('${idOrcamento}'); removerPopup()` }
+        ]
+        return popup({ mensagem: `Se continuar você irá reabrir o orçamento para edição, <br>tem certeza?</span>`, botoes, nra: false })
     }
 
     dados_clientes = await recuperarDados('dados_clientes')
@@ -344,7 +340,8 @@ async function salvarOrcamento(idOrcamento) {
     const select = document.querySelector('[name="idCliente"]')
     const idCliente = select.selectedOptions[0]?.id
 
-    if (!idCliente) return popup(mensagem('Campo Cliente obrigatório'), 'Alerta')
+    if (!idCliente)
+        return popup({ mensagem: 'Campo Cliente obrigatório' })
 
     let orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
     let zonas = orcamento?.zonas || {}
@@ -379,13 +376,10 @@ async function salvarOrcamento(idOrcamento) {
 
 function confirmarExcluirZona() {
 
-    const acumulado = `
-        <div style="${horizontal}; gap: 10px; padding: 1rem; background-color: #d2d2d2;">
-            <span>Tem certeza que deseja excluir esta Zona?</span>
-            <button onclick="excluirZona()">Confirmar</button>
-        </div>
-    `
-    popup(acumulado, 'Tem certeza?', true)
+    const botoes = [
+        { texto: 'Confirmar', img: 'concluido', funcao: `excluirZona()` }
+    ]
+    popup({ botoes, mensagem: 'Tem certeza?' })
 }
 
 async function excluirZona() {
@@ -414,12 +408,10 @@ async function execucoes(id, proximo = 0) {
 
     // Verificação antes de Editar;
     if (orcamento.finalizado == 'S') {
-        return popup(`
-            <div style="${horizontal}; background-color: #d2d2d2; padding: 1rem; gap: 1rem;">
-                <span>Se continuar você irá reabrir o orçamento para edição, <br>tem certeza?</span>
-                <button onclick="alterarFinalizacao('N'); execucoes('${id}'); removerPopup()">Confirmar</button>
-            </div>
-            `, 'Tem certeza?', true)
+        const botoes = [
+            { texto: 'Confirmar', img: 'concluido', funcao: `alterarFinalizacao('N'); execucoes('${id}'); removerPopup()` }
+        ]
+        return popup({ botoes, menagem: 'Tem certeza?', nra: false })
     }
 
     campos = await recuperarDados('campos')
@@ -428,8 +420,8 @@ async function execucoes(id, proximo = 0) {
     const chavesZonas = Object.keys(zonas)
 
     if (chavesZonas.length === 0) {
-        await orcamentos();
-        popup(mensagem('Orçamento sem nenhuma zona disponível'), 'Alerta');
+        await orcamentos()
+        popup({ mensagem: 'Orçamento sem nenhuma zona disponível' })
         return
     }
 
@@ -697,7 +689,7 @@ async function buscarCampos(select) {
 
 }
 
-async function atualizarMedidas(salvar = true ) {
+async function atualizarMedidas(salvar = true) {
 
     const esquema = {
         '': [],
@@ -747,7 +739,7 @@ async function atualizarMedidas(salvar = true ) {
         }
     }
 
-    if(salvar) await salvarExecucao()
+    if (salvar) await salvarExecucao()
 }
 
 async function salvarExecucao() {
@@ -832,7 +824,7 @@ function comparativoRevisoes(idOrcamento) {
 
     const keys = Object.keys(revisoes)
     if (!keys.length) {
-        return popup(mensagem('Sem revisões'), 'Alerta', true)
+        return popup({ mensagem: 'Sem revisões' })
     }
 
     function render(R) {
@@ -967,7 +959,7 @@ function comparativoRevisoes(idOrcamento) {
             ${keys.map(k => `<option value="${k}">${k}</option>`).join('')}
         </select>
     `
-    popup(`
+    const elemento = `
         <div class="comparativo-revisoes">
             <div class="cmp-topo">
                 ${selectHTML}
@@ -976,7 +968,8 @@ function comparativoRevisoes(idOrcamento) {
                 ${render(keys[0])}
             </div>
         </div>
-    `, 'Comparativo de Revisões', true)
+    `
+    popup({ elemento, titulo: 'Comparativo de Revisões' })
 
     document.getElementById('cmp-select').onchange = e => {
         document.getElementById('cmp-conteudo').innerHTML = render(e.target.value)
@@ -1076,7 +1069,7 @@ async function listagem(idOrcamento, tabela) {
         }
     }
 
-    const acumulado = `
+    const elemento = `
         <div class="tela-orcamento">
             <div style="width: 100%; ${horizontal}; justify-content: start; gap: 3px; padding: 0.5rem;">
                 <button onclick="imprimirRecorte()">Imprimir</button>
@@ -1100,7 +1093,7 @@ async function listagem(idOrcamento, tabela) {
         </div>
     `
 
-    popup(acumulado, 'Listagem de Materiais', true)
+    popup({ elemento, titulo: 'Listagem de Materiais' })
 
     document.querySelector('.total-valor').textContent = dinheiro(total)
 
@@ -1209,7 +1202,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
         }
     }
 
-    const acumulado = `
+    const elemento = `
         <div class="tela-orcamento">
 
             ${emJanela
@@ -1241,10 +1234,10 @@ async function orcamentoFinal(idOrcamento, emJanela) {
     `
 
     if (emJanela) {
-        popup(acumulado, 'Orçamento', true)
+        popup({ elemento, titulo: 'Orçamento' })
         esconderEditaveis(true)
     } else {
-        telaInterna.innerHTML = acumulado
+        telaInterna.innerHTML = elemento
     }
 
     document.querySelector('.total-valor').textContent = dinheiro(total)
@@ -1352,7 +1345,8 @@ async function enviarOrcamentoPorEmail(idOrcamento) {
     const resposta = await pdfEmail({ html, emails, htmlContent, titulo })
     esconderEditaveis(false)
 
-    if (resposta.mensagem) return popup(mensagem(JSON.stringify(resposta.mensagem)), 'Aviso', true)
+    if (resposta.mensagem)
+        return popup({ mensagem: JSON.stringify(resposta.mensagem) })
 
     if (resposta.success) {
 
@@ -1364,7 +1358,7 @@ async function enviarOrcamentoPorEmail(idOrcamento) {
         await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
         enviar(`dados_orcamentos/${idOrcamento}/emailEnviado`, orcamento.emailEnviado)
         await orcamentos(finalizado)
-        return popup(mensagem('Enviado com sucesso', 'imagens/concluido.png'), 'Feito', true)
+        return popup({ mensagem, titulo: 'Enviado com sucesso', imagem: 'imagens/concluido.png()' })
     }
 
 }
@@ -1435,17 +1429,18 @@ async function editarDescricaoExtra(idOrcamento, idLancamento, zona) {
 
     const orcamento = dados_orcamentos[idOrcamento]
 
-    const acumulado = `
-        <div style="${vertical}; background-color: #d2d2d2; padding: 1rem;">
-            <span>Acrescente uma descrição extra</span>
-            <hr style="width: 100%;">
+    const linhas = [{
+        texto: 'Descrição extra',
+        elemento: `
             <textarea id="descricaoExtra">${orcamento.zonas?.[zona]?.[idLancamento]?.descricaoExtra || ''}</textarea>
-            <br>
-            <button onclick="salvarDescricao('${idOrcamento}', '${idLancamento}', '${zona}')">Salvar</button>
-        </div>
-    `
+        `}
+    ]
 
-    popup(acumulado, 'Editar descrição extra', true)
+    const botoes = [
+        { texto: 'Salvar', img: 'concluido', funcao: `salvarDescricao('${idOrcamento}', '${idLancamento}', '${zona}')` }
+    ]
+
+    popup({ linhas, botoes, nra: false })
 }
 
 async function salvarDescricao(idOrcamento, idLancamento, zona) {

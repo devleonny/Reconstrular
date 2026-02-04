@@ -170,15 +170,16 @@ function cadastrar() {
 
     const campos = ['Nome Completo', 'Usuário', 'Senha', 'E-mail', 'Telefone']
 
-    const acumulado = `
-        <div class="camposCadastro">
-            ${campos.map(campo => `${modelo(campo)}`).join('')}
-            <hr style="width: 100%;">
-            ${btnPadrao('Criar acesso', 'salvarCadastro()')}
-        </div>
-        `
+    const linhas = campos
+        .map(c => {
+            return { texto: c, elemento: `<input name="${c}">` }
+        })
 
-    popup(acumulado, 'Cadastro')
+    const botoes = [
+        { texto: 'Criar acesso', funcao: `salvarCadastro()` }
+    ]
+
+    popup({ elemento, botoes, linhas, titulo: 'Cadastro' })
 
 }
 
@@ -192,7 +193,7 @@ async function acessoLogin() {
     const url = `${api}/acesso`
 
     if (inputs[0].value == '' || inputs[1].value == '') {
-        popup(mensagem('Senha e/ou usuário não informado(s)'), 'ALERTA', true)
+        popup({ mensagem: 'Senha e/ou usuário não informado(s)' })
         divAcesso.style.display = 'flex'
 
     } else {
@@ -221,7 +222,7 @@ async function acessoLogin() {
 
             if (data.mensagem) {
                 divAcesso.style.display = 'flex'
-                return popup(mensagem(data.mensagem), 'Alerta', true);
+                return popup({ mensagem: data.mensagem || 'Falha no acesso' })
 
             } else {
                 localStorage.setItem('acesso', JSON.stringify(data));
@@ -231,8 +232,8 @@ async function acessoLogin() {
 
             divAcesso.style.display = 'flex'
 
-        } catch (e) {
-            popup(mensagem(e), 'Alerta', true);
+        } catch (err) {
+            popup({ mensagem: err.message || 'Falha no acesso' })
         }
 
     }
@@ -316,63 +317,13 @@ function salvarCadastro() {
                 return response.json();
             })
             .then(data => {
-                return popup(mensagem(data.mensagem || 'Falha... tente novamente.'), 'Aviso', true);
+                return popup({ mensagem: data.mensagem || 'Falha... tente novamente.' })
             })
-            .catch(error => {
-                popup(mensagem(error.mensagem), 'Aviso', true);
+            .catch(err => {
+                popup({ mensagem: err.mensagem || 'Falha... tente novamente.' })
             })
 
     }
-
-}
-
-function popup(elementoHTML, titulo, naoRemoverAnteriores) {
-
-    const acumulado = `
-        <div id="tempPop" class="overlay">
-
-            <div class="janela_fora">
-                
-                <div class="toolbarPopup">
-
-                    <div class="title">${titulo || 'Popup'}</div>
-                    <span class="close" onclick="removerPopup()">×</span>
-
-                </div>
-                
-                <div class="janela">
-
-                    ${elementoHTML}
-
-                </div>
-
-            </div>
-
-        </div>`
-
-    removerPopup(naoRemoverAnteriores)
-    removerOverlay()
-    document.body.insertAdjacentHTML('beforeend', acumulado);
-
-}
-
-async function removerPopup(naoRemoverAnteriores) {
-
-    const popUps = document.querySelectorAll('#tempPop')
-
-    if (naoRemoverAnteriores) return
-
-    if (popUps.length > 1) {
-        popUps[popUps.length - 1].remove()
-
-    } else {
-        popUps.forEach(pop => {
-            pop.remove()
-        })
-    }
-
-    const aguarde = document.querySelector('.aguarde')
-    if (aguarde) aguarde.remove()
 
 }
 
@@ -791,7 +742,7 @@ function criarLinhaFuncao(idFuncao, dados) {
         orcamentos: ['distrito', 'autorizado']
     }
 
-    // Modelo
+    // Modelo   
     function montarFiltros({ idFuncao, dados, coluna }) {
 
         const filtros = filtrosPorColuna[coluna]
@@ -824,7 +775,7 @@ function criarLinhaFuncao(idFuncao, dados) {
     const tdsExtras = colunas
         .map(col => `
             <td>
-                <img src="imagens/pesquisar.png">
+                <img src="imagens/pesquisar.png" onclick="esquemaPermissoes()">
             </td>`)
         .join('')
 
@@ -842,6 +793,19 @@ function criarLinhaFuncao(idFuncao, dados) {
     if (trExistente) return trExistente.innerHTML = tds
 
     document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${idFuncao}">${tds}</tr>`)
+
+}
+
+async function esquemaPermissoes() {
+
+    const acumulado = `
+        <div style="${vertical}; padding:  1rem;">
+            
+
+        </div>
+    `
+
+    popup(acumulado, 'Esquema de Permissão', true)
 
 }
 
@@ -901,11 +865,32 @@ async function adicionarFuncao(idFuncao) {
         { funcao: idFuncao ? `salvarFuncao('${idFuncao}')` : 'salvarFuncao()', img: 'concluido', texto: 'Salvar' }
     ]
 
-    if (idFuncao) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: '' })
+    if (idFuncao) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExcluirFuncao('${idFuncao}')` })
 
     const titulo = idFuncao ? 'Editar Função' : 'Adicionar Função'
-    const form = new formulario({ linhas, botoes, titulo })
-    form.abrirFormulario()
+    popup({ linhas, botoes, titulo })
+
+}
+
+async function excluirFuncao(idFuncao) {
+
+    overlayAguarde()
+    const resposta = await deletar(`funcoes/${idFuncao}`)
+    if (resposta.mensagem)
+        return popup({ mensagem: `Falha ao excluir: ${resposta.mensagem}` })
+    
+    await deletarDB(`funcoes`, idFuncao)
+    await telaNiveis()
+
+}
+
+async function confirmarExcluirFuncao(idFuncao) {
+
+    const botoes = [
+        { texto: 'Confirmar', img: 'concluido', funcao: `excluirFuncao('${idFuncao}')` }
+    ]
+
+    popup({ botoes, mensagem: 'Excluir Função?', nra: false })
 
 }
 
@@ -949,7 +934,7 @@ async function salvarConfigs() {
     await enviar('configuracoes', configuracoes)
     await inserirDados(configuracoes, 'configuracoes')
 
-    popup(mensagem('Configurações Salvas', 'imagens/concluido.png'), 'Sucesso', true)
+    popup({ mensagem: 'Configurações Salvas', imagem: 'imagens/concluido.png' })
 }
 
 function verificarClique(event) {
@@ -982,13 +967,12 @@ async function buscarDados() {
 }
 
 function confirmarSaida() {
-    const acumulado = `
-        <div style="${horizontal}; padding: 1rem; gap: 0.5rem; background-color: #d2d2d2;">
-            <span>Tem certeza?</span>
-            <button onclick="deslogar(); removerPopup();">Confirmar</button>
-        </div>
-    `
-    popup(acumulado, 'Sair', true)
+
+    const botoes = [
+        { texto: 'Confirmar', img: 'concluido', funcao: `deslogar()` }
+    ]
+
+    popup({ mensagem: 'Tem certeza?', botoes, titulo: 'Sair', nra: false })
 }
 
 function deslogar() {
@@ -1055,7 +1039,7 @@ async function formularioEPI(idColaborador) {
         .map(op => `<th>${op}</th>`)
         .join('')
 
-    const acumulado = `
+    const elemento = `
         <div class="painel-cadastro">
 
             <table>
@@ -1083,7 +1067,7 @@ async function formularioEPI(idColaborador) {
         </div>
     `
 
-    popup(acumulado, 'Formulário de EPI', true)
+    popup({ elemento, titulo: 'Formulário de EPI', nra: false })
 }
 
 async function salvarEpi(idColaborador) {
@@ -1092,8 +1076,8 @@ async function salvarEpi(idColaborador) {
 
     const pinInput = document.getElementById('pin')
 
-    if (pinInput.dataset.pin !== pinInput.value) 
-        return popup(mensagem('Pin do colaborador não confere'), 'Alerta', true)
+    if (pinInput.dataset.pin !== pinInput.value)
+        return popup({ mensagem: 'Pin do colaborador não confere' })
 
     let colaborador = await recuperarDado('dados_colaboradores', idColaborador)
     const inputsAtivos = document.querySelectorAll('input[name="camposEpi"]:checked')
@@ -1117,14 +1101,12 @@ async function salvarEpi(idColaborador) {
     const acesso = JSON.parse(localStorage.getItem('acesso'))
     const resposta = await verificarSupervisor(acesso.usuario, senhaSupervisor.value)
 
-    if (resposta !== 'Senha válida') 
-        return popup(mensagem(resposta), 'Alerta', true)
+    if (resposta !== 'Senha válida')
+        return popup({ mensagem: resposta })
 
     await enviar(`dados_colaboradores/${idColaborador}/epi`, epi)
     await inserirDados({ [idColaborador]: colaborador }, 'dados_colaboradores')
     await adicionarColaborador(idColaborador)
-
-    removerPopup()
 
     await enviarAlerta(idColaborador)
 
@@ -1169,7 +1151,7 @@ async function abrirCamera() {
         setTimeout(pararCam, 5 * 60 * 1000);
 
     } catch (err) {
-        popup(mensagem('Erro ao acessar a câmera: ' + err.message), 'Alerta', true);
+        popup({ mensagem: 'Erro ao acessar a câmera: ' + err.message })
     }
 }
 
@@ -1387,16 +1369,15 @@ function telaLogin() {
 
 function recuperarSenha() {
 
-    const acumulado = `
-        <div class="painel-recuperacao">
-            <span>Digite o Usuário</span>
-            <input name="identificador">
-            <hr>
-            <button onclick="solicitarCodigo()">Solicitar</button>
-        </div>
-    `
+    const linhas = [
+        { texto: 'Digite o Usuário', elemento: `<input name="identificador">` }
+    ]
 
-    popup(acumulado, 'Recuperar acesso', true)
+    const botoes = [
+        { texto: 'Solicitar', img: 'concluido', funcao: `solicitarCodigo()` }
+    ]
+
+    popup({ linhas, botoes, titulo: 'Recuperar acesso', nra: false })
 
 }
 
@@ -1410,23 +1391,28 @@ async function solicitarCodigo() {
 
     const resposta = await recAC(identificador.value)
 
-    if (resposta.sucess) {
+    if (resposta.success) {
 
-        const acumulado = `
-            <div class="painel-recuperacao">
-                <span>Preencha com os números recebidos no e-mail</span>
-                <hr>
-                <div style="${horizontal}; gap: 0.5rem;">
-                    <input id="identificador" style="display: none;" value="${identificador.value}">
-                    <input id="codigo" placeholder="Código" class="camp-1" type="number">
-                    <input id="novaSenha" placeholder="Nova Senha" class="camp-1">
-                    <button onclick="salvarSenha()">Confirmar</button>
-                </div>
-            </div>
-        `
-        popup(acumulado, 'Informe o código')
+        const linhas = [
+            {
+                texto: 'Código recebido no e-mail',
+                elemento: `
+                <input id="identificador" style="display: none;" value="${identificador.value}">
+                <input id="codigo" placeholder="Código" class="camp-1" type="number">
+                `
+            },
+            {
+                texto: 'Nova senha',
+                elemento: `<input id="novaSenha" placeholder="Nova Senha" class="camp-1">`
+            }
+        ]
+        const botoes = [
+            { texto: 'Confirmar', img: 'concluido', funcao: `salvarSenha()` }
+        ]
+
+        popup({ linhas, botoes, titulo: 'Informe o código', nra: false })
     } else {
-        popup(mensagem(resposta.mensagem || 'Falha na solicitação'), 'Alerta')
+        popup({ mensagem: resposta.mensagem || 'Falha na solicitação' })
     }
 
 }
@@ -1441,23 +1427,19 @@ async function salvarSenha() {
 
     const resposta = await salvarNovaSenha({ identificador, novaSenha, codigo })
 
-    if (resposta.sucess) {
-        return popup(mensagem(resposta.mensagem), 'Alerta')
-    }
+    if (resposta.success)
+        return popup({ mensagem: resposta.mensagem })
 
-    if (resposta.mensagem) popup(mensagem(resposta.mensagem), 'Alerta', true)
+    if (resposta.mensagem)
+        return popup({ mensagem: resposta.mensagem })
 
 }
 
 function erroConexao(mensagem) {
-    const acumulado = `
-        <div id="erroConexao" style="${horizontal}; gap: 1rem; background-color: #d2d2d2; padding: 1rem;">
-            <img src="gifs/alerta.gif" style="width: 2rem;">
-            <span>${mensagem || `<b>Tente novamente em minutos</b>`}</span>
-        </div>
-    `
+
     const erroConexao = document.getElementById('erroConexao')
-    if (!erroConexao) popup(acumulado, 'Sincronização', true)
+    if (!erroConexao)
+        popup({ mensagem: 'Tente novamente em alguns minutos' })
 
     sincronizarApp({ remover: true })
     emAtualizacao = false
@@ -1519,7 +1501,7 @@ async function cxOpcoes(name, nomeBase, campos, funcaoAux) {
         </div>`
     }
 
-    const acumulado = `
+    const elemento = `
         <div style="${vertical}; justify-content: left; background-color: #b1b1b1;">
 
             <div style="${horizontal}; padding-left: 0.5rem; padding-right: 0.5rem; margin: 5px; background-color: white; border-radius: 10px;">
@@ -1534,7 +1516,7 @@ async function cxOpcoes(name, nomeBase, campos, funcaoAux) {
         </div>
     `
 
-    popup(acumulado, 'Selecione o item', true)
+    popup({ elemento, titulo: 'Selecione o item', nra: false })
 }
 
 async function selecionar(name, id, termo, funcaoAux) {
@@ -1645,15 +1627,16 @@ async function enviarAlerta(idColaborador) {
 
     const dados = await resposta.json();
 
-    popup(mensagem(dados.mensagem), 'Aviso', true);
+    popup({ mensagem: dados.mensagem })
 }
 
 async function enviarExcel(idObra) {
-    const input = document.querySelector('#arquivoExcel');
-    if (!input.files.length) return popup(mensagem('Você ainda não selecionou nenhum arquivo'), 'Alerta')
+    const input = document.querySelector('#arquivoExcel')
+    if (!input.files.length)
+        return popup({ mensagem: 'Você ainda não selecionou nenhum arquivo' })
 
-    const formData = new FormData();
-    formData.append('arquivo', input.files[0]);
+    const formData = new FormData()
+    formData.append('arquivo', input.files[0])
 
     try {
         const resposta = await fetch(`${api}/processar-tarefas/${idObra}`, {
@@ -1666,10 +1649,10 @@ async function enviarExcel(idObra) {
             await sincronizarDados('dados_obras')
             await verAndamento(idObra)
         } else {
-            popup(mensagem(`Erro: ${dados.mensagem}`), 'Alerta')
+            popup({ mensagem: `Erro: ${dados.mensagem}` })
         }
     } catch (err) {
-        popup(mensagem(`Erro de conexão: ${err}`), 'Alerta')
+        popup({ mensagem: `Erro de conexão: ${err}` })
     }
 }
 
@@ -1733,7 +1716,7 @@ async function importarAnexos({ input, foto }) {
         });
         return await response.json();
     } catch (err) {
-        popup(mensagem(`Erro na API: ${err}`));
+        popup({ mensagem: `Erro na API: ${err}` })
         throw err;
     }
 }
@@ -1761,12 +1744,12 @@ function abrirArquivo(link) {
     const extensao = link.split('.').pop().toLowerCase(); // pega sem o ponto
 
     if (imagens.includes(extensao)) {
-        const acumulado = `
+        const elemento = `
             <div class="fundoImagens">
                 <img src="${link}">
             </div>
         `
-        return popup(acumulado, 'Arquivo', true);
+        return popup({ elemento })
     }
 
     window.open(link, '_blank');
@@ -1793,7 +1776,7 @@ async function blocoAuxiliarFotos(fotos) {
 
     } else {
 
-        const popupCamera = `
+        const elemento = `
             <div style="${vertical}; align-items: center; gap: 3px; background-color: #d2d2d2;">
                 <div class="capturar" style="position: fixed; bottom: 10px; left: 10px; z-index: 10003;" onclick="fotoTarefa()">
                     <img src="imagens/camera.png" class="olho">
@@ -1806,7 +1789,7 @@ async function blocoAuxiliarFotos(fotos) {
                 </div>
             </div>
             `
-        popup(popupCamera, 'Registrar Fotos', true)
+        popup({ elemento, titulo: 'Registrar Fotos' })
         await abrirCamera()
     }
 

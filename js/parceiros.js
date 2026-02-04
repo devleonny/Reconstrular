@@ -124,7 +124,12 @@ async function editarParceiros(usuario) {
     const opcoes = Object.entries(funcoes)
         .map(([id, dados]) => {
             if (!r.includes(id) && id !== 'tL4LM') return ''
-            return `<option id="${id}" ${parceiro?.funcao == id ? 'selected' : ''}>${dados.nome}</option>`
+            return `
+            <div style="${horizontal}; gap: 1rem;">
+                <input name="funcao" type="radio" id="${id}" ${parceiro?.funcao == id ? 'selected' : ''}>
+                <span>${dados.nome}</span>
+                
+            </div>`
         })
         .join('')
 
@@ -143,14 +148,6 @@ async function editarParceiros(usuario) {
         { texto: 'E-mail', elemento: `<input name="email" type="email" placeholder="E-mail" value="${parceiro?.email || ''}">` },
         { texto: 'Telefone', elemento: `<input name="telefone" placeholder="Telefone" value="${parceiro?.telefone || ''}">` },
         {
-            texto: 'Função',
-            elemento: `
-                <select name="funcao">
-                    <option></option>
-                    ${opcoes}
-                </select>
-            `},
-        {
             texto: 'Distrito',
             elemento: `
                 <select name="distrito" onchange="filtroCidadesCabecalho(this)">
@@ -158,7 +155,14 @@ async function editarParceiros(usuario) {
                     ${opcoesDistrito}
                 </select>
             `},
-        { texto: 'Cidade', elemento: `<select name="cidade"></select>` }
+        { texto: 'Cidade', elemento: `<select name="cidade"></select>` },
+        {
+            elemento: `
+                <div style="${vertical};gap: 2px;">
+                    ${opcoes}
+                </div>
+            `
+        }
     ]
 
     const botoes = [
@@ -168,8 +172,7 @@ async function editarParceiros(usuario) {
     if (usuario) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarDesativarUsuario('${usuario}')` })
 
     const titulo = usuario ? `Gerenciar Parceiro` : `Criar acesso parceiro`
-    const form = new formulario({ linhas, botoes, titulo })
-    form.abrirFormulario()
+    popup({ linhas, botoes, titulo })
 
     if (cidade) {
         const lista = resolverCidadesPorDistrito(cidade.distrito)
@@ -180,24 +183,21 @@ async function editarParceiros(usuario) {
 }
 
 function confirmarDesativarUsuario(usuario) {
-    const acumulado = `
-    <div style="${horizontal}; padding: 1rem; gap: 1rem; background-color: #d2d2d2;">
-        <span>Deseja excluir o usuário?</span>
-        <button onclick="desativarUsuario('${usuario}')">Confirmar</button>
-    </div>
-    `
-    popup(acumulado, 'Pense bem...', true)
+
+    const botoes = [
+        { texto: 'Confirmar', img: 'concluido', funcao: `desativarUsuario('${usuario}')` }
+    ]
+    popup({ botoes, mensagem: 'Tem certeza?', nra: false })
 }
 
 async function desativarUsuario(usuario) {
 
-    removerPopup()
-    removerPopup()
     overlayAguarde()
 
     const resposta = await deletar(`dados_setores/${usuario}`)
 
-    if (resposta.mensagem) return popup(mensagem(`Falha ao excluir: ${resposta.mensagem}`), 'Alerta', true)
+    if (resposta.mensagem)
+        return popup({ mensagem: `Falha ao excluir: ${resposta.mensagem}` })
 
     await deletarDB('dados_setores', usuario)
     await telaUsuarios()
@@ -216,7 +216,8 @@ async function salvarParceiros() {
     const funcao = el('funcao')?.selectedOptions[0]?.id
     const cidade = el('cidade')?.selectedOptions[0]?.value
 
-    if (!usuario || !nome_completo || !email) return popup(mensagem('Não deixe Usuário/Nome ou E-mail em branco'), 'Alerta', true)
+    if (!usuario || !nome_completo || !email)
+        return popup({ mensagem: 'Não deixe Usuário/Nome ou E-mail em branco' })
 
     const parceiro = {
         ...dados_setores[usuario],
@@ -259,7 +260,7 @@ function filtroCidadesCabecalho(select) {
     const selectCidade =
         painel?.querySelector('[name="cidade"]') ||
         painelBotoes?.querySelector('.filtro-tabela [name="cidade"]')
-        
+
 
     if (!selectCidade) return
 

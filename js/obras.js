@@ -129,7 +129,7 @@ async function criarLinhaObras(id, obra) {
         <td>${dinheiro(materialOrcado)}</td>
         <td>${dinheiro(materialReal)}</td>
         <td>
-            ${porcentagemHtml(materialOrcado  ? Number((materialReal / materialOrcado) * 100).toFixed(0) : 0)}
+            ${porcentagemHtml(materialOrcado ? Number((materialReal / materialOrcado) * 100).toFixed(0) : 0)}
         </td>
         <td>${dinheiro(maoObraOrcado)}</td>
         <td>
@@ -189,8 +189,8 @@ async function adicionarObra(idObra) {
 
     if (idObra) botoes.push({ funcao: `confirmarExclusaoObra('${idObra}')`, img: 'cancel', texto: 'Excluir' })
 
-    const form = new formulario({ linhas, botoes, titulo: 'Formulário de Obra' })
-    form.abrirFormulario()
+    popup({ linhas, botoes, titulo: 'Formulário de Obra' })
+
 
     if (cidade) {
         const lista = resolverCidadesPorDistrito(cidade.distrito)
@@ -224,14 +224,11 @@ async function salvarObra(idObra = unicoID()) {
 }
 
 function confirmarExclusaoObra(idObra) {
-    const acumulado = `
-        <div style="${horizontal}; gap: 0.5rem; background-color: #d2d2d2; padding: 1rem;">
-            <span>Tem certeza que deseja excluir?</span>
-            <button onclick="excluirObra('${idObra}')">Confirmar</button>
-        </div>
-    `
 
-    popup(acumulado, 'Tem certeza?', true)
+    const botoes = [
+        { texto: 'Confirmar', img: 'concluido', funcao: `excluirObra('${idObra}')` }
+    ]
+    popup({ mensagem: 'Tem certeza?', botoes, nra: false })
 }
 
 async function excluirObra(idObra) {
@@ -240,9 +237,6 @@ async function excluirObra(idObra) {
     deletar(`dados_obras/${idObra}`)
     await deletarDB(`dados_obras`, idObra)
     await telaObras()
-
-    removerPopup()
-    removerPopup()
 
 }
 
@@ -279,7 +273,7 @@ async function painelVincularOrcamentos(idObra) {
         linhas
     }
 
-    const acumulado = `
+    const elemento = `
         <div style="${vertical}; padding: 0.5rem; background-color: #d2d2d2;">
         
             ${modeloTabela(params)}
@@ -287,7 +281,7 @@ async function painelVincularOrcamentos(idObra) {
         </div>
     `
 
-    popup(acumulado, 'Orçamentos desta Obra', acumulado)
+    popup({ elemento, titulo: 'Orçamentos desta Obra' })
 
 }
 
@@ -593,8 +587,7 @@ async function painelFotos(idObra, idOrcamento, idDescricao) {
     const linhas = [{ elemento: await blocoAuxiliarFotos(fotos || {}) }]
     const botoes = [{ texto: 'Salvar', img: 'concluido', funcao: `salvarFotos('${idObra}', '${idOrcamento}', '${idDescricao}')` }]
 
-    const form = new formulario({ linhas, botoes, titulo: 'Painel de Fotos' })
-    form.abrirFormulario()
+    popup({ linhas, botoes, titulo: 'Painel de Fotos' })
 
     visibilidadeFotos()
 
@@ -640,8 +633,7 @@ async function gerenciar(idObra, idOrcamento, idDescricao) {
     const linhas = [{ texto: 'Quantidade', elemento: `<input type="number" id="qtdeRealizada" value="${quantidade}">` }]
     const botoes = [{ texto: 'Salvar', img: 'concluido', funcao }]
 
-    const form = new formulario({ linhas, botoes, titulo: 'Gerenciar quantidade', funcao: `verAndamento('${idObra}')` })
-    form.abrirFormulario()
+    popup({ linhas, botoes, titulo: 'Gerenciar quantidade' })
 
 }
 
@@ -830,7 +822,7 @@ async function pdf(html, nome = 'documento') {
 
         removerOverlay()
     } catch (err) {
-        popup(mensagem(err), 'Alerta', true)
+        popup({ mensagem: err.message })
     }
 
 }

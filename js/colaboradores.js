@@ -286,8 +286,8 @@ async function adicionarColaborador(id) {
 
     if (id) botoes.push({ img: 'cancel', texto: 'Excluir', funcao: `confirmarExclusaoColaborador('${id}')` })
 
-    const form = new formulario({ linhas, botoes, titulo: 'Cadastro de Colaborador' })
-    form.abrirFormulario()
+    popup({ linhas, botoes, titulo: 'Cadastro de Colaborador' })
+
 
     if (cidade) {
         const lista = resolverCidadesPorDistrito(cidade.distrito)
@@ -300,20 +300,15 @@ async function adicionarColaborador(id) {
 
 function confirmarExclusaoColaborador(id) {
 
-    const acumulado = `
-    <div style="${horizontal}; background-color: #d2d2d2; gap: 1rem; padding: 1rem;">
-        <span>Você tem certeza?</span>
-        <button onclick="excluirColaborador('${id}')">Confirmar</button>
-    </div>
-    `
+    const botoes = [
+        { texto: 'Confirmar', img: 'concluido', funcao: `excluirColaborador('${id}')` }
+    ]
 
-    popup(acumulado, 'Excluir colaborador', true)
+    popup({ mensagem: 'Tem certeza?', botoes, titulo: 'Excluir colaborador', nra: false })
 }
 
 async function excluirColaborador(id) {
 
-    removerPopup()
-    removerPopup()
     overlayAguarde()
 
     deletar(`dados_colaboradores/${id}`)
@@ -328,9 +323,10 @@ async function excluirColaborador(id) {
 
 async function salvarColaborador(idColaborador) {
     const liberado = verificarRegras();
-    if (!liberado) return popup(mensagem('Verifique os campos inválidos!'), 'Aviso', true);
+    if (!liberado)
+        return popup({ mensagem: 'Verifique os campos inválidos!' })
 
-    overlayAguarde();
+    overlayAguarde()
 
     idColaborador = idColaborador || unicoID();
 
@@ -363,7 +359,7 @@ async function salvarColaborador(idColaborador) {
 
         if (resposta?.mensagem) {
             inputPin.classList.add('invalido')
-            return popup(mensagem(resposta?.mensagem), 'Alerta', true)
+            return popup({ mensagem: resposta?.mensagem })
         }
 
     }
@@ -398,7 +394,7 @@ async function salvarColaborador(idColaborador) {
         if (resposta[0].link) {
             colaborador.foto = resposta[0].link
         } else {
-            return popup(mensagem('Falha no envio da Foto: tente novamente.'), 'Alerta', true)
+            return popup({ mensagem: 'Falha no envio da Foto: tente novamente.' })
         }
 
     }

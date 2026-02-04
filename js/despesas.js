@@ -148,7 +148,8 @@ function htmlDespesas() {
   const sAno = document.querySelector('[name="ano"]')
   const sMes = document.querySelector('[name="mes"]')
 
-  if (sMes.value == '' || sAno.value == '') return popup(mensagem('Preencha os filtros'), 'Alerta', true)
+  if (sMes.value == '' || sAno.value == '')
+    return popup({ mensagem: 'Preencha os filtros' })
 
   const ano = sAno.value
   const mes = meses[sMes.value]
@@ -234,7 +235,7 @@ function htmlDespesas() {
             <tbody>${linhasFiltradas}</tbody>
         </table>
     `
-  const acumulado = `
+  const elemento = `
         <div class="tela-pdf-despesas">
             <div style="${horizontal}; gap: 0.5rem; position: fixed; bottom: 1rem; left: 1rem;">
                 <img onclick="gerarPdfDespesas()" src="imagens/pdf.png" style=" width: 3rem;">
@@ -248,7 +249,7 @@ function htmlDespesas() {
         </div>
     `
 
-  popup(acumulado, 'Listagem de Despesas por Mês/Ano', true)
+  popup({ elemento, titulo: 'Listagem de Despesas por Mês/Ano' })
 
   // Regras de validação;
   validarRegrasAcesso()
@@ -278,7 +279,8 @@ async function emailDespesas() {
 
   const resposta = await pdfEmail({ html, emails, htmlContent: 'Documento em anexo', titulo: 'Listagem de Despesas - Anexo' })
 
-  if (resposta.mensagem) return popup(mensagem(resposta.mensagem), 'Aviso', true)
+  if (resposta.mensagem)
+    return popup({ mensagem: resposta.mensagem })
 
   removerOverlay()
 
@@ -436,8 +438,7 @@ async function formularioDespesa(idDespesa) {
 
   if (idDespesa) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExclusaoDespesa('${idDespesa}')` })
 
-  const form = new formulario({ linhas, botoes, titulo: 'Gerenciar Despesa' })
-  form.abrirFormulario()
+  popup({ linhas, botoes, titulo: 'Gerenciar Despesa' })
 
   buscarLocalidadeFornecedor()
   alterarModal()
@@ -464,13 +465,11 @@ function alterarModal() {
 }
 
 function confirmarExclusaoDespesa(idDespesa) {
-  const acumulado = `
-        <div style="${horizontal}; gap: 1rem; background-color: #d2d2d2; padding: 1rem;">
-            <span>Tem certeza?</span>
-            <button onclick="excluirDespesa('${idDespesa}')">Confirmar</button>
-        </div>
-    `
-  popup(acumulado, 'Exclusão de Despesa', true)
+
+  const botoes = [
+    { texto: 'Confirmar', img: 'concluido', funcao: `excluirDespesa('${idDespesa}')` }
+  ]
+  popup({ mensagem: 'Tem cezesa?', botoes, titulo: 'Exclusão de Despesa', nra: false })
 }
 
 async function excluirDespesa(idDespesa) {
@@ -480,8 +479,6 @@ async function excluirDespesa(idDespesa) {
   deletar(`dados_despesas/${idDespesa}`)
   await deletarDB(`dados_despesas`, idDespesa)
 
-  removerPopup()
-  removerPopup()
   await verificarDespesas()
 
 }
@@ -514,7 +511,7 @@ async function salvarDespesa(idDespesa = ID5digitos()) {
       despesa.fatura = resposta[0].link;
     } else {
       removerOverlay();
-      return popup(mensagem('Falha no envio da Foto: tente novamente.'), 'Alerta', true);
+      return popup({ mensagem: 'Falha no envio da Foto: tente novamente.' })
     }
   }
 
@@ -625,8 +622,7 @@ async function adicionarFornecedor(idFornecedor) {
 
   if (idFornecedor) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: '' })
 
-  const form = new formulario({ linhas, botoes, titulo: 'Formulário de Obra' })
-  form.abrirFormulario()
+  popup({ linhas, botoes, titulo: 'Formulário de Obra' })
 
   if (cidade) {
     const lista = resolverCidadesPorDistrito(cidade.distrito)
@@ -696,8 +692,7 @@ async function adicionarGenerico(nomeBase, id) {
   if (id) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExcluirGenerico('${nomeBase}', '${id}')` })
 
   const titulo = id ? 'Salvar Item' : 'Editar Item'
-  const form = new formulario({ linhas, botoes, titulo })
-  form.abrirFormulario()
+  popup({ linhas, botoes, titulo })
 
 }
 
@@ -725,21 +720,15 @@ async function salvarGenerico(nomeBase, id = ID5digitos()) {
 
 function confirmarExcluirGenerico(nomeBase, id) {
 
-  const acumulado = `
-        <div style="${horizontal}; gap: 1rem; background-color: #d2d2d2; padding: 1rem;">
-            <span>Tem certeza que deseja excluir?</span>
-            <button onclick="excluirGenerico('${nomeBase}', '${id}')">Confirmar</button>
-        </div>
-        `
+  const botoes = [
+    { texto: 'Confirmar', img: 'concluido', funcao: `excluirGenerico('${nomeBase}', '${id}')` }
+  ]
 
-  popup(acumulado, 'Tem certeza?', true)
+  popup({ botoes, mensagem: 'Tem certeza?', nra: false })
 
 }
 
 async function excluirGenerico(nomeBase, id) {
-
-  removerPopup()
-  removerPopup()
 
   overlayAguarde()
 

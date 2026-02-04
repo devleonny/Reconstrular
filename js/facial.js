@@ -59,7 +59,8 @@ async function verificarColaborador() {
     const pin = document.querySelector('[name="pin"]')
     const resposta = await colaboradorPin(pin.value)
 
-    if (resposta.mensagem) return popup(mensagem(resposta.mensagem), 'Aviso', true)
+    if (resposta.mensagem)
+        return popup({ mensagem: resposta.mensagem })
 
     usuarioAtual = resposta
 
@@ -208,19 +209,21 @@ async function enviarPonto() {
             body: JSON.stringify({ idColaborador: usuarioAtual.idColaborador, data, servidor })
         })
 
-        const resposta = await response.json()        
-        if (resposta.mensagem) return popup(mensagem(resposta.mensagem), 'Aviso', true)
+        const resposta = await response.json()
+        if (resposta.mensagem)
+            return popup({ mensagem: resposta.mensagem })
 
-        popup(`
+        const elemento = `
             <div class="ticketPonto">
                 <span>${usuarioAtual.nome}</span>
                 <span><strong>${data}</strong></span>
                 <span>Realizado</span>
             </div>
-        `, 'Marcação realizada', true)
+        `
+        popup({ elemento, titulo: 'Marcação realizada' })
 
     } catch (err) {
-        popup(mensagem(`Erro na API: ${err}`));
-        throw err;
+        popup({ mensagem: `Erro na API: ${err}` })
+        throw err
     }
 }
