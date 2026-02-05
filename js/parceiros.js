@@ -121,14 +121,38 @@ async function editarParceiros(usuario) {
     const idF = acesso?.funcao || ''
     const r = funcoes?.[idF]?.regras || []
 
+    const modS = (ops) => {
+
+        const mod = `
+        <Select>
+            ${ops.map(o => `<option>${o}</option>`).join('')}
+        </select>
+        `
+
+        return mod
+    }
+
+    const esquema = {
+        3: [1],
+        4: [1, 2, 3],
+        5: [1, 2, 3, 4]
+    }
+
     const opcoes = Object.entries(funcoes)
+        .sort(([, a], [, b]) => a.ordem - b.ordem)
         .map(([id, dados]) => {
-            if (!r.includes(id) && id !== 'tL4LM') return ''
+            if (!r.includes(id) && id !== 'tL4LM')
+                return ''
+            const { ordem } = dados
+
             return `
             <div style="${horizontal}; gap: 1rem;">
                 <input name="funcao" type="radio" id="${id}" ${parceiro?.funcao == id ? 'selected' : ''}>
-                <span>${dados.nome}</span>
-                
+                <span style="width: 200px; text-align: left;">${dados.nome}</span>
+                ${ordem > 2 ?  : ''}
+                ${ordem > 2 ? modS([1, 2, 3]) : ''}
+                ${ordem > 2 ? modS([1, 2, 3]) : ''}
+                ${ordem > 2 ? modS([1, 2, 3]) : ''}
             </div>`
         })
         .join('')

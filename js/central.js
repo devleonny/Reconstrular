@@ -406,8 +406,8 @@ async function telaPrincipal() {
     telaInterna = document.querySelector('.telaInterna')
 
     if (priExec) overlayAguarde()
-    await atualizarApp()
-    await alertaMensagens()
+    //await atualizarApp()
+//await alertaMensagens()
     priExec = false
     removerOverlay()
 
