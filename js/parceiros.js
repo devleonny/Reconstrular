@@ -149,7 +149,7 @@ async function editarParceiros(usuario) {
             <div style="${horizontal}; gap: 1rem;">
                 <input name="funcao" type="radio" id="${id}" ${parceiro?.funcao == id ? 'selected' : ''}>
                 <span style="width: 200px; text-align: left;">${dados.nome}</span>
-                ${ordem > 2 ?  : ''}
+                ${ordem > 2 ? modS([1, 2, 3]) : ''}
                 ${ordem > 2 ? modS([1, 2, 3]) : ''}
                 ${ordem > 2 ? modS([1, 2, 3]) : ''}
                 ${ordem > 2 ? modS([1, 2, 3]) : ''}
