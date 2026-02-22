@@ -11,16 +11,8 @@ async function telaColaboradores() {
         </div>
     `
 
-    cidades = await recuperarDados('cidades')
-    dados_colaboradores = await recuperarDados('dados_colaboradores')
-    dados_obras = await recuperarDados('dados_obras')
-    clientes = await recuperarDados('dados_clientes')
-
-    const distritos = Object
-        .values(cidades)
-        .map(c => c.distrito)
-
     const btnExtras = `
+    <div style="display: flex; flex-wrap: wrap; gap: 5px; gap: 5px; padding: 5px; color: white;">
         <div style="${vertical}; gap: 2px;">
             <button style="width: 100%;" onclick="gerarTodosPDFs()">Folhas de Ponto.pdf</button>
             <div style="${horizontal}; gap: 2px;">
@@ -31,46 +23,48 @@ async function telaColaboradores() {
         <div class="${vertical}; gap: 2px;">
             <button style="width: 100%;" onclick="excelColaboradores()">Trabalhadores.xlsx</button>
             <div style="${horizontal}; gap: 2px;">
-                ${fPesq({ texto: 'Distrito', name: 'distrito', config: 'filtroCidadesCabecalho(this)', lista: [...new Set(distritos)] })}
-                ${fPesq({ texto: 'Cidade', name: 'cidade', config: `filtroCidadesCabecalho(this, 'cidade')`, objeto: cidades, chave: 'nome' })}
+                ${fPesq({ texto: 'Distrito', name: 'distrito', config: 'filtroCidadesCabecalho(this)', lista: [] })}
+                ${fPesq({ texto: 'Cidade', name: 'cidade', config: `filtroCidadesCabecalho(this, 'cidade')`, objeto: {}, chave: 'nome' })}
             </div>
         </div>
         <button data-controle="inserir" onclick="adicionarColaborador()">Adicionar</button>
+    </div>
     `
 
     titulo.textContent = 'Gerenciar Colaboradores'
 
-    const colunas = [
-        'Nome Completo',
-        'Telefone',
-        'Obra Alocada',
-        'Distrito',
-        'Cidade',
-        'Status',
-        'Especialidade',
-        'Folha de Ponto',
-        ''
-    ]
-
-    telaInterna.innerHTML = modeloTabela({
-        colunas,
-        btnExtras
-    })
-
-    for (const [id, colaborador] of Object.entries(dados_colaboradores).reverse()) {
-        criarLinhaColaboradores(id, colaborador)
+    const colunas = {
+        'Nome Completo': { chave: 'nome' },
+        'Telefone': { chave: 'telefone' },
+        'Obra Alocada': {},
+        'Distrito': {},
+        'Cidade': { chave: 'snapshots.cidade' },
+        'Status': { chave: 'status' },
+        'Especialidade': { chave: 'especialidade' },
+        'Folha de Ponto': {},
+        '': {}
     }
 
-    // Regras de validação;
-    validarRegrasAcesso()
+    const tabela = modTab({
+        colunas,
+        pag: 'colaboradores',
+        btnExtras,
+        base: 'dados_colaboradores',
+        body: 'bodyColaboradores',
+        criarLinha: 'criarLinhaColaboradores'
+    })
+
+    telaInterna.innerHTML = tabela
+
+    await paginacao()
 
 }
 
-async function criarLinhaColaboradores(id, colaborador) {
+async function criarLinhaColaboradores(colaborador) {
 
-    const dCidade = cidades[colaborador.cidade]
-    const cidade = dCidade?.nome || ''
-    const distrito = dCidade?.distrito || ''
+    const { id, cidade } = colaborador || {}
+
+    const dCidade = await recuperarDado('cidades', cidade) || {}
 
     const algoPendente = (!colaborador.epi || !colaborador.exame || !colaborador.contratoObra)
     const especialidades = (colaborador?.especialidade || [])
@@ -88,8 +82,8 @@ async function criarLinhaColaboradores(id, colaborador) {
         </td>
         <td>${colaborador?.telefone || ''}</td>
         <td>${infoObra(colaborador)}</td>
-        <td name="distrito">${distrito}</td>
-        <td name="cidade" data-cod="${colaborador?.cidade}">${cidade}</td>
+        <td>${dCidade.distrito || ''}</td>
+        <td>${dCidade?.nome || ''}</td>
         <td><span class="${colaborador?.status}">${colaborador?.status || ''}</span></td>
         <td>
             <div style="${vertical}; gap: 2px;">
@@ -104,15 +98,12 @@ async function criarLinhaColaboradores(id, colaborador) {
         </td>
     `
 
-    const trExistente = document.getElementById(id)
-    if (trExistente) return trExistente.innerHTML = tds
-
-    document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${id}">${tds}</tr>`)
+    return `<tr>${tds}</tr>`
 }
 
 async function adicionarColaborador(id) {
 
-    colaborador = dados_colaboradores[id] || {}
+    const colaborador = await recuperarDado('dados_colaboradores', id) || {}
 
     const listas = {
         status: ['Ativo', 'Baixa Médica', 'Não Ativo', 'Impedido'],
@@ -209,30 +200,30 @@ async function adicionarColaborador(id) {
     `
     }
 
-    const distritos = Object
-        .values(cidades)
-        .map(c => c.distrito)
+    const cidade = await recuperarDado('cidades', colaborador?.cidade) || {}
 
-    const cidade = cidades?.[colaborador?.cidade] || {}
-
-    const opcoesDistrito = [...new Set(distritos)]
-        .sort((a, b) => a.localeCompare(b))
-        .map(d => `<option ${cidade?.distrito == d ? 'selected' : ''}>${d}</option>`)
-        .join('')
+    controlesCxOpcoes.cidade = {
+        base: 'cidades',
+        colunas: {
+            'Cidade': { chave: 'nome' },
+            'Distrito': { chave: 'distrito' },
+            'Zona': { chave: 'zona' },
+            'Area': { chave: 'area' }
+        },
+        retornar: ['nome', 'distrito']
+    }
 
     const linhas = [
         { texto: 'Nome Completo', elemento: `<textarea ${regras} name="nome" placeholder="Nome Completo">${colaborador?.nome || ''}</textarea>` },
         { texto: 'Data de Nascimento', elemento: `<input ${regras} value="${colaborador?.dataNascimento || ''}" type="date" name="dataNascimento">` },
         { texto: 'Morada', elemento: `<textarea ${regras} name="morada" placeholder="Morada">${colaborador?.morada || ''}</textarea>` },
         {
-            texto: 'Distrito',
+            texto: 'Cidade',
             elemento: `
-                <select ${regras} name="distrito" onchange="filtroCidadesCabecalho(this)">
-                    <option></option>
-                    ${opcoesDistrito}
-                </select>
+                <span class="opcoes" ${cidade ? `id="${colaborador.cidade}"` : ''} name="cidade" onclick="cxOpcoes('cidade')">
+                    ${cidade?.nome || 'Selecione'}
+                </span>
             `},
-        { texto: 'Cidade', elemento: `<select ${regras} name="cidade"></select>` },
         { texto: 'Apólice de Seguro', elemento: `<input value="0010032495" name="apolice" placeholder="Número da Apólice" readOnly>` },
         { texto: 'Telefone', elemento: `<input ${regras} value="${colaborador?.telefone || ''}" name="telefone" placeholder="Telefone">` },
         { texto: 'E-mail', elemento: `<textarea ${regras} name="email" placeholder="E-mail">${colaborador?.email || ''}</textarea>` },
@@ -333,7 +324,10 @@ async function salvarColaborador(idColaborador) {
     // Recupera colaborador existente para não sobrescrever anexos
     let colaboradorExistente = dados_colaboradores[idColaborador] || {};
 
-    let colaborador = { ...colaboradorExistente };
+    let colaborador = {
+        id: idColaborador,
+        ...colaboradorExistente 
+    }
 
     const camposFixos = ['nome', 'dataNascimento', 'email', 'morada', 'apolice', 'telefone', 'numeroDocumento', 'segurancaSocial', 'obra', 'numeroContribuinte'];
     for (const campo of camposFixos) colaborador[campo] = obVal(campo);
@@ -385,7 +379,7 @@ async function salvarColaborador(idColaborador) {
     }
 
     // Cidade;
-    colaborador.cidade = obVal('cidade')
+    colaborador.cidade = el('cidade').id
 
     const foto = document.querySelector('[name="foto"]')
     if (foto.src && !foto.src.includes(api)) {
@@ -403,7 +397,6 @@ async function salvarColaborador(idColaborador) {
 
     await inserirDados({ [idColaborador]: colaborador }, 'dados_colaboradores')
 
-    await telaColaboradores()
     removerPopup()
 }
 

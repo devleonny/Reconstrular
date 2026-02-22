@@ -99,57 +99,10 @@ const btn = (img, valor, funcao) => `
     </div>
 `
 
-document.addEventListener('keydown', function (event) {
-    if (event.key === 'F8') resetarBases()
+document.addEventListener('keydown', async function  (event) {
+    if (event.key === 'F8') 
+        await atualizarSis(true)
 })
-
-async function resetarBases() {
-
-    overlayAguarde(true)
-
-    const divMensagem = document.querySelector('.div-mensagem')
-
-    divMensagem.innerHTML = `
-        <div style="${vertical}; gap: 1vh;">
-            <label><b>Reconstrular</b>: Por favor, aguarde...</label>
-            <br>
-            
-            <div id="logs" style="${vertical}; gap: 1vh;"></div>
-        </div>
-    `
-
-    const logs = document.getElementById('logs')
-
-    logs.insertAdjacentHTML('beforeend', '<label>Criando uma nova Base, 0km, novíssima...</label>')
-
-    const bases = [
-        'mensagens',
-        'funcoes',
-        'campos',
-        'cidades',
-        'dados_clientes',
-        'fornecedores',
-        'materiais',
-        'mao_obra',
-        'dados_obras',
-        'ferramentas',
-        'dados_colaboradores',
-        'dados_despesas',
-        'dados_orcamentos',
-        'dados_setores'
-    ]
-
-    await resetarTudo()
-
-    for (const base of bases) {
-        await sincronizarDados(base, false, true) // Nome base, overlay off e resetar bases;
-        logs.insertAdjacentHTML('beforeend', `<label>Sincronizando: ${base}</label>`)
-    }
-
-    telaPrincipal()
-    removerOverlay()
-
-}
 
 telaLogin()
 
@@ -358,8 +311,9 @@ async function telaPrincipal() {
 
     toolbar.style.display = 'flex'
     acesso = JSON.parse(localStorage.getItem('acesso'))
-    if (!acesso) return removerAcesso()
-    funcoes = await recuperarDados('funcoes')
+
+    if (!acesso) 
+        return removerAcesso()
 
     const acumulado = `
 
@@ -369,11 +323,9 @@ async function telaPrincipal() {
 
             <br>
 
-            <div class="nomeUsuario">
-                <span><strong>${funcoes?.[acesso?.funcao]?.nome || '...'}</strong> ${acesso.usuario}</span>
-            </div>
+            <div class="nomeUsuario"></div>
 
-            ${btn('atualizar', 'Sincronizar App', 'atualizarApp()')}
+            ${btn('atualizar', 'Sincronizar App', 'atualizarSis()')}
             ${btn('perfil', 'Parceiros', 'telaUsuarios()')}
             ${btn('cracha', 'Colaboradores', 'telaColaboradores()')}
             ${btn('obras', 'Obras', 'telaObras()')}
@@ -405,60 +357,16 @@ async function telaPrincipal() {
     tela.innerHTML = acumulado
     telaInterna = document.querySelector('.telaInterna')
 
-    if (priExec) overlayAguarde()
-    //await atualizarApp()
+    if (priExec) 
+        overlayAguarde()
+
+    await usuariosToolbar()
+
+    //await atualizarSis()
 //await alertaMensagens()
     priExec = false
     removerOverlay()
 
-}
-
-async function atualizarApp() {
-
-    if (emAtualizacao) return
-
-    emAtualizacao = true
-
-    mostrarMenus(true)
-    sincronizarApp()
-    let status = { total: 14, atual: 1 }
-
-    const basesAuxiliares = [
-        'mensagens',
-        'funcoes',
-        'campos',
-        'cidades',
-        'dados_clientes',
-        'fornecedores',
-        'materiais',
-        'dados_obras',
-        'ferramentas',
-        'mao_obra',
-        'dados_colaboradores',
-        'dados_despesas',
-        'dados_orcamentos',
-        'dados_setores'
-    ]
-
-    for (const base of basesAuxiliares) {
-        sincronizarApp(status)
-        await sincronizarDados(base)
-        status.atual++
-    }
-
-    funcoes = await recuperarDados('funcoes')
-    cidades = await recuperarDados('cidades')
-    dados_setores = await recuperarDados('dados_setores')
-
-    const user = dados_setores[acesso.usuario]
-    if (user) {
-        acesso = user
-        localStorage.setItem('acesso', JSON.stringify(acesso))
-    }
-
-    sincronizarApp({ remover: true })
-
-    emAtualizacao = false
 }
 
 async function removerAcesso() {
@@ -1252,8 +1160,8 @@ function verificarRegras() {
     }
 
     //Cidade
-    const cidade = input('cidade')
-    if (!cidade || cidade.selectedIndex <= 0 || !cidade.value) {
+    const cidade = el('cidade')
+    if (!cidade?.id) {
         cidade.classList.add('invalido')
         liberado = false
     } else {
@@ -1444,105 +1352,6 @@ function erroConexao(mensagem) {
     sincronizarApp({ remover: true })
     emAtualizacao = false
 
-}
-
-async function cxOpcoes(name, nomeBase, campos, funcaoAux) {
-
-    function getValorPorCaminho(obj, caminho) {
-        const partes = caminho.split('/')
-        const ultima = partes[partes.length - 1]
-        let func = null
-
-        // Se o último pedaço tiver [funcao]
-        if (/\[.*\]$/.test(ultima)) {
-            const [chave, nomeFunc] = ultima.match(/^([^\[]+)\[(.+)\]$/).slice(1)
-            partes[partes.length - 1] = chave
-            func = nomeFunc
-        }
-
-        // percorre o caminho
-        let valor = partes.reduce((acc, chave) => acc?.[chave], obj)
-
-        // aplica a função se existir
-        if (valor != null && func && typeof window[func] === 'function') {
-            valor = window[func](valor)
-        }
-
-        return valor
-    }
-
-    const base = await recuperarDados(nomeBase)
-    let opcoesDiv = ''
-
-    for (const [cod, dado] of Object.entries(base)) {
-
-        if (dado.origem && origem !== dado?.origem) continue
-
-        const labels = campos
-            .map(campo => {
-                const valor = getValorPorCaminho(dado, campo)
-                return valor ? `<div>${valor}</div>` : ''
-            })
-            .join('')
-
-        const descricao = campos
-            .map(c => getValorPorCaminho(dado, c))
-            .find(v => v !== undefined && v !== null && v !== '')
-
-        opcoesDiv += `
-        <div 
-            name="camposOpcoes" 
-            class="atalhos-opcoes" 
-            onclick="selecionar('${name}', '${cod}', '${encodeURIComponent(descricao)}', ${funcaoAux ? `'${funcaoAux}'` : false})">
-            <img src="${dado.imagem || 'imagens/visitar.png'}" style="width: 3rem;">
-            <div style="${vertical}; gap: 2px;">
-                ${labels}
-            </div>
-        </div>`
-    }
-
-    const elemento = `
-        <div style="${vertical}; justify-content: left; background-color: #b1b1b1;">
-
-            <div style="${horizontal}; padding-left: 0.5rem; padding-right: 0.5rem; margin: 5px; background-color: white; border-radius: 10px;">
-                <input oninput="pesquisarCX(this)" placeholder="Pesquisar itens" style="border: none; width: 100%;">
-                <img src="imagens/pesquisar2.png" style="padding: 0.5rem;"> 
-            </div>
-
-            <div style="padding: 1rem; gap: 5px; ${vertical}; background-color: #d2d2d2; width: 30vw; max-height: 40vh; height: max-content; overflow-y: auto; overflow-x: hidden;">
-                ${opcoesDiv}
-            </div>
-
-        </div>
-    `
-
-    popup({ elemento, titulo: 'Selecione o item', nra: false })
-}
-
-async function selecionar(name, id, termo, funcaoAux) {
-    termo = decodeURIComponent(termo)
-    const elemento = document.querySelector(`[name='${name}']`)
-    elemento.textContent = termo || id
-    elemento.id = id
-    removerPopup()
-
-    if (funcaoAux) await eval(funcaoAux)
-}
-
-function pesquisarCX(input) {
-    const termoPesquisa = String(input.value)
-        .toLowerCase()
-        .replace(/[./-]/g, ''); // remove ponto, traço e barra
-
-    const divs = document.querySelectorAll(`[name='camposOpcoes']`);
-
-    for (const div of divs) {
-        const termoDiv = String(div.textContent)
-            .toLowerCase()
-            .replace(/[./-]/g, ''); // mesma limpeza no conteúdo
-
-        div.style.display = (termoDiv.includes(termoPesquisa) || termoPesquisa === '') ? '' : 'none';
-    }
 }
 
 function inicialMaiuscula(string) {

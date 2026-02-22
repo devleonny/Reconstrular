@@ -17,37 +17,30 @@ async function connectWebSocket() {
 
     socket.onmessage = async (event) => {
 
-        const data = JSON.parse(event.data)
+        const { tabela } = JSON.parse(event.data)
 
-        if (data.tipo == 'exclusao') { // Só se for no nível
-            await deletarDB(data.tabela, data.id)
+        if (tabela == 'dados_setores') {
+            const { usuario, timestamp = 0 } = JSON.parse(localStorage.getItem('acesso')) || {}
+            const us = await recuperarDado('dados_setores', usuario)
 
-        } else if (data.tipo == 'atualizacao') {
-
-            if (data.tabela == 'dados_setores' && data?.id == acesso?.usuario && data?.dados?.excluído) {
-                await removerAcesso()
+            if (us?.timestamp !== timestamp) {
+                localStorage.setItem('acesso', JSON.stringify(us))
             }
-
-            await inserirDados({ [data.id]: data.dados }, data.tabela)
-
-            if(data.tabela == 'mensagens') await alertaMensagens()
-
-        } else if (data.tipo == 'status') {
-
-            const user = await recuperarDado('dados_setores', data.usuario)
-            if (user) {
-                user.status = data.status
-                await inserirDados({ [data.usuario]: user }, 'dados_setores')
-            }
-
         }
+
+        if (tabela)
+            await sincronizarDados({ base: tabela })
+
+        if (tabela == 'mensagens')
+            await alertaMensagens()
+
 
     }
 
     socket.onclose = () => {
-        console.log(`🔴🔴🔴 WS ${new Date().toLocaleString()} 🔴🔴🔴`);
+        console.log(`🔴🔴🔴 WS ${new Date().toLocaleString()} 🔴🔴🔴`)
         console.log(`Tentando reconectar em ${reconnectInterval / 1000} segundos...`)
-        setTimeout(connectWebSocket, reconnectInterval);
+        setTimeout(connectWebSocket, reconnectInterval)
     }
 
 }

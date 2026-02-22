@@ -13,74 +13,51 @@ async function telaUsuarios() {
 
     mostrarMenus(false)
 
-    dados_setores = await recuperarDados('dados_setores')
-    cidades = await recuperarDados('cidades')
-    funcoes = await recuperarDados('funcoes')
-
-    const idF = acesso?.funcao || ''
-    const f = funcoes[idF] || {}
-    const r = f?.regras || []
-    const btnEdicao = r.length == 0 ? '' : `<button data-controle="inserir" onclick="editarParceiros()">Cadastro</button>`
-
-    const distritos = Object
-        .values(cidades)
-        .map(c => c.distrito)
-
-    const zonas = Object
-        .values(cidades)
-        .map(c => c.zona)
-
-    const btnExtras = `
-        ${btnEdicao}
-        ${fPesq({ texto: 'Função', name: 'funcao', objeto: funcoes, chave: 'nome' })}
-        ${fPesq({ texto: 'Zona', name: 'zona', lista: [...new Set(zonas)] })}
-        ${fPesq({ texto: 'Distrito', name: 'distrito', config: 'filtroCidadesCabecalho(this)', lista: [...new Set(distritos)] })}
-        ${fPesq({ texto: 'Cidade', name: 'cidade', objeto: cidades, chave: 'nome' })}
-    `
-
-    const acumulado = modeloTabela(
-        {
-            btnExtras,
-            removerPesquisa: true,
-            colunas: ['Nome Completo', 'Telefone', 'Email', 'Função', 'Zona', 'Distrito', 'Cidade', 'Edição']
-        }
-    )
-
-    titulo.textContent = 'Parceiros'
-    telaInterna.innerHTML = acumulado
-
-    for (const [usuario, dados] of Object.entries(dados_setores).reverse()) {
-        criarLinhaUsuarios(usuario, dados)
+    const colunas = {
+        'Nome Completo': { chave: 'nome_completo' },
+        'Telefone': { chave: 'telefone' },
+        'Email': { chave: 'email' },
+        'Função': { chave: 'snapshots.funcao' },
+        'Zona': { chave: 'zona' },
+        'Distrito': { chave: 'distrito' },
+        'Cidade': { chave: 'snapshots.cidade' },
+        'Edição': {}
     }
 
-    // Regras de validação;
-    validarRegrasAcesso()
+    const tabela = modTab({
+        colunas,
+        pag: 'parceiros',
+        base: 'dados_setores',
+        criarLinha: 'criarLinhaUsuarios',
+        body: 'bodyParceiros'
+    })
+
+    titulo.textContent = 'Parceiros'
+    telaInterna.innerHTML = tabela
+
+    await paginacao()
 
 }
 
-async function criarLinhaUsuarios(usuario, dados) {
+async function criarLinhaUsuarios(dados) {
 
-    const { cidade } = dados
-    const nCidade = cidades?.[cidade] || {}
-    const f = await recuperarDado('funcoes', dados?.funcao)
+    const { usuario, nome_completo, telefone, email, cidade, funcao } = dados || {}
+    const nCidade = await recuperarDado('cidades', cidade) || {}
+    const { nome } = await recuperarDado('funcoes', funcao) || {}
 
     const tds = `
-        <td>${dados?.nome_completo || ''}</td>
-        <td>${dados?.telefone || ''}</td>
-        <td>${dados?.email || ''}</td>
-        <td name="funcao">${f?.nome || ''}</td>
+        <td>${nome_completo || ''}</td>
+        <td>${telefone || ''}</td>
+        <td>${email || ''}</td>
+        <td name="funcao">${nome || ''}</td>
         <td name="zona" data-cod="${nCidade?.zona}">${nCidade?.zona || ''}</td>
         <td name="distrito">${nCidade?.distrito || ''}</td>
-        <td name="cidade" data-cod="${cidade}">${nCidade.nome}</td>
+        <td name="cidade" data-cod="${cidade}">${nCidade.nome || ''}</td>
         <td>
             <img data-controle="editar" onclick="editarParceiros('${usuario}')" src="imagens/pesquisar.png">
-        </td>
-    `
+        </td>`
 
-    const trExistente = document.getElementById(usuario)
-    if (trExistente) return trExistente.innerHTML = tds
-
-    document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${usuario}">${tds}</tr>`)
+    return `<tr>${tds}</tr>`
 
 }
 
@@ -114,95 +91,67 @@ function aplicarFiltros() {
 
 async function editarParceiros(usuario) {
 
-    funcoes = await recuperarDados('funcoes')
-    const parceiro = dados_setores[usuario] || {}
-    const cidade = cidades?.[parceiro?.cidade]
+    const { cidade, nome_completo, funcao, email, telefone } = await recuperarDado('dados_setores', usuario) || {}
 
-    const idF = acesso?.funcao || ''
-    const r = funcoes?.[idF]?.regras || []
-
-    const modS = (ops) => {
-
-        const mod = `
-        <Select>
-            ${ops.map(o => `<option>${o}</option>`).join('')}
-        </select>
-        `
-
-        return mod
+    controlesCxOpcoes.cidade = {
+        base: 'cidades',
+        colunas: {
+            'Distrito': { chave: 'distrito' },
+            'Cidade': { chave: 'nome' },
+            'Zona': { chave: 'zona' },
+            'Area': { chave: 'area' },
+        },
+        retornar: ['nome', 'distrito']
     }
 
-    const esquema = {
-        3: [1],
-        4: [1, 2, 3],
-        5: [1, 2, 3, 4]
+    controlesCxOpcoes.funcao = {
+        base: 'funcoes',
+        colunas: {
+            'Nome': { chave: 'nome' }
+        },
+        retornar: ['nome']
     }
 
-    const opcoes = Object.entries(funcoes)
-        .sort(([, a], [, b]) => a.ordem - b.ordem)
-        .map(([id, dados]) => {
-            if (!r.includes(id) && id !== 'tL4LM')
-                return ''
-            const { ordem } = dados
-
-            return `
-            <div style="${horizontal}; gap: 1rem;">
-                <input name="funcao" type="radio" id="${id}" ${parceiro?.funcao == id ? 'selected' : ''}>
-                <span style="width: 200px; text-align: left;">${dados.nome}</span>
-                ${ordem > 2 ? modS([1, 2, 3]) : ''}
-                ${ordem > 2 ? modS([1, 2, 3]) : ''}
-                ${ordem > 2 ? modS([1, 2, 3]) : ''}
-                ${ordem > 2 ? modS([1, 2, 3]) : ''}
-            </div>`
-        })
-        .join('')
-
-    const distritos = Object
-        .values(cidades)
-        .map(c => c.distrito)
-
-    const opcoesDistrito = [...new Set(distritos)]
-        .sort((a, b) => a.localeCompare(b))
-        .map(d => `<option ${cidade?.distrito == d ? 'selected' : ''}>${d}</option>`)
-        .join('')
+    const dCidades = await recuperarDado('cidades', cidade)
+    const dFuncao = await recuperarDado('funcoes', funcao)
 
     const linhas = [
         { texto: 'Usuário', elemento: `<input ${usuario ? 'readOnly="true"' : ''} name="usuario" placeholder="Usuário" value="${usuario || ''}">` },
-        { texto: 'Nome', elemento: `<input name="nome_completo" placeholder="Nome Completo" value="${parceiro?.nome_completo || ''}">` },
-        { texto: 'E-mail', elemento: `<input name="email" type="email" placeholder="E-mail" value="${parceiro?.email || ''}">` },
-        { texto: 'Telefone', elemento: `<input name="telefone" placeholder="Telefone" value="${parceiro?.telefone || ''}">` },
+        { texto: 'Nome', elemento: `<input name="nome_completo" placeholder="Nome Completo" value="${nome_completo || ''}">` },
+        { texto: 'E-mail', elemento: `<input name="email" type="email" placeholder="E-mail" value="${email || ''}">` },
+        { texto: 'Telefone', elemento: `<input name="telefone" placeholder="Telefone" value="${telefone || ''}">` },
         {
-            texto: 'Distrito',
-            elemento: `
-                <select name="distrito" onchange="filtroCidadesCabecalho(this)">
-                    <option></option>
-                    ${opcoesDistrito}
-                </select>
-            `},
-        { texto: 'Cidade', elemento: `<select name="cidade"></select>` },
+            texto: 'Cidade',
+            elemento: `<span 
+            class="opcoes" ${dCidades ? `id="${cidade}"` : ''} 
+            name="cidade" 
+            onclick="cxOpcoes('cidade')">
+                ${dCidades ? dCidades.nome : 'Selecionar'}
+            </span>`
+        },
         {
-            elemento: `
-                <div style="${vertical};gap: 2px;">
-                    ${opcoes}
-                </div>
-            `
-        }
+            texto: 'Função',
+            elemento: `<span 
+            class="opcoes" ${dFuncao ? `id="${funcao}"` : ''} 
+            name="funcao" 
+            onclick="cxOpcoes('funcao')">
+                ${dFuncao ? dFuncao.nome : 'Selecionar'}
+            </span>`
+        },
     ]
 
     const botoes = [
-        { texto: 'Salvar', img: 'concluido', funcao: `salvarParceiros()` }
+        { texto: 'Salvar', img: 'concluido', funcao: `salvarParceiro('${usuario}')` }
     ]
 
-    if (usuario) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarDesativarUsuario('${usuario}')` })
+    if (usuario)
+        botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarDesativarUsuario('${usuario}')` })
 
-    const titulo = usuario ? `Gerenciar Parceiro` : `Criar acesso parceiro`
+    const titulo = usuario
+        ? `Gerenciar Parceiro`
+        : `Criar acesso parceiro`
+
     popup({ linhas, botoes, titulo })
-
-    if (cidade) {
-        const lista = resolverCidadesPorDistrito(cidade.distrito)
-        const selectCidade = el('cidade')
-        aplicarCidadesNoSelect(lista, selectCidade, parceiro.cidade)
-    }
 
 }
 
@@ -224,37 +173,36 @@ async function desativarUsuario(usuario) {
         return popup({ mensagem: `Falha ao excluir: ${resposta.mensagem}` })
 
     await deletarDB('dados_setores', usuario)
-    await telaUsuarios()
     removerOverlay()
 
 }
 
-async function salvarParceiros() {
+async function salvarParceiro(usuario) {
 
     overlayAguarde()
 
-    const usuario = el('usuario').value
     const nome_completo = el('nome_completo').value
     const email = el('email').value
     const telefone = el('telefone').value
-    const funcao = el('funcao')?.selectedOptions[0]?.id
-    const cidade = el('cidade')?.selectedOptions[0]?.value
+    const cidade = el('cidade')?.id
+    const funcao = el('funcao')?.id
 
-    if (!usuario || !nome_completo || !email)
+    if (!usuario || !cidade || !nome_completo || !email)
         return popup({ mensagem: 'Não deixe Usuário/Nome ou E-mail em branco' })
 
-    const parceiro = {
-        ...dados_setores[usuario],
+    const parceiro = await recuperarDado('dados_setores', usuario) || {}
+
+    const novo = {
+        ...parceiro,
         nome_completo,
+        funcao,
         email,
         telefone,
-        funcao,
         cidade
     }
 
-    enviar(`dados_setores/${usuario}`, parceiro)
-    await inserirDados({ [usuario]: parceiro }, 'dados_setores')
-    await telaUsuarios()
+    enviar(`dados_setores/${usuario}`, novo)
+    await inserirDados({ [usuario]: novo }, 'dados_setores')
 
     removerPopup()
 

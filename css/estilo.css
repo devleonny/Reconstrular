@@ -612,8 +612,9 @@ button {
 }
 
 .tabela th {
-    background-color: #deeaf6;
     font-weight: lighter;
+    text-align: center;
+    background-color: #deeaf6;
     border: solid 1px #d2d2d2;
     padding: 8px;
 }
@@ -626,6 +627,48 @@ button {
 
 .tabela span {
     text-align: left;
+}
+
+.div-tabela {
+    border-right: solid 1px #434343;
+    border-left: solid 1px #434343;
+    background-color: white;
+    height: max-content;
+    width: 100%;
+    max-height: 70vh;
+    overflow: auto;
+}
+
+.topo-tabela {
+    justify-content: space-between;
+    width: 100%;
+    background-color: #707070;
+    border: 1px solid #434343;
+    border-bottom: none;
+    min-height: 2vh;
+    display: flex;
+    align-items: center;
+    border-top-right-radius: 5px;
+    border-top-left-radius: 5px;
+    gap: 2px;
+    width: 100%;
+}
+
+.topo-tabela span {
+    padding: 5px;
+}
+
+.rodape-tabela {
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    gap: 5px;
+    border: 1px solid #434343;
+    width: 100%;
+    min-height: 2vh;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    background-color: #b1b1b1;
 }
 
 .btnLateral {
@@ -654,8 +697,8 @@ button {
 }
 
 .telaInterna {
-    width: 80%;
-    padding: 2vw 1vw;
+    width: 80vw;
+    padding: 1rem;
 }
 
 .side-menu {
@@ -713,19 +756,6 @@ button {
     justify-content: center;
     z-index: 0;
     gap: 2vw;
-}
-
-.opcoes {
-    background-color: #097fe6;
-    padding: 5px;
-    border-radius: 3px;
-    margin: 3px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 0.8rem;
-    color: white;
 }
 
 .atalhos-opcoes:hover {
