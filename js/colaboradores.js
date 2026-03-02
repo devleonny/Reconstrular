@@ -5,14 +5,13 @@ async function telaColaboradores() {
     mostrarMenus(false)
 
     const modelo = (titulo, elemento) => `
-        <div style="${vertical}; gap: 2px; padding: 0.5rem;">
+        <div class="filtro-tabela">
             <span>${titulo}</span>
             ${elemento}
         </div>
     `
 
     const btnExtras = `
-    <div style="display: flex; flex-wrap: wrap; gap: 5px; gap: 5px; padding: 5px; color: white;">
         <div style="${vertical}; gap: 2px;">
             <button style="width: 100%;" onclick="gerarTodosPDFs()">Folhas de Ponto.pdf</button>
             <div style="${horizontal}; gap: 2px;">
@@ -20,15 +19,9 @@ async function telaColaboradores() {
                 ${modelo('Mês', `<select name="mes"><option></option>${optionsSelect(meses)}</select>`)}
             </div>
         </div>
-        <div class="${vertical}; gap: 2px;">
-            <button style="width: 100%;" onclick="excelColaboradores()">Trabalhadores.xlsx</button>
-            <div style="${horizontal}; gap: 2px;">
-                ${fPesq({ texto: 'Distrito', name: 'distrito', config: 'filtroCidadesCabecalho(this)', lista: [] })}
-                ${fPesq({ texto: 'Cidade', name: 'cidade', config: `filtroCidadesCabecalho(this, 'cidade')`, objeto: {}, chave: 'nome' })}
-            </div>
-        </div>
+
+        <button style="width: 100%;" onclick="excelColaboradores()">Trabalhadores.xlsx</button>
         <button data-controle="inserir" onclick="adicionarColaborador()">Adicionar</button>
-    </div>
     `
 
     titulo.textContent = 'Gerenciar Colaboradores'
@@ -39,13 +32,13 @@ async function telaColaboradores() {
         'Obra Alocada': {},
         'Distrito': {},
         'Cidade': { chave: 'snapshots.cidade' },
-        'Status': { chave: 'status' },
+        'Status': { chave: 'status', tipoPesquisa: 'select' },
         'Especialidade': { chave: 'especialidade' },
         'Folha de Ponto': {},
-        '': {}
+        'Editar': {}
     }
 
-    const tabela = modTab({
+    const tabela = await modTab({
         colunas,
         pag: 'colaboradores',
         btnExtras,

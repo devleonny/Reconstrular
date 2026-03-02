@@ -19,12 +19,12 @@ async function telaUsuarios() {
         'Email': { chave: 'email' },
         'Função': { chave: 'snapshots.funcao' },
         'Zona': { chave: 'zona' },
-        'Distrito': { chave: 'distrito' },
-        'Cidade': { chave: 'snapshots.cidade' },
+        'Distrito': { chave: 'snapshots.cidade.distrito', tipoPesquisa: 'select' },
+        'Cidade': { chave: 'snapshots.cidade.nome', tipoPesquisa: 'select' },
         'Edição': {}
     }
 
-    const tabela = modTab({
+    const tabela = await modTab({
         colunas,
         pag: 'parceiros',
         base: 'dados_setores',
@@ -59,34 +59,6 @@ async function criarLinhaUsuarios(dados) {
 
     return `<tr>${tds}</tr>`
 
-}
-
-function aplicarFiltros() {
-    const filtros = document.querySelectorAll('.filtro-tabela select')
-    const linhas = document.querySelectorAll('#body tr')
-    const valores = {}
-
-    filtros.forEach(f => {
-        const valor = f.selectedOptions[0]?.textContent?.trim()
-        const nome = f.getAttribute('name')
-        if (valor && nome) valores[nome] = valor.toLowerCase()
-    })
-
-    linhas.forEach(tr => {
-        let visivel = true
-
-        for (const nome in valores) {
-            const alvo = tr.querySelector(`[name="${nome}"]`)
-            const texto = alvo?.textContent?.trim().toLowerCase() || ''
-
-            if (!texto.includes(valores[nome])) {
-                visivel = false
-                break
-            }
-        }
-
-        tr.style.display = visivel ? '' : 'none'
-    })
 }
 
 async function editarParceiros(usuario) {

@@ -6,52 +6,91 @@ async function telaObras() {
 
     mostrarMenus(false)
 
-    dados_clientes = await recuperarDados('dados_clientes')
-    dados_despesas = await recuperarDados('dados_despesas')
-    cidades = await recuperarDados('cidades')
-
-    const distritos = Object
-        .values(cidades)
-        .map(c => c.distrito)
-
-    const nomeBase = 'dados_obras'
     titulo.textContent = 'Gerenciar Obras'
     const btnExtras = `
-    <button onclick="adicionarObra()" data-controle="inserir">Adicionar</button>
-        ${fPesq({ texto: 'Distrito', name: 'distrito', config: 'filtroCidadesCabecalho(this)', lista: [...new Set(distritos)] })}
-        ${fPesq({ texto: 'Cidade', name: 'cidade', config: `filtroCidadesCabecalho(this, 'cidade')`, objeto: cidades, chave: 'nome' })}
+        <button onclick="adicionarObra()" data-controle="inserir">Adicionar</button>
     `
 
-    telaInterna.innerHTML = modeloTabela({
-        colunas: [
-            'Cliente',
-            'Distrito',
-            'Cidade',
-            'Porcentagem',
-            'Status',
-            'Material Orçamentado',
-            'Material Real',
-            'Material Real vs Material Orçamentado',
-            'Mão de Obra Orçamentado',
-            'Acompanhamento',
-            'Cronograma',
-            ''
-        ],
-        btnExtras
+    const tabela = await modTab({
+        btnExtras,
+        pag: 'obras',
+        body: 'bodyObras',
+        base: 'dados_obras',
+        criarLinha: 'criarLinhaObras',
+        colunas: {
+            'Cliente': { chave: 'snapshosts.cliente.nome' },
+            'Distrito': { chave: 'snapshosts.cliente.cidade.distrito', tipoPesquisa: 'select' },
+            'Cidade': { chave: 'snapshosts.cliente.cidade.nome', tipoPesquisa: 'select' },
+            'Porcentagem': {},
+            'Status': {},
+            'Material Orçamentado': {},
+            'Material Real': {},
+            'Material Real vs Material Orçamentado': {},
+            'Mão de Obra Orçamentado': {},
+            'Acompanhamento': {},
+            'Cronograma': {},
+            '': {}
+        }
     })
 
-    dados_orcamentos = await recuperarDados('dados_orcamentos')
-    dados_obras = await recuperarDados(nomeBase)
-    for (const [idObra, obra] of Object.entries(dados_obras).reverse()) {
-        criarLinhaObras(idObra, obra)
-    }
+    telaInterna.innerHTML = tabela
 
-    // Regras de validação;
-    validarRegrasAcesso()
+    await paginacao()
 
 }
 
-function calcularTotaisOrcamentos(idObra, obra) {
+async function criarLinhaObras(obra) {
+
+    const { id } = obra || {}
+
+    const resultado = obra?.resultado || {}
+    const porcentagem = Number(resultado?.porcentagem || 0)
+    const cliente = await recuperarDado('dados_clientes', obra?.cliente) || {}
+    const st = porcentagem == 0
+        ? 'Por Iniciar'
+        : porcentagem > 0
+            ? 'Em Andamento'
+            : 'Finalizado'
+
+    const {
+        materialOrcado,
+        maoObraOrcado,
+        materialReal
+    } = calcularTotaisOrcamentos(id, obra)
+
+    tds = `
+        <td>${cliente?.nome || ''}</td>
+        <td>${cliente?.snapshots?.cidade?.distrito || ''}</td>
+        <td>${cliente?.snapshots?.cidade?.nome || ''}</td>
+        <td>
+            ${divPorcentagem(porcentagem)}
+        </td>
+        <td style="text-align: left;">
+            <span class="${st.replace(' ', '_')}">${st}</span>
+            ${resultado?.excedente ? '<span class="excedente">Excedente</span>' : ''}
+        </td>
+
+        <td>${dinheiro(materialOrcado)}</td>
+        <td>${dinheiro(materialReal)}</td>
+        <td>
+            ${porcentagemHtml(materialOrcado ? Number((materialReal / materialOrcado) * 100).toFixed(0) : 0)}
+        </td>
+        <td>${dinheiro(maoObraOrcado)}</td>
+        <td>
+            <img src="imagens/kanban.png" onclick="verAndamento('${id}')">
+        </td>
+        <td>
+            <img src="imagens/relogio.png" onclick="telaCronograma('${id}')">
+        </td>
+        <td>
+            <img src="imagens/pesquisar.png" data-controle="editar" onclick="adicionarObra('${id}')">
+        </td>
+    `
+    return `<tr>${tds}</tr>`
+
+}
+
+async function calcularTotaisOrcamentos(idObra, obra) {
 
     const totais = {
         materialOrcado: 0,
@@ -60,17 +99,25 @@ function calcularTotaisOrcamentos(idObra, obra) {
     }
 
     // Despesas vinculadas a esta Obra;
-    for (const despesa of Object.values(dados_despesas)) {
-        if (despesa?.obra !== idObra || !despesa.valor) continue
-        totais.materialReal += despesa.valor
+    const despesasVinculadas = await pesquisarDB({
+        base: 'dados_despesas',
+        filtros: {
+            'valor': { op: 'NOT_EMPTY' },
+            'obra': { op: '=', value: idObra }
+        }
+    })
+
+    for (const despesa of (despesasVinculadas?.resultados || [])) {
+        totais.materialReal += (despesa?.valor || 0)
     }
 
     const vinculados = obra.orcamentos_vinculados || {}
 
     for (const idOrcamento of Object.keys(vinculados)) {
 
-        const orc = dados_orcamentos?.[idOrcamento]
-        if (!orc) continue
+        const orc = await recuperarDado('dados_orcamentos', idOrcamento)
+        if (!orc)
+            continue
 
         const zonas = orc.zonas || {}
 
@@ -96,109 +143,48 @@ function calcularTotaisOrcamentos(idObra, obra) {
     return totais
 }
 
-async function criarLinhaObras(id, obra) {
-
-    const cidade = cidades?.[obra?.cidade] || {}
-    const resultado = obra?.resultado || {}
-    const porcentagem = Number(resultado?.porcentagem || 0)
-    const cliente = dados_clientes?.[obra?.cliente] || {}
-    const st = porcentagem == 0
-        ? 'Por Iniciar'
-        : porcentagem > 0
-            ? 'Em Andamento'
-            : 'Finalizado'
-
-    const {
-        materialOrcado,
-        maoObraOrcado,
-        materialReal
-    } = calcularTotaisOrcamentos(id, obra)
-
-    tds = `
-        <td>${cliente?.nome || ''}</td>
-        <td name="distrito">${cidade.distrito || ''}</td>
-        <td name="cidade" data-cod="${obra?.cidade}">${cidade?.nome || ''}</td>
-        <td>
-            ${divPorcentagem(porcentagem)}
-        </td>
-        <td style="text-align: left;">
-            <span class="${st.replace(' ', '_')}">${st}</span>
-            ${resultado?.excedente ? '<span class="excedente">Excedente</span>' : ''}
-        </td>
-
-        <td>${dinheiro(materialOrcado)}</td>
-        <td>${dinheiro(materialReal)}</td>
-        <td>
-            ${porcentagemHtml(materialOrcado ? Number((materialReal / materialOrcado) * 100).toFixed(0) : 0)}
-        </td>
-        <td>${dinheiro(maoObraOrcado)}</td>
-        <td>
-            <img src="imagens/kanban.png" onclick="verAndamento('${id}')">
-        </td>
-        <td>
-            <img src="imagens/relogio.png" onclick="telaCronograma('${id}')">
-        </td>
-        <td>
-            <img src="imagens/pesquisar.png" data-controle="editar" onclick="adicionarObra('${id}')">
-        </td>
-    `
-
-    const trExistente = document.getElementById(id)
-    if (trExistente) return trExistente.innerHTML = tds
-
-    document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${id}">${tds}</tr>`)
-
-}
-
 async function adicionarObra(idObra) {
 
-    const obra = await recuperarDado('dados_obras', idObra) || {}
-    const cidade = cidades?.[obra?.cidade] || {}
-    const distritos = Object
-        .values(cidades)
-        .map(c => c.distrito)
-    clientes = await recuperarDados('dados_clientes')
-    dados_orcamentos = await recuperarDados('dados_orcamentos')
-    const opcoesDistrito = [...new Set(distritos)]
-        .sort((a, b) => a.localeCompare(b))
-        .map(d => `<option ${cidade?.distrito == d ? 'selected' : ''}>${d}</option>`)
-        .join('')
-    const opcoesClientes = Object.entries(clientes)
-        .map(([idCliente, cliente]) => `<option id="${idCliente}" ${obra?.cliente == idCliente ? 'selected' : ''}>${cliente.nome}</option>`)
-        .join('')
+    const { snapshots } = await recuperarDado('dados_obras', idObra) || {}
+
+    controlesCxOpcoes.cliente = {
+        base: 'dados_clientes',
+        retornar: ['nome'],
+        funcaoAdicional: ['buscarDados'],
+        colunas: {
+            'Cidade': { chave: 'nome' },
+            'Distrito': { chave: 'snapshots.cidade.distrito' },
+            'Zona': { chave: 'snapshots.cidade.zona' },
+            'Área': { chave: 'snapshots.cidade.area' }
+        }
+    }
 
     const linhas = [
-        { texto: 'Cliente', elemento: `<select name="cliente" onchange="buscarDados(this)"><option></option>${opcoesClientes}</select>` },
         {
-            texto: 'Distrito',
-            elemento: `
-                <select name="distrito" onchange="filtroCidadesCabecalho(this)">
-                    <option></option>
-                    ${opcoesDistrito}
-                </select>
-            `},
-        { texto: 'Cidade', elemento: `<select name="cidade"></select>` },
+            texto: 'Cliente',
+            elemento: `<span class="opcoes" name="cliente" onclick="cxOpcoes('cliente')">Selecionar</span>`
+        },
+        { texto: 'Cidade', elemento: `<span name="cidade"></span>` },
+        { texto: 'Distrito', elemento: `<span name="distrito"></span>` },
         { texto: 'Telefone', elemento: `<span name="telefone"></span>` },
         { texto: 'E-mail', elemento: `<span name="email"></span>` },
         { texto: 'Vincular Orçamento', elemento: `<img onclick="painelVincularOrcamentos('${idObra}')" src="imagens/link.png">` }
     ]
 
     const botoes = [
-        { funcao: idObra ? `salvarObra('${idObra}')` : 'salvarObra()', img: 'concluido', texto: 'Salvar' }
+        {
+            funcao: idObra
+                ? `salvarObra('${idObra}')`
+                : 'salvarObra()',
+            img: 'concluido',
+            texto: 'Salvar'
+        }
     ]
 
-    if (idObra) botoes.push({ funcao: `confirmarExclusaoObra('${idObra}')`, img: 'cancel', texto: 'Excluir' })
+    if (idObra)
+        botoes.push({ funcao: `confirmarExclusaoObra('${idObra}')`, img: 'cancel', texto: 'Excluir' })
 
     popup({ linhas, botoes, titulo: 'Formulário de Obra' })
-
-
-    if (cidade) {
-        const lista = resolverCidadesPorDistrito(cidade.distrito)
-        const selectCidade = el('cidade')
-        aplicarCidadesNoSelect(lista, selectCidade, obra.cidade)
-    }
-
-    buscarDados()
 
 }
 
@@ -208,16 +194,16 @@ async function salvarObra(idObra = unicoID()) {
 
     const obra = await recuperarDado('dados_obras', idObra) || {}
 
-    // cidade
-    obra.cidade = obVal('cidade')
+    const painel = document.querySelector('.painel-padrao')
+    const spanCliente = painel.querySelector('[name="cliente"]')
 
-    const select = document.querySelector('[name="cliente"]')
-    const idCliente = select.options[select.selectedIndex].id
-    obra.cliente = idCliente
+    if (!spanCliente.id)
+        removerPopup()
 
-    await enviar(`dados_obras/${idObra}`, obra)
+    obra.cliente = spanCliente.id
+
+    enviar(`dados_obras/${idObra}/cliente`, spanCliente.id)
     await inserirDados({ [idObra]: obra }, 'dados_obras')
-    await telaObras()
 
     removerPopup()
 

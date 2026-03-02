@@ -1,164 +1,117 @@
-const fPesq = ({ objeto = null, lista = [], chave, name = null, texto, config = '' }) => {
-
-
-    let opcoes = ''
-
-    if (objeto) {
-        opcoes = Object
-            .entries(objeto)
-            .sort(([, a], [, b]) => a[chave].localeCompare(b[chave]))
-            .map(([id, dados]) => `<option id="${id}" value="${dados[chave]}">${dados[chave]}</option>`)
-            .join('')
-
-    } else {
-
-        opcoes = lista
-            .map(ìtem => `<option>${ìtem}</option>`)
-            .sort((a, b) => a.localeCompare(b))
-            .join('')
-
-    }
-
-    const elemento = `
-        <div class="filtro-tabela" style="${vertical}; gap: 2px; padding: 0.5rem;">
-            <span>${texto}</span>
-            <select name="${name}" onchange="aplicarFiltros(); ${config}">
-                <option value=""></option>
-                ${opcoes}
-            </select>
-        </div>`
-
-    return elemento
-}
-
 async function telaClientes() {
 
     telaAtiva = 'clientes'
 
     mostrarMenus(false)
 
-    dados_clientes = await recuperarDados('dados_clientes')
-    cidades = await recuperarDados('cidades')
-
-    const distritos = Object
-        .values(cidades)
-        .map(c => c.distrito)
-
     titulo.textContent = 'Clientes'
 
     const btnExtras = `
         <button data-controle="inserir" onclick="formularioCliente()">Adicionar</button>
-        ${fPesq({ texto: 'Distrito', name: 'distrito', config: 'filtroCidadesCabecalho(this)', lista: [...new Set(distritos)] })}
-        ${fPesq({ texto: 'Cidade', name: 'cidade', config: `filtroCidadesCabecalho(this, 'cidade')`, objeto: cidades, chave: 'nome' })}
     `
 
-    const params = {
-        colunas: ['Nome', 'Morada Fiscal', 'Morada de Execução', 'Distrito', 'Cidade', 'E-mail', 'Telefone', ''],
-        btnExtras
-    }
+    const tabela = await modTab({
+        btnExtras,
+        base: 'dados_clientes',
+        pag: 'clientes',
+        body: 'bodyClientes',
+        criarLinha: 'criarLinhaClientes',
+        colunas: {
+            'Nome': { chave: 'nome' },
+            'Morada Fiscal': { chave: 'moradaFiscal' },
+            'Morada de Execução': { chave: 'moradaExecucao' },
+            'Distrito': { chave: 'snapshots.cidade.distrito', tipoPesquisa: 'select' },
+            'Cidade': { chave: 'snapshots.cidade.nome', tipoPesquisa: 'select' },
+            'E-mail': { chave: 'email' },
+            'Telefone': { chave: 'telefone' },
+            'Detalhes': {}
+        }
 
-    const acumulado = modeloTabela(params)
+    })
 
-    telaInterna.innerHTML = acumulado
+    telaInterna.innerHTML = tabela
 
-    for (const [idCliente, dados] of Object.entries(dados_clientes).reverse()) {
-        criarLinhaClientes(idCliente, dados)
-    }
-
-    // Regras de validação;
-    validarRegrasAcesso()
-
+    await paginacao()
 }
 
-function criarLinhaClientes(idCliente, dados) {
+function criarLinhaClientes(dados) {
 
-    const cidade = cidades?.[dados?.cidade] || {}
+    const { snapshots, id, email, telefone, nome, moradaFiscal, moradaExecucao } = dados || {}
+    const cidade = snapshots?.cidade || {}
 
     tds = `
-        <td>${dados?.nome || '-'}</td>
-        <td>${dados?.moradaFiscal || '-'}</td>
-        <td>${dados?.moradaExecucao || '-'}</td>
-        <td name="distrito">${cidade?.distrito || '-'}
-        <td name="cidade" data-cod="${dados?.cidade}">${cidade?.nome || '-'}
-        <td>${dados?.email || '-'}</td>
-        <td>${dados?.telefone || '-'}</td>
+        <td>${nome || ''}</td>
+        <td>${moradaFiscal || ''}</td>
+        <td>${moradaExecucao || ''}</td>
+        <td>${cidade?.distrito || ''}
+        <td>${cidade?.nome || ''}
+        <td>${email || ''}</td>
+        <td>${telefone || ''}</td>
         <td>
-            <img data-controle="editar" onclick="formularioCliente('${idCliente}')" src="imagens/pesquisar.png">
+            <img onclick="formularioCliente('${id}')" src="imagens/pesquisar.png">
         </td>
     `
-
-    const trExistente = document.getElementById(idCliente)
-    if (trExistente) return trExistente.innerHTML = tds
-    document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${idCliente}">${tds}</tr>`)
+    return `<tr>${tds}</tr>`
 
 }
 
 async function formularioCliente(idCliente) {
 
-    const cliente = await recuperarDado('dados_clientes', idCliente)
-    const cidade = cidades?.[cliente?.cidade] || {}
-    const distritos = Object
-        .values(cidades)
-        .map(c => c.distrito)
-    const opcoesDistrito = [...new Set(distritos)]
-        .sort((a, b) => a.localeCompare(b))
-        .map(d => `<option ${cidade?.distrito == d ? 'selected' : ''}>${d}</option>`)
-        .join('')
+    const { snapshots, nome, telefone, email, moradaExecucao, moradaFiscal, numeroContribuinte } = await recuperarDado('dados_clientes', idCliente) || {}
+
     const botoes = [
         { texto: 'Salvar', img: 'concluido', funcao: idCliente ? `salvarCliente('${idCliente}')` : 'salvarCliente()' }
     ]
 
-    if (idCliente) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExclusaoCliente('${idCliente}')` })
+    if (idCliente)
+        botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExclusaoCliente('${idCliente}')` })
+
+    const spanCidade = snapshots?.cidade
+        ? `${snapshots.cidade?.nome} \n ${snapshots.cidade?.distrito}`
+        : 'Selecionar'
+
+    controlesCxOpcoes.cidade = {
+        base: 'cidades',
+        retornar: ['nome', 'distrito'],
+        colunas: {
+            'Cidade': { chave: 'nome' },
+            'Distrito': { chave: 'distrito' },
+            'Zona': { chave: 'zona' },
+            'Área': { chave: 'area' }
+        }
+    }
 
     const linhas = [
-        { texto: 'Nome', elemento: `<textarea name="nome">${cliente?.nome || ''}</textarea>` },
-        { texto: 'Morada Fiscal', elemento: `<input oninput="regrasClientes()" name="moradaFiscal" value="${cliente?.moradaFiscal || ''}">` },
-        { texto: 'Morada de Execução', elemento: `<input oninput="regrasClientes()" name="moradaExecucao" value="${cliente?.moradaExecucao || ''}">` },
-        { texto: 'Número de Contribuinte', elemento: `<input oninput="regrasClientes()" name="numeroContribuinte" value="${cliente?.numeroContribuinte || ''}">` },
-        { texto: 'Telefone', elemento: `<input oninput="regrasClientes()" name="telefone" value="${cliente?.telefone || ''}">` },
-        { texto: 'E-mail', elemento: `<input oninput="regrasClientes()" name="email" value="${cliente?.email || ''}">` },
+        { texto: 'Nome', elemento: `<textarea name="nome">${nome || ''}</textarea>` },
+        { texto: 'Morada Fiscal', elemento: `<input oninput="regrasClientes()" name="moradaFiscal" value="${moradaFiscal || ''}">` },
+        { texto: 'Morada de Execução', elemento: `<input oninput="regrasClientes()" name="moradaExecucao" value="${moradaExecucao || ''}">` },
+        { texto: 'Número de Contribuinte', elemento: `<input oninput="regrasClientes()" name="numeroContribuinte" value="${numeroContribuinte || ''}">` },
+        { texto: 'Telefone', elemento: `<input oninput="regrasClientes()" name="telefone" value="${telefone || ''}">` },
+        { texto: 'E-mail', elemento: `<input oninput="regrasClientes()" name="email" value="${email || ''}">` },
         {
-            texto: 'Distrito',
-            elemento: `
-                <select name="distrito" onchange="filtroCidadesCabecalho(this)">
-                    <option></option>
-                    ${opcoesDistrito}
-                </select>
-            `},
-        { texto: 'Cidade', elemento: `<select name="cidade"></select>` },
+            texto: 'Cidade',
+            elemento: `<span name="cidade" class="opcoes" onclick="cxOpcoes('cidade')">${spanCidade}</span>`
+        },
     ]
 
     popup({ linhas, botoes, titulo: 'Formulário de Cliente' })
-
-    if (cidade) {
-        const lista = resolverCidadesPorDistrito(cidade.distrito)
-        const selectCidade = el('cidade')
-        aplicarCidadesNoSelect(lista, selectCidade, cliente?.cidade)
-    }
 
     regrasClientes()
 }
 
 function confirmarExclusaoCliente(idCliente) {
-    const acumulado = `
-        <div style="${horizontal}; gap: 1rem; background-color: #d2d2d2; padding: 1rem;">
-            <span>Tem certeza?</span>
-            <button onclick="excluirCliente('${idCliente}')">Confirmar</button>
-        </div>
-    `
-    popup(acumulado, 'Exclusão de Cliente', true)
+
+    const botoes = [
+        { texto: 'Confirmar', img: 'concluido', funcao: `excluirCliente('${idCliente}')` }
+    ]
+
+    popup({ mensagem: 'Tem certeza?', botoes, titulo: 'Exclusão de Cliente', nra: false })
 }
 
 async function excluirCliente(idCliente) {
 
-    overlayAguarde()
-
-    deletar(`dados_clientes/${idCliente}`)
     await deletarDB(`dados_clientes`, idCliente)
-
-    removerPopup()
-    removerPopup()
-    await telaClientes()
+    deletar(`dados_clientes/${idCliente}`)
 
 }
 
@@ -167,9 +120,16 @@ function regrasClientes() {
     const campos = ['telefone', 'numeroContribuinte']
     const limite = 9
     let bloqueio = false
+    const painel = document.querySelector('.painel-padrao')
+
+    const cidade = painel.querySelector('[name="cidade"]').id
+
+    if (!cidade)
+        return true
+
     for (const campo of campos) {
 
-        const el = document.querySelector(`[name="${campo}"]`)
+        const el = painel.querySelector(`[name="${campo}"]`)
         el.value = el.value.replace(/\D/g, '');
         if (el.value.length > limite) {
             el.value = el.value.slice(0, limite);
@@ -188,31 +148,32 @@ function regrasClientes() {
 
 }
 
-async function salvarCliente(idCliente) {
+async function salvarCliente(idCliente = unicoID()) {
 
     if (regrasClientes())
-        return popup({ mensagem: 'Verifique os campos destacados' })
+        return popup({ mensagem: 'Não deixe campos sem preenchimento' })
+
+    const painel = document.querySelector('.painel-padrao')
 
     const obVal = (texto) => {
-        const painel = document.querySelector('.painel-padrao')
         const el = painel.querySelector(`[name="${texto}"]`)
         return el.value
     }
 
-    idCliente = idCliente || ID5digitos()
-    const cliente = {
+    const cliente = await recuperarDado('dados_clientes', idCliente) || {}
+
+    const novo = {
+        ...cliente,
         nome: obVal('nome'),
         moradaFiscal: obVal('moradaFiscal'),
         moradaExecucao: obVal('moradaExecucao'),
         numeroContribuinte: obVal('numeroContribuinte'),
         telefone: obVal('telefone'),
         email: obVal('email'),
-        distrito: obVal('distrito'),
-        cidade: obVal('cidade')
+        cidade: painel.querySelector('[name="cidade"]').id
     }
 
-    enviar(`dados_clientes/${idCliente}`, cliente)
-    await inserirDados({ [idCliente]: cliente }, 'dados_clientes')
-    await telaClientes()
+    enviar(`dados_clientes/${idCliente}`, novo)
+    await inserirDados({ [idCliente]: novo }, 'dados_clientes')
     removerPopup()
 }

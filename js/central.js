@@ -99,8 +99,8 @@ const btn = (img, valor, funcao) => `
     </div>
 `
 
-document.addEventListener('keydown', async function  (event) {
-    if (event.key === 'F8') 
+document.addEventListener('keydown', async function (event) {
+    if (event.key === 'F8')
         await atualizarSis(true)
 })
 
@@ -312,7 +312,7 @@ async function telaPrincipal() {
     toolbar.style.display = 'flex'
     acesso = JSON.parse(localStorage.getItem('acesso'))
 
-    if (!acesso) 
+    if (!acesso)
         return removerAcesso()
 
     const acumulado = `
@@ -357,13 +357,13 @@ async function telaPrincipal() {
     tela.innerHTML = acumulado
     telaInterna = document.querySelector('.telaInterna')
 
-    if (priExec) 
+    if (priExec)
         overlayAguarde()
 
     await usuariosToolbar()
 
-    //await atualizarSis()
-//await alertaMensagens()
+    await atualizarSis()
+    //await alertaMensagens()
     priExec = false
     removerOverlay()
 
@@ -786,7 +786,7 @@ async function excluirFuncao(idFuncao) {
     const resposta = await deletar(`funcoes/${idFuncao}`)
     if (resposta.mensagem)
         return popup({ mensagem: `Falha ao excluir: ${resposta.mensagem}` })
-    
+
     await deletarDB(`funcoes`, idFuncao)
     await telaNiveis()
 
@@ -862,15 +862,16 @@ async function atualizarDados(base) {
 }
 
 async function buscarDados() {
-    const select = document.querySelector('[name="cliente"]')
-    const idCliente = select.options[select.selectedIndex].id
+    const painel = document.querySelector('.painel-padrao')
+    const spanCliente = (painel || document).querySelector('[name="cliente"]')
+    const idCliente = spanCliente?.id
 
-    const cliente = await recuperarDado('dados_clientes', idCliente)
+    const { snapshots, telefone, email } = await recuperarDado('dados_clientes', idCliente) || {}
 
-    if (!cliente) return
-
-    document.querySelector('[name="telefone"]').textContent = cliente.telefone
-    document.querySelector('[name="email"]').textContent = cliente.email
+    painel.querySelector(`[name="cidade"]`).cidade = snapshots?.cidade?.nome || ''
+    painel.querySelector(`[name="distrito"]`).distrito = snapshots?.cidade?.distrito || ''
+    painel.querySelector(`[name="telefone"]`).telefone = telefone || ''
+    painel.querySelector(`[name="email"]`).email = email || ''
 
 }
 

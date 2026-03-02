@@ -4,7 +4,7 @@ function campoBloq() {
     popup({ mensagem: 'O campo não permite pesquisas' })
 }
 
-function modTab(configuracoes) {
+async function modTab(configuracoes) {
 
     const { btnExtras = '', ocultarPaginacao = false, criarLinha, base, colunas = {}, body = null, pag = null } = configuracoes || {}
 
@@ -28,25 +28,54 @@ function modTab(configuracoes) {
         )
         .join('')
 
-    const pesquisa = Object.entries(colunas)
-        .map(([th, query]) => {
+    const pesquisa = (await Promise.all(
+        Object.entries(colunas).map(async ([th, query]) => {
             if (!query.chave)
                 return `
-            <th style="background-color: white;">
-                <img src="imagens/alerta.png" onclick="campoBloq()" title="Campo não permite pesquisa!" style="width: 1.5rem;">
-            </th>`
+                    <th style="background-color: white;">
+                        <img src="imagens/alerta.png" onclick="campoBloq()" title="Campo não permite pesquisa!" style="width: 1.5rem;">
+                    </th>`
+
+            if (query.tipoPesquisa == 'select') {
+
+                const dados = await contarPorCampo({
+                    base,
+                    path: query.chave
+                })
+
+                const opcoes = Object.keys(dados)
+                    .filter(r => r != 'todos' && r != 'EM BRANCO')
+                    .sort((a, b) => a.localeCompare(b))
+                    .map(r => `<option>${r}</option>`)
+                    .join('')
+
+                return `
+                    <th>
+                        <select onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '${query.op || '='}', elemento: this, pag: '${pag}'})">
+                            <option></option>
+                            ${opcoes}
+                        </select>
+                    </th>`
+            }
+
+            if (query.tipoPesquisa == 'data')
+                return `
+                    <th>
+                        <div style="${horizontal}; gap: 2px;">
+                            <input type="date" onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '>=d', elemento: this, pag: '${pag}'})">
+                            <input type="date" onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '<=d', elemento: this, pag: '${pag}'})">
+                        </div>
+                    </th>`
 
             return `
-            <th 
-                style="background-color: white; text-align: left;"
-                name="${th}"
-                onkeydown="confirmarPesquisa({ event, chave: '${query.chave}', op: '${query.op || 'includes'}', elemento: this, pag: '${pag}'})"
-                contentEditable="true">
-            </th>`
-
+                <th 
+                    style="background-color: white; text-align: left;"
+                    name="${th}"
+                    onkeydown="confirmarPesquisa({ event, chave: '${query.chave}', op: '${query.op || 'includes'}', elemento: this, pag: '${pag}'})"
+                    contentEditable="true">
+                </th>`
         })
-        .join('')
-
+    )).join('')
 
     const modelo = `
         <div style="${vertical}; width: 100%;">
@@ -86,13 +115,12 @@ async function mudarPagina(valor, pag) {
 
 async function confirmarPesquisa({ event, chave, op, elemento, pag }) {
 
-    if (event) {
-        if (event.type !== 'keydown') return
+    if (event?.type === 'keydown') {
         if (event.key !== 'Enter') return
         event.preventDefault()
     }
 
-    const termo = elemento.textContent
+    const termo = (elemento?.value ?? elemento?.textContent ?? '')
         .replace(/\n/g, '')
         .trim()
         .toLowerCase()
@@ -100,22 +128,43 @@ async function confirmarPesquisa({ event, chave, op, elemento, pag }) {
     controles[pag].pagina = 1
     controles[pag].filtros ??= {}
 
-    if (!termo) {
-        delete controles[pag].filtros[chave]
+    const isInput = elemento?.tagName?.toLowerCase() === 'input'
 
-        if (Object.keys(controles[pag].filtros).length === 0) {
-            delete controles[pag].filtros
+    if (isInput) {
+        const atual = controles[pag].filtros[chave]
+        const arr = Array.isArray(atual) ? atual : (atual ? [atual] : [])
+
+        if (!termo) {
+            const novo = arr.filter(f => f?.op !== op)
+
+            if (!novo.length) {
+                delete controles[pag].filtros[chave]
+                if (Object.keys(controles[pag].filtros).length === 0) delete controles[pag].filtros
+            } else {
+                controles[pag].filtros[chave] = novo
+            }
+
+            await paginacao(pag)
+            return
         }
 
+        const idx = arr.findIndex(f => f?.op === op)
+        if (idx >= 0) arr[idx] = { op, value: termo }
+        else arr.push({ op, value: termo })
+
+        controles[pag].filtros[chave] = arr
         await paginacao(pag)
         return
     }
 
-    controles[pag].filtros[chave] = {
-        op,
-        value: termo
+    if (!termo) {
+        delete controles[pag].filtros[chave]
+        if (Object.keys(controles[pag].filtros).length === 0) delete controles[pag].filtros
+        await paginacao(pag)
+        return
     }
 
+    controles[pag].filtros[chave] = { op, value: termo }
     await paginacao(pag)
 }
 

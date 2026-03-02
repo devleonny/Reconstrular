@@ -10,7 +10,7 @@ async function cxOpcoes(name) {
     const { colunas, base, filtros = {} } = controle
 
     const pag = 'cxOpcoes'
-    const tabela = modTab({
+    const tabela = await modTab({
         colunas,
         pag,
         base,

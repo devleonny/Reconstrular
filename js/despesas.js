@@ -32,115 +32,49 @@ async function verificarDespesas() {
 
   mostrarMenus(false)
 
-  const colunas = ['Fornecedor', 'Distrito', 'Cidade', 'Número do Contribuinte', 'Valor', 'IVA', 'Ano', 'Mês', 'Data', 'Fatura', 'Tipo de Material', 'Obra', '']
-  let cabecalhos = {
-    ths: '',
-    pesq: ''
-  }
-
-  cidades = await recuperarDados('cidades')
-  dados_clientes = await recuperarDados('dados_clientes')
-  materiais = await recuperarDados('materiais')
-  fornecedores = await recuperarDados('fornecedores')
-  dados_obras = await recuperarDados('dados_obras')
-  const opcoesFornecedores = Object.entries({ '': { nome: '' }, ...fornecedores })
-    .map(([idFornecedor, fornecedor]) => `<option id="${idFornecedor}">${fornecedor.nome}</option>`)
-    .join('')
-  const opcoesMateriais = Object.entries({ '': { nome: '' }, ...materiais })
-    .map(([idMaterial, material]) => `<option id="${idMaterial}">${material.nome}</option>`)
-    .join('')
-  const opcoesMeses = Object.entries({ '': '', ...meses }).sort()
-    .map(([numero, mes]) => `<option id="${numero}">${mes}</option>`)
-    .join('')
-  const opcoesAnos = Object.entries({ '': '', ...anos }).sort()
-    .map(([, anoNum]) => `<option id="${anoNum}">${anoNum}</option>`)
-    .join('')
-
-  let opcoesObras = ''
-  const obras = { '': '', ...dados_obras }
-  for (const [, obra] of Object.entries(obras)) {
-
-    const cidade = cidades?.[obra?.cidade] || {}
-
-    const cliente = dados_clientes?.[obra?.cliente] || {}
-    opcoesObras += cliente.nome
-      ? `<option>${cliente?.nome || '--'} / ${cidade?.distrito || '--'} / ${cidade?.nome || '--'}</option>`
-      : `<option></option>`
-
-  }
-
-  const funcPesq = (col) => `
-        oninput="pesquisarGenerico('${col}', this.value, filtros, 'body')"
-    `
-  let i = 0
-  for (const coluna of colunas) {
-    cabecalhos.ths += `<th>${coluna}</th>`
-    if (coluna == 'Tipo de Material') {
-      cabecalhos.pesq += `<th><select ${funcPesq(i)}>${opcoesMateriais}</select></th>`
-    } else if (coluna == 'Ano') {
-      cabecalhos.pesq += `<th><select ${funcPesq(i)}>${opcoesAnos}</select></th>`
-    } else if (coluna == 'Mês') {
-      cabecalhos.pesq += `<th><select ${funcPesq(i)}>${opcoesMeses}</select></th>`
-    } else if (coluna == 'Data') {
-      cabecalhos.pesq += `<th><input type="date" ${funcPesq(i)}></th>`
-    } else if (coluna == 'Fornecedor') {
-      cabecalhos.pesq += `<th><select ${funcPesq(i)}>${opcoesFornecedores}</select></th>`
-    } else if (coluna == 'Obra') {
-      cabecalhos.pesq += `<th><select ${funcPesq(i)}>${opcoesObras}</select></th>`
-    } else {
-      cabecalhos.pesq += `<th><input ${funcPesq(i)}></th>`
-    }
-    i++
-  }
-
   const modelo = (titulo, elemento) => `
-        <div style="${vertical}; gap: 2px;">
-            <span>${titulo}</span>
-            ${elemento}
-        </div>
-    `
+      <div class="filtro-tabela">
+          <span>${titulo}</span>
+          ${elemento}
+      </div>
+  `
 
-  const acumulado = `
-        <div class="blocoTabela">
-            <div class="painelBotoes">
-                <div class="botoes">
-                    <div class="pesquisa">
-                        <input oninput="pesquisar(this, 'body')" placeholder="Pesquisar" style="width: 100%;">
-                        <img src="imagens/pesquisar2.png">
-                    </div>
-                    <button data-controle="inserir" onclick="formularioDespesa()">Adicionar</button>
-                    <button onclick="telaDespesas()">Voltar</button>
-                </div>
-                <div style="margin-left: 5px; ${horizontal}; gap: 5px;">
-                    ${modelo('Ano', `<select name="ano"><option></option>${optionsSelect(anos)}</select>`)}
-                    ${modelo('Mês', `<select name="mes"><option></option>${optionsSelect(meses)}</select>`)}
-                    <img onclick="htmlDespesas()" src="imagens/pdf.png">
-                </div>
-                <img class="atualizar" src="imagens/atualizar.png" onclick="atualizarDespesas()">
-            </div>
-            <div class="recorteTabela">
-                <table class="tabela">
-                    <thead class="cabecalho-despesas">
-                        <tr>${cabecalhos.ths}</tr>
-                        <tr>${cabecalhos.pesq}</tr>
-                    </thead>
-                    <tbody id="body"></tbody>
-                </table>
-            </div>
-            <div class="rodapeTabela"></div>
-        </div>
-    `
-  const tDespAtiva = document.querySelector('.cabecalho-despesas')
-  if (!tDespAtiva) telaInterna.innerHTML = acumulado
+  const btnExtras = `
+      <div style="margin-left: 5px; ${horizontal}; gap: 5px;">
+          ${modelo('Ano', `<select name="ano"><option></option>${optionsSelect(anos)}</select>`)}
+          ${modelo('Mês', `<select name="mes"><option></option>${optionsSelect(meses)}</select>`)}
+          <img onclick="htmlDespesas()" src="imagens/pdf.png">
+      </div>
+      <button data-controle="inserir" onclick="formularioDespesa()">Adicionar</button>
+      <button onclick="telaDespesas()">Voltar</button>
+  `
 
-  const dados_despesas = await recuperarDados('dados_despesas')
+  const tabela = await modTab({
+    btnExtras,
+    pag: 'despesas',
+    base: 'dados_despesas',
+    body: 'bodyDespesas',
+    criarLinha: 'criarLinhaDespesa',
+    colunas: {
+      'Fornecedor': {},
+      'Distrito': {},
+      'Cidade': {},
+      'Número do Contribuinte': {},
+      'Valor': {},
+      'IVA': {},
+      'Ano': {},
+      'Mês': {},
+      'Data': { chave: 'data', tipoPesquisa: 'data' },
+      'Fatura': {},
+      'Tipo de Material': {},
+      'Obra': {},
+      'Detalhes': {},
+    }
+  })
 
-  for (const [idDespesa, dados] of Object.entries(dados_despesas)) {
-    criarLinhaDespesa(idDespesa, dados)
-  }
+  telaInterna.innerHTML = tabela
 
-  // Regras de validação;
-  validarRegrasAcesso()
+  await paginacao()
 
 }
 
@@ -315,10 +249,12 @@ async function gerarPdfDespesas() {
 
 }
 
-async function criarLinhaDespesa(id, dados) {
+async function criarLinhaDespesa(dados) {
 
-  const fornecedor = fornecedores?.[dados?.fornecedor] || {}
-  const cidade = cidades?.[fornecedor?.cidade] || {}
+  const { id, valor, iva, fatura, material, data } = dados || {}
+
+  const fornecedor = await recuperarDado('fornecedores', dados?.fornecedor) || {}
+  const cidade = await recuperarDado('cidades', fornecedor?.cidade) || {}
 
   const ax = (link) => {
     if (!link) return ''
@@ -328,38 +264,31 @@ async function criarLinhaDespesa(id, dados) {
         `
   }
 
-  let data = '--'
-  let ano, mes, dia
-  if (dados.data) {
-    [ano, mes, dia] = dados.data.split('-')
-    data = `${dia}/${mes}/${ano}`
-  }
+  const [ano, mes, dia] = data
+    ? data.split('-')
+    : ''
 
   tds = `
-        <td>${fornecedor?.nome || '--'}</td>
-        <td name="distrito">${cidade?.distrito || '-'}
-        <td name="cidade" data-cod="${dados?.cidade}">${cidade?.nome || '-'}
-        <td>${fornecedor?.numeroContribuinte || '--'}</td>
-        <td>${dinheiro(dados?.valor)}</td>
-        <td>${dinheiro(dados?.iva)}</td>
-        <td>${ano}</td>
-        <td>${meses[mes]}</td>
+        <td>${fornecedor?.nome || ''}</td>
+        <td>${cidade?.distrito || ''}
+        <td>${cidade?.nome || ''}
+        <td>${fornecedor?.numeroContribuinte || ''}</td>
+        <td>${dinheiro(valor)}</td>
+        <td>${dinheiro(iva)}</td>
+        <td>${ano || ''}</td>
+        <td>${meses[mes] || ''}</td>
         <td>
-            <span style="display: none;">${dados?.data}</span>
-            <span>${data}</span>
+            <span>${data ? `${dia}/${mes}/${ano}` : ''}</span>
         </td>
-        <td>${ax(dados?.fatura)}</td>
-        <td>${dados.material?.nome || '--'}</td>
+        <td>${ax(fatura)}</td>
+        <td>${material?.nome || '--'}</td>
         <td>${infoObra(dados)}</td>
         <td>
             <img data-controle="editar" src="imagens/pesquisar.png" onclick="formularioDespesa('${id}')">
         </td>
     `
 
-  const trExistente = document.getElementById(id)
-
-  if (trExistente) return trExistente.innerHTML = tds
-  document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${id}">${tds}</td>`)
+  return `<tr>${tds}</td>`
 
 }
 

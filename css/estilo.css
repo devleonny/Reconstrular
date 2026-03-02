@@ -639,6 +639,17 @@ button {
     overflow: auto;
 }
 
+.filtro-tabela {
+    border-radius: 3px;
+    background-color: #d2d2d2;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0.5rem;
+}
+
 .topo-tabela {
     justify-content: space-between;
     width: 100%;
@@ -652,6 +663,7 @@ button {
     border-top-left-radius: 5px;
     gap: 2px;
     width: 100%;
+    padding: 0.5rem;
 }
 
 .topo-tabela span {
