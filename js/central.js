@@ -1803,3 +1803,6 @@ async function desativarCampos(desativar) {
     }
 
 }
+
+
+popup({mensagem: `Conclusão dos ajustes em 03-03-2026: ${divPorcentagem(72)}`})

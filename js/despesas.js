@@ -32,19 +32,8 @@ async function verificarDespesas() {
 
   mostrarMenus(false)
 
-  const modelo = (titulo, elemento) => `
-      <div class="filtro-tabela">
-          <span>${titulo}</span>
-          ${elemento}
-      </div>
-  `
-
   const btnExtras = `
-      <div style="margin-left: 5px; ${horizontal}; gap: 5px;">
-          ${modelo('Ano', `<select name="ano"><option></option>${optionsSelect(anos)}</select>`)}
-          ${modelo('Mês', `<select name="mes"><option></option>${optionsSelect(meses)}</select>`)}
-          <img onclick="htmlDespesas()" src="imagens/pdf.png">
-      </div>
+      <img onclick="htmlDespesas()" src="imagens/pdf.png">
       <button data-controle="inserir" onclick="formularioDespesa()">Adicionar</button>
       <button onclick="telaDespesas()">Voltar</button>
   `
@@ -292,63 +281,61 @@ async function criarLinhaDespesa(dados) {
 
 }
 
-async function criarLinha(dados, id, nomeBase) {
-
-
-  const linha = `
-        <tr id="${id}">
-            <td style="text-align: left;">${dados.nome || ''}</td>
-            <td>${dinheiro(dados.preco)}</td>
-            <td style="text-align: left;"><a href="${dados.link || ''}">${dados.link || ''}</a></td>
-            <td>
-                <img onclick="adicionarGenerico('${nomeBase}', '${id}')" src="imagens/pesquisar.png">
-            </td>
-        </tr>
-    `
-
-  const tr = document.getElementById(id)
-  if (tr) return tr.innerHTML = linha
-  const body = document.getElementById('body')
-  body.insertAdjacentHTML('beforeend', linha)
-
-}
-
 async function formularioDespesa(idDespesa) {
 
-  const despesa = await recuperarDado('dados_despesas', idDespesa)
-  fornecedores = await recuperarDados('fornecedores')
-  materiais = await recuperarDados('materiais')
-  dados_obras = await recuperarDados('dados_obras')
-  dados_clientes = await recuperarDados('dados_clientes')
-
-  const opcoesFornecedores = Object.entries(fornecedores)
-    .map(([idFornecedor, fornecedor]) => `<option id="${idFornecedor}" ${despesa?.fornecedor == idFornecedor ? 'selected' : ''}>${fornecedor.nome}</option>`)
-    .join('')
-
-  const opcoesMateriais = Object.entries(materiais)
-    .map(([idMaterial, material]) => `<option id="${idMaterial}" ${despesa?.material?.id == idMaterial ? 'selected' : ''}>${material.nome}</option>`)
-    .join('')
-
-  const opcoesObras = Object.entries(dados_obras)
-    .map(([idObra, obra]) => {
-
-      const cidade = cidades?.[obra?.cidade] || {}
-      const cliente = dados_clientes?.[obra?.cliente] || {}
-      return `<option value="${idObra}" ${despesa?.obra == idObra ? 'selected' : ''}>${cliente?.nome || '--'} / ${cidade?.distrito || '--'} / ${cidade?.nome || '--'}</option>`
-    }).join('')
+  const despesa = await recuperarDado('dados_despesas', idDespesa) || {}
+  const obra = await recuperarDado('fornecedores', despesa?.obra) || {}
+  const material = await recuperarDado('fornecedores', despesa?.material) || {}
+  const fornecedor = await recuperarDado('fornecedores', despesa?.fornecedor) || {}
 
   const placeholder = `placeholder="Escolha o fornecedor"`
 
+  controlesCxOpcoes.fornecedor = {
+    base: 'fornecedores',
+    retornar: ['nome'],
+    funcaoAdicional: ['buscarLocalidadeFornecedor'],
+    colunas: {
+      'Nome': { chave: 'nome' },
+      'Cidade': { chave: 'snapshots.cidade.nome' },
+      'Distrito': { chave: 'snapshots.cidade.distrito' }
+    }
+  }
+
+  controlesCxOpcoes.obra = {
+    base: 'dados_obras',
+    retornar: ['nome'],
+    colunas: {
+      'Nome': { chave: 'nome' }
+    }
+  }
+
+  controlesCxOpcoes.material = {
+    base: 'materiais',
+    retornar: ['nome'],
+    colunas: {
+      'Nome': { chave: 'nome' }
+    }
+  }
+
   const linhas = [
-    { texto: 'Fornecedor', elemento: `<select name="fornecedor" onchange="buscarLocalidadeFornecedor()"><option></option>${opcoesFornecedores}</select>` },
+    {
+      texto: 'Fornecedor',
+      elemento: `<span name="fornecedor" class="opcoes" onclick="cxOpcoes('fornecedor')">${fornecedor?.nome || 'Selecionar'}</span>`
+    },
     { texto: 'Distrito', elemento: `<input ${placeholder} name="distrito" readOnly>` },
     { texto: 'Cidade', elemento: `<input ${placeholder} name="cidade" readOnly>` },
     { texto: 'Número do Contribuinte', elemento: `<input ${placeholder} name="numeroContribuinte" readOnly>` },
     { texto: 'Valor', elemento: `<input name="valor" placeholder="Valor" type="number" value="${despesa?.valor || ''}">` },
     { texto: 'IVA', elemento: `<input name="iva" placeholder="IVA" type="number" value="${despesa?.iva || ''}">` },
     { texto: 'Data', elemento: `<input name="data" type="date" value="${despesa?.data || ''}">` },
-    { texto: 'Tipo de Material', elemento: `<select name="material"><option></option>${opcoesMateriais}</select>` },
-    { texto: 'Obra', elemento: `<select name="obra"><option></option>${opcoesObras}</select>` },
+    {
+      texto: 'Tipo de Material',
+      elemento: `<span name="material" class="opcoes" onclick="cxOpcoes('material')">${material?.nome || 'Selecionar'}</span>`
+    },
+    {
+      texto: 'Obra',
+      elemento: `<span name="obra" class="opcoes" onclick="cxOpcoes('obra')">${obra?.nome || 'Selecionar'}</span>`
+    },
     {
       texto: 'Upload Fatura', elemento: `
             <div style="${horizontal}; gap: 1rem;">
@@ -369,7 +356,6 @@ async function formularioDespesa(idDespesa) {
 
   popup({ linhas, botoes, titulo: 'Gerenciar Despesa' })
 
-  buscarLocalidadeFornecedor()
   alterarModal()
 }
 
@@ -464,11 +450,10 @@ async function salvarDespesa(idDespesa = ID5digitos()) {
 
 async function buscarLocalidadeFornecedor() {
 
-  const select = document.querySelector('[name="fornecedor"]')
-  const idFornecedor = select.selectedOptions[0].id
+  const idFornecedor = document.querySelector('[name="fornecedor"]')?.id
   const fornecedor = await recuperarDado('fornecedores', idFornecedor)
 
-  const cidade = cidades?.[fornecedor?.cidade] || '--'
+  const cidade = fornecedor?.snapshots?.cidade || {}
 
   const painel = document.querySelector('.painel-padrao')
   painel.querySelector('[name="numeroContribuinte"]').value = fornecedor?.numeroContribuinte || '--'
@@ -479,103 +464,112 @@ async function buscarLocalidadeFornecedor() {
 
 async function telaFornecedores() {
 
-  cidades = await recuperarDados('cidades')
-  const nomeBase = 'fornecedores'
-
   const btnExtras = `
     <button onclick="adicionarFornecedor()">Adicionar</button>
     ${voltar}
   `
-  const acumulado = `
-        ${modeloTabela({ colunas: ['Nome', 'Número do Contribuinte', 'Distrito', 'Cidade', ''], nomeBase, btnExtras })}
-    `
-  telaInterna.innerHTML = acumulado
 
-  fornecedores = await recuperarDados(nomeBase)
-  for (const [id, dados] of Object.entries(fornecedores)) {
-    criarLinhaFornecedores(id, dados)
-  }
+  const tabela = await modTab({
+    btnExtras,
+    base: 'fornecedores',
+    pag: 'fornecedores',
+    body: 'bodyFornecedores',
+    criarLinha: 'criarLinhaFornecedores',
+    colunas: {
+      'Nome': { chave: 'nome' },
+      'Número do Contribuinte': { chave: 'numeroContribuinte' },
+      'Distrito': { chave: 'snapshots.cidade.distrito' },
+      'Cidade': { chave: 'snapshots.cidade.nome' },
+      'Editar': {}
+    }
+  })
+
+  telaInterna.innerHTML = tabela
+
+  await paginacao()
+
 }
 
-function criarLinhaFornecedores(idFornecedor, fornecedor) {
+async function criarLinhaFornecedores(fornecedor) {
 
-  const cidade = cidades?.[fornecedor?.cidade] || {}
+  const { id } = fornecedor || {}
+
+  const cidade = await recuperarDado('cidades', fornecedor?.cidade) || {}
 
   const linha = `
-      <tr id="${idFornecedor}">
+      <tr>
           <td style="text-align: left;">${fornecedor.nome || ''}</td>
           <td>${fornecedor?.numeroContribuinte || ''}</td>
           <td>${cidade?.distrito || ''}</td>
           <td>${cidade?.nome || ''}</td>
           <td>
-              <img onclick="adicionarFornecedor('${idFornecedor}')" src="imagens/pesquisar.png">
+              <img onclick="adicionarFornecedor('${id}')" src="imagens/pesquisar.png">
           </td>
       </tr>
     `
 
-  const tr = document.getElementById(idFornecedor)
-  if (tr) return tr.innerHTML = linha
-  const body = document.getElementById('body')
-  body.insertAdjacentHTML('beforeend', linha)
+  return linha
 
 }
 
 async function adicionarFornecedor(idFornecedor) {
 
   const fornecedor = await recuperarDado('fornecedores', idFornecedor)
-  const cidade = cidades?.[fornecedor?.cidade] || {}
-  const distritos = Object
-    .values(cidades)
-    .map(c => c.distrito)
-  const opcoesDistrito = [...new Set(distritos)]
-    .sort((a, b) => a.localeCompare(b))
-    .map(d => `<option ${cidade?.distrito == d ? 'selected' : ''}>${d}</option>`)
-    .join('')
+  const { nome, distrito } = await recuperarDado('cidades', fornecedor?.cidade) || {}
+
+  controlesCxOpcoes.cidade = {
+    base: 'cidades',
+    retornar: ['nome', 'distrito'],
+    colunas: {
+      'Cidade': { chave: 'nome' },
+      'Distrito': { chave: 'distrito' },
+      'Zona': { chave: 'zona' },
+      'Área': { chave: 'area' }
+    }
+  }
+
+  const dCidade = [nome, distrito]
+    .filter(d => d)
+    .join('\n')
+
   const linhas = [
     { texto: 'Nome', elemento: `<textarea name="nome">${fornecedor?.nome || ''}</textarea>` },
     { texto: 'Número do Contribuinte', elemento: `<input name="numeroContribuinte" value="${fornecedor?.numeroContribuinte || ''}">` },
     {
-      texto: 'Distrito',
-      elemento: `
-                <select name="distrito" onchange="filtroCidadesCabecalho(this)">
-                    <option></option>
-                    ${opcoesDistrito}
-                </select>
-            `},
-    { texto: 'Cidade', elemento: `<select name="cidade"></select>` },
+      texto: 'Cidade',
+      elemento: `<span name="cidade" class="opcoes" onclick="cxOpcoes('cidade')">${dCidade || 'Selecionar'}</span>`
+    }
   ]
 
   const botoes = [
     { texto: 'Salvar', img: 'concluido', funcao: idFornecedor ? `salvarFornecedor('${idFornecedor}')` : 'salvarFornecedor()' }
   ]
 
-  if (idFornecedor) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: '' })
+  if (idFornecedor)
+    botoes.push({ texto: 'Excluir', img: 'cancel', funcao: '' })
 
   popup({ linhas, botoes, titulo: 'Formulário de Obra' })
 
-  if (cidade) {
-    const lista = resolverCidadesPorDistrito(cidade.distrito)
-    const selectCidade = el('cidade')
-    aplicarCidadesNoSelect(lista, selectCidade, fornecedor?.cidade)
-  }
-
 }
 
-async function salvarFornecedor(idFornecedor) {
+async function salvarFornecedor(id = unicoID()) {
 
   overlayAguarde()
-  idFornecedor = idFornecedor || ID5digitos()
+
+  const idCidade = document.querySelector('[name="cidade"]')?.id
+
+  if (!idCidade)
+    return popup({ mensagem: 'Selecione uma cidade' })
 
   const fornecedor = {
+    id,
     nome: obVal('nome'),
     numeroContribuinte: obVal('numeroContribuinte'),
-    distrito: obVal('distrito'),
-    cidade: obVal('cidade')
+    cidade: idCidade
   }
 
-  await enviar(`fornecedores/${idFornecedor}`, fornecedor)
-  await inserirDados({ [idFornecedor]: fornecedor }, 'fornecedores')
-  await telaFornecedores()
+  enviar(`fornecedores/${id}`, fornecedor)
+  await inserirDados({ [id]: fornecedor }, 'fornecedores')
 
   removerPopup()
 }
@@ -583,21 +577,59 @@ async function salvarFornecedor(idFornecedor) {
 async function telaGenerica(nomeBase) {
 
   const btnExtras = `
-        <button onclick="adicionarGenerico('${nomeBase}')">Adicionar</button>
+        <button onclick="adicionarGenerico(undefined, '${nomeBase}')">Adicionar</button>
         ${voltar}
     `
-  const body = document.getElementById('body')
-  if (!body) telaInterna.innerHTML = modeloTabela({ colunas: ['Nome', 'Preço', 'Link', ''], nomeBase, btnExtras })
 
-  const dados = await recuperarDados(nomeBase)
-  for (const [id, dado] of Object.entries(dados)) {
-    criarLinha(dado, id, nomeBase)
-  }
+  titulo.textContent = inicialMaiuscula(nomeBase)
+
+  const tabela = await modTab({
+    pag: 'generico',
+    btnExtras,
+    base: nomeBase,
+    body: `bodyGenerico`,
+    criarLinha: 'criarLinhaGenerica',
+    colunas: {
+      'Nome': { chave: 'nome' },
+      'Preço': {},
+      'Link': { chave: 'link' },
+      'Editar': {}
+    }
+  })
+
+  telaInterna.innerHTML = tabela
+
+  await paginacao()
+
 }
 
-async function adicionarGenerico(nomeBase, id) {
+async function criarLinhaGenerica(dados) {
 
-  const dados = await recuperarDado(nomeBase, id)
+  const { id, nome, preco, link } = dados || {}
+
+  const linha = `
+    <tr>
+      <td>${nome || ''}</td>
+      <td>${dinheiro(preco) || ''}</td>
+      <td>
+        <a href="${link || '#'}" target="_blank" rel="noopener">
+          ${link || ''}
+        </a>
+      </td>
+      <td>
+        <img src="imagens/pesquisar.png" onclick="adicionarGenerico('${id}')">
+      </td>
+    </tr>
+  `
+
+  return linha
+}
+
+async function adicionarGenerico(id) {
+
+  const { base } = controles?.generico || {}
+
+  const dados = await recuperarDado(base, id) || {}
 
   const linhas = [
     {
@@ -615,56 +647,55 @@ async function adicionarGenerico(nomeBase, id) {
   ]
 
   const botoes = [
-    { texto: 'Salvar', img: 'concluido', funcao: id ? `salvarGenerico('${nomeBase}', '${id}')` : `salvarGenerico('${nomeBase}')` },
+    { texto: 'Salvar', img: 'concluido', funcao: id ? `salvarGenerico('${id}')` : `salvarGenerico()` },
   ]
 
-  if (id) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExcluirGenerico('${nomeBase}', '${id}')` })
+  if (id)
+    botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExcluirGenerico('${id}')` })
 
   const titulo = id ? 'Salvar Item' : 'Editar Item'
   popup({ linhas, botoes, titulo })
 
 }
 
-async function salvarGenerico(nomeBase, id = ID5digitos()) {
+async function salvarGenerico(id = ID5digitos()) {
 
   overlayAguarde()
 
-  const obVal = (n) => {
-    const el = document.querySelector(`[name="${n}"]`)
-    return el ? el.value : ''
-  }
+  const { base } = controles?.generico || {}
 
   const dados = {
+    id,
     nome: obVal('nome'),
     preco: Number(obVal('preco')),
     link: obVal('link')
   }
 
-  enviar(`${nomeBase}/${id}`, dados)
-  await inserirDados({ [id]: dados }, nomeBase)
-  await telaGenerica(nomeBase)
+  enviar(`${base}/${id}`, dados)
+  await inserirDados({ [id]: dados }, base)
 
   removerPopup()
+
 }
 
-function confirmarExcluirGenerico(nomeBase, id) {
+function confirmarExcluirGenerico(id) {
 
   const botoes = [
-    { texto: 'Confirmar', img: 'concluido', funcao: `excluirGenerico('${nomeBase}', '${id}')` }
+    { texto: 'Confirmar', img: 'concluido', funcao: `excluirGenerico('${id}')` }
   ]
 
   popup({ botoes, mensagem: 'Tem certeza?', nra: false })
 
 }
 
-async function excluirGenerico(nomeBase, id) {
+async function excluirGenerico(id) {
 
   overlayAguarde()
 
-  await deletarDB(nomeBase, id)
-  deletar(`${nomeBase}/${id}`)
+  const { base } = controles?.generico || {}
 
-  await telaGenerica(nomeBase)
+  await deletarDB(base, id)
+  deletar(`${base}/${id}`)
 
   removerOverlay()
 

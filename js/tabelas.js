@@ -46,12 +46,15 @@ async function modTab(configuracoes) {
                 const opcoes = Object.keys(dados)
                     .filter(r => r != 'todos' && r != 'EM BRANCO')
                     .sort((a, b) => a.localeCompare(b))
-                    .map(r => `<option>${r}</option>`)
+                    .map(r => `<option value="${String(r).toLowerCase()}">${r}</option>`)
                     .join('')
 
                 return `
-                    <th>
-                        <select onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '${query.op || '='}', elemento: this, pag: '${pag}'})">
+                    <th style="background-color: white;">
+                        <select
+                        data-chave="${query.chave}"
+                        data-op="${query.op || '='}"
+                        onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '${query.op || '='}', elemento: this, pag: '${pag}'})">
                             <option></option>
                             ${opcoes}
                         </select>
@@ -60,22 +63,24 @@ async function modTab(configuracoes) {
 
             if (query.tipoPesquisa == 'data')
                 return `
-                    <th>
+                    <th style="background-color: white;">
                         <div style="${horizontal}; gap: 2px;">
-                            <input type="date" onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '>=d', elemento: this, pag: '${pag}'})">
-                            <input type="date" onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '<=d', elemento: this, pag: '${pag}'})">
+                            <input data-chave="${query.chave}" data-op=">=d" type="date" onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '>=d', elemento: this, pag: '${pag}'})">
+                            <input data-chave="${query.chave}" data-op="<=d" type="date" onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '<=d', elemento: this, pag: '${pag}'})">
                         </div>
                     </th>`
 
             return `
-                <th 
-                    style="background-color: white; text-align: left;"
-                    name="${th}"
-                    onkeydown="confirmarPesquisa({ event, chave: '${query.chave}', op: '${query.op || 'includes'}', elemento: this, pag: '${pag}'})"
-                    contentEditable="true">
-                </th>`
+                <th style="background-color: white; text-align: left;"
+                data-chave="${query.chave}"
+                data-op="${query.op || 'includes'}"
+                onkeydown="confirmarPesquisa({ event, chave: '${query.chave}', op: '${query.op || 'includes'}', elemento: this, pag: '${pag}'})"
+                contentEditable="true">
+                </th>
+                `
         })
     )).join('')
+
 
     const modelo = `
         <div style="${vertical}; width: 100%;">
@@ -97,6 +102,42 @@ async function modTab(configuracoes) {
         </div>
     `
     return modelo
+}
+
+function restaurarPesquisa(pag) {
+    const ctrl = controles[pag]
+    const filtros = ctrl?.filtros
+    if (!filtros) return
+
+    const tabela = document.querySelector(`#paginacao_${pag}`)?.closest('.topo-tabela')?.nextElementSibling?.querySelector('table')
+        || document.querySelector(`#${ctrl.body}`)?.closest('table')
+
+    if (!tabela) return
+
+    const thead = tabela.querySelector('thead')
+    if (!thead) return
+
+    for (const [chave, filtro] of Object.entries(filtros)) {
+        const lista = Array.isArray(filtro) ? filtro : [filtro]
+
+        for (const f of lista) {
+            const op = f?.op
+            const value = String(f?.value ?? '')
+
+            const el = thead.querySelector(`[data-chave="${CSS.escape(chave)}"][data-op="${CSS.escape(op)}"]`)
+            if (!el) continue
+
+            const tag = el.tagName.toLowerCase()
+
+            if (tag === 'input' || tag === 'select') {
+                el.value = value
+                continue
+            }
+
+            // contentEditable th
+            el.textContent = value
+        }
+    }
 }
 
 async function mudarPagina(valor, pag) {
@@ -211,20 +252,18 @@ async function paginacao(pag) {
             divPaginacao.innerHTML = `
                 <div style="${alinPag}; align-items: center; padding: 2px; color: white;">
                     <div style="${horizontal}; gap: 5px;">
-
-                        <img src="imagens/esq.png" style="width: 2rem;" onclick="mudarPagina(-1, '${pag}')">
-                        <span id="paginaAtual">${pagina}</span> de
-                        <span id="totalPaginas">${dados.paginas}</span> 
-                        <img src="imagens/dir.png" style="width: 2rem;" onclick="mudarPagina(1, '${pag}')">
-                        
+                    <img src="imagens/esq.png" style="width: 2rem;" onclick="mudarPagina(-1, '${pag}')">
+                    <span id="paginaAtual_${pag}">${pagina}</span> de
+                    <span id="totalPaginas_${pag}">${dados.paginas}</span> 
+                    <img src="imagens/dir.png" style="width: 2rem;" onclick="mudarPagina(1, '${pag}')">
                     </div>
-                    <span><span style="font-size: 1rem;" id="resultados">${dados.total}</span> ${dados.total !== 1 ? 'Itens' : 'Item'}</span>
+                    <span><span style="font-size: 1rem;" id="resultados_${pag}">${dados.total}</span> ${dados.total !== 1 ? 'Itens' : 'Item'}</span>
                 </div>
                 `
 
         } else {
             paginaAtual.textContent = pagina
-            totalPaginas.textContent = dados.paginas
+            document.getElementById(`totalPaginas_${pag}`).textContent = dados.paginas
             resultados.textContent = dados.total
         }
 
@@ -241,6 +280,8 @@ async function paginacao(pag) {
         }
 
         await executarFuncoesAdicionais(funcaoAdicional)
+
+        restaurarPesquisa(pag)
 
     }
 

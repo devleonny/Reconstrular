@@ -233,6 +233,17 @@ const regrasSnapshot = {
 
             return snap
         }
+    },
+    fornecedores: {
+        stores: ['cidades'],
+        snapshot: async ({ dado, stores }) => {
+
+            const snap = {}
+
+            snap.cidade = await getStore(stores.cidades, dado?.cidade) || {}
+
+            return snap
+        }
     }
 }
 
