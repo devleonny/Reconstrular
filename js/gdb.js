@@ -2,6 +2,35 @@ const nomeBase = 'Reconstrular'
 const versao = 1
 let bloqSinc = false
 let dbInstance = null
+const meses = {
+    '01': 'Janeiro',
+    '02': 'Fevereiro',
+    '03': 'Março',
+    '04': 'Abril',
+    '05': 'Maio',
+    '06': 'Junho',
+    '07': 'Julho',
+    '08': 'Agosto',
+    '09': 'Setembro',
+    '10': 'Outubro',
+    '11': 'Novembro',
+    '12': 'Dezembro'
+}
+
+const semana = {
+    0: 'Domingo',
+    1: 'Segunda',
+    2: 'Terça',
+    3: 'Quarta',
+    4: 'Quinta',
+    5: 'Sexta',
+    6: 'Sábado'
+}
+
+const anos = {
+    '2026': 2026,
+    '2026': 2026
+}
 
 const basesAuxiliares = {
     'campos': { keyPath: 'id' },
@@ -197,6 +226,21 @@ async function sincronizarDados({ base, resetar = false }) {
 
 // Regras SNAPSHOT; BUSCAS;
 const regrasSnapshot = {
+    dados_despesas: {
+        stores: ['fornecedores', 'cidades'],
+        snapshot: async ({ dado, stores }) => {
+
+            const snap = {}
+
+            snap.fornecedor = await getStore(stores.fornecedores, dado?.fornecedor)
+
+            const [ano, mes, ] = dado.data.split('-')
+            snap.ano = ano
+            snap.mes = meses[mes]
+
+            return snap
+        }
+    },
     dados_setores: {
         stores: ['funcoes', 'cidades'],
         snapshot: async ({ dado, stores }) => {

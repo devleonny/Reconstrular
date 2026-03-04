@@ -3,8 +3,6 @@ let campos = {}
 let idOrcamento = null
 let zona1 = null
 let indiceZona = 0
-let dados_clientes = {}
-let dados_orcamentos = {}
 let finalizado = 'N'
 
 const ambientes = {
@@ -60,14 +58,6 @@ const ambientes = {
     'Sala de Refeições': ['', 'Sala de Refeições'],
 }
 
-async function atualizarOrcamentos() {
-
-    await sincronizarDados('dados_orcamentos')
-    await sincronizarDados('dados_clientes')
-    await orcamentos()
-
-}
-
 function povoarLista(ini, lim, texto) {
     let lista = []
 
@@ -79,8 +69,6 @@ function povoarLista(ini, lim, texto) {
 }
 
 async function telaOrcamentos() {
-
-    dados_clientes = await recuperarDados('dados_clientes')
 
     mostrarMenus(false)
 
@@ -108,80 +96,46 @@ async function orcamentos() {
 
     mostrarMenus(false)
 
-    const colunas = [
-        'Cliente',
-        'Distrito',
-        'Cidade',
-        'Data de Contato',
-        'Data de Visita',
-        'E-mail enviado',
-        'Data/Hora do Envio (E-mail)',
-        'Listagem do Material',
-        'Listagem de Ferramentas',
-        'Zonas',
-        'Editar',
-        'Orcamento',
-        'Versão Atual',
-        'Excluir'
-    ]
-    let ths = ''
-    let pesquisa = ''
+    const tabela = await modTab({
+        btnExtras: voltarOrcamentos,
+        base: 'dados_orcamentos',
+        pag: 'orcamentos',
+        body: 'bodyOrcamentos',
+        criarLinha: 'criarLinhaOrcamento',
+        colunas: {
+            'Cliente': {},
+            'Distrito': {},
+            'Cidade': {},
+            'Data de Contato': {},
+            'Data de Visita': {},
+            'E-mail enviado': {},
+            'Data/Hora do Envio (E-mail)': {},
+            'Listagem do Material': {},
+            'Listagem de Ferramentas': {},
+            'Zonas': {},
+            'Editar': {},
+            'Orcamento': {},
+            'Versão Atual': {},
+            'Excluir': {}
+        }
+    })
 
-    for (const col of colunas) {
+    telaInterna.innerHTML = tabela
 
-        ths += `<th>${col}</th>`
+    titulo.textContent = finalizado == 'S'
+        ? 'Orçamentos Finalizados'
+        : 'Orçamentos em Aberto'
 
-        pesquisa += `<th style="background-color: white; text-align: left;" contentEditable="true"></th>`
-
-    }
-
-    const acumulado = `
-        <div class="blocoTabela">
-            <div class="painelBotoes">
-                <div class="botoes">
-                    <div class="pesquisa">
-                        <input oninput="pesquisar(this, 'body')" placeholder="Pesquisar" style="width: 100%;">
-                        <img src="imagens/pesquisar2.png">
-                    </div>
-                    ${voltarOrcamentos}
-                </div>
-                <img class="atualizar" src="imagens/atualizar.png" onclick="atualizarOrcamentos()">
-            </div>
-            <div class="recorteTabela">
-                <table class="tabela">
-                    <thead>
-                        <tr>${ths}</tr>
-                        <tr>${pesquisa}</tr>
-                    </thead>
-                    <tbody id="body"></tbody>
-                </table>
-            </div>
-            <div class="rodapeTabela"></div>
-        </div>
-    `
-
-    telaInterna.innerHTML = acumulado
-
-    titulo.textContent = finalizado == 'S' ? 'Orçamentos Finalizados' : 'Orçamentos em Aberto'
-
-    dados_orcamentos = await recuperarDados('dados_orcamentos')
-
-    for (const [idOrcamento, orcamento] of Object.entries(dados_orcamentos)) {
-
-        if (finalizado !== orcamento?.finalizado) continue
-        criarLinhaOrcamento(idOrcamento, orcamento)
-
-    }
-
-    // Regras de validação;
-    validarRegrasAcesso()
+    await paginacao()
 
 }
 
-function criarLinhaOrcamento(idOrcamento, orcamento) {
+async function criarLinhaOrcamento(orcamento) {
 
-    const cliente = dados_clientes?.[orcamento.idCliente] || {}
-    const cidade = cidades?.[cliente?.cidade] || {}
+    const idOrcamento = orcamento.id
+
+    const cliente = await recuperarDado('dados_clientes', orcamento.idCliente) || {}
+    const cidade = cliente?.snapshots?.cidade || {}
 
     const dt = (data) => {
         if (!data) return '-'
@@ -224,12 +178,7 @@ function criarLinhaOrcamento(idOrcamento, orcamento) {
             <img data-controle="excluir" src="imagens/cancel.png" onclick="confirmarExclusaoOrcamento('${idOrcamento}')">
         </td>
     `
-
-    const trExistente = document.getElementById(idOrcamento)
-
-    if (trExistente) return trExistente.innerHTML = tds
-
-    document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${idOrcamento}">${tds}</tr>`)
+    return `<tr>${tds}</tr>`
 }
 
 async function confirmarExclusaoOrcamento(idOrcamento) {
@@ -254,7 +203,7 @@ async function formularioOrcamento(idOrcamento) { //29
 
     mostrarMenus(false)
 
-    const orcamento = dados_orcamentos[idOrcamento]
+    const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
 
     // Verificação antes de Editar;
     if (orcamento?.finalizado == 'S') {

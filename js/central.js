@@ -362,7 +362,7 @@ async function telaPrincipal() {
 
     await usuariosToolbar()
 
-    await atualizarSis()
+    //await atualizarSis()
     //await alertaMensagens()
     priExec = false
     removerOverlay()
@@ -1520,7 +1520,7 @@ async function importarAnexos({ input, foto }) {
     }
 
     try {
-        const response = await fetch(`${api}/upload/RECONST`, {
+        const response = await fetch(`${api}/upload`, {
             method: 'POST',
             body: formData
         });
@@ -1775,34 +1775,54 @@ async function pdfEmail({ html, emails, htmlContent = 'Documento em anexo', titu
 
 }
 
-async function desativarCampos(desativar) {
+const etapas = [
+    { texto: 'Layout da tela, menu com itens e tela interna no centro', status: 'S' },
+    { texto: 'Reimportada nova base cidades, distritos, zonas e áreas', status: 'S' },
+    { texto: 'Tela de níveis no menu principal', status: 'S' },
+    { texto: 'Bloqueio do app por níveis', status: 'N' },
+    { texto: 'Bugs de salvamento em colaboradores', status: 'S' },
+    { texto: 'Atualizar engrenagem de pesquisa global ao invés de pequenas engrenagens', status: 'S' },
+    { texto: 'Fragmentação das bases no indexedDB', status: 'S' },
+    { texto: 'Remoção das bases "soltas" no script', status: 'S' },
+    { texto: 'Unificar modelo de tabela', status: 'S' },
+    { texto: 'Filtros complexos globais', status: 'S' },
+    { texto: 'Sistema de paginação leve, com 25 itens por página', status: 'S' },
+    { texto: 'Pesquisa por data, input e select', status: 'S' },
+    { texto: 'Atualizado Websocket', status: 'S' },
+    { texto: 'Cx de opções unificada, usa o mesmo modelo de tabela', status: 'S' },
+    { texto: 'Alterações no script do servidor, sincronizar ao invés de receber recortes', status: 'S' },
+    { texto: 'Otimizar a tabela de clientes', status: 'S' },
+    { texto: 'Otimizar a tabela de obras', status: 'S' },
+    { texto: 'Otimizar a tabela de Parceiros', status: 'S' },
+    { texto: 'Otimizar a tabela de mão de obra', status: 'S' },
+    { texto: 'Otimizar a tabela de ferramentas', status: 'S' },
+    { texto: 'Otimizar a tabela de despesas', status: 'S' },
+    { texto: 'Otimizar a tabela de fornecedores', status: 'S' },
+    { texto: 'Otimizar a tabela de materiais', status: 'S' },
+    { texto: 'Otimizar a tabela de precificação', status: 'N' },
+    { texto: 'Otimizar a tabela de orçamentos', status: 'N' },
+    { texto: 'Otimizar a tabela de zonas', status: 'N' },
+    { texto: 'Otimizar a tabela de folha', status: 'N' },
+    { texto: 'Otimizar a tabela de cronograma & andamento', status: 'N' },
+    { texto: 'Otimizar a tabela de chat & mensagens', status: 'N' }
+]
 
-    if (desativar.length == 0) return
+const total = etapas.length
 
-    try {
+const realizadas = etapas.filter(e => e.status === 'S').length
 
-        const response = await fetch(`${api}/desativar-campos`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ desativar, servidor })
-        })
+const porcentagem = Math.round((realizadas / total) * 100)
 
-        if (!response.ok) {
-            const err = await response.json()
-            throw err
-        }
+const labels = etapas
+    .map(e => `<span ${e.status === 'S' ? 'style="text-decoration: line-through;"' : ''}>${e.texto}</span>`)
+    .join('')
 
-        const data = await response.json()
-
-        return data
-
-    } catch (err) {
-        return { mensagem: err.message }
-    }
-
-}
-
-
-popup({mensagem: `Conclusão dos ajustes em 03-03-2026: ${divPorcentagem(72)}`})
+popup({
+    elemento: `
+    <div style="${vertical}; padding: 1rem; gap: 2px; overflow: auto; max-height: 50vh;">
+        <span>Andamento até o dia 04-03-2026:</span>
+        ${divPorcentagem(porcentagem)}
+        <hr>
+        ${labels}
+  </div>`
+})

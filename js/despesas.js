@@ -1,5 +1,4 @@
 const voltar = `<button onclick="telaDespesas()">Voltar</button>`
-let filtros = {}
 
 function telaDespesas() {
 
@@ -21,11 +20,6 @@ function telaDespesas() {
 
 }
 
-async function atualizarDespesas() {
-  await sincronizarDados('dados_despesas')
-  await verificarDespesas()
-}
-
 async function verificarDespesas() {
 
   telaAtiva = 'despesas'
@@ -45,17 +39,17 @@ async function verificarDespesas() {
     body: 'bodyDespesas',
     criarLinha: 'criarLinhaDespesa',
     colunas: {
-      'Fornecedor': {},
-      'Distrito': {},
-      'Cidade': {},
-      'Número do Contribuinte': {},
-      'Valor': {},
-      'IVA': {},
-      'Ano': {},
-      'Mês': {},
+      'Fornecedor': { chave: 'snapshots.fornecedor.nome' },
+      'Distrito': { chave: 'snapshots.fornecedor.snapshots.cidade.distrito' },
+      'Cidade': { chave: 'snapshots.fornecedor.snapshots.cidade.nome' },
+      'Número do Contribuinte': { chave: 'snapshots.fornecedor.numeroContribuinte' },
+      'Valor': { chave: 'valor' },
+      'IVA': { chave: 'iva' },
+      'Ano': { chave: 'snapshots.ano' },
+      'Mês': { chave: 'snapshots.mes' },
       'Data': { chave: 'data', tipoPesquisa: 'data' },
       'Fatura': {},
-      'Tipo de Material': {},
+      'Tipo de Material': { chave: 'material.nome' },
       'Obra': {},
       'Detalhes': {},
     }
@@ -270,7 +264,7 @@ async function criarLinhaDespesa(dados) {
             <span>${data ? `${dia}/${mes}/${ano}` : ''}</span>
         </td>
         <td>${ax(fatura)}</td>
-        <td>${material?.nome || '--'}</td>
+        <td>${material?.nome || ''}</td>
         <td>${infoObra(dados)}</td>
         <td>
             <img data-controle="editar" src="imagens/pesquisar.png" onclick="formularioDespesa('${id}')">
@@ -283,10 +277,11 @@ async function criarLinhaDespesa(dados) {
 
 async function formularioDespesa(idDespesa) {
 
-  const despesa = await recuperarDado('dados_despesas', idDespesa) || {}
-  const obra = await recuperarDado('fornecedores', despesa?.obra) || {}
-  const material = await recuperarDado('fornecedores', despesa?.material) || {}
-  const fornecedor = await recuperarDado('fornecedores', despesa?.fornecedor) || {}
+  const { numeroContribuinte, material, data, iva, valor, despesa, fornecedor } = await recuperarDado('dados_despesas', idDespesa) || {}
+  const obra = await recuperarDado('dados_obras', despesa?.obra) || {}
+  const dMaterial = material || {}
+  const { nome, snapshots } = await recuperarDado('fornecedores', fornecedor) || {}
+  const cidade = snapshots?.cidade || {}
 
   const placeholder = `placeholder="Escolha o fornecedor"`
 
@@ -320,17 +315,20 @@ async function formularioDespesa(idDespesa) {
   const linhas = [
     {
       texto: 'Fornecedor',
-      elemento: `<span name="fornecedor" class="opcoes" onclick="cxOpcoes('fornecedor')">${fornecedor?.nome || 'Selecionar'}</span>`
+      elemento: `<span ${fornecedor ? `id="${fornecedor}"` : ''} name="fornecedor" class="opcoes" onclick="cxOpcoes('fornecedor')">${nome || 'Selecionar'}</span>`
     },
-    { texto: 'Distrito', elemento: `<input ${placeholder} name="distrito" readOnly>` },
-    { texto: 'Cidade', elemento: `<input ${placeholder} name="cidade" readOnly>` },
-    { texto: 'Número do Contribuinte', elemento: `<input ${placeholder} name="numeroContribuinte" readOnly>` },
-    { texto: 'Valor', elemento: `<input name="valor" placeholder="Valor" type="number" value="${despesa?.valor || ''}">` },
-    { texto: 'IVA', elemento: `<input name="iva" placeholder="IVA" type="number" value="${despesa?.iva || ''}">` },
-    { texto: 'Data', elemento: `<input name="data" type="date" value="${despesa?.data || ''}">` },
+    { texto: 'Distrito', elemento: `<input ${placeholder} value="${cidade?.distrito || ''}" name="distrito" readOnly>` },
+    { texto: 'Cidade', elemento: `<input ${placeholder} value="${cidade?.nome || ''}" name="cidade" readOnly>` },
+    {
+      texto: 'Número do Contribuinte',
+      elemento: `<input ${placeholder} value="${numeroContribuinte || ''}" name="numeroContribuinte" readOnly>`
+    },
+    { texto: 'Valor', elemento: `<input name="valor" placeholder="Valor" type="number" value="${valor || ''}">` },
+    { texto: 'IVA', elemento: `<input name="iva" placeholder="IVA" type="number" value="${iva || ''}">` },
+    { texto: 'Data', elemento: `<input name="data" type="date" value="${data || ''}">` },
     {
       texto: 'Tipo de Material',
-      elemento: `<span name="material" class="opcoes" onclick="cxOpcoes('material')">${material?.nome || 'Selecionar'}</span>`
+      elemento: `<span ${material ? `id="${material.id}"` : ''} name="material" class="opcoes" onclick="cxOpcoes('material')">${dMaterial?.nome || 'Selecionar'}</span>`
     },
     {
       texto: 'Obra',
@@ -389,39 +387,24 @@ function confirmarExclusaoDespesa(idDespesa) {
 
 async function excluirDespesa(idDespesa) {
 
-  overlayAguarde()
-
   deletar(`dados_despesas/${idDespesa}`)
   await deletarDB(`dados_despesas`, idDespesa)
-
-  await verificarDespesas()
 
 }
 
 async function salvarDespesa(idDespesa = ID5digitos()) {
   overlayAguarde()
 
-  let despesaAtual = await recuperarDado('dados_despesas', idDespesa);
+  const despesa = await recuperarDado('dados_despesas', idDespesa) || {}
 
-  const fornecedor = document.querySelector('[name="fornecedor"]');
-  const obra = document.querySelector('[name="obra"]');
-  const idMaterial = document.querySelector('[name="material"]').selectedOptions[0].id
-  const material = materiais[idMaterial] || {}
-
-  let despesa = {
-    fornecedor: fornecedor.selectedOptions[0].id,
-    obra: obra.selectedOptions[0].value,
-    material,
-    iva: Number(obVal('iva')),
-    valor: Number(obVal('valor')),
-    data: obVal('data')
-  };
+  const idMaterial = document.querySelector('[name="material"]')?.id
+  const material = await recuperarDado('materiais', idMaterial) || {}
 
   // Foto da Fatura
   const foto = document.querySelector('[name="foto"]')
   if (foto && foto.src && !foto.src.includes(api)) {
     const resposta = await importarAnexos({ foto: foto.src });
-
+    
     if (resposta[0].link) {
       despesa.fatura = resposta[0].link;
     } else {
@@ -433,19 +416,24 @@ async function salvarDespesa(idDespesa = ID5digitos()) {
   // Arquivo da fatura (ex: pdf)
   const input = document.querySelector('[name="fatura"]');
   if (input?.files?.length === 1) {
-    const anexos = await importarAnexos({ input });
-    despesa.fatura = anexos[0].link;
+    const anexos = await importarAnexos({ input })
+    despesa.fatura = anexos[0].link
   }
 
-  despesa = {
-    ...despesaAtual,
-    ...despesa
-  };
+  const atualizado = {
+    ...despesa,
+    fornecedor: document.querySelector('[name="fornecedor"]')?.id,
+    obra: document.querySelector('[name="obra"]')?.id,
+    material,
+    iva: Number(obVal('iva')),
+    valor: Number(obVal('valor')),
+    data: obVal('data')
+  }
 
-  await enviar(`dados_despesas/${idDespesa}`, despesa);
-  await inserirDados({ [idDespesa]: despesa }, 'dados_despesas');
-  await verificarDespesas();
-  removerPopup();
+  enviar(`dados_despesas/${idDespesa}`, atualizado)
+  await inserirDados({ [idDespesa]: atualizado }, 'dados_despesas')
+
+  removerPopup()
 }
 
 async function buscarLocalidadeFornecedor() {
