@@ -185,7 +185,7 @@ async function adicionarObra(idObra) {
 
 }
 
-async function salvarObra(idObra = unicoID()) {
+async function salvarObra(idObra = crypto.randomUUID()) {
 
     overlayAguarde()
 
@@ -199,8 +199,7 @@ async function salvarObra(idObra = unicoID()) {
 
     obra.cliente = spanCliente.id
 
-    enviar(`dados_obras/${idObra}/cliente`, spanCliente.id)
-    await inserirDados({ [idObra]: obra }, 'dados_obras')
+    await enviar(`dados_obras/${idObra}/cliente`, spanCliente.id)
 
     removerPopup()
 
@@ -217,9 +216,10 @@ function confirmarExclusaoObra(idObra) {
 async function excluirObra(idObra) {
 
     overlayAguarde()
-    deletar(`dados_obras/${idObra}`)
-    await deletarDB(`dados_obras`, idObra)
-    await telaObras()
+
+    await deletar(`dados_obras/${idObra}`)
+    
+    removerOverlay()
 
 }
 
@@ -280,9 +280,8 @@ async function vincularOrcamento(input, idObra, idOrcamento) {
         delete obra.orcamentos_vinculados[idOrcamento]
     }
 
-    await inserirDados({ [idObra]: obra }, 'dados_obras')
+    await enviar(`dados_obras/${idObra}/orcamentos_vinculados`, obra.orcamentos_vinculados)
 
-    enviar(`dados_obras/${idObra}/orcamentos_vinculados`, obra.orcamentos_vinculados)
 }
 
 async function verAndamento(id, resetar) {
@@ -542,8 +541,7 @@ async function marcarConclusao(input, idObra, idOrcamento, idDescricao) {
 
     const item = obra.andamento[idOrcamento][idDescricao] ??= {}
     item.concluido = input.checked
-    enviar(`dados_obras/${idObra}/andamento/${idOrcamento}/${idDescricao}/concluido`, input.checked)
-    await inserirDados({ [idObra]: obra }, 'dados_obras')
+    await enviar(`dados_obras/${idObra}/andamento/${idOrcamento}/${idDescricao}/concluido`, input.checked)
     await verAndamento(idObra)
 
 }
@@ -555,9 +553,8 @@ async function riscarItem(idObra, idOrcamento, idDescricao) {
     obra.andamento[idOrcamento] ??= {}
 
     const item = obra.andamento[idOrcamento][idDescricao] ??= {}
-    item.removido = !item.removido
 
-    await inserirDados({ [idObra]: obra }, 'dados_obras')
+    await enviar(`dados_obras/${idObra}/andamento/${idOrcamento}/${idDescricao}`, !item.removido)
 
     removerPopup()
     await verAndamento(idObra)
@@ -592,19 +589,10 @@ async function salvarFotos(idObra, idOrcamento, idDescricao) {
             const foto = await importarAnexos({ foto: img.src })
             const idFoto = foto[0].link
             album[idFoto] = foto[0]
-            enviar(`dados_obras/${idObra}/andamento/${idOrcamento}/${idDescricao}/fotos/${idFoto}`, foto[0])
+            await enviar(`dados_obras/${idObra}/andamento/${idOrcamento}/${idDescricao}/fotos/${idFoto}`, foto[0])
         }
     }
 
-    const obra = await recuperarDado('dados_obras', idObra)
-
-    obra.andamento[idOrcamento][idDescricao].fotos = {
-        ...(obra.andamento[idOrcamento][idDescricao].fotos ?? {}),
-        ...album
-    }
-
-
-    await inserirDados({ [idObra]: obra }, 'dados_obras')
     removerPopup()
 }
 
@@ -635,9 +623,7 @@ async function salvarAndamento(idObra, idOrcamento, idDescricao) {
     obra.andamento[idOrcamento][idDescricao] ??= {}
     obra.andamento[idOrcamento][idDescricao].realizado = realizado
 
-    enviar(`dados_obras/${idObra}/andamento/${idOrcamento}/${idDescricao}/realizado`, realizado)
-
-    await inserirDados({ [idObra]: obra }, 'dados_obras')
+    await enviar(`dados_obras/${idObra}/andamento/${idOrcamento}/${idDescricao}/realizado`, realizado)
 
     removerPopup()
     await verAndamento(idObra)
@@ -742,8 +728,7 @@ async function atualizarToolbar({ nomeTarefa } = {}) {
 
     obra.resultado = resultado
 
-    await inserirDados({ [idObraAtual]: obra }, 'dados_obras')
-    enviar(`dados_obras/${idObraAtual}/resultado`, resultado)
+    await enviar(`dados_obras/${idObraAtual}/resultado`, resultado)
 
     const opcoes = [... new Set(tarefas)]
         .map(op => `<option ${nomeTarefa == op ? 'selected' : ''}>${op}</option>`)
@@ -1028,10 +1013,7 @@ function pintarTabelas() {
 
 async function salvarDtInicio(input, idObra) {
 
-    const obra = await recuperarDado('dados_obras', idObra)
-    obra.dtInicio = input.value
-    enviar(`dados_obras/${idObra}/dtInicio`, input.value)
-    await inserirDados({ [idObra]: obra }, 'dados_obras')
+    await enviar(`dados_obras/${idObra}/dtInicio`, input.value)
 
 }
 

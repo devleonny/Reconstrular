@@ -329,13 +329,7 @@ async function excluirZona() {
 
     overlayAguarde()
 
-    let orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
-
-    delete orcamento.zonas[zona1]
-
-    deletar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}`)
-
-    await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
+    await deletar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}`)
 
     removerPopup()
 
@@ -510,11 +504,10 @@ async function alterarFinalizacao(status) { //29
 
         orcamento.versao = R
 
-        enviar(`dados_orcamentos/${idOrcamento}/revisoes/${R}`, orcamento.revisoes[R])
-        enviar(`dados_orcamentos/${idOrcamento}/versao`, R)
+        await enviar(`dados_orcamentos/${idOrcamento}/revisoes/${R}`, orcamento.revisoes[R])
+        await enviar(`dados_orcamentos/${idOrcamento}/versao`, R)
     }
 
-    await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
     removerOverlay()
 }
 
@@ -597,11 +590,8 @@ async function removerLinhaZona(img) {
     const tr = img.closest('tr')
 
     const idItem = tr.id
-    delete dados_orcamentos[idOrcamento].zonas[zona1][idItem]
-    deletar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}/${idItem}`)
-    await inserirDados({ [idOrcamento]: dados_orcamentos[idOrcamento] }, 'dados_orcamentos')
 
-    tr.remove()
+    await deletar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}/${idItem}`)
 
     salvarExecucao()
 }
@@ -747,16 +737,16 @@ async function salvarExecucao() {
     // salva toda a zona de uma vez
     orcamento.zonas[zona1] = itensZona
 
-    await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
-    enviar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}`, itensZona)
+    await enviar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}`, itensZona)
 
     // recalcula total geral
     const total_geral = Object.values(orcamento.zonas).reduce((total, zona) => {
         return total + Object.values(zona).reduce((soma, item) => soma + (Number(item.quantidade) || 0) * (Number(item.unitario) || 0), 0)
     }, 0)
 
-    if (total_geral !== orcamento.total_geral) enviar(`dados_orcamentos/${idOrcamento}/total_geral`, total_geral)
-    orcamento.total_geral = total_geral
+    if (total_geral !== orcamento.total_geral) 
+        await enviar(`dados_orcamentos/${idOrcamento}/total_geral`, total_geral)
+
 }
 
 function comparativoRevisoes(idOrcamento) {
@@ -1298,8 +1288,7 @@ async function enviarOrcamentoPorEmail(idOrcamento) {
             data: new Date().toLocaleString()
         }
 
-        await inserirDados({ [idOrcamento]: orcamento }, 'dados_orcamentos')
-        enviar(`dados_orcamentos/${idOrcamento}/emailEnviado`, orcamento.emailEnviado)
+        await enviar(`dados_orcamentos/${idOrcamento}/emailEnviado`, orcamento.emailEnviado)
         await orcamentos(finalizado)
         return popup({ mensagem, titulo: 'Enviado com sucesso', imagem: 'imagens/concluido.png()' })
     }
@@ -1389,11 +1378,11 @@ async function editarDescricaoExtra(idOrcamento, idLancamento, zona) {
 
 async function salvarDescricao(idOrcamento, idLancamento, zona) {
 
+    overlayAguarde()
+    
     const descricaoExtra = document.getElementById('descricaoExtra')
 
-    dados_orcamentos[idOrcamento].zonas[zona][idLancamento].descricaoExtra = descricaoExtra.value
-
-    await inserirDados({ [idOrcamento]: dados_orcamentos[idOrcamento] }, 'dados_orcamentos')
+    await enviar(`dados_orcamentos/${idOrcamento}/zonas/${zona}/${idLancamento}/descricaoExtra`, descricaoExtra.value)
 
     await orcamentoFinal(idOrcamento)
 

@@ -264,8 +264,8 @@ async function salvarHoras() {
     colaborador.folha[sData.ano] ??= {}
     colaborador.folha[sData.ano][sData.mes] ??= {}
     colaborador.folha[sData.ano][sData.mes][sData.dia] = horas
-    await inserirDados({ [sData.idColaborador]: colaborador }, 'dados_colaboradores')
-    enviar(`dados_colaboradores/${sData.idColaborador}/folha/${sData.ano}/${sData.mes}/${sData.dia}`, horas)
+
+    await enviar(`dados_colaboradores/${sData.idColaborador}/folha/${sData.ano}/${sData.mes}/${sData.dia}`, horas)
 
     await mostrarFolha(sData.idColaborador)
 

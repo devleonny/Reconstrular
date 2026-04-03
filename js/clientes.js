@@ -106,8 +106,7 @@ function confirmarExclusaoCliente(idCliente) {
 
 async function excluirCliente(idCliente) {
 
-    await deletarDB(`dados_clientes`, idCliente)
-    deletar(`dados_clientes/${idCliente}`)
+    await deletar(`dados_clientes/${idCliente}`)
 
 }
 
@@ -169,7 +168,7 @@ async function salvarCliente(idCliente = unicoID()) {
         cidade: painel.querySelector('[name="cidade"]').id
     }
 
-    enviar(`dados_clientes/${idCliente}`, novo)
-    await inserirDados({ [idCliente]: novo }, 'dados_clientes')
+    await enviar(`dados_clientes/${idCliente}`, novo)
+
     removerPopup()
 }

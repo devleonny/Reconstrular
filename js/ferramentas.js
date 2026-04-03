@@ -113,9 +113,8 @@ async function carregarControles() {
 
     const barraStatus = `
             <div id="divUsuarios"></div>
-
+            ${modelo('chat', 'painelChat()', 'msg')}
             ${permitidosAprovacoes.includes(acesso.permissao) ? modelo('construcao', 'configs()', '') : ''}
-
         `
     const cabecalhoUsuario = document.querySelector('.cabecalho-usuario')
     if (cabecalhoUsuario)
@@ -146,7 +145,8 @@ async function usuariosToolbar() {
 
     const uOnline = await contarPorCampo({ base: 'dados_setores', path: 'status' })
 
-    const { status } = await recuperarDado('dados_setores', acesso.usuario) || {}
+    const { status, funcao } = await recuperarDado('dados_setores', acesso.usuario) || {}
+    const { nome } = await recuperarDado('funcoes', funcao) || {}
 
     const indicadorStatus = status || 'offline'
 
@@ -157,7 +157,7 @@ async function usuariosToolbar() {
         </div>`
 
     if (nomeUsuario)
-        nomeUsuario.innerHTML = `<span><b>${inicialMaiuscula(acesso?.permissao || '')}</b> ${acesso.usuario || ''}</span>`
+        nomeUsuario.innerHTML = `<span><b>${inicialMaiuscula(nome|| '')}</b> ${acesso.usuario || ''}</span>`
 
     const divUsuarios = document.getElementById('divUsuarios')
     if (divUsuarios)
@@ -170,8 +170,7 @@ async function painelUsuarios() {
     const colunas = {
         'Status': { chave: 'status' },
         'Usuários': { chave: 'usuario' },
-        'Setor': { chave: 'setor' },
-        'Permissão': { chave: 'permissao' }
+        'Enviar mensagem': {}
     }
 
     const pag = 'usuariosOnline'
@@ -205,7 +204,7 @@ async function painelUsuarios() {
 
 function criarLinhaPainelUsuarios(dados) {
 
-    const { usuario, status, setor, permissao } = dados || {}
+    const { usuario, status } = dados || {}
 
     let gerenciarStatus = `<label>${status || 'offline'}</label>`
 
@@ -233,10 +232,7 @@ function criarLinhaPainelUsuarios(dados) {
             ${usuario}
         </td>
         <td>
-            ${permissao || ''}
-        </td>
-        <td>
-            ${setor || ''}
+            <img src="imagens/carta.png" onclick="balaoMensagem('${usuario}')">
         </td>
     </tr>`
 }

@@ -1,78 +1,5 @@
-let mensagensFuncao = {}
-let nLidas = true
-let arquivado = false
-let filtroMensagens = 'todas' // 'todas', 'lidas', 'nLidas'
-
-function aplicarFiltroMensagens() {
-    const linhas = document.querySelectorAll('div[name="linha"]')
-
-    for (const linha of linhas) {
-        const lido = linha.dataset.lido == 'S'
-
-        switch (filtroMensagens) {
-            case 'nLidas':
-                linha.style.display = lido ? 'none' : 'flex'
-                break
-            case 'lidas':
-                linha.style.display = lido ? 'flex' : 'none'
-                break
-            default:
-                linha.style.display = 'flex'
-        }
-    }
-}
-
 
 async function painelChat() {
-
-    mostrarMenus(false)
-
-    const stringUsuarios = {}
-    titulo.textContent = 'Chat'
-
-    funcoes = await recuperarDados('funcoes')
-    dados_setores = await recuperarDados('dados_setores') || {}
-    const uOrganizados = Object
-        .entries(dados_setores)
-        .sort((a, b) => a[0].localeCompare(b[0]))
-
-    for (const [usuario, d] of uOrganizados) {
-
-        const status = d?.status || 'offline'
-        if (!stringUsuarios[status]) stringUsuarios[status] = { quantidade: 0, linhas: '' }
-
-        const f = funcoes?.[d?.funcao]?.nome || '...'
-        stringUsuarios[status].quantidade++
-        stringUsuarios[status].linhas += `
-            <div class="usuarioOnline">
-                ${usuario !== acesso.usuario
-                ? `<img onclick="balaoMensagem('${usuario}')" src="imagens/carta.png">`
-                : '<span style="width: 2rem;"></span>'}
-                <img src="imagens/${status}.png" style="width: 1.5rem;">
-                <label>${usuario}</label>
-                <label style="font-size: 0.6rem;">
-                    <b>${f}</b>
-                </label>
-            </div>
-        `
-    }
-
-    let info = ''
-
-    // ordena as chaves colocando "offline" no final
-    const chavesOrdenadas = Object.keys(stringUsuarios).sort((a, b) => {
-        if (a === 'offline') return 1
-        if (b === 'offline') return -1
-        return a.localeCompare(b)
-    })
-
-    for (const st of chavesOrdenadas) {
-        const dados = stringUsuarios[st]
-        info += `
-            <label><strong>${st}</strong> ${dados.quantidade}</label>
-            ${dados.linhas}
-        `
-    }
 
     const menus = `
     <div class="menu-chat-superior">
@@ -81,31 +8,43 @@ async function painelChat() {
             <span style="color: white;">Marcar todos</span>
         </div>
         <button onclick="confirmarArquivamento()">Arquivar mensagens</button>
-        <button onclick="filtrarNLidos()">Não Lidas</button>
-        <button onclick="filtrarLidas()">Lidas</button>
-        <button onclick="mostrarTodasMensagens()">Todas</button>
-        <div class="pesquisa">
-            <input oninput="pesquisarEmMensagens(this.value)" placeholder="Pesquisar" style="width: 100%;">
-            <img src="imagens/pesquisar2.png">
-        </div>
+        <button onclick="">Marcar como lida</button>
     </div>
     `
+    const pag = 'mensagens'
+    const tabela = await modTab({
+        base: 'mensagens',
+        body: 'bodyMensagens',
+        ordenar: {
+            path: 'lido',
+            direcao: 'asc'
+        },
+        filtros: {
+            'destinatario': { op: '=', value: acesso.usuario }
+        },
+        pag,
+        criarLinha: 'criarDivMensagem'
+    })
 
     const acumulado = `
-        <div style="${vertical}; width: 90vw; gap: 2px;">
+        <div style="${vertical}; gap: 2px;">
 
             ${menus}
 
             <div class="tela-inferior-mensagens">
                 <div class="mensagens-funcao"></div>
-                <div class="painel-mensagens"></div>
-                <div class="divOnline">${info}</div>
+                <div class="painel-mensagens">
+                    ${tabela}
+                </div>
             </div>
         </div>
     `
 
-    const divOnline = document.querySelector('.divOnline')
-    if (!divOnline) telaInterna.innerHTML = acumulado
+    tela.innerHTML = acumulado
+
+    await paginacao(pag)
+
+    return
 
     const btnArq = document.getElementById('btnArq')
     if (btnArq) btnArq.textContent = arquivado ? 'Não arquivados' : 'Arquivados'
@@ -146,17 +85,6 @@ async function painelChat() {
 
 }
 
-function pesquisarEmMensagens(texto) {
-    texto = texto.toLowerCase().trim()
-    const linhas = document.querySelectorAll('div[name="linha"]')
-
-    for (const linha of linhas) {
-        const conteudo = linha.textContent.toLowerCase()
-
-        linha.style.display = conteudo.includes(texto) ? '' : 'none'
-    }
-}
-
 async function confirmarArquivamento() {
 
     const botoes = [
@@ -176,110 +104,97 @@ function marcarTodos(inputM) {
     }
 }
 
-function filtrarNLidos() {
-    filtroMensagens = 'nLidas'
-    aplicarFiltroMensagens()
-}
+function criarDivMensagem(m) {
 
-function filtrarLidas() {
-    filtroMensagens = 'lidas'
-    aplicarFiltroMensagens()
-}
-
-function mostrarTodasMensagens() {
-    filtroMensagens = 'todas'
-    aplicarFiltroMensagens()
-}
-
-
-function criarDivMensagem(idMensagem, m) {
-
-    const divExistente = document.getElementById(idMensagem)
-
-    // Acumular mensagens por função; Apenas não lidas;
-    const remF = dados_setores?.[m.remetente]?.funcao || '...'
-    const nFun = funcoes?.[remF]?.nome
-    if (nFun && m.lido !== 'S') {
-        mensagensFuncao[nFun] ??= {}
-        mensagensFuncao[nFun][idMensagem] = m
-    }
+    const { id, remetente, assunto, data, lido, mensagem } = m
 
     const div = ` 
         <input name="mensagem" type="checkbox">
-        <img src="imagens/carta.png" onclick="abrirMensagem('${idMensagem}')">
-        <span><u>${m.remetente}</u></span>
-        <span style="font-size: 0.6rem;"><b>${m.data}</b></span>
-        <span><b>${m?.assunto || '...'}</b></span>
-        <span>${String(m.mensagem).slice(0, 50)}...</span>
+        <img src="imagens/carta.png" onclick="abrirMensagem('${id}')">
+        <span><u>${remetente || ''}</u></span>
+        <span style="font-size: 0.6rem;"><b>${data}</b></span>
+        <span><b>${assunto || '...'}</b></span>
+        <span>${String(mensagem || '').slice(0, 50)}...</span>
     `
 
-    if (divExistente) return divExistente.innerHTML = div
-
-    const painel = document.querySelector('.painel-mensagens')
-    painel.insertAdjacentHTML('beforeend', `
-        <div id="${idMensagem}" name="linha" data-lido="${m?.lido == 'S' ? 'S' : 'N'}" class="m-sagem-${m.lido || 'N'}">
-            ${div}
-        </div>`)
+    return `
+    <tr>
+        <td>
+            <div name="linha" data-lido="${lido == 'S' ? 'S' : 'N'}" class="m-sagem-${lido || 'N'}">
+                ${div}
+            </div>
+        </td>
+    </tr>
+    `
 
 }
 
 async function abrirMensagem(idMensagem) {
-    const m = mensagens[idMensagem]
-    const elemento = `
-        <div style="${vertical}; min-width: 20rem; background-color: #d2d2d2; gap: 2px; padding: 1rem;">
-            <span><b>Remetente:</b> <u>${m.remetente}</u></span>
-            <span><b>Assunto:</b> ${m?.assunto || '...'}</span>
-            <hr>
-            <span><b>Mensagem:</b></span>
-            <div>${m.mensagem}</div>
-        </div>
-    `
 
-    m.lido = 'S'
-    await inserirDados({ [idMensagem]: m }, 'mensagens')
-    enviar(`mensagens/${idMensagem}/lido`, 'S')
-    popup({ elemento, titulo: `Mensagem de ${m.remetente}` })
+    const { assunto, mensagem, remetente, lido } = await recuperarDado('mensagens', idMensagem) || {}
 
-    const divMsg = document.getElementById(idMensagem)
-    divMsg.classList = `m-sagem-S`
-    divMsg.dataset.lido = 'S'
+    const linhas = [
+        {
+            texto: 'Remetente',
+            elemento: `<input value="${remetente}" readOnly>`
+        },
+        {
+            texto: 'Assunto',
+            elemento: `<textarea>${assunto || ''}</textarea>`
+        },
+        {
+            texto: 'Mensagem',
+            elemento: `<textarea readOnly>${mensagem || ''}</textarea>`
+        }
+    ]
 
-    aplicarFiltroMensagens() // atualiza visibilidade conforme filtro atual
+    popup({ linhas, titulo: `Mensagem de ${remetente}` })
+
+    if (lido !== 'S')
+        await enviar(`mensagens/${idMensagem}/lido`, 'S')
+
 }
 
 function balaoMensagem(destinatario) {
 
-    const elemento = `
-        <div class="painel-email">
-            <span><b>Para:</b> ${destinatario}</span>
-            <span>Assunto</span>
-            <textarea name="assunto"></textarea>
-            <span>Mensagem</span>
-            <textarea rows="5" name="mensagem" data-destinatario="${destinatario}"></textarea>
-            <hr>
-            <button onclick="enviarMensagem()">Enviar</button>
-        </div>
-    `
+    const linhas = [
+        {
+            texto: 'Destinatário',
+            elemento: `<input id="destinatario" value="${destinatario}" readOnly>`
+        },
+        {
+            texto: 'Assunto',
+            elemento: `<textarea id="assunto"></textarea>`
+        },
+        {
+            texto: 'Mensagem',
+            elemento: `<textarea id="mensagem"></textarea>`
+        }
+    ]
 
-    popup({ elemento, titulo: 'Enviar mensagem' })
+    const botoes = [
+        { texto: 'Enviar', img: 'concluido', funcao: `enviarMensagem('${destinatario}')` }
+    ]
+
+    popup({ linhas, botoes, titulo: 'Enviar mensagem' })
 }
 
-async function enviarMensagem() {
+async function enviarMensagem(destinatario) {
 
     overlayAguarde()
+
     const msg = document.querySelector('[name="mensagem"]')
     if (!msg.value)
-        return popup({ mensagem: 'Mensagem em branco...' })
+        return removerPopup()
 
-    const assunto = document.querySelector('[name="assunto"]').value
+    const assunto = document.querySelector('[id="assunto"]').value
 
     if (!assunto)
         return popup({ mensagem: 'Assunto em branco...' })
 
-    const destinatario = msg.dataset.destinatario
-    const idMensagem = unicoID()
-
+    const id = crypto.randomUUID()
     const m = {
+        id,
         destinatario,
         assunto,
         remetente: acesso.usuario,
@@ -287,9 +202,8 @@ async function enviarMensagem() {
         mensagem: msg.value
     }
 
-    enviar(`mensagens/${idMensagem}`, m)
-    await inserirDados({ [idMensagem]: m }, 'mensagens')
-    mensagens[idMensagem] = m
+    await enviar(`mensagens/${id}`, m)
+
     removerPopup()
 
 }

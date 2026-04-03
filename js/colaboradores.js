@@ -321,12 +321,7 @@ async function excluirColaborador(id) {
 
     overlayAguarde()
 
-    deletar(`dados_colaboradores/${id}`)
-
-    await deletarDB('dados_colaboradores', id)
-
-    const existente = document.getElementById(id)
-    if (existente) existente.remove()
+    await deletar(`dados_colaboradores/${id}`)
 
     removerOverlay()
 }
@@ -412,9 +407,7 @@ async function salvarColaborador(idColaborador) {
 
     }
 
-    enviar(`dados_colaboradores/${idColaborador}`, colaborador)
-
-    await inserirDados({ [idColaborador]: colaborador }, 'dados_colaboradores')
+    await enviar(`dados_colaboradores/${idColaborador}`, colaborador)
 
     removerPopup()
 }

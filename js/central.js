@@ -345,13 +345,7 @@ async function telaPrincipal() {
         ${btn('orcamentos', 'Orçamentos', 'telaOrcamentos()')}
         ${btn('niveis', 'Níveis de Acesso', 'telaNiveis()')}
         ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
-        ${btn('chat',
-    `<div style="${horizontal}; justify-content: space-between; width: 100%; margin-right: 1rem;">
-                <span>Chat</span>
-                <div id="msg"></div>
-            </div>
-            `,
-    'painelUsuarios()')}
+        ${btn('chat', 'Chat', 'painelChat()')}
         ${btn('sair', 'Desconectar', 'confirmarSaida()')}
     `
 
@@ -367,15 +361,13 @@ async function telaPrincipal() {
     tela.innerHTML = acumulado
 
     priExec = false
-    removerOverlay()
 
     await carregarControles()
 
 }
 
 async function removerAcesso() {
-    await inserirDados({}, 'dados_setores', true)
-    acesso = {}
+    acesso = null
     localStorage.removeItem('acesso')
     await telaLogin()
     removerOverlay()
@@ -476,38 +468,6 @@ function telaConfiguracoes() {
     `
 
     tela.innerHTML = acumulado
-
-}
-
-async function configuracoesEmails() {
-
-    mostrarMenus()
-    titulo.innerHTML = 'Configurações de E-mails'
-    const configuracoes = await recuperarDados('configuracoes')
-
-    const acumulado = `
-        <div class="configuracoes">
-            <h1 style="color: #222;">Configurações</h1>
-            <span>Informe os e-mails para receber as informações abaixo: </span>
-            <hr style="width: 100%;">
-
-            <span>Folhas de Ponto</span>
-            <input id="emailFolha" placeholder="digite o e-mail" value="${configuracoes?.emailFolha || ''}">
-
-            <span>Recebimento de alertas [<b>Colaboradores preenchidos</b>]</span>
-            <input id="emailAlertas" placeholder="digite o e-mail" value="${configuracoes?.emailAlertas || ''}">
-
-            <br> 
-
-            <div style="${horizontal}; gap: 1rem;">
-                <button onclick="salvarConfigs()">Salvar</button>
-                <button onclick="telaConfiguracoes()" style="background-color: #3131ab;">Voltar</button>
-            </div>
-        
-        </div>
-    `
-
-    telaInterna.innerHTML = acumulado
 
 }
 
@@ -718,29 +678,17 @@ async function esquemaPermissoes() {
 
 async function alterarFiltro(input, idFuncao, coluna, chave) {
 
-    const valor = input.checked ? 'S' : 'N'
+    const valor = input.checked
+        ? 'S'
+        : 'N'
 
-    funcoes[idFuncao] ||= {}
-
-    if (typeof funcoes[idFuncao][coluna] !== 'object' || !funcoes[idFuncao][coluna]) {
-        funcoes[idFuncao][coluna] = {}
-    }
-
-    funcoes[idFuncao][coluna].filtros ||= {}
-    funcoes[idFuncao][coluna].filtros[chave] = valor
-
-    await inserirDados({ [idFuncao]: funcoes[idFuncao] }, 'funcoes')
-    enviar(`funcoes/${idFuncao}/${coluna}/filtros/${chave}`, valor)
+    await enviar(`funcoes/${idFuncao}/${coluna}/filtros/${chave}`, valor)
 
 }
 
 async function atualizarRegra(select, coluna, idFuncao) {
 
-    const funcao = funcoes[idFuncao]
-    funcao[coluna] ??= {}
-    funcao[coluna].regra = select.value
-    await inserirDados({ [idFuncao]: funcao }, 'funcoes')
-    enviar(`funcoes/${idFuncao}/${coluna}/regra`, select.value)
+    await enviar(`funcoes/${idFuncao}/${coluna}/regra`, select.value)
 
 }
 
@@ -782,12 +730,8 @@ async function adicionarFuncao(idFuncao) {
 async function excluirFuncao(idFuncao) {
 
     overlayAguarde()
-    const resposta = await deletar(`funcoes/${idFuncao}`)
-    if (resposta.mensagem)
-        return popup({ mensagem: `Falha ao excluir: ${resposta.mensagem}` })
 
-    await deletarDB(`funcoes`, idFuncao)
-    await telaNiveis()
+    await deletar(`funcoes/${idFuncao}`)
 
 }
 
@@ -801,52 +745,25 @@ async function confirmarExcluirFuncao(idFuncao) {
 
 }
 
-async function salvarFuncao(idFuncao = ID5digitos()) {
+async function salvarFuncao(idFuncao = crypto.randomUUID()) {
 
     overlayAguarde()
 
-    const funcao = funcoes[idFuncao] || {}
+    const funcao = await recuperarDado('funcoes', idFuncao) || {}
     const nomeFuncao = document.querySelector('[name="nomeFuncao"]')
 
     funcao.nome = nomeFuncao.value
     funcao.regras = []
 
-    const inputs = document.querySelectorAll('[name="funcoes"]')
+    const inputs = document.querySelectorAll('[name="funcoes"]:checked')
 
-    for (const input of inputs) {
-        if (input.checked) funcao.regras.push(input.id)
+    for (const input of inputs) { 
+        funcao.regras.push(input.id)
     }
 
-    await inserirDados({ [idFuncao]: funcao }, 'funcoes')
-    enviar(`funcoes/${idFuncao}`, funcao)
-
+    await enviar(`funcoes/${idFuncao}`, funcao)
     removerPopup()
 
-    await telaNiveis()
-
-}
-
-async function salvarConfigs() {
-
-    overlayAguarde()
-
-    const emailFolha = document.getElementById('emailFolha').value
-    const emailAlertas = document.getElementById('emailAlertas').value
-
-    const configuracoes = {
-        emailFolha,
-        emailAlertas
-    }
-
-    await enviar('configuracoes', configuracoes)
-    await inserirDados(configuracoes, 'configuracoes')
-
-    popup({ mensagem: 'Configurações Salvas', imagem: 'imagens/concluido.png' })
-}
-
-function verificarClique(event) {
-    const menu = document.querySelector('.side-menu');
-    if (menu && menu.classList.contains('active') && !menu.contains(event.target)) menu.classList.remove('active')
 }
 
 async function atualizarDados(base) {
@@ -886,16 +803,6 @@ function confirmarSaida() {
 function deslogar() {
     localStorage.removeItem('acesso')
     telaLogin()
-}
-
-function mostrarMenus(operacao) {
-    const menu = document.querySelector('.side-menu').classList
-
-    if (operacao === 'toggle' || operacao === undefined) {
-        return menu.toggle('active')
-    }
-
-    operacao ? menu.add('active') : menu.remove('active')
 }
 
 function visibilidade(input, value) {
@@ -1013,7 +920,7 @@ async function salvarEpi(idColaborador) {
         return popup({ mensagem: resposta })
 
     await enviar(`dados_colaboradores/${idColaborador}/epi`, epi)
-    await inserirDados({ [idColaborador]: colaborador }, 'dados_colaboradores')
+
     await adicionarColaborador(idColaborador)
 
     await enviarAlerta(idColaborador)
@@ -1230,7 +1137,7 @@ function telaLogin() {
 
     try {
         acesso = JSON.parse(localStorage.getItem('acesso'))
-        if (acesso) 
+        if (acesso)
             return telaPrincipal()
     } catch {
         removerAcesso()

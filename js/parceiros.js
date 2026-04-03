@@ -136,12 +136,8 @@ async function desativarUsuario(usuario) {
 
     overlayAguarde()
 
-    const resposta = await deletar(`dados_setores/${usuario}`)
+    await deletar(`dados_setores/${usuario}`)
 
-    if (resposta.mensagem)
-        return popup({ mensagem: `Falha ao excluir: ${resposta.mensagem}` })
-
-    await deletarDB('dados_setores', usuario)
     removerOverlay()
 
 }
@@ -170,8 +166,7 @@ async function salvarParceiro(usuario) {
         cidade
     }
 
-    enviar(`dados_setores/${usuario}`, novo)
-    await inserirDados({ [usuario]: novo }, 'dados_setores')
+    await enviar(`dados_setores/${usuario}`, novo)
 
     removerPopup()
 

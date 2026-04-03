@@ -385,8 +385,7 @@ function confirmarExclusaoDespesa(idDespesa) {
 
 async function excluirDespesa(idDespesa) {
 
-  deletar(`dados_despesas/${idDespesa}`)
-  await deletarDB(`dados_despesas`, idDespesa)
+  await deletar(`dados_despesas/${idDespesa}`)
 
 }
 
@@ -428,8 +427,7 @@ async function salvarDespesa(idDespesa = ID5digitos()) {
     data: obVal('data')
   }
 
-  enviar(`dados_despesas/${idDespesa}`, atualizado)
-  await inserirDados({ [idDespesa]: atualizado }, 'dados_despesas')
+  await enviar(`dados_despesas/${idDespesa}`, atualizado)
 
   removerPopup()
 }
@@ -556,10 +554,10 @@ async function salvarFornecedor(id = unicoID()) {
     cidade: idCidade
   }
 
-  enviar(`fornecedores/${id}`, fornecedor)
-  await inserirDados({ [id]: fornecedor }, 'fornecedores')
+  await enviar(`fornecedores/${id}`, fornecedor)
 
   removerPopup()
+
 }
 
 async function telaGenerica(nomeBase) {
@@ -659,8 +657,7 @@ async function salvarGenerico(id = ID5digitos()) {
     link: obVal('link')
   }
 
-  enviar(`${base}/${id}`, dados)
-  await inserirDados({ [id]: dados }, base)
+  await enviar(`${base}/${id}`, dados)
 
   removerPopup()
 
@@ -680,10 +677,7 @@ async function excluirGenerico(id) {
 
   overlayAguarde()
 
-  const { base } = controles?.generico || {}
-
-  await deletarDB(base, id)
-  deletar(`${base}/${id}`)
+  await deletar(`${base}/${id}`)
 
   removerOverlay()
 

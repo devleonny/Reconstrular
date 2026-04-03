@@ -149,8 +149,6 @@ async function aplicarEmMassa(tabela) {
         return popup({ mensagem: resposta.mensagem })
 
     removerPopup()
-    await inserirDados(campos, 'campos')
-    await telaPrecos()
 
 }
 
@@ -275,10 +273,10 @@ async function salvarCampo(idCampo = ID5digitos()) {
         if (el) campo[cmp] = el.value
     }
 
-    enviar(`campos/${idCampo}`, campo)
-    await inserirDados({ [idCampo]: campo }, 'campos')
+    await enviar(`campos/${idCampo}`, campo)
+
     removerPopup()
-    await telaPrecos()
+
 }
 
 async function painelMargem(id, tabela) {
@@ -344,11 +342,7 @@ async function salvarMargem(tabela) {
     campo.total = totalGeral
     campo.subtotal = subtotalGeral
 
-    enviar(`campos/${idCampo}`, campo)
-
-    await inserirDados({ [idCampo]: campo }, 'campos')
-
-    await telaPrecos()
+    await enviar(`campos/${idCampo}`, campo)
 
     removerPopup()
 }
@@ -438,8 +432,7 @@ async function salvarDuracao(idCampo, input) {
     const campo = await recuperarDado('campos', idCampo)
     campo.duracao = duracao
 
-    enviar(`campos/${idCampo}/duracao`, duracao)
-    await inserirDados({ [idCampo]: campo }, 'campos')
+    await enviar(`campos/${idCampo}/duracao`, duracao)
 
 }
 
@@ -589,9 +582,7 @@ async function salvarComposicao() {
     campos[idCampo].total = totalGeral
     campos[idCampo].subtotal = subtotalGeral
 
-    enviar(`campos/${idCampo}`, campos[idCampo])
-    await inserirDados({ [idCampo]: campos[idCampo] }, 'campos')
-    await telaPrecos()
+    await enviar(`campos/${idCampo}`, campos[idCampo])
 
     removerPopup()
 }
