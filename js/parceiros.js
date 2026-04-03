@@ -94,18 +94,14 @@ async function editarParceiros(usuario) {
             elemento: `<span 
             class="opcoes" ${dCidades ? `id="${cidade}"` : ''} 
             name="cidade" 
-            onclick="cxOpcoes('cidade')">
-                ${dCidades ? dCidades.nome : 'Selecionar'}
-            </span>`
+            onclick="cxOpcoes('cidade')">${dCidades ? dCidades.nome : 'Selecionar'}</span>`
         },
         {
             texto: 'Função',
             elemento: `<span 
             class="opcoes" ${dFuncao ? `id="${funcao}"` : ''} 
             name="funcao" 
-            onclick="cxOpcoes('funcao')">
-                ${dFuncao ? dFuncao.nome : 'Selecionar'}
-            </span>`
+            onclick="cxOpcoes('funcao')">${dFuncao ? dFuncao.nome : 'Selecionar'}</span>`
         },
     ]
 

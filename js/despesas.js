@@ -14,8 +14,6 @@ function telaDespesas() {
     `
   tela.innerHTML = acumulado
 
-  mostrarMenus(false)
-
 }
 
 async function verificarDespesas() {

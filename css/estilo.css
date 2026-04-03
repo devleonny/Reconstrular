@@ -9,7 +9,7 @@ html {
     justify-content: start;
     align-items: center;
     font-size: 0.9rem;
-    overflow-x: hidden;
+    overflow: hidden;
 }
 
 .titulo-pagina {
@@ -19,11 +19,11 @@ html {
 }
 
 .toolbar-top {
-    z-index: 1;
+    z-index: 9999;
     min-height: 6vh;
     display: flex;
     align-items: center;
-    justify-content: end;
+    justify-content: space-between;
     gap: 1rem;
     background-color: #222222;
     width: 100%;
@@ -51,7 +51,12 @@ html {
 
 .toolbar-interno {
     color: white;
-    margin-left: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    gap: 0.5rem;
+    position: relative;
+    width: 100%;
 }
 
 .botaoUsuarios {
@@ -72,13 +77,36 @@ html {
 }
 
 .tela {
-    margin-left: 200px;
-    padding: 4rem 1rem 1rem 1rem;
-    justify-content: center;
+    padding: 3.5rem 1rem;
+    justify-content: start;
     align-items: start;
     display: flex;
-    width: 80%;
+    width: 100%;
     height: 100vh;
+}
+
+.tela.active {
+    width: 80%;
+}
+
+.layout {
+    width: 95vw;
+    display: flex
+}
+
+.side-menu {
+    padding-top: 4rem;
+    display: flex;
+    flex-direction: column;
+    width: 0;
+    height: 100vh;
+    background: #222222ec;
+    overflow: hidden;
+    transition: 0.3s;
+}
+
+.side-menu.active {
+    min-width: 250px;
 }
 
 hr {
@@ -781,24 +809,6 @@ button {
     padding: 1rem;
 }
 
-.side-menu {
-    position: fixed;
-    z-index: 2;
-    min-width: 200px;
-    height: 100vh;
-    background: #222222;
-    display: flex;
-    align-items: center;
-    justify-content: start;
-    flex-direction: column;
-    gap: 1px;
-    overflow: auto;
-}
-
-.side-menu::-webkit-scrollbar {
-    display: none;
-}
-
 .popup-mensagem {
     display: flex;
     align-items: center;
@@ -1267,74 +1277,25 @@ input[type="file"] {
     background: #ffe093;
 }
 
+@media (orientation: portrait) {
 
-@media screen and (orientation: landscape),
-screen and (min-aspect-ratio: 13/9) {
-
-    .fotos {
-        grid-template-columns: repeat(3, 1fr);
+    .side-menu {
+        position: fixed;
+        top: 0;
+        left: -100%;
+        width: 90%;
+        z-index: 2;
     }
 
-    .fotos img {
-        width: 10vw;
+    .side-menu.active {
+        left: 0;
     }
 
-    .capturar {
-        padding: 0.5vw;
-        margin: 0.5vw;
+    .side-menu.active+.tela {
+        margin-left: 0;
     }
 
-    .painel-clientes {
-        grid-template-columns: repeat(3, 1fr);
+    .tela.active {
+        width: 0;
     }
-
-    .loginBloco {
-        max-width: 80vw;
-        max-height: 80vh;
-    }
-
-    .baixoLogin {
-        flex-direction: row;
-    }
-
-    .botaoPopup label {
-        font-size: 3vw;
-    }
-
-    .btnRodape {
-        width: auto;
-        right: 3vw;
-        bottom: 3vh;
-    }
-
-    .btnExcel {
-        gap: 10vw;
-        display: flex;
-    }
-
-    .detalhes img {
-        width: 3vw;
-    }
-
-    .aguarde img {
-        width: 10vw;
-    }
-
-    .camposCadastro {
-        padding: 2vw;
-    }
-
-    .contornoInterno img {
-        width: 2vw
-    }
-
-    .botoes {
-        align-items: center;
-        flex-direction: row;
-    }
-
-    .painelPin {
-        flex-direction: row;
-    }
-
 }

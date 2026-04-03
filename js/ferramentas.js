@@ -16,13 +16,17 @@ async function cxOpcoes(name) {
         return popup({ mensagem: `>>> cxOpcoes(null) <<<` })
 
     controlesCxOpcoes.ativo = name
-    const { colunas, base, filtros = {} } = controle
+    const { colunas, base, retornar, filtros = {} } = controle
 
     const pag = 'cxOpcoes'
     const tabela = await modTab({
         colunas,
         pag,
         base,
+        ordenar: {
+            path: retornar[0],
+            direcao: 'ASC'
+        },
         filtros,
         criarLinha: 'linCxOpcoes',
         body: 'cxOpcoes'
@@ -38,6 +42,20 @@ async function cxOpcoes(name) {
     popup({ elemento, titulo: 'Selecione o item' })
 
     await paginacao(pag)
+}
+
+function normalizarPesquisa(valor) {
+    return String(valor ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\p{L}\p{N}]/gu, '')
+        .toLowerCase()
+        .trim()
+}
+
+function getByPath(obj, path) {
+    if (!path) return obj
+    return path.split('.').reduce((acc, key) => acc?.[key], obj)
 }
 
 function linCxOpcoes(dado) {
@@ -66,18 +84,27 @@ function linCxOpcoes(dado) {
 
 async function selecionar(name, cod) {
 
+    if (cod == 'null')
+        return popup({ mensagem: 'O objeto "base" em controlesCx precisa contem o próprio "id" / "codigo" / "etc"' })
+
     const { funcaoAdicional, base, retornar } = controlesCxOpcoes[name]
-    const painel = document.querySelector('.painel-padrao')
 
     if (!retornar)
         return popup({ mensagem: `campo retornar: ['exemplo'] → undefined` })
 
     // Painel quando for forms; do contrário qualquer outro elemento;
-    const elemento = (painel || document)?.querySelector(`[name='${name}']`)
+    const painel = Array.from(document.querySelectorAll('.painel-padrao')).at(-1)
+    const elemento = (painel || document).querySelector(`[name='${name}']`)
     const termos = []
-    const dado = await recuperarDado(base, cod)
+
+    const dado = typeof base === 'string'
+        ? await recuperarDado(base, cod)
+        : base.find(item =>
+            String(item.id ?? item.codigo ?? item.usuario) === String(cod)
+        )
 
     for (const chave of retornar) {
+
         const d = getByPath(dado, chave)
 
         if (d ?? false) {
@@ -235,4 +262,14 @@ function criarLinhaPainelUsuarios(dados) {
             <img src="imagens/carta.png" onclick="balaoMensagem('${usuario}')">
         </td>
     </tr>`
+}
+
+function mostrarMenus() {
+
+    const menu = document.querySelector('.side-menu').classList
+    const tela = document.querySelector('.tela').classList
+
+    menu.toggle('active')
+    tela.toggle('active')
+
 }

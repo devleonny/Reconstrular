@@ -350,11 +350,9 @@ async function telaPrincipal() {
     `
 
     const acumulado = `
-        <div class="telaInterna">
-            <div class="plano-fundo">
-                <img src="imagens/logo.png" class="logo">
-                <p>Seja bem vindo!</p>
-            </div>
+        <div class="plano-fundo">
+            <img src="imagens/logo.png" class="logo">
+            <p>Seja bem vindo!</p>
         </div>
     `
 
