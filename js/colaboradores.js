@@ -40,16 +40,18 @@ async function telaColaboradores() {
     `
 
     const btnExtras = `
-        <div style="${vertical}; gap: 2px;">
-            <button style="width: 100%;" onclick="gerarTodosPDFs()">Folhas de Ponto.pdf</button>
-            <div style="${horizontal}; gap: 2px;">
-                ${modelo('Ano', `<select name="ano"><option></option>${optionsSelect(anos)}</select>`)}
-                ${modelo('Mês', `<select name="mes"><option></option>${optionsSelect(meses)}</select>`)}
+        <div style="${horizontal}; align-items: start; gap: 3px; padding: 3px;">
+            <div style="${vertical}; gap: 2px;">
+                <button style="width: 100%;" onclick="gerarTodosPDFs()">Folhas de Ponto.pdf</button>
+                <div style="${horizontal}; gap: 2px;">
+                    ${modelo('Ano', `<select name="ano"><option></option>${optionsSelect(anos)}</select>`)}
+                    ${modelo('Mês', `<select name="mes"><option></option>${optionsSelect(meses)}</select>`)}
+                </div>
             </div>
-        </div>
 
-        <button style="width: 100%;" onclick="excelColaboradores()">Trabalhadores.xlsx</button>
-        <button data-controle="inserir" onclick="adicionarColaborador()">Adicionar</button>
+            <button style="width: 100%;" onclick="excelColaboradores()">Trabalhadores.xlsx</button>
+            <button data-controle="inserir" onclick="adicionarColaborador()">Adicionar</button>
+        </div>
     `
 
     const colunas = {
@@ -90,9 +92,7 @@ async function criarLinhaColaboradores(colaborador) {
         .map(op => `<span>• ${op}</span>`)
         .join('')
 
-    const
-
-        tds = `
+    const tds = `
         <td>
             <div class="camposTd">
                 <img src="imagens/${algoPendente ? 'exclamacao' : 'doublecheck'}.png">
@@ -100,7 +100,7 @@ async function criarLinhaColaboradores(colaborador) {
             </div>
         </td>
         <td>${colaborador?.telefone || ''}</td>
-        <td>${infoObra(colaborador)}</td>
+        <td></td>
         <td>${dCidade.distrito || ''}</td>
         <td>${dCidade?.nome || ''}</td>
         <td><span class="${colaborador?.status}">${colaborador?.status || ''}</span></td>
