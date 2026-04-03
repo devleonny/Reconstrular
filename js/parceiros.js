@@ -11,8 +11,6 @@ async function telaUsuarios() {
 
     telaAtiva = 'parceiros'
 
-    mostrarMenus(false)
-
     const colunas = {
         'Nome Completo': { chave: 'nome_completo' },
         'Telefone': { chave: 'telefone' },
@@ -32,8 +30,7 @@ async function telaUsuarios() {
         body: 'bodyParceiros'
     })
 
-    titulo.textContent = 'Parceiros'
-    telaInterna.innerHTML = tabela
+    tela.innerHTML = tabela
 
     await paginacao()
 

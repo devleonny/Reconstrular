@@ -23,7 +23,7 @@ function aplicarFiltroMensagens() {
 }
 
 
-async function painelUsuarios() {
+async function painelChat() {
 
     mostrarMenus(false)
 
@@ -344,7 +344,7 @@ async function arquivarMensagens(operacao) {
             return popup({ mensagem: data.mensagem })
 
         await sincronizarDados('mensagens')
-        await painelUsuarios()
+        await painelChat()
         removerPopup()
 
         return

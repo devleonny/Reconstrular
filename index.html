@@ -3,18 +3,18 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.7">
+    <meta name="viewport" content="width=device-width, initial-scale=1.8">
     <title>Reconstrular</title>
-    <link rel="stylesheet" type="text/css" href="css/estilo.css?v=1.7">
-    <link rel="stylesheet" type="text/css" href="css/facial.css?v=1.7">
-    <link rel="stylesheet" type="text/css" href="css/folha.css?v=1.7">
-    <link rel="stylesheet" type="text/css" href="css/epi.css?v=1.7">
-    <link rel="stylesheet" type="text/css" href="css/orcamentos.css?v=1.7">
-    <link rel="stylesheet" type="text/css" href="css/despesas.css?v=1.7">
-    <link rel="stylesheet" type="text/css" href="css/precificacao.css?v=1.7">
-    <link rel="stylesheet" type="text/css" href="css/popup.css?v=1.7">
-    <link rel="stylesheet" type="text/css" href="css/obras.css?v=1.7">
-    <link rel="stylesheet" type="text/css" href="css/chat.css?v=1.7">
+    <link rel="stylesheet" type="text/css" href="css/estilo.css?v=1.8">
+    <link rel="stylesheet" type="text/css" href="css/facial.css?v=1.8">
+    <link rel="stylesheet" type="text/css" href="css/folha.css?v=1.8">
+    <link rel="stylesheet" type="text/css" href="css/epi.css?v=1.8">
+    <link rel="stylesheet" type="text/css" href="css/orcamentos.css?v=1.8">
+    <link rel="stylesheet" type="text/css" href="css/despesas.css?v=1.8">
+    <link rel="stylesheet" type="text/css" href="css/precificacao.css?v=1.8">
+    <link rel="stylesheet" type="text/css" href="css/popup.css?v=1.8">
+    <link rel="stylesheet" type="text/css" href="css/obras.css?v=1.8">
+    <link rel="stylesheet" type="text/css" href="css/chat.css?v=1.8">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
@@ -26,33 +26,43 @@
 
 <body>
 
-    <div class="toolbar">
-        <img src="imagens/menu.png" class="menu-btn" onclick="mostrarMenus()">
-        <span></span>
+    <div class="toolbar-top" style="display: none;">
         <div class="cabecalho-usuario"></div>
     </div>
-    <div id="tela" onclick="verificarClique(event)"></div>
 
+    <div style="display: flex; flex-direction: row; width: 100vw;">
+        <div class="side-menu">
+            <div style="display: flex; align-items: center; justify-content: center; padding: 1rem;">
+                <img src="imagens/logo.png" class="logo" style="width: 5rem;">
+            </div>
+            <div class="nomeUsuario"></div>
+            <div class="botoesMenu"></div>
+        </div>
+
+        <div class="tela"></div>
+    </div>
 </body>
 
+<script src="js/ferramentas.js?v=1.8"></script>
+<script src="js/central.js?v=1.8"></script>
+<script src="js/websocket.js?v=1.8"></script>
+<script src="js/popup.js?v=1.8"></script>
+<script src="js/gdb.js?v=1.8"></script>
 
-<script src="js/popup.js?v=1.7"></script>
-<script src="js/gdb.js?v=1.7"></script>
-<script src="js/ferramentas.js?v=1.7"></script>
-<script src="js/tabelas.js?v=1.7"></script>
-<script src="js/central.js?v=1.7"></script>
-<script src="js/facial.js?v=1.7"></script>
-<script src="js/folha.js?v=1.7"></script>
-<script src="js/epi.js?v=1.7"></script>
-<script src="js/orcamentos.js?v=1.7"></script>
-<script src="js/despesas.js?v=1.7"></script>
-<script src="js/precificacao.js?v=1.7"></script>
-<script src="js/parceiros.js?v=1.7"></script>
-<script src="js/colaboradores.js?v=1.7"></script>
-<script src="js/obras.js?v=1.7"></script>
-<script src="js/clientes.js?v=1.7"></script>
-<script src="js/chat.js?v=1.7"></script>
-<script src="js/websocket.js?v=1.7"></script>
+<script src="js/tabelas.js?v=1.8"></script>
+
+<script src="js/facial.js?v=1.8"></script>
+<script src="js/folha.js?v=1.8"></script>
+<script src="js/epi.js?v=1.8"></script>
+<script src="js/orcamentos.js?v=1.8"></script>
+<script src="js/despesas.js?v=1.8"></script>
+<script src="js/precificacao.js?v=1.8"></script>
+<script src="js/parceiros.js?v=1.8"></script>
+<script src="js/colaboradores.js?v=1.8"></script>
+<script src="js/obras.js?v=1.8"></script>
+<script src="js/clientes.js?v=1.8"></script>
+<script src="js/chat.js?v=1.8"></script>
+
 
 
 </html>

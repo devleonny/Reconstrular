@@ -8,14 +8,73 @@ html {
     display: flex;
     justify-content: start;
     align-items: center;
-    flex-direction: column;
     font-size: 0.9rem;
     overflow-x: hidden;
 }
 
-#tela {
+.titulo-pagina {
+    padding: 3rem;
+    font-size: 1.1rem;
+    color: white;
+}
+
+.toolbar-top {
+    z-index: 1;
+    min-height: 6vh;
+    display: flex;
+    align-items: center;
+    justify-content: end;
+    gap: 1rem;
+    background-color: #222222;
+    width: 100%;
+    position: fixed;
+    left: 0;
+    top: 0;
+}
+
+.cabecalho-usuario {
+    display: flex;
     justify-content: center;
     align-items: center;
+    gap: 10px;
+    padding: 5px;
+    border-radius: 15px;
+}
+
+.cabecalho-usuario img {
+    width: 2rem;
+}
+
+.cabecalho-usuario label {
+    font-size: 0.8rem;
+}
+
+.toolbar-interno {
+    color: white;
+    margin-left: 1rem;
+}
+
+.botaoUsuarios {
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: left;
+    cursor: pointer;
+    background-color: white;
+    border-radius: 50px;
+    padding-right: 0.8rem;
+    gap: 5px;
+}
+
+.botaoUsuarios label {
+    cursor: pointer;
+    font-size: 0.6rem;
+}
+
+.tela {
+    padding: 4rem 1rem 1rem 1rem;
+    justify-content: center;
+    align-items: start;
     display: flex;
     width: 100%;
 }
@@ -29,10 +88,7 @@ img {
 }
 
 .logo {
-    box-shadow: 0 0 5px #222;
-    overflow: auto;
     width: 7rem;
-    border-radius: 5px;
 }
 
 .cabecalho-clientes {
@@ -113,7 +169,7 @@ img {
     height: 80vh;
     width: 100%;
     background-color: #0000005e;
-    border-radius: 5px;
+    border-radius: 2px;
     color: white;
 }
 
@@ -168,6 +224,15 @@ img {
     padding: 5px;
     border-radius: 3px;
     background-color: #99999940;
+}
+
+.botoesMenu {
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    flex-direction: column;
+    width: 100%;
+    gap: 1px;
 }
 
 .div-mensagem {
@@ -664,7 +729,6 @@ button {
     border-top-left-radius: 5px;
     gap: 2px;
     width: 100%;
-    padding: 0.5rem;
 }
 
 .topo-tabela span {
@@ -715,9 +779,10 @@ button {
 }
 
 .side-menu {
+    z-index: 2;
     width: 200px;
     height: 100vh;
-    background: #222222ec;
+    background: #222222;
     display: flex;
     align-items: center;
     justify-content: start;

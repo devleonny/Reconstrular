@@ -8,10 +8,6 @@
     --ring: #1f2937;
 }
 
-* {
-    box-sizing: border-box
-}
-
 .wrap {
     min-width: 90%;
     margin: 24px auto;

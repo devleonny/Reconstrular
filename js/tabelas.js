@@ -5,7 +5,6 @@ function campoBloq() {
 }
 
 async function modTab(configuracoes) {
-
     const { btnExtras = '', ocultarPaginacao = false, criarLinha, base, colunas = {}, body = null, pag = null } = configuracoes || {}
 
     if (!body || !pag || !base || !criarLinha)
@@ -37,7 +36,6 @@ async function modTab(configuracoes) {
                     </th>`
 
             if (query.tipoPesquisa == 'select') {
-
                 const dados = await contarPorCampo({
                     base,
                     path: query.chave
@@ -81,12 +79,10 @@ async function modTab(configuracoes) {
         })
     )).join('')
 
-
     const modelo = `
         <div style="${vertical}; width: 100%;">
             <div class="topo-tabela">
                 <div style="display: ${ocultarPaginacao ? 'none' : ''};" id="paginacao_${pag}"></div>
-                ${pesquisa ? `<span style="color: white; margin-right: 1rem;">Use o <b>ENTER</b> para pesquisar</span>` : ''}
                 ${btnExtras}
             </div>
             <div class="div-tabela" style="overflow-x: auto;">
@@ -117,12 +113,14 @@ function restaurarPesquisa(pag) {
     const thead = tabela.querySelector('thead')
     if (!thead) return
 
+    const ativo = document.activeElement
+
     for (const [chave, filtro] of Object.entries(filtros)) {
         const lista = Array.isArray(filtro) ? filtro : [filtro]
 
         for (const f of lista) {
             const op = f?.op
-            const value = String(f?.value ?? '')
+            const value = String(f?.original ?? f?.value ?? '')
 
             const el = thead.querySelector(`[data-chave="${CSS.escape(chave)}"][data-op="${CSS.escape(op)}"]`)
             if (!el) continue
@@ -134,14 +132,16 @@ function restaurarPesquisa(pag) {
                 continue
             }
 
-            // contentEditable th
-            el.textContent = value
+            if (el.textContent !== value)
+                el.textContent = value
+
+            if (ativo === el)
+                colocarCursorNoFim(el)
         }
     }
 }
 
 async function mudarPagina(valor, pag) {
-
     const { pagina, total } = controles[pag]
 
     if ((valor == -1 && pagina == 1) || (valor == 1 && pagina == total))
@@ -151,25 +151,25 @@ async function mudarPagina(valor, pag) {
     else controles[pag].pagina++
 
     await paginacao(pag)
-
 }
 
 async function confirmarPesquisa({ event, chave, op, elemento, pag }) {
-
     if (event?.type === 'keydown') {
         if (event.key !== 'Enter') return
         event.preventDefault()
     }
 
-    const termo = (elemento?.value ?? elemento?.textContent ?? '')
+    const bruto = (elemento?.value ?? elemento?.textContent ?? '')
         .replace(/\n/g, '')
         .trim()
-        .toLowerCase()
+
+    const termo = bruto.toLowerCase()
 
     controles[pag].pagina = 1
     controles[pag].filtros ??= {}
 
     const isInput = elemento?.tagName?.toLowerCase() === 'input'
+    const isSelect = elemento?.tagName?.toLowerCase() === 'select'
 
     if (isInput) {
         const atual = controles[pag].filtros[chave]
@@ -180,7 +180,8 @@ async function confirmarPesquisa({ event, chave, op, elemento, pag }) {
 
             if (!novo.length) {
                 delete controles[pag].filtros[chave]
-                if (Object.keys(controles[pag].filtros).length === 0) delete controles[pag].filtros
+                if (Object.keys(controles[pag].filtros).length === 0)
+                    delete controles[pag].filtros
             } else {
                 controles[pag].filtros[chave] = novo
             }
@@ -190,27 +191,170 @@ async function confirmarPesquisa({ event, chave, op, elemento, pag }) {
         }
 
         const idx = arr.findIndex(f => f?.op === op)
-        if (idx >= 0) arr[idx] = { op, value: termo }
-        else arr.push({ op, value: termo })
+
+        const registro = {
+            op,
+            value: termo,
+            original: bruto
+        }
+
+        if (idx >= 0) arr[idx] = registro
+        else arr.push(registro)
 
         controles[pag].filtros[chave] = arr
         await paginacao(pag)
         return
     }
 
-    if (!termo) {
-        delete controles[pag].filtros[chave]
-        if (Object.keys(controles[pag].filtros).length === 0) delete controles[pag].filtros
+    if (isSelect) {
+        if (!termo) {
+            delete controles[pag].filtros[chave]
+            if (Object.keys(controles[pag].filtros).length === 0)
+                delete controles[pag].filtros
+
+            await paginacao(pag)
+            return
+        }
+
+        controles[pag].filtros[chave] = {
+            op,
+            value: termo,
+            original: bruto
+        }
+
         await paginacao(pag)
         return
     }
 
-    controles[pag].filtros[chave] = { op, value: termo }
+    if (!termo) {
+        delete controles[pag].filtros[chave]
+        if (Object.keys(controles[pag].filtros).length === 0)
+            delete controles[pag].filtros
+
+        await paginacao(pag)
+        return
+    }
+
+    controles[pag].filtros[chave] = {
+        op,
+        value: termo,
+        original: bruto
+    }
+
     await paginacao(pag)
 }
 
-async function paginacao(pag) {
+function colocarCursorNoFim(el) {
+    if (!el || el.tagName?.toLowerCase() === 'input' || el.tagName?.toLowerCase() === 'select')
+        return
 
+    const range = document.createRange()
+    const sel = window.getSelection()
+
+    range.selectNodeContents(el)
+    range.collapse(false)
+
+    sel.removeAllRanges()
+    sel.addRange(range)
+}
+
+function stableStringify(valor) {
+    if (valor === null || typeof valor !== 'object')
+        return JSON.stringify(valor)
+
+    if (Array.isArray(valor))
+        return `[${valor.map(stableStringify).join(',')}]`
+
+    const chaves = Object.keys(valor).sort()
+
+    return `{${chaves.map(chave => `${JSON.stringify(chave)}:${stableStringify(valor[chave])}`).join(',')}}`
+}
+
+function obterChaveLinha(dado, indice = 0) {
+    if (dado?.id !== undefined && dado?.id !== null && dado?.id !== '')
+        return String(dado.id)
+
+    if (dado?.codigo !== undefined && dado?.codigo !== null && dado?.codigo !== '')
+        return String(dado.codigo)
+
+    if (dado?.usuario !== undefined && dado?.usuario !== null && dado?.usuario !== '')
+        return String(dado.usuario)
+
+    if (dado?.chave !== undefined && dado?.chave !== null && dado?.chave !== '')
+        return String(dado.chave)
+
+    if (dado?._id !== undefined && dado?._id !== null && dado?._id !== '')
+        return String(dado._id)
+
+    return `linha_${indice}_${btoa(unescape(encodeURIComponent(stableStringify(dado)))).slice(0, 24)}`
+}
+
+function obterTimestampLinha(dado) {
+    const candidatos = [
+        dado?.snapshots?.tsUltimoStatus,
+        dado?.tsUltimoStatus,
+        dado?.timestamp,
+        dado?.snapshots?.timestamp,
+        dado?.updatedAt,
+        dado?.dataAtualizacao
+    ]
+
+    for (const valor of candidatos) {
+        if (valor === 0) return '0'
+        if (valor) return String(valor)
+    }
+
+    return ''
+}
+
+function obterHashLinha(dado) {
+    return stableStringify(dado)
+}
+
+function escaparAtributo(valor) {
+    return String(valor ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+}
+
+function injetarMetaTr(html, dado, indice = 0) {
+    if (typeof html !== 'string')
+        return ''
+
+    const id = escaparAtributo(obterChaveLinha(dado, indice))
+    const ts = escaparAtributo(obterTimestampLinha(dado))
+    const hash = escaparAtributo(obterHashLinha(dado))
+
+    return html.replace(
+        /^\s*<tr\b([^>]*)>/i,
+        (match, attrs = '') => `<tr${attrs} data-id="${id}" data-ts="${ts}" data-hash="${hash}">`
+    )
+}
+
+function assinaturaConsulta({ base, substituicoes, ordenar, explode, pagina, filtros }) {
+    return stableStringify({
+        base,
+        substituicoes: substituicoes || null,
+        ordenar: ordenar || null,
+        explode: explode || null,
+        pagina,
+        filtros: filtros || null
+    })
+}
+
+function assinaturaPagina(resultados = []) {
+    return stableStringify(
+        resultados.map((d, indice) => ({
+            id: obterChaveLinha(d, indice),
+            ts: obterTimestampLinha(d),
+            hash: obterHashLinha(d)
+        }))
+    )
+}
+
+async function paginacao(pag) {
     if (pag)
         return ativarPaginacao(pag)
 
@@ -218,8 +362,18 @@ async function paginacao(pag) {
         await ativarPaginacao(pag)
 
     async function ativarPaginacao(pag) {
-
-        const { pagina, base, body, alinPag = horizontal, criarLinha, funcaoAdicional, filtros } = controles[pag] || {}
+        const {
+            pagina,
+            base,
+            body,
+            substituicoes,
+            ordenar,
+            alinPag = horizontal,
+            explode = null,
+            criarLinha,
+            funcaoAdicional,
+            filtros
+        } = controles[pag] || {}
 
         const tbody = document.getElementById(body)
 
@@ -230,25 +384,54 @@ async function paginacao(pag) {
             ? await base()
             : base
 
-        const dados = await pesquisarDB({
+        const assinaturaAtualConsulta = assinaturaConsulta({
             base: baseResolvida,
+            substituicoes,
+            ordenar,
+            explode,
             pagina,
             filtros
         })
 
+        const mesmaConsulta = controles[pag].ultimaAssinaturaConsulta === assinaturaAtualConsulta
+
         const tabela = tbody.parentElement
         const cols = tabela.querySelectorAll('thead th').length
+
+        if (!mesmaConsulta || !tbody.children.length) {
+            tbody.innerHTML = ''
+            tbody.appendChild(criarLoading(cols))
+        }
+
+        const dados = await pesquisarDB({
+            base: baseResolvida,
+            substituicoes,
+            ordenar,
+            explode,
+            pagina,
+            filtros
+        })
+
+        // Para casos de base objeto;
+        if (typeof base === 'object' && controles[pag]?.priBase !== 'S') {
+            controles[pag].priBase = 'S'
+            controles[pag].base = dados.resultados
+        }
+
+        const assinaturaAtualPagina = assinaturaPagina(dados.resultados)
+        const mesmaPagina = mesmaConsulta && controles[pag].ultimaAssinaturaPagina === assinaturaAtualPagina
+
+        controles[pag].total = dados.paginas
+        controles[pag].ultimaAssinaturaConsulta = assinaturaAtualConsulta
+
         const divPaginacao = document.getElementById(`paginacao_${pag}`)
         const paginaAtual = document.getElementById(`paginaAtual_${pag}`)
         const resultados = document.getElementById(`resultados_${pag}`)
-
-        controles[pag].total = dados.paginas
 
         if (!divPaginacao)
             return
 
         if (!paginaAtual) {
-
             divPaginacao.innerHTML = `
                 <div style="${alinPag}; align-items: center; padding: 2px; color: white;">
                     <div style="${horizontal}; gap: 5px;">
@@ -257,10 +440,9 @@ async function paginacao(pag) {
                     <span id="totalPaginas_${pag}">${dados.paginas}</span> 
                     <img src="imagens/dir.png" style="width: 2rem;" onclick="mudarPagina(1, '${pag}')">
                     </div>
-                    <span><span style="font-size: 1rem;" id="resultados_${pag}">${dados.total}</span> ${dados.total !== 1 ? 'Itens' : 'Item'}</span>
+                    <span style="white-space: nowrap;"><span style="font-size: 1rem;" id="resultados_${pag}">${dados.total}</span> ${dados.total !== 1 ? 'Itens' : 'Item'}</span>
                 </div>
-                `
-
+            `
         } else {
             paginaAtual.textContent = pagina
             document.getElementById(`totalPaginas_${pag}`).textContent = dados.paginas
@@ -268,46 +450,116 @@ async function paginacao(pag) {
         }
 
         if (!dados.resultados.length) {
+            controles[pag].ultimaAssinaturaPagina = assinaturaAtualPagina
             tbody.innerHTML = ''
             tbody.appendChild(criarDino(cols))
-
-        } else {
-            const dinossauro = tbody.querySelector('#dinossauro')
-            if (dinossauro)
-                dinossauro.remove()
-
-            await atualizarComTS(tbody, dados.resultados, criarLinha, baseResolvida)
+            await executarFuncoesAdicionais(funcaoAdicional)
+            restaurarPesquisa(pag)
+            return
         }
 
+        const temLoading = !!tbody.querySelector('#loading-tabela')
+        const temDino = !!tbody.querySelector('#dinossauro')
+        const tabelaNaoPronta = temLoading || temDino
+
+        if (mesmaPagina && !tabelaNaoPronta) {
+            await executarFuncoesAdicionais(funcaoAdicional)
+            restaurarPesquisa(pag)
+            return
+        }
+
+        const reconstruirTudo = !mesmaConsulta
+        await atualizarTabela(tbody, dados.resultados, criarLinha, baseResolvida, reconstruirTudo)
+
+        controles[pag].ultimaAssinaturaPagina = assinaturaAtualPagina
+
         await executarFuncoesAdicionais(funcaoAdicional)
-
         restaurarPesquisa(pag)
-
     }
 
     async function executarFuncoesAdicionais(funcaoAdicional = []) {
-        // Função adicional, se existir;
         if (funcaoAdicional.length) {
             for (const f of funcaoAdicional)
                 await window[f]()
         }
     }
-
 }
 
-async function atualizarComTS(tbody, dados, criarLinha, base) {
+function criarLoading(cols) {
+    const tr = document.createElement('tr')
+    tr.id = 'loading-tabela'
+
+    const td = document.createElement('td')
+    td.colSpan = cols
+    td.innerHTML = `
+        <div style="${horizontal}; width: 100%; gap: 1rem; justify-content: center; padding: 1rem;">
+            <img src="gifs/loading.gif" style="width: 5rem;">
+        </div>
+    `
+
+    tr.appendChild(td)
+    return tr
+}
+
+async function criarElementoLinha(dado, criarLinha, base, indice = 0) {
+    const htmlBruto = await window[criarLinha]({ ...dado, base })
+    const html = injetarMetaTr(htmlBruto, dado, indice)
+
+    const temp = document.createElement('tbody')
+    temp.innerHTML = html.trim()
+
+    return temp.firstElementChild
+}
+
+async function atualizarTabela(tbody, dados, criarLinha, base, reconstruirTudo = false) {
+    const loading = tbody.querySelector('#loading-tabela')
+    if (loading)
+        loading.remove()
 
     const dino = tbody.querySelector('#dinossauro')
     if (dino)
         dino.remove()
 
-    let linhas = ''
+    if (reconstruirTudo || !tbody.querySelector('tr[data-id]')) {
+        const linhas = await Promise.all(
+            dados.map(async (d, indice) => {
+                const html = await Promise.resolve(window[criarLinha]({ ...d, base }))
+                return injetarMetaTr(html, d, indice)
+            })
+        )
 
-    for (const d of dados) {
-        linhas += await window[criarLinha]({ ...d, base })
+        tbody.innerHTML = linhas.join('')
+        return
     }
 
-    tbody.innerHTML = linhas
+    const atuais = new Map(
+        [...tbody.querySelectorAll('tr[data-id]')]
+            .map(tr => [String(tr.dataset.id), tr])
+    )
+
+    const fragment = document.createDocumentFragment()
+
+    for (let indice = 0; indice < dados.length; indice++) {
+        const dado = dados[indice]
+        const id = obterChaveLinha(dado, indice)
+        const ts = obterTimestampLinha(dado)
+        const hash = obterHashLinha(dado)
+
+        const atual = atuais.get(id)
+
+        if (atual && atual.dataset.ts === ts && atual.dataset.hash === hash) {
+            fragment.appendChild(atual)
+            continue
+        }
+
+        const novaLinha = await criarElementoLinha(dado, criarLinha, base, indice)
+
+        if (novaLinha)
+            fragment.appendChild(novaLinha)
+    }
+
+    tbody.innerHTML = ''
+    tbody.appendChild(fragment)
 }
 
 function criarDino(cols) {
@@ -327,6 +579,5 @@ function criarDino(cols) {
 }
 
 function achou() {
-    return Math.random() < 0.1
+    return Math.random() < 0.01
 }
-

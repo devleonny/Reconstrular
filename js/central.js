@@ -1,25 +1,18 @@
-const tela = document.getElementById('tela')
-const toolbar = document.querySelector('.toolbar')
-const titulo = toolbar.querySelector('span')
 const horizontal = `display: flex; align-items: center; justify-content: center;`
 const vertical = `display: flex; align-items: start; justify-content: start; flex-direction: column`
 const api = `https://leonny.dev.br`
 const servidor = 'RECONST'
-let cidades = {}
-let dados_colaboradores = {}
-let dados_obras = {}
-let funcoes = {}
-let materiais = {}
-let fornecedores = {}
-let ferramentas = {}
-let etapasProvisorias = {}
-let mensagens = {}
 let stream;
 let telaInterna = null
 let emAtualizacao = false
 let acesso = {}
 let telaAtiva = null
 let priExec = true
+let tela = null
+let toolbar = null
+let titulo = null
+let menus = null
+let nomeUsuario = null
 
 function obVal(name) {
     const painel = document.querySelector('.painel-padrao')
@@ -98,11 +91,6 @@ const btn = (img, valor, funcao) => `
         <div>${valor}</div>
     </div>
 `
-
-document.addEventListener('keydown', async function (event) {
-    if (event.key === 'F8')
-        await atualizarSis(true)
-})
 
 telaLogin()
 
@@ -307,7 +295,39 @@ function overlayAguarde() {
 
 }
 
+function balaoUsuario(st, texto) {
+
+    if (document.title == 'PDF') return
+
+    let msg = document.querySelector('.popup-mensagem')
+    if (msg) msg.remove()
+
+    const mensagemPop = `
+        <div class="popup-mensagem">
+            <img src="imagens/${st}.png">
+            <span>${st}</span>
+            <span>${texto}</span>
+        </div>
+    `
+    document.body.insertAdjacentHTML('beforeend', mensagemPop)
+
+    msg = document.querySelector('.popup-mensagem')
+
+    requestAnimationFrame(() => {
+        msg.style.opacity = '1'
+        msg.style.transform = 'translateY(0)'
+    })
+
+    setTimeout(() => {
+        msg.style.opacity = '0'
+        msg.style.transform = 'translateY(20px)'
+        setTimeout(() => msg.remove(), 400)
+    }, 5000)
+}
+
 async function telaPrincipal() {
+
+    atribuirVariaveis()
 
     toolbar.style.display = 'flex'
     acesso = JSON.parse(localStorage.getItem('acesso'))
@@ -315,57 +335,40 @@ async function telaPrincipal() {
     if (!acesso)
         return removerAcesso()
 
+    document.querySelector('.botoesMenu').innerHTML = `
+        ${btn('perfil', 'Parceiros', 'telaUsuarios()')}
+        ${btn('cracha', 'Colaboradores', 'telaColaboradores()')}
+        ${btn('obras', 'Obras', 'telaObras()')}
+        ${btn('pessoas', 'Clientes', 'telaClientes()')}
+        ${btn('contas', 'Despesas', 'telaDespesas()')}
+        ${btn('orcamentos', 'Orçamentos', 'telaOrcamentos()')}
+        ${btn('niveis', 'Níveis de Acesso', 'telaNiveis()')}
+        ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
+        ${btn('chat',
+    `<div style="${horizontal}; justify-content: space-between; width: 100%; margin-right: 1rem;">
+                <span>Chat</span>
+                <div id="msg"></div>
+            </div>
+            `,
+    'painelUsuarios()')}
+        ${btn('sair', 'Desconectar', 'confirmarSaida()')}
+    `
+
     const acumulado = `
-
-    <div class="menu-container">
-
-        <div class="side-menu" id="sideMenu">
-
-            <br>
-
-            <div class="nomeUsuario"></div>
-
-            ${btn('atualizar', 'Sincronizar App', 'atualizarSis()')}
-            ${btn('perfil', 'Parceiros', 'telaUsuarios()')}
-            ${btn('cracha', 'Colaboradores', 'telaColaboradores()')}
-            ${btn('obras', 'Obras', 'telaObras()')}
-            ${btn('pessoas', 'Clientes', 'telaClientes()')}
-            ${btn('contas', 'Despesas', 'telaDespesas()')}
-            ${btn('orcamentos', 'Orçamentos', 'telaOrcamentos()')}
-            ${btn('niveis', 'Níveis de Acesso', 'telaNiveis()')}
-            ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
-            ${btn('chat',
-        `<div style="${horizontal}; justify-content: space-between; width: 100%; margin-right: 1rem;">
-                    <span>Chat</span>
-                    <div id="msg"></div>
-                </div>
-                `,
-        'painelUsuarios()')}
-            ${btn('sair', 'Desconectar', 'confirmarSaida()')}
-
-        </div>
-
         <div class="telaInterna">
             <div class="plano-fundo">
-                <img src="imagens/logo.jpeg" class="logo">
+                <img src="imagens/logo.png" class="logo">
                 <p>Seja bem vindo!</p>
             </div>
         </div>
-    </div>
     `
 
     tela.innerHTML = acumulado
-    telaInterna = document.querySelector('.telaInterna')
 
-    if (priExec)
-        overlayAguarde()
-
-    await usuariosToolbar()
-
-    //await atualizarSis()
-    //await alertaMensagens()
     priExec = false
     removerOverlay()
+
+    await carregarControles()
 
 }
 
@@ -1774,55 +1777,3 @@ async function pdfEmail({ html, emails, htmlContent = 'Documento em anexo', titu
     }
 
 }
-
-const etapas = [
-    { texto: 'Layout da tela, menu com itens e tela interna no centro', status: 'S' },
-    { texto: 'Reimportada nova base cidades, distritos, zonas e áreas', status: 'S' },
-    { texto: 'Tela de níveis no menu principal', status: 'S' },
-    { texto: 'Bloqueio do app por níveis', status: 'N' },
-    { texto: 'Bugs de salvamento em colaboradores', status: 'S' },
-    { texto: 'Atualizar engrenagem de pesquisa global ao invés de pequenas engrenagens', status: 'S' },
-    { texto: 'Fragmentação das bases no indexedDB', status: 'S' },
-    { texto: 'Remoção das bases "soltas" no script', status: 'S' },
-    { texto: 'Unificar modelo de tabela', status: 'S' },
-    { texto: 'Filtros complexos globais', status: 'S' },
-    { texto: 'Sistema de paginação leve, com 25 itens por página', status: 'S' },
-    { texto: 'Pesquisa por data, input e select', status: 'S' },
-    { texto: 'Atualizado Websocket', status: 'S' },
-    { texto: 'Cx de opções unificada, usa o mesmo modelo de tabela', status: 'S' },
-    { texto: 'Alterações no script do servidor, sincronizar ao invés de receber recortes', status: 'S' },
-    { texto: 'Otimizar a tabela de clientes', status: 'S' },
-    { texto: 'Otimizar a tabela de obras', status: 'S' },
-    { texto: 'Otimizar a tabela de Parceiros', status: 'S' },
-    { texto: 'Otimizar a tabela de mão de obra', status: 'S' },
-    { texto: 'Otimizar a tabela de ferramentas', status: 'S' },
-    { texto: 'Otimizar a tabela de despesas', status: 'S' },
-    { texto: 'Otimizar a tabela de fornecedores', status: 'S' },
-    { texto: 'Otimizar a tabela de materiais', status: 'S' },
-    { texto: 'Otimizar a tabela de precificação', status: 'N' },
-    { texto: 'Otimizar a tabela de orçamentos', status: 'N' },
-    { texto: 'Otimizar a tabela de zonas', status: 'N' },
-    { texto: 'Otimizar a tabela de folha', status: 'N' },
-    { texto: 'Otimizar a tabela de cronograma & andamento', status: 'N' },
-    { texto: 'Otimizar a tabela de chat & mensagens', status: 'N' }
-]
-
-const total = etapas.length
-
-const realizadas = etapas.filter(e => e.status === 'S').length
-
-const porcentagem = Math.round((realizadas / total) * 100)
-
-const labels = etapas
-    .map(e => `<span ${e.status === 'S' ? 'style="text-decoration: line-through;"' : ''}>${e.texto}</span>`)
-    .join('')
-
-popup({
-    elemento: `
-    <div style="${vertical}; padding: 1rem; gap: 2px; overflow: auto; max-height: 50vh;">
-        <span>Andamento até o dia 04-03-2026:</span>
-        ${divPorcentagem(porcentagem)}
-        <hr>
-        ${labels}
-  </div>`
-})

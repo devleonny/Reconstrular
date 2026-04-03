@@ -1,5 +1,14 @@
 let controlesCxOpcoes = {}
 
+// Service work para apps no dispositivo;
+const emArquivoLocal = location.protocol === 'file:'
+
+if (!emArquivoLocal && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('SW registrado:', reg.scope))
+        .catch(err => console.error('Erro ao registrar SW:', err))
+}
+
 async function cxOpcoes(name) {
 
     const controle = controlesCxOpcoes[name]
@@ -88,16 +97,144 @@ async function selecionar(name, cod) {
         await window[funcaoAdicional]()
 }
 
+async function carregarControles() {
+
+    cUsuario.style.display = ''
+    const modelo = (imagem, funcao, idElemento) => {
+        return `
+        <div onclick="${funcao}" style="${vertical};">
+            <img src="imagens/${imagem}.png">
+            <div id="${idElemento}" style="display: none;" class="labelQuantidade"></div>
+        </div>
+        `
+    }
+
+    const permitidosAprovacoes = ['adm', 'diretoria']
+
+    const barraStatus = `
+            <div id="divUsuarios"></div>
+
+            ${permitidosAprovacoes.includes(acesso.permissao) ? modelo('construcao', 'configs()', '') : ''}
+
+        `
+    const cabecalhoUsuario = document.querySelector('.cabecalho-usuario')
+    if (cabecalhoUsuario)
+        cabecalhoUsuario.innerHTML = barraStatus
+
+    await usuariosToolbar()
+
+}
+
+function atribuirVariaveis() {
+
+    nomeUsuario = document.querySelector('.nomeUsuario')
+    cUsuario = document.querySelector('.cabecalho-usuario')
+    toolbar = document.querySelector('.toolbar-top')
+    titulo = toolbar.querySelector(`[name="titulo"]`)
+    menus = document.querySelector('.side-menu')
+    tela = document.querySelector('.tela')
+
+    toolbar.style.display = 'flex'
+}
+
 async function usuariosToolbar() {
 
     if (!acesso)
         return
 
-    acesso = await recuperarDado('dados_setores', acesso.usuario) || JSON.parse(localStorage.getItem('acesso')) || {}
+    acesso = JSON.parse(localStorage.getItem('acesso')) || null
 
-    const nomeUsuario = document.querySelector('.nomeUsuario')
+    const uOnline = await contarPorCampo({ base: 'dados_setores', path: 'status' })
+
+    const indicadorStatus = acesso?.status || 'offline'
+
+    const usuariosToolbarString = `
+        <div class="botaoUsuarios">
+            <img name="imgStatus" onclick="painelUsuarios()" src="imagens/${indicadorStatus}.png">
+            <label style="font-size: 1.2rem;">${uOnline?.online || 0}</label>
+        </div>`
+
     if (nomeUsuario)
         nomeUsuario.innerHTML = `<span><b>${inicialMaiuscula(acesso?.permissao || '')}</b> ${acesso.usuario || ''}</span>`
 
+    const divUsuarios = document.getElementById('divUsuarios')
+    if (divUsuarios)
+        divUsuarios.innerHTML = usuariosToolbarString
 
+}
+
+async function painelUsuarios() {
+
+    const colunas = {
+        'Status': { chave: 'status' },
+        'Usuários': { chave: 'usuario' },
+        'Setor': { chave: 'setor' },
+        'Permissão': { chave: 'permissao' }
+    }
+
+    const pag = 'usuariosOnline'
+    const tOnline = await modTab({
+        pag,
+        colunas,
+        body: 'bodyUsuariosOnline',
+        base: 'dados_setores',
+        criarLinha: 'criarLinhaPainelUsuarios',
+        ordenar: {
+            path: 'status',
+            direcao: 'desc'
+        }
+    })
+
+    const elemento = `
+        <div style="padding: 1rem;">
+
+            ${tOnline}
+
+        </div>`
+
+    const divOnline = document.querySelector('.divOnline')
+    if (divOnline)
+        return
+
+    popup({ elemento, titulo: 'Painel de Usuários', nra: true })
+
+    await paginacao(pag)
+}
+
+function criarLinhaPainelUsuarios(dados) {
+
+    const { usuario, status, setor, permissao } = dados || {}
+
+    let gerenciarStatus = `<label>${status || 'offline'}</label>`
+
+    if (usuario == acesso.usuario) {
+
+        const statusOpcoes = ['online', 'Em almoço', 'Não perturbe', 'Em reunião', 'Apenas Whatsapp']
+        if (acesso?.permissao == 'adm')
+            statusOpcoes.push('Invisível')
+
+        gerenciarStatus = `
+            <select class="opcoesSelect" onchange="mudarStatus(this)">
+                ${statusOpcoes.map(op => `<option ${acesso?.status == op ? 'selected' : ''}>${op}</option>`).join('')}
+            </select>`
+    }
+
+    return `
+    <tr>
+        <td>
+            <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
+                <img src="imagens/${status || 'offline'}.png" style="width: 1.5rem;">
+                ${gerenciarStatus}
+            </div>
+        </td>
+        <td>
+            ${usuario}
+        </td>
+        <td>
+            ${permissao || ''}
+        </td>
+        <td>
+            ${setor || ''}
+        </td>
+    </tr>`
 }

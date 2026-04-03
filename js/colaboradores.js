@@ -1,8 +1,36 @@
+const meses = {
+    '01': 'Janeiro',
+    '02': 'Fevereiro',
+    '03': 'Março',
+    '04': 'Abril',
+    '05': 'Maio',
+    '06': 'Junho',
+    '07': 'Julho',
+    '08': 'Agosto',
+    '09': 'Setembro',
+    '10': 'Outubro',
+    '11': 'Novembro',
+    '12': 'Dezembro'
+}
+
+const semana = {
+    0: 'Domingo',
+    1: 'Segunda',
+    2: 'Terça',
+    3: 'Quarta',
+    4: 'Quinta',
+    5: 'Sexta',
+    6: 'Sábado'
+}
+
+const anos = {
+    '2026': 2026,
+    '2026': 2026
+}
+
 async function telaColaboradores() {
 
     telaAtiva = 'colaboradores'
-
-    mostrarMenus(false)
 
     const modelo = (titulo, elemento) => `
         <div class="filtro-tabela">
@@ -23,8 +51,6 @@ async function telaColaboradores() {
         <button style="width: 100%;" onclick="excelColaboradores()">Trabalhadores.xlsx</button>
         <button data-controle="inserir" onclick="adicionarColaborador()">Adicionar</button>
     `
-
-    titulo.textContent = 'Gerenciar Colaboradores'
 
     const colunas = {
         'Nome Completo': { chave: 'nome' },
@@ -47,7 +73,7 @@ async function telaColaboradores() {
         criarLinha: 'criarLinhaColaboradores'
     })
 
-    telaInterna.innerHTML = tabela
+    tela.innerHTML = tabela
 
     await paginacao()
 
