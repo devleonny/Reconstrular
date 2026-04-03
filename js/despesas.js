@@ -2,8 +2,6 @@ const voltar = `<button onclick="telaDespesas()">Voltar</button>`
 
 function telaDespesas() {
 
-  titulo.textContent = 'Despesas'
-
   const acumulado = `
         <div class="painel-despesas">
             <br>
@@ -14,7 +12,7 @@ function telaDespesas() {
             ${btn('colaborador', 'Mão de Obra', `telaGenerica('mao_obra')`)}
         </div>
     `
-  telaInterna.innerHTML = acumulado
+  tela.innerHTML = acumulado
 
   mostrarMenus(false)
 
@@ -24,12 +22,12 @@ async function verificarDespesas() {
 
   telaAtiva = 'despesas'
 
-  mostrarMenus(false)
-
   const btnExtras = `
-      <img onclick="htmlDespesas()" src="imagens/pdf.png">
-      <button data-controle="inserir" onclick="formularioDespesa()">Adicionar</button>
-      <button onclick="telaDespesas()">Voltar</button>
+    <div style="${horizontal}; gap: 2px;">
+        <img onclick="htmlDespesas()" src="imagens/pdf.png">
+        <button data-controle="inserir" onclick="formularioDespesa()">Adicionar</button>
+        <button onclick="telaDespesas()">Voltar</button>
+    </div>
   `
 
   const tabela = await modTab({
@@ -55,7 +53,7 @@ async function verificarDespesas() {
     }
   })
 
-  telaInterna.innerHTML = tabela
+  tela.innerHTML = tabela
 
   await paginacao()
 
@@ -265,7 +263,7 @@ async function criarLinhaDespesa(dados) {
         </td>
         <td>${ax(fatura)}</td>
         <td>${material?.nome || ''}</td>
-        <td>${infoObra(dados)}</td>
+        <td></td>
         <td>
             <img data-controle="editar" src="imagens/pesquisar.png" onclick="formularioDespesa('${id}')">
         </td>
@@ -453,8 +451,10 @@ async function buscarLocalidadeFornecedor() {
 async function telaFornecedores() {
 
   const btnExtras = `
+  <div style="${horizontal}; gap: 2px;">
     <button onclick="adicionarFornecedor()">Adicionar</button>
     ${voltar}
+  </div>
   `
 
   const tabela = await modTab({
@@ -472,7 +472,7 @@ async function telaFornecedores() {
     }
   })
 
-  telaInterna.innerHTML = tabela
+  tela.innerHTML = tabela
 
   await paginacao()
 
@@ -565,11 +565,11 @@ async function salvarFornecedor(id = unicoID()) {
 async function telaGenerica(nomeBase) {
 
   const btnExtras = `
+      <div style="${horizontal}; gap: 2px;">
         <button onclick="adicionarGenerico(undefined, '${nomeBase}')">Adicionar</button>
         ${voltar}
+      </div>
     `
-
-  titulo.textContent = inicialMaiuscula(nomeBase)
 
   const tabela = await modTab({
     pag: 'generico',
@@ -585,7 +585,7 @@ async function telaGenerica(nomeBase) {
     }
   })
 
-  telaInterna.innerHTML = tabela
+  tela.innerHTML = tabela
 
   await paginacao()
 

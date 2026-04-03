@@ -4,11 +4,6 @@ let desativado = 'N'
 
 async function telaPrecos() {
 
-    materiais = await recuperarDados('materiais')
-    ferramentas = await recuperarDados('ferramentas')
-    mao_obra = await recuperarDados('mao_obra')
-    campos = await recuperarDados('campos')
-
     const tMargem = (tabela) => `
         <div style="${vertical}">
             <span>Margem</span>
@@ -18,78 +13,45 @@ async function telaPrecos() {
             </div>
         </div>
     `
-    const ths = [
-        `<div style="${horizontal}; gap: 2px;">
-            <input data-controle="editar" type="checkbox" onchange="marcarTodosDesativar(this)">
-            <span data-controle="editar">Todos</span>
-        </div>`,
-        'Especialidade',
-        'Descrição',
-        'Unidade de Medida',
-        'Composição',
-        'Subtotal Materiais',
-        tMargem('materiais'),
-        'Total Materiais',
-        'Subtotal Ferramentas',
-        tMargem('ferramentas'),
-        'Total Ferramentas',
-        'Subtotal Mão Obra',
-        tMargem('mao_obra'),
-        'Total Mão Obra',
-        'Sub-total',
-        'Total'
-    ].map(col => `<th>${col}</th>`).join('')
 
-    const acumulado = `
-        <div class="blocoTabela">
-            <div class="painelBotoes">
-                <div class="botoes">
-                    <div class="pesquisa">
-                        <input oninput="pesquisar(this, 'body')" placeholder="Pesquisar" style="width: 100%;">
-                        <img src="imagens/pesquisar2.png">
-                    </div>
-                    <button onclick="telaConfiguracoes()">Voltar</button>
-                    <button data-controle="inserir" onclick="edicaoItem()">Criar Campo</button>
-                    <button data-controle="editar" onclick="confirmarDesativacao()">Desativar Itens</button>
-                </div>
-                <img class="atualizar" src="imagens/atualizar.png" onclick="atualizarCampos()">
-            </div>
-            <div class="recorteTabela">
-                <table class="tabela">
-                    <thead>
-                        <tr>${ths}</tr>
-                    </thead>
-                    <tbody id="body"></tbody>
-                </table>
-            </div>
-            <div class="rodapeTabela"></div>
+    const btnExtras = `
+        <div style="${horizontal}; gap: 2px;">
+            <button onclick="telaConfiguracoes()">Voltar</button>
+            <button data-controle="inserir" onclick="edicaoItem()">Criar Campo</button>
+            <button data-controle="editar" onclick="confirmarDesativacao()">Desativar Itens</button>
         </div>
     `
-    const blocoTabela = document.querySelector('.blocoTabela')
-    const telaInterna = document.querySelector('.telaInterna')
-    if (!blocoTabela) telaInterna.innerHTML = acumulado
 
-    const camposOrdenados =
-        Object.entries(campos)
-            .sort(([, a], [, b]) =>
-                (a.especialidade || '')
-                    .localeCompare(b.especialidade || '', 'pt-BR')
-            )
+    const pag = 'campos'
+    const tabela = await modTab({
+        pag,
+        btnExtras,
+        body: 'campos',
+        base: 'campos',
+        criarLinha: 'criarLinhasCampos',
+        colunas: {
+            'Marcar': {},
+            'Especialidade': { chave: 'especialidade' },
+            'Descrição': { chave: 'descricao' },
+            'Unidade de Medida': { chave: 'medida' },
+            'Composição': {},
+            'Subtotal Materiais': {},
+            [tMargem('materiais')]: {},
+            'Total Materiais': {},
+            'Subtotal Ferramentas': {},
+            [tMargem('ferramentas')]: {},
+            'Total Ferramentas': {},
+            'Subtotal Mão Obra': {},
+            [tMargem('mao_obra')]: {},
+            'Total Mão Obra': {},
+            'Sub-total': {},
+            'Total': {}
+        }
+    })
 
+    tela.innerHTML = tabela
 
-    const ativos = []
-    for (const [idCampo, dados] of camposOrdenados) {
-        if (desativado !== (dados?.desativado || 'N')) continue
-        ativos.push(idCampo)
-        criarLinhasCampos(idCampo, dados)
-    }
-
-    // Remoção de linhas;
-    const trs = document.querySelectorAll(`#body tr`)
-    for (const tr of trs) if (!ativos.includes(tr.id)) tr.remove()
-
-    // Regras de validação;
-    validarRegrasAcesso()
+    await paginacao(pag)
 
 }
 
@@ -203,25 +165,19 @@ function marcarTodosMargem(tabela) {
 
 }
 
-async function atualizarCampos() {
+function criarLinhasCampos(dados) {
 
-    await sincronizarDados('campos')
-    await telaPrecos()
-
-}
-
-function criarLinhasCampos(idCampo, dados) {
+    const { id } = dados || {}
 
     const modeloMargem = (chave) => `
         <td style="${bg(chave)}">
             <div style="${horizontal}; gap: 0.5rem;">
-                <img data-controle="editar" src="imagens/lapis.png" style="width: 1.5rem;" onclick="painelMargem('${idCampo}', '${chave}')">
+                <img data-controle="editar" src="imagens/lapis.png" style="width: 1.5rem;" onclick="painelMargem('${id}', '${chave}')">
                 <span style="white-space: nowrap;">${dados?.[`margem_${chave}`] || 0} %</span>
                 <input data-controle="editar" type="checkbox" name="margem_${chave}">
             </div>
         </td>
     `
-    const total = dados.margem ? (1 + (dados.margem / 100)) * dados.totalComposicao : dados?.totalComposicao || 0
 
     const bg = (c) => `white-space: nowrap; background-color: ${c == 'materiais'
         ? '#ffe9e9'
@@ -234,14 +190,14 @@ function criarLinhasCampos(idCampo, dados) {
         <td>${dados.especialidade}</td>
         <td>
             <div style="${horizontal}; gap: 5px;">
-                <img data-controle="editar" onclick="edicaoItem('${idCampo}')" src="imagens/lapis.png" style="width: 1.5rem;">
+                <img data-controle="editar" onclick="edicaoItem('${id}')" src="imagens/lapis.png" style="width: 1.5rem;">
                 <span style="width: 200px; text-align: left;">${dados.descricao}</span>
             </div>
         </td>
         <td>${dados.medida}</td>
         <td>
             <div style="${horizontal};">
-                <img data-controle="editar" src="imagens/caixa.png" style="width: 1.5rem;" onclick="composicoes('${idCampo}', true)">
+                <img data-controle="editar" src="imagens/caixa.png" style="width: 1.5rem;" onclick="composicoes('${id}', true)">
             </div>
         </td>
 
@@ -261,10 +217,8 @@ function criarLinhasCampos(idCampo, dados) {
         <td style="white-space: nowrap;">${dinheiro(dados.total)}</td>
     `
 
-    const trExistente = document.getElementById(idCampo)
-    if (trExistente) return trExistente.innerHTML = tds
+    return `<tr>${tds}</tr>`
 
-    document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${idCampo}">${tds}</tr>`)
 }
 
 async function edicaoItem(idCampo) {
@@ -457,7 +411,7 @@ async function composicoes(id, tP) {
         </div>
     `
 
-    popup({ elemento, titulo: 'Configuração da Tarefa'})
+    popup({ elemento, titulo: 'Configuração da Tarefa' })
 
     toogleTabela('materiais')
 

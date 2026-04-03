@@ -2,10 +2,6 @@ async function telaClientes() {
 
     telaAtiva = 'clientes'
 
-    mostrarMenus(false)
-
-    titulo.textContent = 'Clientes'
-
     const btnExtras = `
         <button data-controle="inserir" onclick="formularioCliente()">Adicionar</button>
     `
@@ -29,7 +25,7 @@ async function telaClientes() {
 
     })
 
-    telaInterna.innerHTML = tabela
+    tela.innerHTML = tabela
 
     await paginacao()
 }

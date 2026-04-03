@@ -70,10 +70,6 @@ function povoarLista(ini, lim, texto) {
 
 async function telaOrcamentos() {
 
-    mostrarMenus(false)
-
-    titulo.textContent = 'Orçamentos'
-
     const acumulado = `
         <div class="painel-despesas">
             <br>
@@ -83,7 +79,7 @@ async function telaOrcamentos() {
         </div>
     `
 
-    telaInterna.innerHTML = acumulado
+    tela.innerHTML = acumulado
 
 }
 
@@ -93,8 +89,6 @@ async function orcamentos() {
 
     zona1 = null
     indiceZona = 0
-
-    mostrarMenus(false)
 
     const tabela = await modTab({
         btnExtras: voltarOrcamentos,
@@ -120,11 +114,7 @@ async function orcamentos() {
         }
     })
 
-    telaInterna.innerHTML = tabela
-
-    titulo.textContent = finalizado == 'S'
-        ? 'Orçamentos Finalizados'
-        : 'Orçamentos em Aberto'
+    tela.innerHTML = tabela
 
     await paginacao()
 
@@ -191,17 +181,13 @@ async function confirmarExclusaoOrcamento(idOrcamento) {
 
 async function excluirOrcamento(idOrcamento) {
     overlayAguarde()
-    deletar(`dados_orcamentos/${idOrcamento}`)
-    delete dados_orcamentos[idOrcamento]
-    await deletarDB('dados_orcamentos', idOrcamento)
-    const tr = document.getElementById(idOrcamento)
-    if (tr) tr.remove()
+
+    await deletar(`dados_orcamentos/${idOrcamento}`)
+
     removerPopup()
 }
 
 async function formularioOrcamento(idOrcamento) { //29
-
-    mostrarMenus(false)
 
     const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
 
@@ -213,11 +199,6 @@ async function formularioOrcamento(idOrcamento) { //29
         ]
         return popup({ mensagem: `Se continuar você irá reabrir o orçamento para edição, <br>tem certeza?</span>`, botoes, nra: false })
     }
-
-    dados_clientes = await recuperarDados('dados_clientes')
-    const opcoesClientes = Object.entries({ '': { nome: '' }, ...dados_clientes })
-        .map(([idCliente, dados]) => `<option id="${idCliente}" ${orcamento?.idCliente == idCliente ? 'selected' : ''}>${dados.nome}</option>`)
-        .join('')
 
     const zonas = (lista, ambiente) => {
         const opcoes = lista
@@ -232,35 +213,52 @@ async function formularioOrcamento(idOrcamento) { //29
         .map(([ambiente, lista]) => modeloLivre(ambiente, zonas(lista, ambiente)))
         .join('')
 
-    const funcao = idOrcamento ? `salvarOrcamento('${idOrcamento}')` : 'salvarOrcamento()'
+    const funcao = idOrcamento
+        ? `salvarOrcamento('${idOrcamento}')`
+        : 'salvarOrcamento()'
+
+
+    controlesCxOpcoes.cliente = {
+        retornar: ['nome'],
+        base: 'dados_clientes',
+        colunas: {
+            'Nome': {chave: 'nome'},
+            'Morada Fiscal': {chave: 'moradaFiscal'},
+            'Distrito': {},
+            'Zona': {},
+            'Cidade': {}
+        }
+    }
 
     const acumulado = `
-    <div class="cabecalho-clientes">
-        ${voltarOrcamentos}
-    </div>
-    <div class="painel-clientes">
-        ${modeloLivre('Nome', `<select name="idCliente" onchange="preencherCliente()">${opcoesClientes}</select>`)}
-        ${modeloLivre('Número de contribuinte', `<input name="numeroContribuinte" readOnly>`)}
-        ${modeloLivre('Morada fiscal', `<input name="moradaFiscal" readOnly>`)}
-        ${modeloLivre('Morada de Execução', `<input name="moradaExecucao" readOnly>`)}
-        ${modeloLivre('Telefone', `<input name="telefone" readOnly>`)}
-        ${modeloLivre('E-mail', `<input name="email" readOnly>`)}
-        ${modeloLivre('Data de contato', `<input value="${orcamento?.dataContato || ''}" name="dataContato" type="date">`)}
-        ${modeloLivre('Data de visita', `<input value="${orcamento?.dataVisita || ''}" name="dataVisita" type="date">`)}
-    </div>
+    <div style="${vertical}; width: 80%;">
+        <div class="cabecalho-clientes">
+            ${voltarOrcamentos}
+        </div>
+        <div class="painel-clientes">
+            ${modeloLivre('Nome', `<span name="cliente" class="opcoes" onclick="cxOpcoes('cliente')">Selecionar</span>`)}
+            ${modeloLivre('Número de contribuinte', `<input name="numeroContribuinte" readOnly>`)}
+            ${modeloLivre('Morada fiscal', `<input name="moradaFiscal" readOnly>`)}
+            ${modeloLivre('Morada de Execução', `<input name="moradaExecucao" readOnly>`)}
+            ${modeloLivre('Telefone', `<input name="telefone" readOnly>`)}
+            ${modeloLivre('E-mail', `<input name="email" readOnly>`)}
+            ${modeloLivre('Data de contato', `<input value="${orcamento?.dataContato || ''}" name="dataContato" type="date">`)}
+            ${modeloLivre('Data de visita', `<input value="${orcamento?.dataVisita || ''}" name="dataVisita" type="date">`)}
+        </div>
 
-    <br>
+        <br>
 
-    <div class="form-zonas">
-        <span><b>Selecionar Zonas</b></span>
-        <hr style="width: 100%">
-        ${campos}
-        <hr style="width: 100%">
-        <button onclick="${funcao}">Ir para a Fase 2 - Execuções</button>
+        <div class="form-zonas">
+            <span><b>Selecionar Zonas</b></span>
+            <hr>
+            ${campos}
+            <hr>
+            <button onclick="${funcao}">Ir para a Fase 2 - Execuções</button>
+        </div>
     </div>
     `
 
-    telaInterna.innerHTML = acumulado
+    tela.innerHTML = acumulado
 
     preencherCliente()
 }
@@ -311,11 +309,7 @@ async function salvarOrcamento(idOrcamento) {
         }
     }
 
-    orcamentoAtualizado.zonas = zonasNovas
-
-    await inserirDados({ [idOrcamento]: orcamentoAtualizado }, 'dados_orcamentos')
-
-    enviar(`dados_orcamentos/${idOrcamento}`, orcamentoAtualizado)
+    await enviar(`dados_orcamentos/${idOrcamento}`, orcamentoAtualizado)
 
     await execucoes(idOrcamento)
 
@@ -472,7 +466,7 @@ async function execucoes(id, proximo = 0) {
         </div>
     `
 
-    telaInterna.innerHTML = acumulado
+    tela.innerHTML = acumulado
 
     for (const [idItem, dados] of Object.entries(zonas?.[zona1] || {})) {
         adicionarLinha(idItem, dados)
@@ -1186,7 +1180,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
         popup({ elemento, titulo: 'Orçamento' })
         esconderEditaveis(true)
     } else {
-        telaInterna.innerHTML = elemento
+        tela.innerHTML = elemento
     }
 
     document.querySelector('.total-valor').textContent = dinheiro(total)
@@ -1366,7 +1360,8 @@ function esconderEditaveis(gatilho) {
     const editaveis = document.querySelectorAll('[name="editaveis"]')
     const titulo = document.querySelector('[name="titulo"]')
 
-    if (titulo) titulo.textContent = gatilho ? 'ORÇAMENTO' : 'Selecionar Zonas'
+    if (titulo)
+        titulo.textContent = gatilho ? 'ORÇAMENTO' : 'Selecionar Zonas'
 
     editaveis.forEach(e => {
         e.style.display = gatilho ? 'none' : ''

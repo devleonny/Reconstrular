@@ -188,6 +188,9 @@ async function comunicacao() {
 
         if (tipo == 'status') {
 
+            if (acesso.usuario == usuario)
+                acesso.status = status
+
             await usuariosToolbar()
             balaoUsuario(status, usuario)
 

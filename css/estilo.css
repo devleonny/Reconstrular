@@ -72,11 +72,13 @@ html {
 }
 
 .tela {
+    margin-left: 200px;
     padding: 4rem 1rem 1rem 1rem;
     justify-content: center;
     align-items: start;
     display: flex;
-    width: 100%;
+    width: 80%;
+    height: 100vh;
 }
 
 hr {
@@ -100,7 +102,7 @@ img {
     background-color: #222222ec;
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
-    padding: 5px;
+    padding: 10px;
 }
 
 .circular-loader {
@@ -150,7 +152,7 @@ img {
     padding: 10px;
     display: grid;
     grid-template-columns: repeat(1, 1fr);
-    width: 90vw;
+    width: 100%;
     background-color: #d2d2d2;
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
@@ -458,6 +460,7 @@ input:focus {
 }
 
 button {
+    margin: 3px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -779,6 +782,7 @@ button {
 }
 
 .side-menu {
+    position: fixed;
     z-index: 2;
     min-width: 200px;
     height: 100vh;

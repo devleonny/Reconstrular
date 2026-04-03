@@ -330,6 +330,7 @@ async function telaPrincipal() {
     atribuirVariaveis()
 
     toolbar.style.display = 'flex'
+    menus.style.display = 'flex'
     acesso = JSON.parse(localStorage.getItem('acesso'))
 
     if (!acesso)
@@ -466,10 +467,6 @@ function telaConfiguracoes() {
 
     telaAtiva = 'configurações'
 
-    mostrarMenus(false)
-
-    titulo.textContent = 'Configurações'
-
     const acumulado = `
         <div class="painel-despesas">
             <br>
@@ -478,7 +475,7 @@ function telaConfiguracoes() {
         </div>
     `
 
-    telaInterna.innerHTML = acumulado
+    tela.innerHTML = acumulado
 
 }
 
@@ -516,7 +513,6 @@ async function configuracoesEmails() {
 
 async function telaNiveis() {
 
-    titulo.innerHTML = 'Níveis de Acesso'
     const nomeBase = 'funcoes'
     const colunas = [
         'Função',
@@ -1230,13 +1226,17 @@ function unicoID() {
 
 function telaLogin() {
 
+    atribuirVariaveis()
+
     try {
         acesso = JSON.parse(localStorage.getItem('acesso'))
-        if (acesso) return telaPrincipal()
+        if (acesso) 
+            return telaPrincipal()
     } catch {
         removerAcesso()
     }
 
+    menus.style.display = 'none'
     toolbar.style.display = 'none'
 
     const acumulado = `

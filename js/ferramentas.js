@@ -146,7 +146,9 @@ async function usuariosToolbar() {
 
     const uOnline = await contarPorCampo({ base: 'dados_setores', path: 'status' })
 
-    const indicadorStatus = acesso?.status || 'offline'
+    const { status } = await recuperarDado('dados_setores', acesso.usuario) || {}
+
+    const indicadorStatus = status || 'offline'
 
     const usuariosToolbarString = `
         <div class="botaoUsuarios">

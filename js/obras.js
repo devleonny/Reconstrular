@@ -4,9 +4,6 @@ async function telaObras() {
 
     telaAtiva = 'obras'
 
-    mostrarMenus(false)
-
-    titulo.textContent = 'Gerenciar Obras'
     const btnExtras = `
         <button onclick="adicionarObra()" data-controle="inserir">Adicionar</button>
     `
@@ -33,7 +30,7 @@ async function telaObras() {
         }
     })
 
-    telaInterna.innerHTML = tabela
+    tela.innerHTML = tabela
 
     await paginacao()
 

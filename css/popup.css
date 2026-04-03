@@ -276,7 +276,7 @@
 .botoes-rodape {
     flex: 1 1 100px;
     cursor: pointer;
-    padding: 1.5rem;
+    padding: 0.5rem;
     background-color: #d2d2d2;
     display: flex;
     align-items: center;
