@@ -8,6 +8,14 @@
     border: solid 1px #000;
 }
 
+.execucoes {
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+    width: 100%;
+}
+
 .titulo-orcamento {
     display: flex;
     align-items: center;

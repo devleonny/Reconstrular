@@ -31,27 +31,12 @@ const anos = {
 async function telaColaboradores() {
 
     telaAtiva = 'colaboradores'
-
-    const modelo = (titulo, elemento) => `
-        <div class="filtro-tabela">
-            <span>${titulo}</span>
-            ${elemento}
-        </div>
-    `
+    titulo.textContent = 'Colaboradores'
 
     const btnExtras = `
-        <div style="${horizontal}; align-items: start; gap: 3px; padding: 3px;">
-            <div style="${vertical}; gap: 2px;">
-                <button style="width: 100%;" onclick="gerarTodosPDFs()">Folhas de Ponto.pdf</button>
-                <div style="${horizontal}; gap: 2px;">
-                    ${modelo('Ano', `<select name="ano"><option></option>${optionsSelect(anos)}</select>`)}
-                    ${modelo('Mês', `<select name="mes"><option></option>${optionsSelect(meses)}</select>`)}
-                </div>
-            </div>
-
-            <button style="width: 100%;" onclick="excelColaboradores()">Trabalhadores.xlsx</button>
-            <button data-controle="inserir" onclick="adicionarColaborador()">Adicionar</button>
-        </div>
+        <button onclick="gerarTodosPDFs()">Folhas de Ponto.pdf</button>
+        <button onclick="excelColaboradores()">Trabalhadores.xlsx</button>
+        <button onclick="adicionarColaborador()">Adicionar</button>
     `
 
     const colunas = {
@@ -81,6 +66,20 @@ async function telaColaboradores() {
 
 }
 
+function labelStatus(st) {
+
+    switch (st) {
+        case 'Baixa Médica':
+            return 'baixa-medica'
+        case 'Ativo':
+            return 'ativo'
+        case 'Não Ativo':
+            return 'invalido'
+        default:
+            return 'impedido'
+    }
+
+}
 async function criarLinhaColaboradores(colaborador) {
 
     const { id, cidade } = colaborador || {}
@@ -91,6 +90,8 @@ async function criarLinhaColaboradores(colaborador) {
     const especialidades = (colaborador?.especialidade || [])
         .map(op => `<span>• ${op}</span>`)
         .join('')
+
+    const estilo = labelStatus(colaborador?.status)
 
     const tds = `
         <td>
@@ -103,7 +104,9 @@ async function criarLinhaColaboradores(colaborador) {
         <td></td>
         <td>${dCidade.distrito || ''}</td>
         <td>${dCidade?.nome || ''}</td>
-        <td><span class="${colaborador?.status}">${colaborador?.status || ''}</span></td>
+        <td>
+            <span class="${estilo}">${colaborador?.status || ''}</span>
+        </td>
         <td>
             <div style="${vertical}; gap: 2px;">
                 ${especialidades}
@@ -212,7 +215,10 @@ async function adicionarColaborador(id) {
     `
     }
 
-    const cidade = await recuperarDado('cidades', colaborador?.cidade) || {}
+    const cidade = await recuperarDado('cidades', colaborador?.cidade) || null
+    const campoCidade = cidade
+        ? `${cidade.nome}\n${cidade.distrito}`
+        : 'Selecione'
 
     controlesCxOpcoes.cidade = {
         base: 'cidades',
@@ -232,18 +238,33 @@ async function adicionarColaborador(id) {
         {
             texto: 'Cidade',
             elemento: `
-                <span class="opcoes" ${cidade ? `id="${colaborador.cidade}"` : ''} name="cidade" onclick="cxOpcoes('cidade')">${cidade?.nome || 'Selecione'}</span>
-            `},
-        { texto: 'Apólice de Seguro', elemento: `<input value="0010032495" name="apolice" placeholder="Número da Apólice" readOnly>` },
-        { texto: 'Telefone', elemento: `<input ${regras} value="${colaborador?.telefone || ''}" name="telefone" placeholder="Telefone">` },
-        { texto: 'E-mail', elemento: `<textarea ${regras} name="email" placeholder="E-mail">${colaborador?.email || ''}</textarea>` },
+                <span class="opcoes" ${cidade ? `id="${colaborador.cidade}"` : ''} name="cidade" onclick="cxOpcoes('cidade')">${campoCidade}</span>`
+            },
         { 
-            texto: 'Obra Alocada', 
-            elemento: `<span name="obra" class="opcoes" onclick="cxOpcoes('obra')">Selecione</span>` 
+            texto: 'Apólice de Seguro', 
+            elemento: `<input value="0010032495" name="apolice" placeholder="Número da Apólice" readOnly>` 
+        },
+        { 
+            texto: 'Telefone', 
+            elemento: `<input ${regras} value="${colaborador?.telefone || ''}" name="telefone" placeholder="Telefone">` 
+        },
+        { 
+            texto: 'E-mail', 
+            elemento: `<textarea ${regras} name="email" placeholder="E-mail">${colaborador?.email || ''}</textarea>` 
+        },
+        {
+            texto: 'Obra Alocada',
+            elemento: `<span name="obra" class="opcoes" onclick="cxOpcoes('obra')">Selecione</span>`
         },
         { texto: 'Documento', elemento: caixaDocumentos },
-        { texto: 'Número de Contribuinte', elemento: `<input ${regras} value="${colaborador?.numeroContribuinte || ''}" name="numeroContribuinte" placeholder="Máximo de 9 dígitos">` },
-        { texto: 'Segurança Social', elemento: `<input ${regras} value="${colaborador?.segurancaSocial || ''}" name="segurancaSocial" placeholder="Máximo de 11 dígitos">` },
+        { 
+            texto: 'Número de Contribuinte', 
+            elemento: `<input ${regras} value="${colaborador?.numeroContribuinte || ''}" name="numeroContribuinte" placeholder="Máximo de 9 dígitos">` 
+        },
+        { 
+            texto: 'Segurança Social', 
+            elemento: `<input ${regras} value="${colaborador?.segurancaSocial || ''}" name="segurancaSocial" placeholder="Máximo de 11 dígitos">` 
+        },
         { texto: 'Especialidade', elemento: caixaEspecialidades },
         { texto: 'Status', elemento: caixaStatus },
         { texto: 'Contrato de Obra', elemento: `<input name="contratoObra" type="file">` },
@@ -264,7 +285,10 @@ async function adicionarColaborador(id) {
                     <video autoplay playsinline></video>
                     <canvas style="display: none;"></canvas>
                 </div>
-                <img name="foto" ${colaborador?.foto ? `src="${api}/uploads/RECONST/${colaborador.foto}"` : ''} class="foto">
+                <img name="foto" ${colaborador?.foto 
+                    ? `src="${api}/uploads/RECONST/${colaborador.foto}"` 
+                    : ''
+                } style="width: 7rem; border-radius: 3px;">
             </div>
             `
         },
@@ -292,12 +316,6 @@ async function adicionarColaborador(id) {
 
     popup({ linhas, botoes, titulo: 'Cadastro de Colaborador' })
 
-
-    if (cidade) {
-        const lista = resolverCidadesPorDistrito(cidade.distrito)
-        const selectCidade = el('cidade')
-        aplicarCidadesNoSelect(lista, selectCidade, colaborador.cidade)
-    }
     verificarRegras()
 
 }
@@ -327,12 +345,11 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
 
     overlayAguarde()
 
-    // Recupera colaborador existente para não sobrescrever anexos
-    const colaboradorExistente = await recuperarDado('dados_cola')|| {}
+    const colaboradorExistente = await recuperarDado('dados_cola') || {}
 
     const colaborador = {
         id: idColaborador,
-        ...colaboradorExistente 
+        ...colaboradorExistente
     }
 
     const camposFixos = ['nome', 'dataNascimento', 'email', 'morada', 'apolice', 'telefone', 'numeroDocumento', 'segurancaSocial', 'obra', 'numeroContribuinte'];

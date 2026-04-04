@@ -337,6 +337,7 @@ async function telaPrincipal() {
         return removerAcesso()
 
     document.querySelector('.botoesMenu').innerHTML = `
+        ${btn('casa', 'Início', 'telaInicial()')}
         ${btn('perfil', 'Parceiros', 'telaUsuarios()')}
         ${btn('cracha', 'Colaboradores', 'telaColaboradores()')}
         ${btn('obras', 'Obras', 'telaObras()')}
@@ -347,21 +348,27 @@ async function telaPrincipal() {
         ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
         ${btn('chat', 'Chat', 'painelChat()')}
         ${btn('sair', 'Desconectar', 'confirmarSaida()')}
+        <div style="padding-bottom: 10rem;"></div>
     `
 
+    telaInicial()
+
+    priExec = false
+
+    await carregarControles()
+
+}
+
+function telaInicial() {
+
+    titulo.textContent = 'Menus'
     const acumulado = `
         <div class="plano-fundo">
             <img src="imagens/logo.png" class="logo">
             <p>Seja bem vindo!</p>
         </div>
     `
-
     tela.innerHTML = acumulado
-
-    priExec = false
-
-    await carregarControles()
-
 }
 
 async function removerAcesso() {
@@ -755,7 +762,7 @@ async function salvarFuncao(idFuncao = crypto.randomUUID()) {
 
     const inputs = document.querySelectorAll('[name="funcoes"]:checked')
 
-    for (const input of inputs) { 
+    for (const input of inputs) {
         funcao.regras.push(input.id)
     }
 

@@ -38,7 +38,7 @@
     background-color: white;
     overflow: auto;
     height: 80vh;
-    max-width: 90vw;
+    width: 100%;
 }
 
 .dias-uteis {
@@ -110,10 +110,6 @@
 screen and (min-aspect-ratio: 13/9) {
 
     .painel-1-tarefas {
-        flex-direction: row;
-    }
-
-    .acompanhamento {
         flex-direction: row;
     }
 

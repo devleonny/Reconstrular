@@ -187,9 +187,10 @@ async function excluirOrcamento(idOrcamento) {
     removerPopup()
 }
 
-async function formularioOrcamento(idOrcamento) { 
+async function formularioOrcamento(idOrcamento) {
 
     const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
+    const cliente = orcamento?.snapshots?.cliente || 'Selecione'
 
     // Verificação antes de Editar;
     if (orcamento?.finalizado == 'S') {
@@ -232,7 +233,7 @@ async function formularioOrcamento(idOrcamento) {
     const linhas = [
         {
             texto: 'Cliente',
-            elemento: `<span name="cliente" class="opcoes" onclick="cxOpcoes('cliente')">Selecionar</span>`
+            elemento: `<span ${orcamento?.cliente ? `id="${orcamento?.cliente}"` : ''} name="cliente" class="opcoes" onclick="cxOpcoes('cliente')">${cliente || 'Selecione'}</span>`
         },
         {
             texto: 'Data de contato',
@@ -240,7 +241,7 @@ async function formularioOrcamento(idOrcamento) {
         },
         {
             texto: 'Data de visita',
-            elemento: `<input value="${orcamento?.dataVisita || ''}" name="dataContato" type="date">`
+            elemento: `<input value="${orcamento?.dataVisita || ''}" name="dataVisita" type="date">`
         }
     ]
 
@@ -254,44 +255,26 @@ async function formularioOrcamento(idOrcamento) {
     popup({ linhas, botoes, titulo: 'Criar orçamento', funcao })
 }
 
-async function preencherCliente() {
-
-    const select = document.querySelector('[name="idCliente"]')
-    const idCliente = select.selectedOptions[0]?.id
-    const cliente = await recuperarDado('dados_clientes', idCliente)
-
-    const campos = ['moradaExecucao', 'moradaFiscal', 'email', 'telefone', 'numeroContribuinte']
-
-    for (const campo of campos) {
-        const el = document.querySelector(`[name="${campo}"]`)
-        if (el) el.value = cliente?.[campo] || ''
-    }
-
-}
-
-async function salvarOrcamento(idOrcamento) {
+async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
 
     overlayAguarde()
 
-    idOrcamento = idOrcamento || ID5digitos()
+    const cliente = document.querySelector('[name="cliente"]').id
 
-    const select = document.querySelector('[name="idCliente"]')
-    const idCliente = select.selectedOptions[0]?.id
-
-    if (!idCliente)
+    if (!cliente)
         return popup({ mensagem: 'Campo Cliente obrigatório' })
 
-    let orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
-    let zonas = orcamento?.zonas || {}
+    const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
+    const zonas = orcamento?.zonas || {}
 
-    let orcamentoAtualizado = {
-        idCliente,
+    const orcamentoAtualizado = {
+        cliente,
         dataVisita: document.querySelector('[name="dataVisita"]').value,
         dataContato: document.querySelector('[name="dataContato"]').value,
         zonas: { ...zonas }
     }
 
-    let zonasNovas = {}
+    const zonasNovas = {}
 
     for (const ambiente of Object.keys(ambientes)) {
         const el = document.querySelector(`[name="${ambiente}"]`)
@@ -304,7 +287,7 @@ async function salvarOrcamento(idOrcamento) {
 
     await execucoes(idOrcamento)
 
-    removerOverlay()
+    removerPopup()
 
 }
 
@@ -329,10 +312,8 @@ async function excluirZona() {
 }
 
 async function execucoes(id, proximo = 0) {
-    idOrcamento = id;
 
-    dados_orcamentos = await recuperarDados('dados_orcamentos')
-    const orcamento = dados_orcamentos[idOrcamento]
+    const orcamento = await recuperarDado('dados_orcamentos', id) || {}
 
     // Verificação antes de Editar;
     if (orcamento.finalizado == 'S') {
@@ -342,7 +323,6 @@ async function execucoes(id, proximo = 0) {
         return popup({ botoes, menagem: 'Tem certeza?', nra: false })
     }
 
-    campos = await recuperarDados('campos')
     let zonas = orcamento?.zonas || {}
 
     const chavesZonas = Object.keys(zonas)
@@ -389,7 +369,7 @@ async function execucoes(id, proximo = 0) {
         .join('')
 
     const acumulado = `
-        <div style="${vertical}; gap: 1rem;">
+        <div class="execucoes">
             <div class="blocoTabela">
                 <div class="painelBotoes">
                     <div style="${horizontal}; justify-content: space-between; width: 90%;">

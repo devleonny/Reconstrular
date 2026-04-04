@@ -83,7 +83,9 @@ async function modTab(configuracoes) {
         <div style="${vertical}; width: 100%;">
             <div class="topo-tabela">
                 <div style="display: ${ocultarPaginacao ? 'none' : ''};" id="paginacao_${pag}"></div>
-                ${btnExtras}
+                <div style="display: flex; flex-wrap: wrap;">
+                    ${btnExtras}
+                </div>
             </div>
             <div class="div-tabela" style="overflow-x: auto;">
                 <table class="tabela">

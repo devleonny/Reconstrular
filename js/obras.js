@@ -4,20 +4,27 @@ async function telaObras() {
 
     telaAtiva = 'obras'
 
-    const btnExtras = `
-        <button onclick="adicionarObra()" data-controle="inserir">Adicionar</button>
-    `
+    titulo.textContent = 'Obras'
 
     const tabela = await modTab({
-        btnExtras,
+        btnExtras: `<button onclick="adicionarObra()">Adicionar</button>`,
         pag: 'obras',
         body: 'bodyObras',
         base: 'dados_obras',
         criarLinha: 'criarLinhaObras',
+        substituicoes: [
+            {
+                path: 'cliente',
+                tabela: 'dados_clientes',
+                campoBusca: 'id',
+                retorno: 'nome',
+                destino: 'nomeCliente'
+            }
+        ],
         colunas: {
-            'Cliente': { chave: 'snapshosts.cliente.nome' },
-            'Distrito': { chave: 'snapshosts.cliente.cidade.distrito', tipoPesquisa: 'select' },
-            'Cidade': { chave: 'snapshosts.cliente.cidade.nome', tipoPesquisa: 'select' },
+            'Cliente': { chave: 'snapshots.cliente' },
+            'Distrito': { chave: 'snapshots.cidade.distrito' },
+            'Cidade': { chave: 'snapshots.cidade.nome' },
             'Porcentagem': {},
             'Status': {},
             'Material Orçamentado': {},
@@ -38,11 +45,12 @@ async function telaObras() {
 
 async function criarLinhaObras(obra) {
 
-    const { id } = obra || {}
+    const { id, snapshots, nomeCliente } = obra || {}
+    const { cidade } = snapshots || {}
 
     const resultado = obra?.resultado || {}
     const porcentagem = Number(resultado?.porcentagem || 0)
-    const cliente = await recuperarDado('dados_clientes', obra?.cliente) || {}
+
     const st = porcentagem == 0
         ? 'Por Iniciar'
         : porcentagem > 0
@@ -56,9 +64,9 @@ async function criarLinhaObras(obra) {
     } = calcularTotaisOrcamentos(id, obra)
 
     tds = `
-        <td>${cliente?.nome || ''}</td>
-        <td>${cliente?.snapshots?.cidade?.distrito || ''}</td>
-        <td>${cliente?.snapshots?.cidade?.nome || ''}</td>
+        <td>${nomeCliente || ''}</td>
+        <td>${cidade?.distrito || ''}</td>
+        <td>${cidade?.nome || ''}</td>
         <td>
             ${divPorcentagem(porcentagem)}
         </td>
@@ -142,14 +150,14 @@ async function calcularTotaisOrcamentos(idObra, obra) {
 
 async function adicionarObra(idObra) {
 
-    const { snapshots } = await recuperarDado('dados_obras', idObra) || {}
+    const { snapshots, orcamentos_vinculados } = await recuperarDado('dados_obras', idObra) || {}
 
     controlesCxOpcoes.cliente = {
         base: 'dados_clientes',
         retornar: ['nome'],
-        funcaoAdicional: ['buscarDados'],
         colunas: {
-            'Cidade': { chave: 'nome' },
+            'Cliente': { chave: 'nome' },
+            'Cidade': { chave: 'snapshots.cidade.nome' },
             'Distrito': { chave: 'snapshots.cidade.distrito' },
             'Zona': { chave: 'snapshots.cidade.zona' },
             'Área': { chave: 'snapshots.cidade.area' }
@@ -159,13 +167,15 @@ async function adicionarObra(idObra) {
     const linhas = [
         {
             texto: 'Cliente',
-            elemento: `<span class="opcoes" name="cliente" onclick="cxOpcoes('cliente')">Selecionar</span>`
+            elemento: `<span class="opcoes" name="cliente" onclick="cxOpcoes('cliente')">${snapshots?.cliente || 'Selecionar'}</span>`
         },
-        { texto: 'Cidade', elemento: `<span name="cidade"></span>` },
-        { texto: 'Distrito', elemento: `<span name="distrito"></span>` },
-        { texto: 'Telefone', elemento: `<span name="telefone"></span>` },
-        { texto: 'E-mail', elemento: `<span name="email"></span>` },
-        { texto: 'Vincular Orçamento', elemento: `<img onclick="painelVincularOrcamentos('${idObra}')" src="imagens/link.png">` }
+        {
+            texto: 'Vincular Orçamento',
+            elemento: `
+                <img src="imagens/baixar.png" onclick="maisOrcamento()">
+                <div id="orcs-vinculados" style="${vertical}; gap: 2px;"></div>            
+            `
+        }
     ]
 
     const botoes = [
@@ -183,13 +193,44 @@ async function adicionarObra(idObra) {
 
     popup({ linhas, botoes, titulo: 'Formulário de Obra' })
 
+
+    for (const id of (orcamentos_vinculados || []))
+        await maisOrcamento(id)
+
+
+}
+
+async function maisOrcamento(idOrcamento) {
+
+    const id = crypto.randomUUID()
+
+    const { snapshots } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
+    const cliente = snapshots?.cliente || 'Selecione'
+
+    controlesCxOpcoes[id] = {
+        base: 'dados_orcamentos',
+        retornar: ['snapshots.cliente'],
+        colunas: {
+            'Cliente': { chave: 'snapshots.cliente' },
+            'Data Contato': { chave: 'dataContato' },
+            'Data Visita': { chave: 'dataVisita' }
+        }
+    }
+
+    const span = `
+        <div style="${horizontal}; gap: 5px;">
+            <img src="imagens/cancel.png" style="width: 1.5rem;" onclick="this.parentElement.remove()">
+            <span ${idOrcamento ? `id="${idOrcamento}"` : ''} name="${id}" class="opcoes" onclick="cxOpcoes('${id}')">${cliente}</span>
+        </div>
+        `
+
+    document.getElementById('orcs-vinculados').insertAdjacentHTML('beforeend', span)
+
 }
 
 async function salvarObra(idObra = crypto.randomUUID()) {
 
     overlayAguarde()
-
-    const obra = await recuperarDado('dados_obras', idObra) || {}
 
     const painel = document.querySelector('.painel-padrao')
     const spanCliente = painel.querySelector('[name="cliente"]')
@@ -197,8 +238,13 @@ async function salvarObra(idObra = crypto.randomUUID()) {
     if (!spanCliente.id)
         removerPopup()
 
-    obra.cliente = spanCliente.id
+    const orcamentosVinculados = [...new Set(
+        [...document.querySelectorAll('#orcs-vinculados span')]
+            .map(span => span.id)
+            .filter(Boolean)
+    )]
 
+    await enviar(`dados_obras/${idObra}/orcamentos_vinculados`, orcamentosVinculados)
     await enviar(`dados_obras/${idObra}/cliente`, spanCliente.id)
 
     removerPopup()
@@ -218,7 +264,7 @@ async function excluirObra(idObra) {
     overlayAguarde()
 
     await deletar(`dados_obras/${idObra}`)
-    
+
     removerOverlay()
 
 }
@@ -319,7 +365,8 @@ async function verAndamento(id, resetar) {
     `
 
     const acompanhamento = document.querySelector('.acompanhamento')
-    if (resetar || !acompanhamento) telaInterna.innerHTML = `<div class="acompanhamento">${acumulado}</div>`
+    if (resetar || !acompanhamento)
+        tela.innerHTML = `<div class="acompanhamento">${acumulado}</div>`
 
     await carregarLinhasAndamento(id)
     await atualizarToolbar()
@@ -391,9 +438,6 @@ function filtrar() {
 async function carregarLinhasAndamento(idObra) {
 
     const obra = await recuperarDado('dados_obras', idObra)
-    campos = await recuperarDados('campos')
-    dados_orcamentos = await recuperarDados('dados_orcamentos')
-
     const tabTarefas = document.querySelector('.tabTarefas')
     if (!tabTarefas) return
 
@@ -401,13 +445,14 @@ async function carregarLinhasAndamento(idObra) {
 
     for (const [idOrcamento, status] of Object.entries(obra?.orcamentos_vinculados || {})) {
 
-        if (!status) continue
+        if (!status)
+            continue
 
-        const orcamento = dados_orcamentos[idOrcamento]
-        if (!orcamento) continue
+        const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
+        if (!orcamento)
+            continue
 
-        const idCliente = orcamento.idCliente
-        const cliente = dados_clientes[idCliente] || {}
+        const cliente = await recuperarDado('dados_clientes', orcamento?.cliente) || {}
         const blocoOrc = document.createElement('div')
 
         blocoOrc.className = 'orcamento-bloco'
@@ -419,7 +464,7 @@ async function carregarLinhasAndamento(idObra) {
         for (const [, dadosZona] of Object.entries(orcamento?.zonas || {})) {
             for (const dadosDescricao of Object.values(dadosZona)) {
                 const idDescricao = dadosDescricao.campo
-                const campo = campos[idDescricao]
+                const campo = await recuperarDado('campos', idDescricao) || {}
                 const esp = campo?.especialidade || "SEM ESPECIALIDADE"
 
                 if (!grupos[esp]) grupos[esp] = []
@@ -799,7 +844,6 @@ async function telaCronograma(idObra) {
 
     const obra = await recuperarDado('dados_obras', idObra)
     const cliente = await recuperarDado('dados_clientes', obra?.cliente)
-    campos = await recuperarDados('campos')
 
     titulo.textContent = 'Cronograma'
 
@@ -934,7 +978,7 @@ async function telaCronograma(idObra) {
         cursor = avancarDiasUteis(cursor, 5)
     }
 
-    telaInterna.innerHTML = `
+    tela.innerHTML = `
         <div style="${horizontal}; gap: 2rem;">
             <button>Gravar</button>
             <button style="background-color: red;" onclick="pdfObra('Cronograma')">PDF</button>
@@ -942,7 +986,7 @@ async function telaCronograma(idObra) {
         </div>
         <br>
         <div class="acompanhamento">
-            <div id="pdf" style="${vertical}; gap: 1rem;">
+            <div id="pdf" style="${vertical}; gap: 1rem; width: 100%;">
                 ${tabInfos}
                 ${tabelas}
             </div>
