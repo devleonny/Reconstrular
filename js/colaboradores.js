@@ -161,13 +161,6 @@ async function adicionarColaborador(id) {
 
     }
 
-    const opcoesObras = Object.entries(dados_obras)
-        .map(([idObra, obra]) => {
-            const cidade = cidades?.[obra?.cidade] || {}
-            const cliente = clientes?.[obra?.cliente] || {}
-            return `<option value="${idObra}">${cliente?.nome || '--'} / ${cidade.distrito || '--'} / ${cidade.nome || '--'}</option>`
-        }).join('')
-
     const regras = `oninput="verificarRegras()"`
     const caixaStatus = retornarCaixas('status')
     const caixaEspecialidades = retornarCaixas('especialidade')
@@ -239,14 +232,15 @@ async function adicionarColaborador(id) {
         {
             texto: 'Cidade',
             elemento: `
-                <span class="opcoes" ${cidade ? `id="${colaborador.cidade}"` : ''} name="cidade" onclick="cxOpcoes('cidade')">
-                    ${cidade?.nome || 'Selecione'}
-                </span>
+                <span class="opcoes" ${cidade ? `id="${colaborador.cidade}"` : ''} name="cidade" onclick="cxOpcoes('cidade')">${cidade?.nome || 'Selecione'}</span>
             `},
         { texto: 'Apólice de Seguro', elemento: `<input value="0010032495" name="apolice" placeholder="Número da Apólice" readOnly>` },
         { texto: 'Telefone', elemento: `<input ${regras} value="${colaborador?.telefone || ''}" name="telefone" placeholder="Telefone">` },
         { texto: 'E-mail', elemento: `<textarea ${regras} name="email" placeholder="E-mail">${colaborador?.email || ''}</textarea>` },
-        { texto: 'Obra Alocada', elemento: `<select name="obra"><option></option>${opcoesObras}</select>` },
+        { 
+            texto: 'Obra Alocada', 
+            elemento: `<span name="obra" class="opcoes" onclick="cxOpcoes('obra')">Selecione</span>` 
+        },
         { texto: 'Documento', elemento: caixaDocumentos },
         { texto: 'Número de Contribuinte', elemento: `<input ${regras} value="${colaborador?.numeroContribuinte || ''}" name="numeroContribuinte" placeholder="Máximo de 9 dígitos">` },
         { texto: 'Segurança Social', elemento: `<input ${regras} value="${colaborador?.segurancaSocial || ''}" name="segurancaSocial" placeholder="Máximo de 11 dígitos">` },
@@ -326,19 +320,17 @@ async function excluirColaborador(id) {
     removerOverlay()
 }
 
-async function salvarColaborador(idColaborador) {
+async function salvarColaborador(idColaborador = crypto.randomUUID()) {
     const liberado = verificarRegras();
     if (!liberado)
         return popup({ mensagem: 'Verifique os campos inválidos!' })
 
     overlayAguarde()
 
-    idColaborador = idColaborador || unicoID();
-
     // Recupera colaborador existente para não sobrescrever anexos
-    let colaboradorExistente = dados_colaboradores[idColaborador] || {};
+    const colaboradorExistente = await recuperarDado('dados_cola')|| {}
 
-    let colaborador = {
+    const colaborador = {
         id: idColaborador,
         ...colaboradorExistente 
     }

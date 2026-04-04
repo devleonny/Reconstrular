@@ -33,9 +33,7 @@ async function painelChat() {
 
             <div class="tela-inferior-mensagens">
                 <div class="mensagens-funcao"></div>
-                <div class="painel-mensagens">
-                    ${tabela}
-                </div>
+                ${tabela}
             </div>
         </div>
     `
@@ -43,45 +41,6 @@ async function painelChat() {
     tela.innerHTML = acumulado
 
     await paginacao(pag)
-
-    return
-
-    const btnArq = document.getElementById('btnArq')
-    if (btnArq) btnArq.textContent = arquivado ? 'Não arquivados' : 'Arquivados'
-
-    mensagensFuncao = {}
-    mensagens = await recuperarDados('mensagens')
-    const organizado = Object.entries(mensagens)
-        .sort(([, a], [, b]) => a.timestamp - b.timestamp)
-
-    const ativos = []
-    for (const [idMensagem, mensagem] of organizado) {
-
-        if (mensagem.remetente == acesso.usuario) continue
-        if (!arquivado && mensagem.arquivado == 'S') continue
-
-        ativos.push(idMensagem)
-        criarDivMensagem(idMensagem, mensagem)
-    }
-
-    // Remoção de linhas de itens não ativos;
-    const divs = document.querySelectorAll('[name="linha"]')
-    for (const d of divs) if (!ativos.includes(d.id)) d.remove()
-
-    // Carregara primeira tabela com as pendências por Função;
-
-    const mf = document.querySelector('.mensagens-funcao')
-    mf.innerHTML = ''
-
-    for (const [f, m] of Object.entries(mensagensFuncao)) {
-        const div = `
-            <div class="etiqueta">
-                <span>${f}</span>
-                <span class="badge-numero">${Object.keys(m).length}</span>
-            </div>
-        `
-        mf.innerHTML += div
-    }
 
 }
 

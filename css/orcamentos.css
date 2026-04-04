@@ -93,3 +93,11 @@
 .orcamento-documento {
     background-color: white;
 }
+
+.formulario-orcamento{
+    height: 70vh;
+    overflow-y: auto;
+    width: max-content;
+    overflow-x: hidden;
+    padding: 2rem;
+}

@@ -187,7 +187,7 @@ async function excluirOrcamento(idOrcamento) {
     removerPopup()
 }
 
-async function formularioOrcamento(idOrcamento) { //29
+async function formularioOrcamento(idOrcamento) { 
 
     const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
 
@@ -209,58 +209,49 @@ async function formularioOrcamento(idOrcamento) { //29
 
     }
 
-    const campos = Object.entries(ambientes)
-        .map(([ambiente, lista]) => modeloLivre(ambiente, zonas(lista, ambiente)))
-        .join('')
-
     const funcao = idOrcamento
         ? `salvarOrcamento('${idOrcamento}')`
         : 'salvarOrcamento()'
 
+    const botoes = [
+        { texto: 'Salvar', img: 'concluido', funcao }
+    ]
 
     controlesCxOpcoes.cliente = {
         retornar: ['nome'],
         base: 'dados_clientes',
         colunas: {
-            'Nome': {chave: 'nome'},
-            'Morada Fiscal': {chave: 'moradaFiscal'},
+            'Nome': { chave: 'nome' },
+            'Morada Fiscal': { chave: 'moradaFiscal' },
             'Distrito': {},
             'Zona': {},
             'Cidade': {}
         }
     }
 
-    const acumulado = `
-    <div style="${vertical}; width: 80%;">
-        <div class="cabecalho-clientes">
-            ${voltarOrcamentos}
-        </div>
-        <div class="painel-clientes">
-            ${modeloLivre('Nome', `<span name="cliente" class="opcoes" onclick="cxOpcoes('cliente')">Selecionar</span>`)}
-            ${modeloLivre('Número de contribuinte', `<input name="numeroContribuinte" readOnly>`)}
-            ${modeloLivre('Morada fiscal', `<input name="moradaFiscal" readOnly>`)}
-            ${modeloLivre('Morada de Execução', `<input name="moradaExecucao" readOnly>`)}
-            ${modeloLivre('Telefone', `<input name="telefone" readOnly>`)}
-            ${modeloLivre('E-mail', `<input name="email" readOnly>`)}
-            ${modeloLivre('Data de contato', `<input value="${orcamento?.dataContato || ''}" name="dataContato" type="date">`)}
-            ${modeloLivre('Data de visita', `<input value="${orcamento?.dataVisita || ''}" name="dataVisita" type="date">`)}
-        </div>
+    const linhas = [
+        {
+            texto: 'Cliente',
+            elemento: `<span name="cliente" class="opcoes" onclick="cxOpcoes('cliente')">Selecionar</span>`
+        },
+        {
+            texto: 'Data de contato',
+            elemento: `<input value="${orcamento?.dataContato || ''}" name="dataContato" type="date">`
+        },
+        {
+            texto: 'Data de visita',
+            elemento: `<input value="${orcamento?.dataVisita || ''}" name="dataContato" type="date">`
+        }
+    ]
 
-        <br>
+    for (const [ambiente, lista] of Object.entries(ambientes)) {
+        linhas.push({
+            texto: ambiente,
+            elemento: zonas(lista, ambiente)
+        })
+    }
 
-        <div class="form-zonas">
-            <span><b>Selecionar Zonas</b></span>
-            <hr>
-            ${campos}
-            <hr>
-            <button onclick="${funcao}">Ir para a Fase 2 - Execuções</button>
-        </div>
-    </div>
-    `
-
-    tela.innerHTML = acumulado
-
-    preencherCliente()
+    popup({ linhas, botoes, titulo: 'Criar orçamento', funcao })
 }
 
 async function preencherCliente() {
@@ -744,7 +735,7 @@ async function salvarExecucao() {
         return total + Object.values(zona).reduce((soma, item) => soma + (Number(item.quantidade) || 0) * (Number(item.unitario) || 0), 0)
     }, 0)
 
-    if (total_geral !== orcamento.total_geral) 
+    if (total_geral !== orcamento.total_geral)
         await enviar(`dados_orcamentos/${idOrcamento}/total_geral`, total_geral)
 
 }
@@ -1379,7 +1370,7 @@ async function editarDescricaoExtra(idOrcamento, idLancamento, zona) {
 async function salvarDescricao(idOrcamento, idLancamento, zona) {
 
     overlayAguarde()
-    
+
     const descricaoExtra = document.getElementById('descricaoExtra')
 
     await enviar(`dados_orcamentos/${idOrcamento}/zonas/${zona}/${idLancamento}/descricaoExtra`, descricaoExtra.value)
