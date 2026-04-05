@@ -353,6 +353,8 @@ async function telaPrincipal() {
 
     telaInicial()
 
+    tela.classList.remove('login')
+
     priExec = false
 
     await carregarControles()
@@ -1152,7 +1154,6 @@ function telaLogin() {
     toolbar.style.display = 'none'
 
     const acumulado = `
-        
         <div id="acesso" class="loginBloco">
 
             <div class="botaoSuperiorLogin" onclick="telaRegistroPonto()">
@@ -1189,6 +1190,8 @@ function telaLogin() {
     `
 
     tela.innerHTML = acumulado
+    tela.classList.add('login')
+    tela.classList.remove('active')
 }
 
 function recuperarSenha() {
