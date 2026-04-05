@@ -153,7 +153,7 @@ async function criarLinhaOrcamento(orcamento) {
             <img src="imagens/pdf.png" onclick="listagem('${idOrcamento}', 'ferramentas')">
         </td>
         <td>
-            <img data-controle="editar" src="imagens/planta.png" onclick="execucoes('${idOrcamento}', 'ferramentas')">
+            <img data-controle="editar" src="imagens/planta.png" onclick="execucoes('${idOrcamento}', 0)">
         </td>
         <td>
             <img data-controle="editar" src="imagens/pesquisar.png" onclick="formularioOrcamento('${idOrcamento}')">
@@ -206,7 +206,7 @@ async function formularioOrcamento(idOrcamento) {
             .map(zona => `<option ${orcamento?.zonas?.[zona] ? 'selected' : ''}>${zona}</option>`)
             .join('')
 
-        return `<select name="${ambiente}">${opcoes}</select>`
+        return `<select data-ambiente="${ambiente}" name="zonas">${opcoes}</select>`
 
     }
 
@@ -265,163 +265,98 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
         return popup({ mensagem: 'Campo Cliente obrigatório' })
 
     const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
-    const zonas = orcamento?.zonas || {}
+
+    const zonas = [...document.querySelectorAll('[name="zonas"]')]
+        .filter(select => select.value)
+        .map(select => {
+            const ambiente = select.dataset.ambiente
+            const zona = select.value
+            return {
+                ambiente,
+                zona
+            }
+        })
 
     const orcamentoAtualizado = {
+        ...orcamento || {},
         cliente,
         dataVisita: document.querySelector('[name="dataVisita"]').value,
         dataContato: document.querySelector('[name="dataContato"]').value,
-        zonas: { ...zonas, ...zonasNovas }
-    }
-
-    const zonasNovas = {}
-
-    for (const ambiente of Object.keys(ambientes)) {
-        const el = document.querySelector(`[name="${ambiente}"]`)
-        if (el && el.value) {
-            zonasNovas[el.value] = orcamento?.zonas?.[el.value] || {}
-        }
+        zonas
     }
 
     await enviar(`dados_orcamentos/${idOrcamento}`, orcamentoAtualizado)
 
-    await execucoes(idOrcamento)
+    await execucoes(idOrcamento, 0)
 
     removerPopup()
 
 }
 
-function confirmarExcluirZona() {
+async function execucoes(id, indice) {
 
-    const botoes = [
-        { texto: 'Confirmar', img: 'concluido', funcao: `excluirZona()` }
-    ]
-    popup({ botoes, mensagem: 'Tem certeza?' })
-}
-
-async function excluirZona() {
-
-    overlayAguarde()
-
-    await deletar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}`)
-
-    removerPopup()
-
-    await execucoes(idOrcamento)
-
-}
-
-async function execucoes(id, proximo = 0) {
-
-    const orcamento = await recuperarDado('dados_orcamentos', id) || {}
-
-    // Verificação antes de Editar;
-    if (orcamento.finalizado == 'S') {
-        const botoes = [
-            { texto: 'Confirmar', img: 'concluido', funcao: `alterarFinalizacao('N'); execucoes('${id}'); removerPopup()` }
-        ]
-        return popup({ botoes, menagem: 'Tem certeza?', nra: false })
+    const zona = controles?.execucoes?.base
+    if (zona) {
+        await enviar(`dados_orcamentos/${id}/zonas/${indice}`, zona)
     }
 
-    let zonas = orcamento?.zonas || {}
+    const { zonas } = await recuperarDado('dados_orcamentos', id) || {}
+    const campos = zonas?.[indice] || []
 
-    const chavesZonas = Object.keys(zonas)
+    if (campos.length)
+        return popup({ mensagem: 'Orçamento sem zonas, acrescente alguma antes de acessar execuções.' })
 
-    if (chavesZonas.length === 0) {
-        await orcamentos()
-        popup({ mensagem: 'Orçamento sem nenhuma zona disponível' })
-        return
+    const colunas = {
+        'Remover': {},
+        'Descrição do Serviço': { chave: 'campo.descricao' },
+        'Descrição Extra <br>(facultativo)': { chave: 'descricaoExtra' },
+        'Unidade de <br> Medida': { chave: 'campo.medida' },
+        'Unidades': {},
+        'Metro Linear<br>(m)': {},
+        'Comprimento<br>(m)': {},
+        'Largura<br>(m)': {},
+        'Altura<br>(m)': {},
+        'Quantidade': {},
+        'Valor Unit': {},
+        'Valor Total': {},
+        'Edição Preço': {}
     }
 
-    // Se for string, tenta localizar a chave
-    if (typeof proximo === "string") {
-        const idx = chavesZonas.indexOf(proximo);
-        indiceZona = idx >= 0 ? idx : 0;
-    } else {
-        // numérico: avança/retrocede
-        indiceZona = (indiceZona ?? 0) + proximo;
-
-        if (indiceZona < 0) indiceZona = 0;
-        if (indiceZona >= chavesZonas.length) indiceZona = chavesZonas.length - 1;
-    }
-
-    zona1 = chavesZonas[indiceZona];
-
-    // cabeçalhos
-    const colunas = [
-        'Remover',
-        'Descrição do Serviço',
-        'Descrição Extra <br>(facultativo)',
-        'Unidade de <br> Medida',
-        'Unidades',
-        'Metro Linear<br>(m)',
-        'Comprimento<br>(m)',
-        'Largura<br>(m)',
-        'Altura<br>(m)',
-        'Quantidade',
-        'Valor Unit',
-        'Valor Total',
-        'Edição Preço'
-    ].map(col => `<th>${col}</th>`).join('')
-
-    const opcoesZonas = chavesZonas
-        .map(op => `<option ${zona1 == op ? 'selected' : ''}>${op}</option>`)
-        .join('')
+    const pag = 'execucoes'
+    const tabela = await modTab({
+        colunas,
+        funcaoAdicional: ['atualizarMedidas'],
+        pag,
+        base: campos,
+        criarLinha: 'adicionarLinha',
+        body: 'execucoes'
+    })
 
     const acumulado = `
         <div class="execucoes">
-            <div class="blocoTabela">
-                <div class="painelBotoes">
-                    <div style="${horizontal}; justify-content: space-between; width: 90%;">
-                        <span style="font-size: 2rem; padding: 0.5rem;">${zona1}</span>
-                        <button onclick="orcamentos()">
-                            Voltar para Orçamentos
-                            <img src="imagens/todos.png">
-                        </button>
-                        <button onclick="confirmarExcluirZona()">
-                            Excluir Zona
-                            <img src="imagens/cancel.png">
-                        </button>
-                    </div>
-                </div>
-                <div class="recorteTabela">
-                    <table class="tabela">
-                        <thead>
-                            <tr>${colunas}</tr>
-                        </thead>
-                        <tbody id="body"></tbody>
-                    </table>
-                </div>
-                <div class="rodapeTabela">
-                    <button onclick="adicionarLinha()">
-                        Adicionar Linha
-                        <img src="imagens/baixar.png">
+            ${tabela}
+            <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+
+                <button onclick="incluirLinha()">
+                    <img src="imagens/baixar.png">
+                    Adicionar Linha
+                </button>
+
+                <button onclick="execucoes('${id}', ${indice - 1})">
+                    <img src="imagens/anterior.png">
+                    Voltar a Zona
+                </button>
+
+                <button onclick="execucoes('${id}', ${indice + 1})">
+                    Próxima Zona
+                    <img src="imagens/proximo.png">
+                </button>
+
+                <div id="botaoFinalizacao">
+                    <button onclick="orcamentoFinal('${id}')">
+                        Ver Orçamento
+                        <img src="imagens/orcamentos.png">
                     </button>
-                    <select onchange="salvarExecucao().then(() => execucoes('${idOrcamento}', this.value))">
-                        ${opcoesZonas}
-                    </select>
-                </div>
-            </div>
-            <div style="${horizontal}; width: 100%; justify-content: space-between; gap: 1rem;">
-                <div style="${horizontal}; gap: 1rem;">
-
-                    <button onclick="execucoes('${idOrcamento}', -1)">
-                        <img src="imagens/anterior.png">
-                        Voltar a Zona
-                    </button>
-
-                    <button onclick="execucoes('${idOrcamento}', 1)">
-                        Próxima Zona
-                        <img src="imagens/proximo.png">
-                    </button>
-
-                    <div id="botaoFinalizacao">
-                        <button onclick="orcamentoFinal('${idOrcamento}')">
-                            Ver Orçamento
-                            <img src="imagens/orcamentos.png">
-                        </button>
-                    </div>
-
                 </div>
                 <button onclick="alterarFinalizacao('S'); finalizado = 'S'; orcamentos();">
                     Concluir Orçamento
@@ -432,22 +367,15 @@ async function execucoes(id, proximo = 0) {
     `
 
     tela.innerHTML = acumulado
-
-    for (const [idItem, dados] of Object.entries(zonas?.[zona1] || {})) {
-        adicionarLinha(idItem, dados)
-    }
-
-    await atualizarMedidas()
+    await paginacao(pag)
 
 }
 
-function proximaRevisao(revisoes = {}) {
-    const nums = Object.keys(revisoes)
-        .map(k => Number(k.replace(/\D/g, '')))
-        .filter(n => !isNaN(n))
+async function incluirLinha() {
 
-    const prox = nums.length ? Math.max(...nums) + 1 : 1
-    return `R${prox}`
+    controles.execucoes.base.push({ id: crypto.randomUUID() })
+    await paginacao()
+
 }
 
 async function alterarFinalizacao(status) { //29
@@ -483,13 +411,10 @@ async function alterarFinalizacao(status) { //29
 }
 
 
-function adicionarLinha(idItem = crypto.randomUUID(), dados = {}) {
+function adicionarLinha(dados) {
 
-    const body = document.getElementById('body')
+    const { id, campo, dimensoes } = dados || {}
 
-    const { descricao, campo } = dados || {}
-
-    const id = crypto.randomUUID()
     controlesCxOpcoes[id] = {
         base: 'campos',
         retornar: ['descricao'],
@@ -501,136 +426,135 @@ function adicionarLinha(idItem = crypto.randomUUID(), dados = {}) {
         }
     }
 
-    const auxC = ['unidades', 'metroLinear', 'comprimento', 'largura', 'altura']
+    const camposDimensoes = ['unidades', 'metroLinear', 'comprimento', 'largura', 'altura']
+        .map(c => `
+            <td>
+                <input 
+                type="number"
+                name="${c}"
+                oninput="atualizarMedidas()"
+                value="${dimensoes?.[c] || ''}"
+                ${dimensoes?.[c] ? 'class="campo-on" contentEditable="true"' : 'class="campo-off" contentEditable="false"'}>
+            </td>
+            `)
+        .join('')
+
+
     const tds = `
         <td>
-            <img onclick="removerLinhaZona(this)" src="imagens/cancel.png" style="width: 2rem;">
+            <img onclick="removerLinhaZona('${id}')" src="imagens/cancel.png" style="width: 2rem;">
+        </td>
+        <td style="min-width: 250px;">
+            <span ${campo ? `id="${campo.id}"` : ''} name="${id}" class="opcoes" onclick="cxOpcoes('${id}')">${campo?.descricao || 'Selecione'}</span>
         </td>
         <td>
-            <span ${descricao ? `id="${campo}"` : ''} name="${id}" class="opcoes" onclick="cxOpcoes('${id}')">${descricao || 'Selecione'}</span>
-        </td>
-        <td>    
-            <div style="${horizontal}; gap: 5px;">
-                <textarea name="descricaoExtra" style="min-width: 150px;" oninput="this.nextElementSibling.style.display = 'flex';">${dados?.descricaoExtra || ''}</textarea>
-                <img src="imagens/concluido.png" onclick="atualizarMedidas(); this.style.display = 'none';" style="display: none;">
-            </div>
+            <textarea name="descricaoExtra" style="min-width: 150px;" oninput="atualizarMedidas()">${dados?.descricaoExtra || ''}</textarea>
         </td>
         <td>
             <span name="medida">${dados?.medida || ''}</span>
         </td>
-        ${auxC.map(c => `
-            <td>
-                <span ${dados?.[c] ? 'class="campo-on" contentEditable="true"' : 'class="campo-off" contentEditable="false"'} oninput="atualizarMedidas()" name="${c}">${dados?.[c] || ''}</span>
-            </td>
-            `).join('')
-        }
+        ${camposDimensoes}
         <td style="white-space: nowrap;" name="quantidade">${dados?.quantidade || 0}</td>
         <td style="white-space: nowrap;" name="unitario">${dinheiro(dados?.unitario)}</td>
         <td style="white-space: nowrap;" name="total">${dinheiro(dados?.unitario * dados?.quantidade)}</td>
         <td name="edicao">
-            ${dados.campo ? `<img onclick="composicoes('${dados.campo}')" src="imagens/lapis.png">` : ''}
+            ${campo
+            ? `<img onclick="composicoes('${dados.campo}')" src="imagens/lapis.png">`
+            : ''
+        }
         </td>
     `
 
-    const trExistente = document.getElementById(idItem)
-    if (trExistente)
-        return trExistente.innerHTML = tds
-
-    body.insertAdjacentHTML(
-        'beforeend',
-        `<tr id="${idItem}" data-zona="${zona1}">${tds}</tr>`
-    )
+    return `<tr data-campos="S" id="${id}">${tds}</tr>`
 
 }
 
-async function removerLinhaZona(img) {
+async function removerLinhaZona(idItem) {
 
-    const tr = img.closest('tr')
+    controles.execucoes.base = controles.execucoes.base
+        .filter(campo => campo.id !== idItem)
 
-    const idItem = tr.id
-
-    await deletar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}/${idItem}`)
-
-    salvarExecucao()
+    await paginacao('execucoes')
 }
 
-async function buscarCampos(select) {
+async function atualizarMedidas() {
 
-    const tr = select.closest('tr')
-    const selectDescricao = tr.querySelector('[name="campo"]')
-    const especialidade = select.value
-
-    const opcoes = {}
-
-    for (const [id, campo] of Object.entries(campos)) {
-
-        if (campo.especialidade !== especialidade) continue
-
-        opcoes[id] = campo
-    }
-
-    let opcoesDescricao = `<option></option>`
-    opcoesDescricao += Object.entries(opcoes || {})
-        .map(([id, dados]) => `<option data-id="${id}" data-medida="${dados.medida}" ${idCampo == id ? 'selected' : ''}>${dados.descricao}</option>`)
-        .join('')
-
-    selectDescricao.innerHTML = opcoesDescricao
-
-    await atualizarMedidas()
-
-}
-
-async function atualizarMedidas(salvar = true) {
-
+    const nomesCampos = ['unidades', 'metroLinear', 'comprimento', 'largura', 'altura']
     const esquema = {
         '': [],
-        'm2': [6, 7, 8],
-        'm3': [6, 7, 8],
-        'ml': [5],
-        'und': [4]
+        'm2': ['metroLinear', 'comprimento', 'largura'],
+        'm3': ['metroLinear', 'comprimento', 'largura'],
+        'ml': ['metroLinear'],
+        'und': ['unidades']
     }
 
-    const trs = document.querySelectorAll('#body tr')
+    const base = controles?.execucoes?.base || []
+    const trs = document.querySelectorAll('tbody tr')
 
     for (const tr of trs) {
-        const tds = tr.querySelectorAll('td')
-        const campo = tr.querySelector('[name="campo"]')?.selectedOptions[0]?.id
-        const campoRef = campos[campo]
 
+        if (!tr.dataset.campos)
+            continue
+
+        const id = tr.id
+
+        const campo = tr.querySelector(`[name="${id}"]`)?.id
+        const campoRef = await recuperarDado('campos', campo) || {}
+        const descricaoExtra = tr.querySelector('[name="descricaoExtra"]')?.value || ''
         const medida = campoRef?.medida || ''
         tr.querySelector('[name="medida"]').textContent = medida
-
-        if (!medida) continue
-
+        const dimensoes = {}
+        const permitidos = esquema[medida] || []
         let preenchidos = 0
-        if (medida === 'm2') {
-            for (const i of esquema.m2) {
-                const span = tds[i].querySelector('span')
-                if (span.textContent.trim() !== '') preenchidos++
+
+        for (const nome of permitidos) {
+            const input = tr.querySelector(`[name="${nome}"]`)
+
+            if (input && input.value !== '') {
+                preenchidos++
             }
         }
 
-        for (let i = 4; i <= 8; i++) {
-            const span = tds[i].querySelector('span')
+        for (const nome of nomesCampos) {
+            const input = tr.querySelector(`[name="${nome}"]`)
+            if (!input)
+                continue
 
-            if (!esquema[medida].includes(i)) {
-                span.classList = 'campo-off'
-                span.textContent = ''
-                span.contentEditable = false
+            const permitido = permitidos.includes(nome)
+            const preenchido = input.value !== ''
+
+            if (!permitido) {
+                input.classList = 'campo-off'
+                input.value = ''
+                input.readOnly = true
                 continue
             }
 
-            if (medida === 'm2' && preenchidos >= 2 && span.textContent.trim() === '') {
-                span.classList = 'campo-off'
-                span.contentEditable = false
-            } else {
-                span.classList = 'campo-on'
-                span.contentEditable = true
+            if ((medida === 'm2' || medida === 'm3') && preenchidos >= 2 && !preenchido) {
+                input.classList = 'campo-off'
+                input.readOnly = true
+                continue
+            }
+
+            if (input.value !== '')
+                dimensoes[nome] = Number(input.value)
+
+            input.classList = 'campo-on'
+            input.readOnly = false
+        }
+
+        // Temporário;
+        const posicao = base.findIndex(item => item.id == id)
+        if (posicao !== -1) {
+            base[posicao] = {
+                ...base[posicao],
+                campo: campoRef,
+                dimensoes,
+                descricaoExtra
             }
         }
     }
 
-    if (salvar) await salvarExecucao()
 }
 
 async function salvarExecucao() {
