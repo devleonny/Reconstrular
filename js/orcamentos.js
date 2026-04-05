@@ -97,7 +97,7 @@ async function orcamentos() {
         body: 'bodyOrcamentos',
         criarLinha: 'criarLinhaOrcamento',
         colunas: {
-            'Cliente': {},
+            'Cliente': { chave: 'snapshots.cliente' },
             'Distrito': {},
             'Cidade': {},
             'Data de Contato': {},
@@ -122,10 +122,10 @@ async function orcamentos() {
 
 async function criarLinhaOrcamento(orcamento) {
 
+    const { snapshots } = orcamento || {}
     const idOrcamento = orcamento.id
-
-    const cliente = await recuperarDado('dados_clientes', orcamento.idCliente) || {}
-    const cidade = cliente?.snapshots?.cidade || {}
+    const cidade = snapshots?.cidade || {}
+    const cliente = snapshots?.cliente
 
     const dt = (data) => {
         if (!data) return '-'
@@ -135,9 +135,9 @@ async function criarLinhaOrcamento(orcamento) {
 
     const versao = orcamento?.versao
     const tds = `
-        <td>${cliente?.nome || '...'}</td>
-        <td name="distrito">${cidade?.distrito || '-'}
-        <td name="cidade" data-cod="${cliente?.cidade}">${cidade?.nome || '-'}
+        <td>${cliente || ''}</td>
+        <td>${cidade?.distrito || ''}
+        <td>${cidade?.nome || ''}
         <td>${dt(orcamento.dataContato)}</td>
         <td>${dt(orcamento.dataVisita)}</td>
         <td>
@@ -271,7 +271,7 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
         cliente,
         dataVisita: document.querySelector('[name="dataVisita"]').value,
         dataContato: document.querySelector('[name="dataContato"]').value,
-        zonas: { ...zonas }
+        zonas: { ...zonas, ...zonasNovas }
     }
 
     const zonasNovas = {}
@@ -349,7 +349,7 @@ async function execucoes(id, proximo = 0) {
 
     // cabeçalhos
     const colunas = [
-        'Especialidade',
+        'Remover',
         'Descrição do Serviço',
         'Descrição Extra <br>(facultativo)',
         'Unidade de <br> Medida',
@@ -483,45 +483,31 @@ async function alterarFinalizacao(status) { //29
 }
 
 
-function adicionarLinha(idItem = ID5digitos(), dados = {}) {
+function adicionarLinha(idItem = crypto.randomUUID(), dados = {}) {
 
     const body = document.getElementById('body')
 
-    const especialidades = []
-    let opcoesDescricao = `<option></option>`
+    const { descricao, campo } = dados || {}
 
-    const organizado = Object.entries(campos)
-        .sort(([, a], [, b]) => a.descricao.localeCompare(b.descricao))
-
-    for (const [idCampo, d] of organizado) {
-
-        especialidades.push(d.especialidade)
-
-        if (d.especialidade !== dados.especialidade) continue
-        opcoesDescricao += `<option id="${idCampo}" data-medida="${d.medida}" ${dados?.campo == idCampo ? 'selected' : ''}>${d.descricao}</option>`
+    const id = crypto.randomUUID()
+    controlesCxOpcoes[id] = {
+        base: 'campos',
+        retornar: ['descricao'],
+        funcaoAdicional: ['atualizarMedidas'],
+        colunas: {
+            'Especialidade': { chave: 'especialidade' },
+            'Descrição': { chave: 'descricao' },
+            'Medida': { chave: 'medida' }
+        }
     }
-
-    const opcoesEspecialidade = [...new Set(especialidades)]
-        .sort((a, b) => a.localeCompare(b))
-        .map(op => `<option ${dados?.especialidade == op ? 'selected' : ''}>${op}</option>`)
-        .join('')
-
 
     const auxC = ['unidades', 'metroLinear', 'comprimento', 'largura', 'altura']
     const tds = `
         <td>
-            <div style="${horizontal}; gap: 5px;">
-                <img onclick="removerLinhaZona(this)" src="imagens/cancel.png" style="width: 2rem;">
-                <select name="especialidade" onchange="atualizarMedidas()">
-                    <option></option>
-                    ${opcoesEspecialidade}
-                </select>
-            </div>
+            <img onclick="removerLinhaZona(this)" src="imagens/cancel.png" style="width: 2rem;">
         </td>
         <td>
-            <select style="width: 100%; min-width: 200px;" name="campo" onchange="atualizarMedidas()">
-                ${opcoesDescricao}
-            </select>
+            <span ${descricao ? `id="${campo}"` : ''} name="${id}" class="opcoes" onclick="cxOpcoes('${id}')">${descricao || 'Selecione'}</span>
         </td>
         <td>    
             <div style="${horizontal}; gap: 5px;">
@@ -547,7 +533,8 @@ function adicionarLinha(idItem = ID5digitos(), dados = {}) {
     `
 
     const trExistente = document.getElementById(idItem)
-    if (trExistente) return trExistente.innerHTML = tds
+    if (trExistente)
+        return trExistente.innerHTML = tds
 
     body.insertAdjacentHTML(
         'beforeend',
@@ -1005,10 +992,9 @@ async function listagem(idOrcamento, tabela) {
 
 async function orcamentoFinal(idOrcamento, emJanela) {
 
-    campos = await recuperarDados('campos')
     const orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
-    const idCliente = orcamento?.idCliente || ''
-    const cliente = dados_clientes[idCliente]
+    const idCliente = orcamento?.cliente || ''
+    const cliente = await recuperarDado('dados_clientes', idCliente) || {}
 
     let total = 0
 
@@ -1145,9 +1131,6 @@ async function orcamentoFinal(idOrcamento, emJanela) {
     }
 
     document.querySelector('.total-valor').textContent = dinheiro(total)
-
-    // Regras de validação;
-    validarRegrasAcesso()
 
 }
 

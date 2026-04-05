@@ -508,9 +508,6 @@ async function telaNiveis() {
         criarLinhaFuncao(idFuncao, dados)
     }
 
-    // Regras de validação;
-    validarRegrasAcesso()
-
 }
 
 function validarRegrasAcesso() {
