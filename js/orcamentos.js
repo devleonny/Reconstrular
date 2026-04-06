@@ -266,16 +266,16 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
 
     const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
 
-    const zonas = [...document.querySelectorAll('[name="zonas"]')]
-        .filter(select => select.value)
-        .map(select => {
-            const ambiente = select.dataset.ambiente
-            const zona = select.value
-            return {
-                ambiente,
-                zona
-            }
-        })
+    const zonas = Object.fromEntries(
+        [...document.querySelectorAll('[name="zonas"]')]
+            .filter(select => select.value)
+            .map(select => {
+                const ambiente = select.dataset.ambiente
+                const zona = select.value
+
+                return [ambiente, { zona, ambiente }]
+            })
+    )
 
     const orcamentoAtualizado = {
         ...orcamento || {},
@@ -293,18 +293,41 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
 
 }
 
-async function execucoes(id, indice) {
+async function execucoes(id, ambienteOuIndice = 0) {
 
-    const zona = controles?.execucoes?.base
-    if (zona) {
-        await enviar(`dados_orcamentos/${id}/zonas/${indice}`, zona)
+    // Salvamento do anterior;
+    if (controles?.execucoes?.ambiente) {
+        const zona = controles?.execucoes?.base || {}
+        await enviar(`dados_orcamentos/${id}/zonas/${controles?.execucoes?.ambiente}`, zona)
     }
 
-    const { zonas } = await recuperarDado('dados_orcamentos', id) || {}
-    const campos = zonas?.[indice] || []
+    const { zonas = {} } = await recuperarDado('dados_orcamentos', id) || {}
 
-    if (campos.length)
-        return popup({ mensagem: 'Orçamento sem zonas, acrescente alguma antes de acessar execuções.' })
+    const listaZonas = Object.values(zonas)
+
+    if (!listaZonas.length) {
+        popup({ mensagem: 'Orçamento sem nenhuma zona disponível' })
+        return
+    }
+
+    let indice = 0
+
+    if (typeof ambienteOuIndice === 'number') {
+        indice = ambienteOuIndice
+    } else if (typeof ambienteOuIndice === 'string') {
+        indice = listaZonas.findIndex(z => z.ambiente == ambienteOuIndice)
+        if (indice === -1)
+            indice = 0
+    }
+
+    if (indice < 0)
+        indice = 0
+
+    if (indice >= listaZonas.length)
+        indice = listaZonas.length - 1
+
+    const ambienteAtual = listaZonas[indice] || {}
+    const campos = ambienteAtual.campos || []
 
     const colunas = {
         'Remover': {},
@@ -332,6 +355,24 @@ async function execucoes(id, indice) {
         body: 'execucoes'
     })
 
+    const anterior = indice > 0
+        ? `
+            <button onclick="execucoes('${id}', ${indice - 1})">
+                <img src="imagens/anterior.png">
+                Voltar a Zona
+            </button>
+        `
+        : ''
+
+    const proximo = indice < listaZonas.length - 1
+        ? `
+            <button onclick="execucoes('${id}', ${indice + 1})">
+                Próxima Zona
+                <img src="imagens/proximo.png">
+            </button>
+        `
+        : ''
+
     const acumulado = `
         <div class="execucoes">
             ${tabela}
@@ -342,15 +383,9 @@ async function execucoes(id, indice) {
                     Adicionar Linha
                 </button>
 
-                <button onclick="execucoes('${id}', ${indice - 1})">
-                    <img src="imagens/anterior.png">
-                    Voltar a Zona
-                </button>
+                ${anterior}
 
-                <button onclick="execucoes('${id}', ${indice + 1})">
-                    Próxima Zona
-                    <img src="imagens/proximo.png">
-                </button>
+                ${proximo}
 
                 <div id="botaoFinalizacao">
                     <button onclick="orcamentoFinal('${id}')">
@@ -358,6 +393,7 @@ async function execucoes(id, indice) {
                         <img src="imagens/orcamentos.png">
                     </button>
                 </div>
+
                 <button onclick="alterarFinalizacao('S'); finalizado = 'S'; orcamentos();">
                     Concluir Orçamento
                     <img src="imagens/concluido.png">
@@ -366,9 +402,11 @@ async function execucoes(id, indice) {
         </div>
     `
 
+    controles.execucoes.ambiente = ambienteAtual.ambiente
+    controles.execucoes.indice = indice
+
     tela.innerHTML = acumulado
     await paginacao(pag)
-
 }
 
 async function incluirLinha() {
