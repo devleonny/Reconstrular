@@ -192,18 +192,12 @@ async function formularioOrcamento(idOrcamento) {
     const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
     const cliente = orcamento?.snapshots?.cliente || 'Selecione'
 
-    // Verificação antes de Editar;
-    if (orcamento?.finalizado == 'S') {
-
-        const botoes = [
-            { texto: 'Confirmar', img: 'concluido', funcao: `idOrcamento = '${idOrcamento}'; alterarFinalizacao('N'); formularioOrcamento('${idOrcamento}'); removerPopup()` }
-        ]
-        return popup({ mensagem: `Se continuar você irá reabrir o orçamento para edição, <br>tem certeza?</span>`, botoes, nra: false })
-    }
-
     const zonas = (lista, ambiente) => {
+
+        const zonaNoOrcamento = orcamento?.zonas?.[ambiente]?.zona || {}
+
         const opcoes = lista
-            .map(zona => `<option ${orcamento?.zonas?.[zona] ? 'selected' : ''}>${zona}</option>`)
+            .map(zona => `<option ${zonaNoOrcamento == zona ? 'selected' : ''}>${zona}</option>`)
             .join('')
 
         return `<select data-ambiente="${ambiente}" name="zonas">${opcoes}</select>`
@@ -272,8 +266,8 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
             .map(select => {
                 const ambiente = select.dataset.ambiente
                 const zona = select.value
-
-                return [ambiente, { zona, ambiente }]
+                const zonaAtual = orcamento?.zonas?.[ambiente] || {}
+                return [ambiente, { zona, ambiente, ...zonaAtual }]
             })
     )
 
@@ -290,6 +284,18 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
     await execucoes(idOrcamento, 0)
 
     removerPopup()
+
+}
+
+async function verOrcamento(id) {
+
+    // Salvamento do anterior;
+    if (controles?.execucoes?.ambiente) {
+        const campos = controles?.execucoes?.base || []
+        await enviar(`dados_orcamentos/${id}/zonas/${controles?.execucoes?.ambiente}/campos`, campos)
+    }
+
+    await orcamentoFinal(id)
 
 }
 
@@ -344,8 +350,7 @@ async function execucoes(id, ambienteOuIndice = 0) {
         'Altura<br>(m)': {},
         'Quantidade': {},
         'Valor Unit': {},
-        'Valor Total': {},
-        'Edição Preço': {}
+        'Valor Total': {}
     }
 
     const pag = 'execucoes'
@@ -392,13 +397,13 @@ async function execucoes(id, ambienteOuIndice = 0) {
                 ${proximo}
 
                 <div id="botaoFinalizacao">
-                    <button onclick="orcamentoFinal('${id}')">
+                    <button onclick="verOrcamento('${id}')">
                         Ver Orçamento
                         <img src="imagens/orcamentos.png">
                     </button>
                 </div>
 
-                <button onclick="alterarFinalizacao('S'); finalizado = 'S'; orcamentos();">
+                <button onclick="alterarFinalizacao('${id}', 'S');">
                     Concluir Orçamento
                     <img src="imagens/concluido.png">
                 </button>
@@ -422,12 +427,24 @@ async function incluirLinha() {
 
 }
 
-async function alterarFinalizacao(status) { //29
+function proximaRevisao(revisoes = {}) {
+    const nums = Object.keys(revisoes)
+        .map(chave => Number(String(chave).replace(/\D/g, '')))
+        .filter(num => !isNaN(num))
+
+    const prox = nums.length
+        ? Math.max(...nums) + 1
+        : 1
+
+    return `R${prox}`
+}
+
+async function alterarFinalizacao(id, status) {
 
     overlayAguarde()
-    enviar(`dados_orcamentos/${idOrcamento}/finalizado`, status)
+    await enviar(`dados_orcamentos/${id}/finalizado`, status)
 
-    const orcamento = dados_orcamentos[idOrcamento]
+    const orcamento = await recuperarDado('dados_orcamentos', id) || {}
     orcamento.finalizado = status
 
     if (status == 'S') {
@@ -447,9 +464,11 @@ async function alterarFinalizacao(status) { //29
 
         orcamento.versao = R
 
-        await enviar(`dados_orcamentos/${idOrcamento}/revisoes/${R}`, orcamento.revisoes[R])
-        await enviar(`dados_orcamentos/${idOrcamento}/versao`, R)
+        await enviar(`dados_orcamentos/${id}/revisoes/${R}`, orcamento.revisoes[R])
+        await enviar(`dados_orcamentos/${id}/versao`, R)
     }
+
+    await telaOrcamentos()
 
     removerOverlay()
 }
@@ -501,12 +520,6 @@ function adicionarLinha(dados) {
         <td style="white-space: nowrap;" name="quantidade">${dados?.quantidade || 0}</td>
         <td style="white-space: nowrap;" name="unitario">${dinheiro(dados?.unitario)}</td>
         <td style="white-space: nowrap;" name="total">${dinheiro(dados?.unitario * dados?.quantidade)}</td>
-        <td name="edicao">
-            ${campo
-            ? `<img onclick="composicoes('${dados.campo}')" src="imagens/lapis.png">`
-            : ''
-        }
-        </td>
     `
 
     return `<tr data-campos="S" id="${id}">${tds}</tr>`
@@ -992,7 +1005,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
     }
 
     const dados = {
-        'Selecionar Zonas': 'TOTAL (s/iva)',
+        'Orçamento': 'TOTAL (s/iva)',
         'Nome': nome || '',
         'Morada Fiscal': moradaFiscal || '',
         'Morada de Execução': moradaExecucao || '',
@@ -1013,8 +1026,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
             <tr>
                 <td colspan="2" style="background-color: #5b707f;">
                     <div class="titulo-orcamento">
-                        <img data-controle="editar" name="editaveis" class="btnAcmp" src="imagens/lapis.png" onclick="formularioOrcamento('${idOrcamento}')">
-                        <span ${titulo == 'Selecionar Zonas' ? 'name="titulo"' : ''}>${titulo}</span>
+                        <span>${titulo}</span>
                     </div>
                 </td>
                 <td class="total-orcamento">${dado}</td>
@@ -1069,12 +1081,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
 
         itens.push(`
             <tr>
-                <td>
-                    <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
-                        <img onclick="execucoes('${idOrcamento}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">
-                        <span>${zona}</span>
-                    </div>
-                </td>
+                <td>${zona}</td>
                 <td>${especialidade || ''}</td>
                 <td>${descricao || ''}</td>
                 <td>${descricaoExtra || ''}</td>
