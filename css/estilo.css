@@ -88,7 +88,7 @@ html {
 
 .tela.login {
     flex-direction: column;
-    margin: 0;
+    margin-top: 2rem;
     justify-content: center;
     align-items: center;
     display: flex;
@@ -395,7 +395,6 @@ img {
 }
 
 .loginBloco {
-    margin-top: 5vh;
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -442,7 +441,11 @@ img {
     flex-direction: column;
     justify-content: center;
     background-color: white;
-    padding: 2rem;
+    padding: 0.5rem;
+}
+
+.baixoLogin input {
+    padding: 0.5rem;
 }
 
 .cadeado {
