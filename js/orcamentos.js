@@ -521,6 +521,20 @@ async function removerLinhaZona(idItem) {
     await paginacao('execucoes')
 }
 
+function calcularQuantidadeTotal(dimensoes, totalItem) {
+
+    const quantidade = Object.values(dimensoes)
+        .reduce((acc, val) => acc * val, 1)
+
+    const total = quantidade * totalItem
+
+    return {
+        quantidade,
+        total
+    }
+
+}
+
 async function atualizarMedidas() {
 
     const nomesCampos = ['unidades', 'metroLinear', 'comprimento', 'largura', 'altura']
@@ -586,6 +600,12 @@ async function atualizarMedidas() {
             input.classList = 'campo-on'
             input.readOnly = false
         }
+
+        const { quantidade, total } = calcularQuantidadeTotal(dimensoes, campoRef?.total || 0)
+
+        tr.querySelector('[name="quantidade"]').textContent = quantidade
+        tr.querySelector('[name="unitario"]').textContent = dinheiro(campoRef?.total)
+        tr.querySelector('[name="total"]').textContent = dinheiro(total)
 
         // Temporário;
         const posicao = base.findIndex(item => item.id == id)
@@ -1040,7 +1060,9 @@ async function orcamentoFinal(idOrcamento, emJanela) {
 
     for (const campo of camposMesclados) {
 
-        const { quantidade, zona, idCampo, total, medida, descricaoExtra, especialidade, descricao } = campo || {}
+        const { zona, medida, dimensoes, descricaoExtra, especialidade, descricao } = campo || {}
+
+        const { quantidade, total } = calcularQuantidadeTotal(dimensoes, campo?.total || 0)
         const totalLinha = total * quantidade
 
         totalGeral += totalLinha
@@ -1062,7 +1084,6 @@ async function orcamentoFinal(idOrcamento, emJanela) {
             </tr>
         `)
     }
-
 
     const elemento = `
         <div class="tela-orcamento">
