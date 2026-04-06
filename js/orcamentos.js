@@ -708,9 +708,9 @@ async function salvarExecucao() {
 
 }
 
-function comparativoRevisoes(idOrcamento) {
+async function comparativoRevisoes(idOrcamento) {
 
-    const orcamento = dados_orcamentos[idOrcamento]
+    const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
     const revisoes = orcamento.revisoes || {}
     const versaoAtual = orcamento.versao
 
