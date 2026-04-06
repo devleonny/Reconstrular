@@ -1,40 +1,272 @@
-async function telaCronograma(idObra) { //29
+function toDateInputValue(data) {
+    const ano = data.getFullYear()
+    const mes = String(data.getMonth() + 1).padStart(2, '0')
+    const dia = String(data.getDate()).padStart(2, '0')
+    return `${ano}-${mes}-${dia}`
+}
 
-    const obra = await recuperarDado('dados_obras', idObra) || {}
-    const cliente = await recuperarDado('dados_clientes', obra?.cliente) || {}
+function parseDateLocal(valor) {
+    if (!valor)
+        return new Date()
 
-    titulo.textContent = 'Cronograma'
+    const [ano, mes, dia] = valor.split('-').map(Number)
+    return new Date(ano, mes - 1, dia, 12, 0, 0)
+}
 
-    function pMin(hhmm) {
-        if (!hhmm) return 0
-        const [h, m] = hhmm.split(':').map(Number)
-        return (h * 60) + (m || 0)
+function cloneDate(data) {
+    return new Date(data.getFullYear(), data.getMonth(), data.getDate(), 12, 0, 0)
+}
+
+function addDays(data, dias) {
+    const d = cloneDate(data)
+    d.setDate(d.getDate() + dias)
+    return d
+}
+
+function isWeekend(data) {
+    const dia = data.getDay()
+    return dia === 0 || dia === 6
+}
+
+function nextBusinessDay(data) {
+    let d = cloneDate(data)
+
+    do {
+        d = addDays(d, 1)
+    } while (isWeekend(d))
+
+    return d
+}
+
+function advanceBusinessDays(data, qtd) {
+    let d = cloneDate(data)
+    let restantes = qtd
+
+    while (restantes > 0) {
+        d = addDays(d, 1)
+
+        if (!isWeekend(d))
+            restantes--
     }
 
-    function avancarDiasUteis(data, dias) {
-        const d = new Date(data)
-        while (dias > 0) {
-            d.setDate(d.getDate() + 1)
-            const dia = d.getDay()
-            if (dia !== 0 && dia !== 6) dias--
-        }
-        return d
-    }
+    return d
+}
 
-    const colunas = [
-        'Ação', 'Zonas', 'Especialidades', 'Descrição do Serviço', 'Medida',
-        'Quantidade', 'Tempo (hh:mm)',
-        'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'
+function startOfWeekMonday(data) {
+    const d = cloneDate(data)
+    const day = d.getDay()
+    const diff = day === 0 ? -6 : 1 - day
+    d.setDate(d.getDate() + diff)
+    return d
+}
+
+function getWeekDates(data) {
+    const inicio = startOfWeekMonday(data)
+    return Array.from({ length: 7 }, (_, i) => addDays(inicio, i))
+}
+
+function formatarDataBR(data) {
+    return data.toLocaleDateString('pt-BR')
+}
+
+function formatarDiaMes(data) {
+    const dia = String(data.getDate()).padStart(2, '0')
+    const mes = String(data.getMonth() + 1).padStart(2, '0')
+    return `${dia}/${mes}`
+}
+
+function nomeDiaSemana(data) {
+    const nomes = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+    return nomes[data.getDay()]
+}
+
+function parseHHMM(texto = '00:00') {
+    const [hh = 0, mm = 0] = String(texto).split(':').map(Number)
+    return (hh * 60) + mm
+}
+
+function minutosParaHHMM(minutos = 0) {
+    const hh = Math.floor(minutos / 60)
+    const mm = minutos % 60
+    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+}
+
+function escapeHtml(texto = '') {
+    return String(texto)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;')
+}
+
+function corAtividade(indice) {
+    const cores = [
+        '#19dbe3',
+        '#24d8ff',
+        '#38e27b',
+        '#ffd84d',
+        '#ffb84d',
+        '#ff8a8a',
+        '#b998ff'
     ]
 
-    let duracaoTotal = 0
-    let linhasBase = []
+    return cores[indice % cores.length]
+}
+
+function montarCronogramaAtividades(resultados, dataInicio) {
+    let cursor = cloneDate(dataInicio)
+
+    if (isWeekend(cursor))
+        cursor = nextBusinessDay(addDays(cursor, -1))
+
+    const atividades = []
+
+    for (const item of resultados) {
+        const quantidade = Number(calcularQuantidadeTotal(item.dimensoes)?.quantidade || 0)
+        const duracaoMin = parseHHMM(item.duracao || '00:00')
+        const tempoTotalMin = duracaoMin * quantidade
+
+        if (!tempoTotalMin)
+            continue
+
+        const diasNecessarios = Math.max(1, Math.ceil(tempoTotalMin / 480))
+        const inicio = cloneDate(cursor)
+        const fim = advanceBusinessDays(inicio, diasNecessarios - 1)
+
+        atividades.push({
+            ...item,
+            quantidade,
+            duracaoMin,
+            tempoTotalMin,
+            tempoTotalHHMM: minutosParaHHMM(tempoTotalMin),
+            diasNecessarios,
+            inicio,
+            fim
+        })
+
+        cursor = nextBusinessDay(fim)
+    }
+
+    return atividades
+}
+
+function listarSemanas(inicio, fim) {
+    const semanas = []
+    let cursor = startOfWeekMonday(inicio)
+    const limite = startOfWeekMonday(fim)
+
+    while (cursor <= limite) {
+        semanas.push(getWeekDates(cursor))
+        cursor = addDays(cursor, 7)
+    }
+
+    return semanas
+}
+
+function atividadeOcupaDia(atividade, data) {
+    if (isWeekend(data))
+        return false
+
+    return data >= atividade.inicio && data <= atividade.fim
+}
+
+function renderTabelaSemana(atividades, semana, indiceSemana) {
+    const headerDias = semana.map(data => {
+        const fimDeSemana = isWeekend(data)
+
+        return `
+            <th style="
+                min-width: 84px;
+                background: ${fimDeSemana ? '#8c8c8c' : '#d92222'};
+                color: #fff;
+                text-align: center;
+            ">
+                <div>${nomeDiaSemana(data)}</div>
+                <div style="font-size: .85rem;">${formatarDiaMes(data)}</div>
+            </th>
+        `
+    }).join('')
+
+    const linhas = atividades.map((item, i) => {
+        const cor = corAtividade(i)
+
+        const dias = semana.map(data => {
+            const fimDeSemana = isWeekend(data)
+            const ocupado = atividadeOcupaDia(item, data)
+
+            let estilo = `
+                min-width: 84px;
+                height: 34px;
+                border: 1px solid #bdbdbd;
+                background: #fff;
+            `
+
+            if (fimDeSemana)
+                estilo += 'background: #9b9b9b;'
+
+            if (ocupado)
+                estilo += `background: ${cor};`
+
+            return `<td style="${estilo}"></td>`
+        }).join('')
+
+        return `
+            <tr>
+                <td>${escapeHtml(item.zona || item.ambiente || '')}</td>
+                <td>${escapeHtml(item.especialidade || '')}</td>
+                <td>${escapeHtml(item.descricao || '')}</td>
+                <td style="text-align:center;">${escapeHtml(item.medida || '')}</td>
+                <td style="text-align:center;">${item.quantidade}</td>
+                <td style="text-align:center;">${item.tempoTotalHHMM}</td>
+                <td style="text-align:center;">${formatarDataBR(item.inicio)}</td>
+                <td style="text-align:center;">${formatarDataBR(item.fim)}</td>
+                ${dias}
+            </tr>
+        `
+    }).join('')
+
+    return `
+        <table class="tabela-obras" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+            <thead>
+                <tr>
+                    <th colspan="9" style="background:#5b707f; color:#fff; text-align:left;">
+                        Semana ${indiceSemana + 1} - ${formatarDataBR(semana[0])} até ${formatarDataBR(semana[6])}
+                    </th>
+                    <th colspan="7" style="background:#5b707f;"></th>
+                </tr>
+                <tr>
+                    <th>Zonas</th>
+                    <th>Especialidades</th>
+                    <th>Descrição do Serviço</th>
+                    <th>Medida</th>
+                    <th>Quantidade</th>
+                    <th>Tempo (hh:mm)</th>
+                    <th>Início</th>
+                    <th>Fim</th>
+                    ${headerDias}
+                </tr>
+            </thead>
+            <tbody>
+                ${linhas}
+            </tbody>
+        </table>
+    `
+}
+
+async function renderCronogramaObra(idObra) {
+    const obra = await recuperarDado('dados_obras', idObra) || {}
+    const { moradaExecucao, nome } = await recuperarDado('dados_clientes', obra?.cliente) || {}
+
+    const base = []
 
     for (const idOrcamento of (obra?.orcamentos_vinculados || [])) {
+        const { zonas } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
 
-        const orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
+        if (!zonas)
+            continue
 
-        const camposMesclados = Object.values(orcamento?.zonas || {})
+        const camposMesclados = Object.values(zonas || {})
             .flatMap(z =>
                 (z.campos || []).map(campo => ({
                     ...campo?.campo || {},
@@ -46,42 +278,31 @@ async function telaCronograma(idObra) { //29
                 }))
             )
 
-        for (const dados of camposMesclados) {
-
-            const { zona, duracao, especialidade, descricao, medida, dimensoes } = dados || {}
-            const { quantidade } = calcularQuantidadeTotal(dimensoes)
-            const minutos = pMin(duracao) * (quantidade || 0)
-            duracaoTotal += minutos
-
-            linhasBase.push({
-                zona,
-                especialidade: especialidade || '',
-                descricao: descricao || '',
-                medida: medida || '',
-                quantidade: quantidade,
-                duracao: calcularDuracao(quantidade, duracao)
-            })
-        }
-
+        base.push(...camposMesclados)
     }
 
-    console.log(linhasBase);
-    
+    const pesquisa = await pesquisarDB({
+        base,
+        substituicoes: [
+            {
+                path: 'id',
+                tabela: 'campos',
+                campoBusca: 'id',
+                retorno: 'duracao',
+                destino: 'duracao'
+            }
+        ]
+    })
 
-    const MINUTOS_DIA = 8 * 60
-    const DIAS_SEMANA = 5
+    const resultados = pesquisa?.resultados || []
+    const dataInicio = obra?.dtInicio ? parseDateLocal(obra.dtInicio) : new Date()
+    const atividades = montarCronogramaAtividades(resultados, dataInicio)
 
-    const diasUteis = Math.ceil(duracaoTotal / MINUTOS_DIA)
-    const semanas = Math.ceil(diasUteis / DIAS_SEMANA)
-
-    const dataInicial = obra?.dtInicio
-        ? new Date(obra.dtInicio + 'T00:00')
-        : new Date()
-
-    const dataFinal = avancarDiasUteis(dataInicial, diasUteis - 1)
-    const dataFinalConvertida = dataFinal
-        ? new Date(dataFinal).toLocaleDateString()
-        : ''
+    const totalDiasUteis = atividades.reduce((acc, item) => acc + item.diasNecessarios, 0)
+    const dataFim = atividades.length ? atividades.at(-1).fim : dataInicio
+    const semanas = atividades.length
+        ? listarSemanas(atividades[0].inicio, dataFim)
+        : [getWeekDates(dataInicio)]
 
     const tabInfos = `
         <table class="tabela-obras">
@@ -92,69 +313,37 @@ async function telaCronograma(idObra) { //29
                 </tr>
                 <tr>
                     <td style="background: #5b707f; color:#fff;">Cliente</td>
-                    <td style="background:#fff">${cliente?.nome || '--'}</td>
-                    <td rowspan="4" class="dias-uteis">${diasUteis || 0}</td>
+                    <td style="background:#fff">${escapeHtml(nome || '')}</td>
+                    <td rowspan="4" class="dias-uteis">${totalDiasUteis}</td>
                 </tr>
                 <tr>
                     <td style="background: #5b707f; color: #fff;">Morada de Execução</td>
-                    <td>${cliente?.moradaExecucao || '--'}</td>
+                    <td>${escapeHtml(moradaExecucao || '')}</td>
                 </tr>
                 <tr>
                     <td style="background: #5b707f; color: #fff;">Data de Início</td>
                     <td>
-                        <input type="date" id="dtInicio"
-                            value="${obra?.dtInicio || ''}"
+                        <input
+                            type="date"
+                            id="dtInicio"
+                            value="${obra?.dtInicio || toDateInputValue(new Date())}"
                             onchange="salvarDtInicio(this, '${idObra}')">
                     </td>
                 </tr>
                 <tr>
                     <td style="background: #5b707f; color: #fff;">Data de Fim Previsto</td>
-                    <td>${dataFinalConvertida}</td>
+                    <td>${formatarDataBR(dataFim)}</td>
                 </tr>
             </tbody>
         </table>
     `
 
-    let tabelas = ''
-    let cursor = new Date(dataInicial)
-
-    for (let s = 0; s < semanas; s++) {
-
-        let linhas = montarSemana(cursor)
-        for (const l of linhasBase) {
-            linhas += `
-                <tr>
-                    <td></td>
-                    <td>${l.zona}</td>
-                    <td>${l.especialidade}</td>
-                    <td>${l.descricao}</td>
-                    <td>${l.medida}</td>
-                    <td>${l.quantidade}</td>
-                    <td name="duracao">${l.duracao}</td>
-                    ${['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom']
-                    .map(d => `<td name="${d}"></td>`).join('')}
-                </tr>
-            `
-        }
-
-        tabelas += `
-            <h3>Semana de ${cursor.toLocaleDateString()}</h3>
-            <table class="tabela-obras">
-                <thead>
-                    <tr style="background: #5b707f;">
-                        ${colunas.map(c => `<th>${c}</th>`).join('')}
-                    </tr>
-                </thead>
-                <tbody>${linhas}</tbody>
-            </table>
-        `
-
-        cursor = avancarDiasUteis(cursor, 5)
-    }
+    const tabelas = semanas
+        .map((semana, i) => renderTabelaSemana(atividades, semana, i))
+        .join('')
 
     tela.innerHTML = `
         <div style="${horizontal}; gap: 2rem;">
-            <button>Gravar</button>
             <button style="background-color: red;" onclick="pdfObra('Cronograma')">PDF</button>
             <button onclick="verAndamento('${idObra}', true)">Voltar</button>
         </div>
@@ -166,81 +355,22 @@ async function telaCronograma(idObra) { //29
             </div>
         </div>
     `
-
-    pintarTabelas()
 }
 
-function montarSemana(data) {
-    const inicio = new Date(data)
-    const tdsFixos = `<td></td>`.repeat(7) // colunas fixas
-    let tdsDias = []
+async function telaCronograma(idObra) {
+    const obra = await recuperarDado('dados_obras', idObra) || {}
 
-    let d = new Date(inicio)
-    for (let i = 0; i < 7; i++) {
-        tdsDias.push(`<td>${d.toLocaleDateString('pt-BR')}</td>`)
-        d.setDate(d.getDate() + 1)
+    titulo.textContent = 'Cronograma'
+
+    if (!obra?.dtInicio) {
+        const hoje = toDateInputValue(new Date())
+        await enviar(`dados_obras/${idObra}/dtInicio`, hoje)
     }
 
-    return `<tr class="linha-semana">${tdsFixos}${tdsDias.join('')}</tr>`
+    await renderCronogramaObra(idObra)
 }
-
-function pintarTabelas() {
-
-    const MIN_DIA = 8 * 60
-    const diasValidos = ['seg', 'ter', 'qua', 'qui', 'sex']
-
-    const tabelas = [...document.querySelectorAll('.tabela-obras:not(:first-of-type)')]
-    if (!tabelas.length) return
-
-    const linhasBase = [...tabelas[0].querySelectorAll('tbody tr')]
-        .filter(tr => !tr.classList.contains('linha-semana'))
-
-    let cursorGlobal = 0 // cursor geral entre tabelas
-
-    linhasBase.forEach((linhaBase, indexLinha) => {
-
-        const duracaoEl = linhaBase.querySelector('[name="duracao"]')
-        if (!duracaoEl) return
-
-        const [h, m] = duracaoEl.textContent.split(':').map(Number)
-        let diasNecessarios = Math.ceil(((h * 60) + m) / MIN_DIA)
-
-        while (diasNecessarios > 0) {
-
-            const tabelaIndex = Math.floor(cursorGlobal / diasValidos.length)
-            const diaIndex = cursorGlobal % diasValidos.length
-
-            const tabela = tabelas[tabelaIndex]
-            if (!tabela) break
-
-            const linhas = [...tabela.querySelectorAll('tbody tr')]
-                .filter(tr => !tr.classList.contains('linha-semana'))
-
-            const linha = linhas[indexLinha]
-            if (!linha) break
-
-            const td = linha.querySelector(`[name="${diasValidos[diaIndex]}"]`)
-            if (td) td.style.background = '#00ffff'
-
-            cursorGlobal++
-            diasNecessarios--
-        }
-    })
-}
-
 
 async function salvarDtInicio(input, idObra) {
-
     await enviar(`dados_obras/${idObra}/dtInicio`, input.value)
-
-}
-
-function calcularDuracao(q = 0, d = '00:00') {
-    if (!d) return '00:00'
-    const [h, m] = d.split(':').map(Number)
-    const total = (h * 60 + m) * q
-    return [
-        String(Math.floor(total / 60)).padStart(2, '0'),
-        String(total % 60).padStart(2, '0')
-    ].join(':')
+    await renderCronogramaObra(idObra)
 }

@@ -30,6 +30,7 @@
 }
 
 .acompanhamento {
+    overflow-x: auto;
     display: flex;
     align-items: start;
     justify-content: start;

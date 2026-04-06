@@ -854,7 +854,7 @@ async function pdf(html, nome = 'documento') {
 
         const a = document.createElement('a')
         a.href = url
-        a.download = `${nome}.pdf`
+        a.download = `${nome}-${Date.now()}.pdf`
         a.click()
 
         URL.revokeObjectURL(url)
