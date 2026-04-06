@@ -101,6 +101,7 @@ html {
 }
 
 .layout {
+    height: 200vh;
     width: 100vw;
     display: flex
 }
@@ -1114,8 +1115,9 @@ input[type="file"] {
 }
 
 .capturar {
+    cursor: pointer;
     border-radius: 3px;
-    background-color: #b8b8b8;
+    background-color: #eaeaea;
     display: flex;
     align-items: center;
     justify-content: center;

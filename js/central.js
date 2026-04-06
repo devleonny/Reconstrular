@@ -976,9 +976,12 @@ async function abrirCamera() {
 
 function encerrarCam() {
 
-    if (stream) stream.getTracks().forEach(track => track.stop());
-    const cameraDiv = document.querySelector('.cameraDiv');
-    if (cameraDiv) cameraDiv.style.display = 'none'
+    if (stream) 
+        stream.getTracks().forEach(track => track.stop())
+    const cameraDiv = document.querySelector('.cameraDiv')
+
+    if (cameraDiv) 
+        cameraDiv.style.display = 'none'
 
 }
 
@@ -1485,7 +1488,7 @@ async function blocoAuxiliarFotos(fotos) {
     if (fotos) {
 
         const imagens = Object.entries(fotos)
-            .map(([link, foto]) => `<img name="foto" data-salvo="sim" id="${link}" src="${api}/uploads/${servidor}/${link}" class="foto" onclick="ampliarImagem(this, '${link}')">`)
+            .map(([link,]) => `<img name="foto" data-salvo="sim" id="${link}" src="${api}/uploads/${servidor}/${link}" class="foto" onclick="ampliarImagem(this, '${link}')">`)
             .join('')
 
         const painel = `
@@ -1504,7 +1507,7 @@ async function blocoAuxiliarFotos(fotos) {
         const elemento = `
             <div style="${vertical}; align-items: center; gap: 3px; background-color: #d2d2d2;">
                 <div class="capturar" style="position: fixed; bottom: 10px; left: 10px; z-index: 10003;" onclick="fotoTarefa()">
-                    <img src="imagens/camera.png" class="olho">
+                    <img src="imagens/camera.png">
                     <span>Capturar Imagem</span>
                 </div>
 
@@ -1523,7 +1526,9 @@ async function blocoAuxiliarFotos(fotos) {
 function visibilidadeFotos() {
     const fotos = document.querySelector('.fotos')
     const qtd = fotos.querySelectorAll('img')
-    fotos.style.display = qtd.length == 0 ? 'none' : 'grid'
+    fotos.style.display = qtd.length == 0
+        ? 'none'
+        : 'grid'
 }
 
 async function fotoTarefa() {
@@ -1540,6 +1545,8 @@ async function fotoTarefa() {
     const idFoto = ID5digitos()
     const foto = `<img name="foto" id="${idFoto}" src="${canvas.toDataURL('image/png')}" class="foto" onclick="ampliarImagem(this, '${idFoto}')">`
     fotos.insertAdjacentHTML('beforeend', foto)
+
+    encerrarCam()
 
     removerPopup()
     visibilidadeFotos()

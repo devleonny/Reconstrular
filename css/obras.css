@@ -36,8 +36,6 @@
     flex-direction: column;
     padding: 1rem;
     background-color: white;
-    overflow: auto;
-    height: 80vh;
     width: 100%;
 }
 

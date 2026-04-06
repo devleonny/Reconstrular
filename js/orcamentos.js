@@ -1,9 +1,4 @@
 const voltarOrcamentos = `<button onclick="telaOrcamentos()">Voltar</button>`
-let campos = {}
-let idOrcamento = null
-let zona1 = null
-let indiceZona = 0
-let finalizado = 'N'
 
 const ambientes = {
     'Quarto': [
@@ -74,8 +69,8 @@ async function telaOrcamentos() {
         <div class="painel-despesas">
             <br>
             ${btn('orcamentos', 'Dados de Orçamento', 'formularioOrcamento()')}
-            ${btn('todos', 'Orçamentos em Aberto', `finalizado = 'N'; orcamentos()`)}
-            ${btn('todos', 'Orçamentos Finalizados', `finalizado = 'S'; orcamentos()`)}
+            ${btn('todos', 'Orçamentos em Aberto', `orcamentos('N')`)}
+            ${btn('todos', 'Orçamentos Finalizados', `orcamentos('S')`)}
         </div>
     `
 
@@ -83,17 +78,17 @@ async function telaOrcamentos() {
 
 }
 
-async function orcamentos() {
+async function orcamentos(finalizado) {
 
     telaAtiva = 'orçamentos'
-
-    zona1 = null
-    indiceZona = 0
 
     const tabela = await modTab({
         btnExtras: voltarOrcamentos,
         base: 'dados_orcamentos',
         pag: 'orcamentos',
+        filtros: {
+            'finalizado': { op: '=', value: finalizado }
+        },
         body: 'bodyOrcamentos',
         criarLinha: 'criarLinhaOrcamento',
         colunas: {
@@ -631,80 +626,6 @@ async function atualizarMedidas() {
             }
         }
     }
-
-}
-
-async function salvarExecucao() {
-    const trs = document.querySelectorAll('#body tr')
-    if (!trs.length) return
-
-    let orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
-    if (!orcamento || !zona1) return
-    orcamento.zonas ??= {}
-
-    const itensZona = {}
-
-    for (const tr of trs) {
-
-        const el = (campo) => tr.querySelector(`[name="${campo}"]`) || { value: '', textContent: '' }
-
-        const especialidade = el('especialidade').value
-        const descricao = el('campo').value
-        const campo = el('campo').selectedOptions?.[0]?.id || ''
-        const descricaoExtra = el('descricaoExtra').value
-        const medida = el('medida').textContent
-        const unidades = Number(el('unidades').textContent)
-        const metroLinear = Number(el('metroLinear').textContent)
-        const comprimento = Number(el('comprimento').textContent)
-        const largura = Number(el('largura').textContent)
-        const altura = Number(el('altura').textContent)
-
-        let quantidade = 0
-        if (medida == 'und' || medida == 'ml') quantidade = unidades || metroLinear
-        if (medida == 'm2' || medida == 'm3') quantidade = (altura || 1) * (largura || 1) * (comprimento || 1)
-
-        const campoRef = campos[campo] || {}
-        const unitario = campoRef?.total || 0
-        const total = quantidade * unitario
-
-        // atualiza a tabela
-        el('quantidade').textContent = quantidade
-        el('unitario').textContent = dinheiro(unitario)
-        el('total').textContent = dinheiro(total)
-        el('edicao').innerHTML = campo ? `<img onclick="composicoes('${campo}')" src="imagens/lapis.png">` : ''
-
-        // monta objeto para salvar depois
-        itensZona[tr.id] = {
-            campo,
-            mao_obra: campoRef?.mao_obra,
-            materiais: campoRef?.materiais,
-            ferramentas: campoRef?.ferramentas,
-            especialidade,
-            descricao,
-            descricaoExtra,
-            medida,
-            unidades,
-            metroLinear,
-            comprimento,
-            largura,
-            altura,
-            quantidade,
-            unitario
-        }
-    }
-
-    // salva toda a zona de uma vez
-    orcamento.zonas[zona1] = itensZona
-
-    await enviar(`dados_orcamentos/${idOrcamento}/zonas/${zona1}`, itensZona)
-
-    // recalcula total geral
-    const total_geral = Object.values(orcamento.zonas).reduce((total, zona) => {
-        return total + Object.values(zona).reduce((soma, item) => soma + (Number(item.quantidade) || 0) * (Number(item.unitario) || 0), 0)
-    }, 0)
-
-    if (total_geral !== orcamento.total_geral)
-        await enviar(`dados_orcamentos/${idOrcamento}/total_geral`, total_geral)
 
 }
 

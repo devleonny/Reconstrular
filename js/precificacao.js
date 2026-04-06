@@ -350,7 +350,7 @@ async function salvarMargem(tabela) {
 async function composicoes(id, tP) {
 
     idCampo = id
-    const campo = campos[id]
+    const campo = await recuperarDado('campos', id) || {}
 
     const modeloTabela = (tipoTabela) => {
 
@@ -361,7 +361,7 @@ async function composicoes(id, tP) {
         return `
             <div id="${tipoTabela}" class="blocoTabela" style="display: none;">
                 <div class="painelBotoes">
-                    <span class="total-composicao">${dinheiro(campo[`subtotal_${tipoTabela}`])}</span>
+                    <span class="total-composicao">${dinheiro(campo?.[`subtotal_${tipoTabela}`])}</span>
                 </div>
                 <div class="recorteTabela">
                     <table class="tabela">
