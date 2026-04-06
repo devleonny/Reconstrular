@@ -224,9 +224,9 @@ async function formularioOrcamento(idOrcamento) {
         colunas: {
             'Nome': { chave: 'nome' },
             'Morada Fiscal': { chave: 'moradaFiscal' },
-            'Distrito': {},
-            'Zona': {},
-            'Cidade': {}
+            'Distrito': { chave: 'snapshots.cidade.distrito' },
+            'Zona': { chave: 'snapshots.cidade.zona' },
+            'Cidade': { chave: 'snapshots.cidade.nome' }
         }
     }
 
@@ -295,10 +295,12 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
 
 async function execucoes(id, ambienteOuIndice = 0) {
 
+    overlayAguarde()
+
     // Salvamento do anterior;
     if (controles?.execucoes?.ambiente) {
-        const zona = controles?.execucoes?.base || {}
-        await enviar(`dados_orcamentos/${id}/zonas/${controles?.execucoes?.ambiente}`, zona)
+        const campos = controles?.execucoes?.base || []
+        await enviar(`dados_orcamentos/${id}/zonas/${controles?.execucoes?.ambiente}/campos`, campos)
     }
 
     const { zonas = {} } = await recuperarDado('dados_orcamentos', id) || {}
@@ -327,6 +329,7 @@ async function execucoes(id, ambienteOuIndice = 0) {
         indice = listaZonas.length - 1
 
     const ambienteAtual = listaZonas[indice] || {}
+
     const campos = ambienteAtual.campos || []
 
     const colunas = {
@@ -347,6 +350,7 @@ async function execucoes(id, ambienteOuIndice = 0) {
 
     const pag = 'execucoes'
     const tabela = await modTab({
+        btnExtras: `<span class="titulo-execucoes">${ambienteAtual.zona}</span>`,
         colunas,
         funcaoAdicional: ['atualizarMedidas'],
         pag,
@@ -407,6 +411,8 @@ async function execucoes(id, ambienteOuIndice = 0) {
 
     tela.innerHTML = acumulado
     await paginacao(pag)
+
+    removerOverlay()
 }
 
 async function incluirLinha() {
@@ -954,11 +960,10 @@ async function listagem(idOrcamento, tabela) {
 
 async function orcamentoFinal(idOrcamento, emJanela) {
 
-    const orcamento = await recuperarDado('dados_orcamentos', idOrcamento)
-    const idCliente = orcamento?.cliente || ''
-    const cliente = await recuperarDado('dados_clientes', idCliente) || {}
+    const { zonas, dataContato, dataVisita, cliente } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
+    const { nome, numeroContribuinte, email, telefone, moradaFiscal, moradaExecucao } = await recuperarDado('dados_clientes', cliente) || {}
 
-    let total = 0
+    let totalGeral = 0
 
     const dt = (data) => {
         if (!data) return '-'
@@ -968,14 +973,14 @@ async function orcamentoFinal(idOrcamento, emJanela) {
 
     const dados = {
         'Selecionar Zonas': 'TOTAL (s/iva)',
-        'Nome': cliente?.nome || '',
-        'Morada Fiscal': cliente?.moradaFiscal || '',
-        'Morada de Execução': cliente?.moradaExecucao || '',
-        'Nif': cliente?.numeroContribuinte || '',
-        'E-mail': cliente?.email || '',
-        'Contacto': cliente?.telefone || '',
-        'Data contacto': dt(orcamento?.dataContato),
-        'Data de visita': dt(orcamento?.dataVisita),
+        'Nome': nome || '',
+        'Morada Fiscal': moradaFiscal || '',
+        'Morada de Execução': moradaExecucao || '',
+        'Nif': numeroContribuinte || '',
+        'E-mail': email || '',
+        'Contacto': telefone || '',
+        'Data contacto': dt(dataContato),
+        'Data de visita': dt(dataVisita),
         'Dias Úteis Estimados': ''
     }
 
@@ -1019,40 +1024,45 @@ async function orcamentoFinal(idOrcamento, emJanela) {
         .map(col => `<th>${col}</th>`)
         .join('')
 
-    let itens = ''
-    for (const [zona, especialidades] of Object.entries(orcamento?.zonas || {})) {
-        for (const [idLancamento, dados] of Object.entries(especialidades)) {
+    const camposMesclados = Object.values(zonas)
+        .flatMap(z =>
+            (z.campos || []).map(campo => ({
+                ...campo?.campo || {},
+                dimensoes: campo.dimensoes,
+                idCampo: campo.id,
+                descricaoExtra: campo.descricaoExtra,
+                ambiente: z.ambiente,
+                zona: z.zona
+            }))
+        )
 
-            const dadosCampoEspecifico = campos?.[dados?.campo] || {}
-            const quantidade = dados?.quantidade || 0
-            const totalComposicao = dadosCampoEspecifico?.total || 0
-            const totalLinha = totalComposicao * quantidade
+    const itens = []
 
-            total += totalLinha
+    for (const campo of camposMesclados) {
 
-            itens += `
-                <tr>
-                    <td>
-                        <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
-                            <img data-controle="editar" name="editaveis" onclick="execucoes('${idOrcamento}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">
-                            <span>${zona}</span>
-                        </div>
-                    </td>
-                    <td>${dados?.especialidade || '...'}</td>
-                    <td>${dados?.descricao || '...'}</td>
-                    <td>
-                        <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
-                            <img data-controle="editar" name="editaveis" name="editaveis" onclick="editarDescricaoExtra('${idOrcamento}', '${idLancamento}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">
-                            <span>${dados?.descricaoExtra || '...'}</span>
-                        </div>
-                    </td>
-                    <td>${dados?.medida || ''}</td>
-                    <td>${quantidade}</td>
-                    <td>${dinheiro(totalLinha)}</td>
-                </tr>
-            `
-        }
+        const { quantidade, zona, idCampo, total, medida, descricaoExtra, especialidade, descricao } = campo || {}
+        const totalLinha = total * quantidade
+
+        totalGeral += totalLinha
+
+        itens.push(`
+            <tr>
+                <td>
+                    <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
+                        <img onclick="execucoes('${idOrcamento}', '${zona}')" src="imagens/lapis.png" style="width: 1.5rem;">
+                        <span>${zona}</span>
+                    </div>
+                </td>
+                <td>${especialidade || ''}</td>
+                <td>${descricao || ''}</td>
+                <td>${descricaoExtra || ''}</td>
+                <td>${medida || ''}</td>
+                <td>${quantidade}</td>
+                <td>${dinheiro(totalLinha)}</td>
+            </tr>
+        `)
     }
+
 
     const elemento = `
         <div class="tela-orcamento">
@@ -1079,7 +1089,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
 
                 <table class="tabela-orcamento-2">
                     <thead>${colunas}</thead>
-                    <tbody>${itens}</tbody>
+                    <tbody>${itens.join('')}</tbody>
                 </table>
             </div>
         </div>
@@ -1092,7 +1102,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
         tela.innerHTML = elemento
     }
 
-    document.querySelector('.total-valor').textContent = dinheiro(total)
+    document.querySelector('.total-valor').textContent = dinheiro(totalGeral)
 
 }
 
@@ -1274,31 +1284,13 @@ function esconderEditaveis(gatilho) {
 
 }
 
-async function editarDescricaoExtra(idOrcamento, idLancamento, zona) {
-
-    const orcamento = dados_orcamentos[idOrcamento]
-
-    const linhas = [{
-        texto: 'Descrição extra',
-        elemento: `
-            <textarea id="descricaoExtra">${orcamento.zonas?.[zona]?.[idLancamento]?.descricaoExtra || ''}</textarea>
-        `}
-    ]
-
-    const botoes = [
-        { texto: 'Salvar', img: 'concluido', funcao: `salvarDescricao('${idOrcamento}', '${idLancamento}', '${zona}')` }
-    ]
-
-    popup({ linhas, botoes, nra: false })
-}
-
-async function salvarDescricao(idOrcamento, idLancamento, zona) {
+async function salvarDescricao(idOrcamento, idCampo, zona) {
 
     overlayAguarde()
 
     const descricaoExtra = document.getElementById('descricaoExtra')
 
-    await enviar(`dados_orcamentos/${idOrcamento}/zonas/${zona}/${idLancamento}/descricaoExtra`, descricaoExtra.value)
+    await enviar(`dados_orcamentos/${idOrcamento}/zonas/${zona}/campos/${idCampo}/campo/descricaoExtra`, descricaoExtra.value)
 
     await orcamentoFinal(idOrcamento)
 
