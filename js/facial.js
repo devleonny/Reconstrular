@@ -200,7 +200,7 @@ async function baterPonto() {
 async function enviarPonto() {
     try {
         overlayAguarde()
-        const data = new Date().toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' })
+        const data = new Date().toLocaleString()
         const response = await fetch(`${api}/ponto`, {
             method: 'POST',
             headers: {
@@ -213,14 +213,21 @@ async function enviarPonto() {
         if (resposta.mensagem)
             return popup({ mensagem: resposta.mensagem })
 
-        const elemento = `
-            <div class="ticketPonto">
-                <span>${usuarioAtual.nome}</span>
-                <span><strong>${data}</strong></span>
-                <span>Realizado</span>
-            </div>
-        `
-        popup({ elemento, titulo: 'Marcação realizada' })
+
+        const linhas = [
+            {
+                texto: 'Marcação realizada!',
+                elemento: `
+                    <div class="ticketPonto">
+                        <span>${usuarioAtual.nome}</span>
+                        <span><b>${data}</b></span>
+                        <span>Realizado</span>
+                    </div>
+                `
+            }
+        ]
+
+        popup({ linhas, titulo: 'Marcação realizada' })
 
     } catch (err) {
         popup({ mensagem: `Erro na API: ${err}` })
