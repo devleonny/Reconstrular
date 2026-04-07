@@ -1,18 +1,17 @@
 
 async function painelChat() {
 
-    const menus = `
-    <div class="menu-chat-superior">
+    const btnExtras = `
         <div style="${horizontal}; gap: 5px;">
             <input type="checkbox" onclick="marcarTodos(this)">
             <span style="color: white;">Marcar todos</span>
         </div>
         <button onclick="confirmarArquivamento()">Arquivar mensagens</button>
         <button onclick="">Marcar como lida</button>
-    </div>
     `
     const pag = 'mensagens'
     const tabela = await modTab({
+        btnExtras,
         base: 'mensagens',
         body: 'bodyMensagens',
         ordenar: {
@@ -26,19 +25,7 @@ async function painelChat() {
         criarLinha: 'criarDivMensagem'
     })
 
-    const acumulado = `
-        <div style="${vertical}; gap: 2px;">
-
-            ${menus}
-
-            <div class="tela-inferior-mensagens">
-                <div class="mensagens-funcao"></div>
-                ${tabela}
-            </div>
-        </div>
-    `
-
-    tela.innerHTML = acumulado
+    tela.innerHTML = tabela
 
     await paginacao(pag)
 
@@ -99,7 +86,7 @@ async function abrirMensagem(idMensagem) {
         },
         {
             texto: 'Assunto',
-            elemento: `<textarea>${assunto || ''}</textarea>`
+            elemento: `<textarea readOnly>${assunto || ''}</textarea>`
         },
         {
             texto: 'Mensagem',
