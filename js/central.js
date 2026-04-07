@@ -483,15 +483,8 @@ async function telaNiveis() {
 
     const colunas = {
         'Função': {},
-        'Regras': {},
-        'Colaboradores': {},
-        'Obras': {},
-        'Clientes': {},
-        'Despesas': {},
-        'Parceiros': {},
-        'Orçamentos': {},
-        'Configurações': {},
-        'Registo de Ponto': {}
+        'Pode Cadastrar': {},
+        'Regras': {}
     }
 
     const btnExtras = `<button data-controle="inserir" onclick="adicionarFuncao()">Adicionar Função</button>`
@@ -502,6 +495,15 @@ async function telaNiveis() {
         pag: 'funcoes',
         body: 'funcoes',
         criarLinha: 'criarLinhaFuncao',
+        substituicoes: [
+            {
+                path: 'cadastro.*.id',
+                tabela: 'funcoes',
+                campoBusca: 'id',
+                retorno: 'nome',
+                destino: 'cadastro.*.nome'
+            }
+        ],
         btnExtras
     })
 
@@ -512,50 +514,21 @@ async function telaNiveis() {
 
 function criarLinhaFuncao(dados) {
 
-    const { id } = dados || {}
+    const { id, cadastro } = dados || {}
 
-    // Esquemas (2)
-    const colunas = ['colaboradores', 'obras', 'clientes', 'despesas', 'parceiros', 'orçamentos', 'configurações', 'registro_de_ponto']
-    const opcoes = [
-        '',
-        '✅ Total acesso',
-        '🟢 Permissão Parcial (Apaga, insere e edita)',
-        '👁️ Visualizador',
-        '✏️ Pode Editar/Inserir',
-        '❌ Sem acesso'
-    ]
-
-    // Lançamentos
-    const tdsExtras = colunas
-        .map(col => `
-            <td>
-                <img src="imagens/pesquisar.png" onclick="esquemaPermissoes()">
-            </td>`)
-        .join('')
-
+    const funcoes = Object.values(cadastro || {})
+        .map(funcao => `• ${funcao?.nome}`)
+        .filter(Boolean)
 
     const tds = `
         <td>${dados?.nome || ''}</td>
+        <td style="text-align: left; white-space: pre-wrap;">${funcoes.join('\n')}</td>
         <td>
             <img onclick="adicionarFuncao('${id}')" src="imagens/pesquisar.png">
         </td>
-        ${tdsExtras}
     `
 
     return `<tr>${tds}</tr>`
-
-}
-
-async function esquemaPermissoes() {
-
-    const acumulado = `
-        <div style="${vertical}; padding:  1rem;">
-            
-
-        </div>
-    `
-
-    popup(acumulado, 'Esquema de Permissão', true)
 
 }
 
@@ -577,44 +550,67 @@ async function atualizarRegra(select, coluna, idFuncao) {
 
 async function adicionarFuncao(idFuncao) {
 
-    const funcao = funcoes?.[idFuncao] || {}
-
-    const opcoes = Object.entries(funcoes)
-        .map(([id, f]) => {
-            if (id == idFuncao) return ''
-            return `
-            <div style="${horizontal}; gap: 5px;">
-                <input name="funcoes" type="checkbox" id="${id}" ${funcao?.regras?.includes(id) ? 'checked' : ''}>
-                <span>${f.nome}</span>
-            </div>
-            `
-        })
-        .join('')
+    const { nome, cadastro } = await recuperarDado('funcoes', idFuncao) || {}
 
     const linhas = [
-        { texto: 'Função', elemento: `<textarea name="nomeFuncao" placeholder="Nome da Função">${funcao.nome || ''}</textarea>` },
+        {
+            texto: 'Função',
+            elemento: `<textarea name="nomeFuncao" placeholder="Nome da Função">${nome || ''}</textarea>`
+        },
         {
             texto: 'Poderá cadastrar',
-            elemento: `<div style="${vertical}; gap: 2px;">${opcoes}</div>`
+            elemento: `
+                <img src="imagens/baixar.png" onclick="maisFuncao()">
+                <div style="${vertical}; gap: 2px;" id="divFuncao"></div>
+            `
         }
     ]
 
     const botoes = [
-        { funcao: idFuncao ? `salvarFuncao('${idFuncao}')` : 'salvarFuncao()', img: 'concluido', texto: 'Salvar' }
+        {
+            funcao: idFuncao
+                ? `salvarFuncao('${idFuncao}')`
+                : 'salvarFuncao()',
+            img: 'concluido',
+            texto: 'Salvar'
+        }
     ]
 
-    if (idFuncao) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExcluirFuncao('${idFuncao}')` })
+    if (idFuncao)
+        botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExcluirFuncao('${idFuncao}')` })
 
-    const titulo = idFuncao ? 'Editar Função' : 'Adicionar Função'
+    const titulo = idFuncao
+        ? 'Editar Função'
+        : 'Adicionar Função'
+
     popup({ linhas, botoes, titulo })
+
+    for (const f of (cadastro || []))
+        await maisFuncao(f.id)
 
 }
 
-async function excluirFuncao(idFuncao) {
+async function maisFuncao(idFuncao) {
 
-    overlayAguarde()
+    const { nome } = await recuperarDado('funcoes', idFuncao) || {}
 
-    await deletar(`funcoes/${idFuncao}`)
+    const idName = crypto.randomUUID()
+    controlesCxOpcoes[idName] = {
+        base: 'funcoes',
+        retornar: ['nome'],
+        colunas: {
+            nome: { chave: 'nome' }
+        }
+    }
+
+    const span = `
+        <div style="${horizontal}; gap: 1rem;">
+            <img src="imagens/cancel.png" style="width: 1.5rem;" onclick="this.parentElement.remove()">
+            <span ${idFuncao ? `id="${idFuncao}"` : ''} name="${idName}" class="opcoes" onclick="cxOpcoes('${idName}')">${nome || 'Selecione'}</span>
+        </div>
+    `
+
+    document.getElementById('divFuncao').insertAdjacentHTML('beforeend', span)
 
 }
 
@@ -628,21 +624,29 @@ async function confirmarExcluirFuncao(idFuncao) {
 
 }
 
+async function excluirFuncao(idFuncao) {
+
+    overlayAguarde()
+
+    await deletar(`funcoes/${idFuncao}`)
+
+}
+
 async function salvarFuncao(idFuncao = crypto.randomUUID()) {
 
     overlayAguarde()
 
     const funcao = await recuperarDado('funcoes', idFuncao) || {}
     const nomeFuncao = document.querySelector('[name="nomeFuncao"]')
+    const funcoes = [...document.querySelectorAll('#divFuncao span')]
+        .filter(span => span.id)
+        .map(span => {
+            return { id: span.id }
+        })
+
 
     funcao.nome = nomeFuncao.value
-    funcao.regras = []
-
-    const inputs = document.querySelectorAll('[name="funcoes"]:checked')
-
-    for (const input of inputs) {
-        funcao.regras.push(input.id)
-    }
+    funcao.cadastro = funcoes
 
     await enviar(`funcoes/${idFuncao}`, funcao)
     removerPopup()

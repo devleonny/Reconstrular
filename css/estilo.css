@@ -1,15 +1,16 @@
 body,
 html {
+    zoom: 1;
     background: linear-gradient(45deg, #323639, #5b707f);
     font-family: 'Poppins', sans-serif;
     min-height: 100vh;
-    padding: 0;
+    width: 100%;
     margin: 0;
-    font-size: 0.9rem;
     display: flex;
-    flex-direction: column;
+    justify-content: start;
     align-items: center;
-    min-height: 100vh;
+    flex-direction: column;
+    font-size: 0.9rem;
 }
 
 .titulo-pagina {
@@ -25,20 +26,19 @@ html {
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    background-color: #222222;
+    background-color: #222222ec;
     width: 100%;
-    position: fixed;
-    left: 0;
+    position: sticky;
     top: 0;
 }
 
 .cabecalho-usuario {
+
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 10px;
     padding: 5px;
-    border-radius: 15px;
 }
 
 .cabecalho-usuario img {
@@ -78,7 +78,7 @@ html {
 
 .tela {
     flex-direction: column;
-    margin: 4rem 1rem 1rem 1rem;
+    padding: 1rem;
     justify-content: start;
     align-items: start;
     display: flex;
@@ -101,22 +101,22 @@ html {
 }
 
 .layout {
-    height: 100vh;
-    width: 100vw;
+    width: 100%;
     display: flex
 }
 
 .side-menu {
+    padding-top: 3rem;
     z-index: 999;
-    padding-top: 4rem;
     display: flex;
     flex-direction: column;
     width: 0;
-    height: 100vh;
     overflow-y: auto;
     transition: 0.3s;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    background-color: #222222ec;
+    min-height: 100vh;
 }
 
 .side-menu::-webkit-scrollbar {
@@ -289,13 +289,20 @@ img {
 }
 
 .nomeUsuario {
-    margin-bottom: 0.5rem;
-    padding: 5px;
-    width: 100%;
     display: flex;
     align-items: center;
     justify-content: start;
+    width: 100%;
+    margin-bottom: 5px;
+    margin-top: 5px;
+}
+
+.nomeUsuario span {
+    padding: 5px;
+    width: 80%;
     background-color: #5b707f;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
     color: white;
 }
 
