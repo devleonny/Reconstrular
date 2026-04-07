@@ -131,8 +131,10 @@ async function comunicacao() {
             if (validado == 'Sim') {
 
                 msgStatus('Acesso sem alterações')
-                if (priExe)
+                if (priExe) {
+                    priExe = false
                     await telaPrincipal()
+                }
 
             } else {
 

@@ -7,7 +7,6 @@ let telaInterna = null
 let emAtualizacao = false
 let acesso = {}
 let telaAtiva = null
-let priExec = true
 let tela = null
 let toolbar = null
 let titulo = null
@@ -278,11 +277,21 @@ function overlayAguarde() {
     const aguarde = document.querySelector('.aguarde')
     if (aguarde) aguarde.remove()
 
-    document.body.insertAdjacentHTML('beforeend', `
+    const elemento = `
         <div class="aguarde">
+            <div class="div-mensagem"></div>
             <img src="gifs/loading.gif">
         </div>
-    `)
+    `
+    document.body.insertAdjacentHTML('beforeend', elemento)
+
+    let pageHeight = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight
+    );
+
+    document.querySelector('.aguarde').style.height = `${pageHeight}px`;
+
 }
 
 function balaoUsuario(st, texto) {
@@ -319,7 +328,6 @@ async function telaPrincipal() {
 
     atribuirVariaveis()
 
-    priExec = false
     toolbar.style.display = 'flex'
     menus.style.display = 'flex'
     acesso = JSON.parse(localStorage.getItem('acesso'))
@@ -458,8 +466,8 @@ function telaConfiguracoes() {
     const acumulado = `
         <div class="painel-despesas">
             <br>
-            ${btn('preco', 'Configuração da Tarefas', `desativado = 'N'; telaPrecos()`)}
-            ${btn('preco_neg', 'Tarefas Desativadas', `desativado = 'S'; telaPrecos()`)}
+            ${btn('preco', 'Configuração da Tarefas', `telaPrecos()`)}
+            ${btn('preco_neg', 'Tarefas Desativadas', `telaPrecos()`)}
         </div>
     `
 
@@ -472,9 +480,12 @@ async function telaNiveis() {
     titulo.textContent = 'Níveis de acesso'
 
     const colunas = {
-        'Função': {},
+        'Função': { chave: 'nome' },
         'Pode Cadastrar': {},
-        'Regras': {}
+        'Zonas': {},
+        'Distritos': {},
+        'Áreas': {},
+        'Edição': {}
     }
 
     const btnExtras = `<button data-controle="inserir" onclick="adicionarFuncao()">Adicionar Função</button>`
@@ -487,11 +498,11 @@ async function telaNiveis() {
         criarLinha: 'criarLinhaFuncao',
         substituicoes: [
             {
-                path: 'cadastro.*.id',
+                path: 'funcao.*.id',
                 tabela: 'funcoes',
                 campoBusca: 'id',
                 retorno: 'nome',
-                destino: 'cadastro.*.nome'
+                destino: 'funcao.*.nome'
             }
         ],
         btnExtras
@@ -504,15 +515,24 @@ async function telaNiveis() {
 
 function criarLinhaFuncao(dados) {
 
-    const { id, cadastro } = dados || {}
+    const { id } = dados || {}
 
-    const funcoes = Object.values(cadastro || {})
-        .map(funcao => `• ${funcao?.nome}`)
-        .filter(Boolean)
+    const tdsExtras = []
+    const regras = ['funcao', 'zona', 'distrito', 'area']
+
+    for (const regra of regras) {
+
+        const lista = dados?.[regra] || []
+        const td = []
+        for (const item of lista)
+            td.push(`• ${item?.nome || item?.id}`)
+
+        tdsExtras.push(`<td style="text-align: left; white-space: pre-wrap;">${td.join('\n')}</td>`)
+    }
 
     const tds = `
         <td>${dados?.nome || ''}</td>
-        <td style="text-align: left; white-space: pre-wrap;">${funcoes.join('\n')}</td>
+        ${tdsExtras.join('')}
         <td>
             <img onclick="adicionarFuncao('${id}')" src="imagens/pesquisar.png">
         </td>
@@ -522,39 +542,38 @@ function criarLinhaFuncao(dados) {
 
 }
 
-async function alterarFiltro(input, idFuncao, coluna, chave) {
-
-    const valor = input.checked
-        ? 'S'
-        : 'N'
-
-    await enviar(`funcoes/${idFuncao}/${coluna}/filtros/${chave}`, valor)
-
-}
-
-async function atualizarRegra(select, coluna, idFuncao) {
-
-    await enviar(`funcoes/${idFuncao}/${coluna}/regra`, select.value)
-
-}
-
 async function adicionarFuncao(idFuncao) {
 
-    const { nome, cadastro } = await recuperarDado('funcoes', idFuncao) || {}
+    overlayAguarde()
+    const funcao = await recuperarDado('funcoes', idFuncao) || {}
+
+    const campos = [
+        { span: 'Função', param: 'funcao' },
+        { span: 'Zonas', param: 'zona' },
+        { span: 'Distrito', param: 'distrito' },
+        { span: 'Áreas', param: 'area' },
+    ]
 
     const linhas = [
         {
             texto: 'Função',
-            elemento: `<textarea name="nomeFuncao" placeholder="Nome da Função">${nome || ''}</textarea>`
-        },
-        {
-            texto: 'Poderá cadastrar',
-            elemento: `
-                <img src="imagens/baixar.png" onclick="maisFuncao()">
-                <div style="${vertical}; gap: 2px;" id="divFuncao"></div>
-            `
+            elemento: `<textarea name="nomeFuncao" placeholder="Nome da Função">${funcao?.nome || ''}</textarea>`
         }
     ]
+
+    campos.forEach(({ span, param }) =>
+        linhas.push({
+            elemento: `
+            <div style="${vertical}; gap: 2px;">
+                <div class="campos-botoes">
+                    <img src="imagens/baixar.png" onclick="maisCampo('${param}')">
+                    <span>${span}</span>
+                </div>
+                <div class="campos-niveis" id="div_${param}"></div> 
+            </div>
+            `
+        })
+    )
 
     const botoes = [
         {
@@ -575,18 +594,57 @@ async function adicionarFuncao(idFuncao) {
 
     popup({ linhas, botoes, titulo })
 
-    for (const f of (cadastro || []))
-        await maisFuncao(f.id)
+    const regras = ['funcao', 'area', 'zona', 'distrito']
+
+    for (const regra of regras) {
+
+        const lista = funcao?.[regra] || []
+
+        for (const item of lista)
+            await maisCampo(regra, item.id)
+    }
 
 }
 
-async function maisFuncao(idFuncao) {
+async function maisCampo(base = null, id = null) {
 
-    const { nome } = await recuperarDado('funcoes', idFuncao) || {}
-
+    let termo = 'Selecione'
     const idName = crypto.randomUUID()
+
+    // Antes da ref base mudar;
+    const local = document.getElementById(`div_${base}`)
+
+    if (base == 'funcao') {
+
+        const { nome } = await recuperarDado('funcoes', id) || {}
+        base = 'funcoes'
+        termo = nome
+
+    } else {
+
+        // Caso das bases;
+        if (id)
+            termo = id
+
+        const campos = await contarPorCampo({
+            base: 'cidades',
+            path: base
+        })
+
+        base = Object
+            .keys(campos || {})
+            .filter(c => c !== 'todos')
+            .map(c => {
+                return {
+                    id: c,
+                    nome: c
+                }
+            })
+
+    }
+
     controlesCxOpcoes[idName] = {
-        base: 'funcoes',
+        base,
         retornar: ['nome'],
         colunas: {
             nome: { chave: 'nome' }
@@ -596,13 +654,16 @@ async function maisFuncao(idFuncao) {
     const span = `
         <div style="${horizontal}; gap: 1rem;">
             <img src="imagens/cancel.png" style="width: 1.5rem;" onclick="this.parentElement.remove()">
-            <span ${idFuncao ? `id="${idFuncao}"` : ''} name="${idName}" class="opcoes" onclick="cxOpcoes('${idName}')">${nome || 'Selecione'}</span>
+            <span ${id ? `id="${id}"` : ''} name="${idName}" class="opcoes" onclick="cxOpcoes('${idName}')">${termo || 'Selecione'}</span>
         </div>
     `
 
-    document.getElementById('divFuncao').insertAdjacentHTML('beforeend', span)
+    if (local)
+        local.insertAdjacentHTML('beforeend', span)
+
 
 }
+
 
 async function confirmarExcluirFuncao(idFuncao) {
 
@@ -628,15 +689,21 @@ async function salvarFuncao(idFuncao = crypto.randomUUID()) {
 
     const funcao = await recuperarDado('funcoes', idFuncao) || {}
     const nomeFuncao = document.querySelector('[name="nomeFuncao"]')
-    const funcoes = [...document.querySelectorAll('#divFuncao span')]
-        .filter(span => span.id)
-        .map(span => {
-            return { id: span.id }
-        })
 
+    // Campos extras;
+    const campos = ['funcao', 'zona', 'distrito', 'area']
+
+    campos.forEach(campo => {
+        funcao[campo] ??= []
+        funcao[campo] = [...document.querySelectorAll(`#div_${campo} span`)]
+            .filter(span => span.id)
+            .map(span => {
+                return { id: span.id }
+            })
+
+    })
 
     funcao.nome = nomeFuncao.value
-    funcao.cadastro = funcoes
 
     await enviar(`funcoes/${idFuncao}`, funcao)
     removerPopup()

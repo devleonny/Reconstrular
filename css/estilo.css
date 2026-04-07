@@ -157,6 +157,26 @@ img {
     width: 7rem;
 }
 
+.campos-niveis {
+    gap: 5px;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+    width: 100%;
+}
+
+.campos-botoes {
+    padding: 5px 1rem;
+    background-color: #f7c5c5;
+    border: solid 1px #ffb5b5;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
 .cabecalho-clientes {
     display: flex;
     align-items: center;
@@ -945,7 +965,7 @@ input[type="file"] {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0, 0, 0, 0.3);
     z-index: 9999;
     pointer-events: all;
 }
@@ -956,8 +976,15 @@ input[type="file"] {
 }
 
 @keyframes fade {
-    from { opacity: 0; transform: scale(0.8); }
-    to { opacity: 1; transform: scale(1); }
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 .pesquisa {
