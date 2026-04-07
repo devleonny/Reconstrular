@@ -49,6 +49,24 @@ html {
     font-size: 0.8rem;
 }
 
+.labelQuantidade {
+    cursor: pointer;
+    top: -6px;
+    background: crimson;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 999px;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    min-height: 16px;
+    line-height: 1;
+}
+
 .toolbar-interno {
     color: white;
     display: flex;
@@ -922,19 +940,24 @@ input[type="file"] {
 }
 
 .aguarde {
+    position: fixed;
+    inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: rgba(0, 0, 0, 0.7);
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    z-index: 10005;
+    background: rgba(0,0,0,0.3);
+    z-index: 9999;
+    pointer-events: all;
 }
 
 .aguarde img {
     width: 35vw;
+    animation: fade 0.3s ease;
+}
+
+@keyframes fade {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 .pesquisa {

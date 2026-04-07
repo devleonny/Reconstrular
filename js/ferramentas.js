@@ -140,7 +140,7 @@ async function carregarControles() {
 
     const barraStatus = `
             <div id="divUsuarios"></div>
-            ${modelo('chat', 'painelChat()', 'msg')}
+            ${modelo('chat', 'painelChat()', 'contadorMensagens')}
             ${permitidosAprovacoes.includes(acesso.permissao) ? modelo('construcao', 'configs()', '') : ''}
         `
     const cabecalhoUsuario = document.querySelector('.cabecalho-usuario')
@@ -148,6 +148,7 @@ async function carregarControles() {
         cabecalhoUsuario.innerHTML = barraStatus
 
     await usuariosToolbar()
+    await verificarMensagens()
 
 }
 

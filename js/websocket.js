@@ -162,6 +162,9 @@ async function comunicacao() {
                 await paginacao(pag)
             }
 
+            if (tabela == 'mensagens')
+                await verificarMensagens()
+
             if (tabela == 'dados_setores') {
                 const { usuario, permissao, empresa, timestamp = 0 } = JSON.parse(localStorage.getItem('acesso')) || {}
                 const us = await recuperarDado('dados_setores', usuario)

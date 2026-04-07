@@ -79,7 +79,7 @@ function criarDivMensagem(m) {
     return `
     <tr>
         <td>
-            <div name="linha" data-lido="${lido == 'S' ? 'S' : 'N'}" class="m-sagem-${lido || 'N'}">
+            <div name="linha" data-lido="${lido == 'S' ? 'S' : 'N'}" class="m-sagem-${lido == 'S' ? 'S' : 'N'}">
                 ${div}
             </div>
         </td>
@@ -112,6 +112,8 @@ async function abrirMensagem(idMensagem) {
     if (lido !== 'S')
         await enviar(`mensagens/${idMensagem}/lido`, 'S')
 
+    await verificarMensagens()
+
 }
 
 function balaoMensagem(destinatario) {
@@ -142,7 +144,7 @@ async function enviarMensagem(destinatario) {
 
     overlayAguarde()
 
-    const msg = document.querySelector('[name="mensagem"]')
+    const msg = document.querySelector('#mensagem')
     if (!msg.value)
         return removerPopup()
 
@@ -154,6 +156,7 @@ async function enviarMensagem(destinatario) {
     const id = crypto.randomUUID()
     const m = {
         id,
+        lido: 'N',
         destinatario,
         assunto,
         remetente: acesso.usuario,
@@ -226,5 +229,30 @@ async function arquivarMensagens(operacao) {
         console.log(erro)
         return popup({ mensagem: 'Falha ao arquivar mensagens, tente novamente mais tarde.' })
     }
+
+}
+
+async function verificarMensagens() {
+
+    if (!navigator.onLine)
+        return
+
+    const dados = await pesquisarDB({
+        base: 'mensagens',
+        filtros: {
+            'destinatario': { op: '=', value: acesso.usuario },
+            'lido': { op: '=', value: 'N' }
+        }
+    })
+
+    const contador = document.getElementById('contadorMensagens')
+    if (!contador)
+        return
+
+    contador.style.display = dados.total > 0
+        ? 'flex'
+        : 'none'
+
+    contador.textContent = dados.total
 
 }

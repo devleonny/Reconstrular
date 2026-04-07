@@ -278,21 +278,11 @@ function overlayAguarde() {
     const aguarde = document.querySelector('.aguarde')
     if (aguarde) aguarde.remove()
 
-    const elemento = `
+    document.body.insertAdjacentHTML('beforeend', `
         <div class="aguarde">
-            <div class="div-mensagem"></div>
             <img src="gifs/loading.gif">
         </div>
-    `
-    document.body.insertAdjacentHTML('beforeend', elemento)
-
-    let pageHeight = Math.max(
-        document.body.scrollHeight,
-        document.documentElement.scrollHeight
-    );
-
-    document.querySelector('.aguarde').style.height = `${pageHeight}px`;
-
+    `)
 }
 
 function balaoUsuario(st, texto) {
