@@ -85,7 +85,7 @@ async function mostrarFolha(idColaborador) {
         </div>
     `
 
-    telaInterna.innerHTML = acumulado
+    tela.innerHTML = acumulado
 
     const obVal = (name) => {
         const el = document.querySelector(`[name="${name}"]`)
@@ -209,9 +209,6 @@ async function criarFolha(idColaborador) {
     obVal('Horas Estimadas Dias Úteis').textContent = `${horasDiarias * diasUteis}:00`
 
     body.innerHTML = trs
-
-    // Regras de validação;
-    validarRegrasAcesso()
 
 }
 

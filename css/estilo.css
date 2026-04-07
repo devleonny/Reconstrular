@@ -101,7 +101,7 @@ html {
 }
 
 .layout {
-    height: 200vh;
+    height: 100vh;
     width: 100vw;
     display: flex
 }
@@ -351,6 +351,7 @@ img {
 }
 
 .baixa-medica {
+    display: inline-block;
     padding-left: 1vw;
     padding-right: 1vw;
     border: solid 1px #0011ac;
@@ -359,6 +360,7 @@ img {
 }
 
 .impedido {
+    display: inline-block;
     padding-left: 1vw;
     padding-right: 1vw;
     border: solid 1px #ff9100;

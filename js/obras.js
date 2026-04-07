@@ -59,7 +59,7 @@ async function criarLinhaObras(obra) {
         materialOrcado,
         maoObraOrcado,
         materialReal
-    } = calcularTotaisOrcamentos(id, obra)
+    } = await calcularTotaisOrcamentos(id, obra)
 
     tds = `
         <td>${nomeCliente || ''}</td>
@@ -114,33 +114,19 @@ async function calcularTotaisOrcamentos(idObra, obra) {
         totais.materialReal += (despesa?.valor || 0)
     }
 
-    const vinculados = obra.orcamentos_vinculados || {}
 
-    for (const idOrcamento of Object.keys(vinculados)) {
+    for (const idOrcamento of (obra?.orcamentos_vinculados || [])) {
 
-        const orc = await recuperarDado('dados_orcamentos', idOrcamento)
-        if (!orc)
+        const { custos } = await recuperarDado('dados_orcamentos', idOrcamento)
+        if (!custos)
             continue
 
-        const zonas = orc.zonas || {}
+        const {materiais, ferramentas, mao_obra} = custos || {}
 
-        for (const zona of Object.values(zonas)) {
-            for (const campo of Object.values(zona)) {
+        totais.materialOrcado += materiais || 0
+        totais.ferramentas += ferramentas || 0
+        totais.maoObraOrcado += mao_obra || 0
 
-                if (campo.materiais) {
-                    for (const item of Object.values(campo.materiais)) {
-                        totais.materialOrcado += (Number(item.qtde) || 0) * (Number(item.preco) || 0)
-                    }
-                }
-
-                if (campo.mao_obra) {
-                    for (const item of Object.values(campo.mao_obra)) {
-                        totais.maoObraOrcado += (Number(item.qtde) || 0) * (Number(item.preco) || 0)
-                    }
-                }
-
-            }
-        }
     }
 
     return totais

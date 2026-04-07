@@ -262,6 +262,7 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
                 const ambiente = select.dataset.ambiente
                 const zona = select.value
                 const zonaAtual = orcamento?.zonas?.[ambiente] || {}
+
                 return [ambiente, { zona, ambiente, ...zonaAtual }]
             })
     )
@@ -300,6 +301,7 @@ async function execucoes(id, ambienteOuIndice = 0) {
 
     // Salvamento do anterior;
     if (controles?.execucoes?.ambiente) {
+
         const campos = controles?.execucoes?.base || []
         await enviar(`dados_orcamentos/${id}/zonas/${controles?.execucoes?.ambiente}/campos`, campos)
     }
@@ -437,12 +439,31 @@ function proximaRevisao(revisoes = {}) {
 async function alterarFinalizacao(id, status) {
 
     overlayAguarde()
-    await enviar(`dados_orcamentos/${id}/finalizado`, status)
 
     const orcamento = await recuperarDado('dados_orcamentos', id) || {}
+    orcamento.custos ??= {
+        mao_obra: 0,
+        ferramentas: 0,
+        materiais: 0
+    }
+    
     orcamento.finalizado = status
 
     if (status == 'S') {
+
+        // Povoar o custo deste item;
+        const camposMesclados = Object.values(orcamento?.zonas || {})
+            .flatMap(z =>
+                (z.campos || []).map(campo => ({ ...campo?.campo }))
+            )
+
+        for (const item of camposMesclados) {
+            console.log(item);
+
+            orcamento.custos.mao_obra += item?.total_mao_obra || 0
+            orcamento.custos.ferramentas += item?.total_ferramentas || 0
+            orcamento.custos.materiais += item?.total_materiais || 0
+        }
 
         orcamento.revisoes ??= {}
 
@@ -458,9 +479,8 @@ async function alterarFinalizacao(id, status) {
         }
 
         orcamento.versao = R
+        await enviar(`dados_orcamentos/${id}`, orcamento)
 
-        await enviar(`dados_orcamentos/${id}/revisoes/${R}`, orcamento.revisoes[R])
-        await enviar(`dados_orcamentos/${id}/versao`, R)
     }
 
     await telaOrcamentos()

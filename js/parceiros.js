@@ -10,13 +10,14 @@ const el = (name) => {
 async function telaUsuarios() {
 
     telaAtiva = 'parceiros'
+    titulo.textContent = 'Parceiros'
 
     const colunas = {
         'Nome Completo': { chave: 'nome_completo' },
         'Telefone': { chave: 'telefone' },
         'Email': { chave: 'email' },
-        'Função': { chave: 'snapshots.funcao' },
-        'Zona': { chave: 'zona' },
+        'Função': { chave: 'snapshots.funcao', tipoPesquisa: 'select' },
+        'Zona': { chave: 'snapshots.cidade.zona', tipoPesquisa: 'select' },
         'Distrito': { chave: 'snapshots.cidade.distrito', tipoPesquisa: 'select' },
         'Cidade': { chave: 'snapshots.cidade.nome', tipoPesquisa: 'select' },
         'Edição': {}
@@ -46,12 +47,12 @@ async function criarLinhaUsuarios(dados) {
         <td>${nome_completo || ''}</td>
         <td>${telefone || ''}</td>
         <td>${email || ''}</td>
-        <td name="funcao">${nome || ''}</td>
-        <td name="zona" data-cod="${nCidade?.zona}">${nCidade?.zona || ''}</td>
-        <td name="distrito">${nCidade?.distrito || ''}</td>
-        <td name="cidade" data-cod="${cidade}">${nCidade.nome || ''}</td>
+        <td>${nome || ''}</td>
+        <td>${nCidade?.zona || ''}</td>
+        <td>${nCidade?.distrito || ''}</td>
+        <td>${nCidade.nome || ''}</td>
         <td>
-            <img data-controle="editar" onclick="editarParceiros('${usuario}')" src="imagens/pesquisar.png">
+            <img onclick="editarParceiros('${usuario}')" src="imagens/pesquisar.png">
         </td>`
 
     return `<tr>${tds}</tr>`
@@ -118,6 +119,9 @@ async function editarParceiros(usuario) {
 
     popup({ linhas, botoes, titulo })
 
+    if (usuario == acesso.usuario)
+        popup({ mensagem: 'Ao alterar seu usuário o seu acesso será encerrado. (Fazer login novamente)' })
+
 }
 
 function confirmarDesativarUsuario(usuario) {
@@ -151,19 +155,21 @@ async function salvarParceiro(usuario) {
     if (!usuario || !cidade || !nome_completo || !email)
         return popup({ mensagem: 'Não deixe Usuário/Nome ou E-mail em branco' })
 
-    const parceiro = await recuperarDado('dados_setores', usuario) || {}
-
-    const novo = {
-        ...parceiro,
-        nome_completo,
-        funcao,
-        email,
-        telefone,
-        cidade
-    }
-
-    await enviar(`dados_setores/${usuario}`, novo)
+    await Promise.all([
+        configuracoes(usuario, 'nome_completo', nome_completo),
+        configuracoes(usuario, 'email', email),
+        configuracoes(usuario, 'telefone', telefone),
+        configuracoes(usuario, 'cidade', cidade),
+        configuracoes(usuario, 'funcao', funcao)
+    ])
 
     removerPopup()
 
+    if (usuario == acesso.usuario) {
+        popup({ mensagem: 'Cliente reiniciando em 5 segundos' })
+        setTimeout(() => {
+            location.reload()
+        }, 5000);
+
+    }
 }

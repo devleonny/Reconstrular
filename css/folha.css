@@ -1,5 +1,6 @@
 .contornoFolha {
-    margin: 1vw;
+    width: 100%;
+    margin: 5px;
     border: solid 1px #222;
 }
 
@@ -83,7 +84,6 @@
 }
 
 .tabelaPonto {
-    width: 90vw;
     overflow: auto;
 }
 

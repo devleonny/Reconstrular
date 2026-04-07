@@ -329,6 +329,7 @@ async function telaPrincipal() {
 
     atribuirVariaveis()
 
+    priExec = false
     toolbar.style.display = 'flex'
     menus.style.display = 'flex'
     acesso = JSON.parse(localStorage.getItem('acesso'))
@@ -354,8 +355,6 @@ async function telaPrincipal() {
     telaInicial()
 
     tela.classList.remove('login')
-
-    priExec = false
 
     await carregarControles()
 
@@ -480,156 +479,40 @@ function telaConfiguracoes() {
 
 async function telaNiveis() {
 
-    const nomeBase = 'funcoes'
-    const colunas = [
-        'Função',
-        'Regras',
-        'Colaboradores',
-        'Obras',
-        'Clientes',
-        'Despesas',
-        'Parceiros',
-        'Orçamentos',
-        'Configurações',
-        'Registo de Ponto'
-    ]
+    titulo.textContent = 'Níveis de acesso'
 
-    const btnExtras = `
-        <button data-controle="inserir" onclick="adicionarFuncao()">Adicionar Função</button>
-    `
-
-    const acumulado = modeloTabela({ colunas, nomeBase, btnExtras })
-
-    telaInterna.innerHTML = acumulado
-
-    funcoes = await recuperarDados('funcoes')
-
-    for (const [idFuncao, dados] of Object.entries(funcoes || {})) {
-        criarLinhaFuncao(idFuncao, dados)
+    const colunas = {
+        'Função': {},
+        'Regras': {},
+        'Colaboradores': {},
+        'Obras': {},
+        'Clientes': {},
+        'Despesas': {},
+        'Parceiros': {},
+        'Orçamentos': {},
+        'Configurações': {},
+        'Registo de Ponto': {}
     }
 
+    const btnExtras = `<button data-controle="inserir" onclick="adicionarFuncao()">Adicionar Função</button>`
+
+    const tabela = await modTab({
+        base: 'funcoes',
+        colunas,
+        pag: 'funcoes',
+        body: 'funcoes',
+        criarLinha: 'criarLinhaFuncao',
+        btnExtras
+    })
+
+    tela.innerHTML = tabela
+
+    await paginacao()
 }
 
-function validarRegrasAcesso() {
+function criarLinhaFuncao(dados) {
 
-    const coluna = telaAtiva
-    const permissao = funcoes?.[acesso.funcao]?.[coluna]
-    const [uCidade, uZona, uDistrito] = [acesso.cidade, acesso.zona, acesso.distrito]
-
-    if (!permissao) return
-
-    const { regra, filtros = {} } = permissao
-    const trs = document.querySelectorAll('tr')
-
-    for (const tr of trs) {
-
-        const cidade = tr.querySelector('[name="cidade"]')?.dataset?.cod
-        const distrito = tr.querySelector('[name="distrito"]')?.dataset?.cod
-        const zona = tr.querySelector('[name="zona"]')?.dataset?.cod
-
-        let permitir = false
-
-        // regra base
-        switch (regra) {
-            case '✅ Total acesso':
-            case '🟢 Permissão Parcial (Apaga, insere e edita)':
-            case '✏️ Pode Editar/Inserir':
-            case '👁️ Visualizador':
-                permitir = true
-                break
-            default:
-                permitir = false
-        }
-
-        // filtros hierárquicos
-        if (permitir && filtros.zona === 'S' && zona && zona !== uZona) {
-            permitir = false
-        }
-
-        if (permitir && filtros.distrito === 'S' && distrito && distrito !== uDistrito) {
-            permitir = false
-        }
-
-        if (permitir && filtros.cidade === 'S' && cidade && cidade !== uCidade) {
-            permitir = false
-        }
-
-        if (!permitir) tr.remove()
-    }
-
-    validarControlesAcesso()
-}
-
-function validarControlesAcesso() {
-
-    // Tela Ativa precisa ser chamada em cada tela;
-    const coluna = telaAtiva
-    const permissao = funcoes?.[acesso.funcao]?.[coluna]
-
-    if (!permissao) return
-
-    const { regra } = permissao
-
-    const controles = document.querySelectorAll('[data-controle]')
-
-    for (const el of controles) {
-
-        const acao = el.dataset.controle // inserir | editar | apagar
-        let permitir = false
-
-        switch (regra) {
-
-            case '✅ Total acesso':
-            case '🟢 Permissão Parcial (Apaga, insere e edita)':
-                permitir = true
-                break
-
-            case '✏️ Pode Editar/Inserir':
-                permitir = acao === 'inserir' || acao === 'editar'
-                break
-
-            case '👁️ Visualizador':
-            case '❌ Sem acesso':
-            default:
-                permitir = false
-        }
-
-        el.style.display = permitir ? '' : 'none'
-    }
-}
-
-function criarLinhaFuncao(idFuncao, dados) {
-
-    let autorizados = ''
-    for (const id of dados?.regras || []) {
-        autorizados += `<span>• ${funcoes?.[id]?.nome || '...'}</span>`
-    }
-
-    const filtrosPorColuna = {
-        obras: ['distrito', 'cidade', 'zona', 'autorizado'],
-        clientes: ['distrito', 'cidade', 'zona', 'autorizado'],
-        despesas: ['zona', 'distrito'],
-        parceiros: ['zona', 'distrito'],
-        orcamentos: ['distrito', 'autorizado']
-    }
-
-    // Modelo   
-    function montarFiltros({ idFuncao, dados, coluna }) {
-
-        const filtros = filtrosPorColuna[coluna]
-        if (!filtros) return ''
-
-        return filtros.map(chave => `
-        <div style="${horizontal}; gap: 2px;">
-            <input
-                type="checkbox"
-                ${dados?.[coluna]?.filtros?.[chave] === 'S' ? 'checked' : ''}
-                onchange="alterarFiltro(this, '${idFuncao}', '${coluna}', '${chave}')"
-            >
-            <span>Apenas ${inicialMaiuscula(chave)}</span>
-        </div>
-    `).join('')
-    }
+    const { id } = dados || {}
 
     // Esquemas (2)
     const colunas = ['colaboradores', 'obras', 'clientes', 'despesas', 'parceiros', 'orçamentos', 'configurações', 'registro_de_ponto']
@@ -654,16 +537,12 @@ function criarLinhaFuncao(idFuncao, dados) {
     const tds = `
         <td>${dados?.nome || ''}</td>
         <td>
-            <img onclick="adicionarFuncao('${idFuncao}')" src="imagens/pesquisar.png">
+            <img onclick="adicionarFuncao('${id}')" src="imagens/pesquisar.png">
         </td>
         ${tdsExtras}
     `
 
-    const trExistente = document.getElementById(idFuncao)
-
-    if (trExistente) return trExistente.innerHTML = tds
-
-    document.getElementById('body').insertAdjacentHTML('beforeend', `<tr id="${idFuncao}">${tds}</tr>`)
+    return `<tr>${tds}</tr>`
 
 }
 
@@ -830,7 +709,10 @@ async function formularioEPI(idColaborador) {
     const senhas = (texto, limite) => `
         <div style="${vertical}; gap: 5px;">
             <label>${texto}</label>
-            <input type="password" ${limite ? `maxlenght="${limite}" id="pin" data-pin="${colaborador.pin}" placeholder="Limite de ${limite} dígitos"` : 'id="supervisor" placeholder="Senha de acesso ao App"'}>
+            <input type="password" ${limite
+            ? `maxlenght="${limite}" id="pin" data-pin="${colaborador?.pin}" placeholder="Limite de ${limite} dígitos"`
+            : 'id="supervisor" placeholder="Senha de acesso ao App"'
+        }>
         </div>
     `
 
@@ -976,11 +858,11 @@ async function abrirCamera() {
 
 function encerrarCam() {
 
-    if (stream) 
+    if (stream)
         stream.getTracks().forEach(track => track.stop())
     const cameraDiv = document.querySelector('.cameraDiv')
 
-    if (cameraDiv) 
+    if (cameraDiv)
         cameraDiv.style.display = 'none'
 
 }
