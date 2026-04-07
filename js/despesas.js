@@ -21,11 +21,9 @@ async function verificarDespesas() {
   telaAtiva = 'despesas'
 
   const btnExtras = `
-    <div style="${horizontal}; gap: 2px;">
-        <img onclick="htmlDespesas()" src="imagens/pdf.png">
-        <button data-controle="inserir" onclick="formularioDespesa()">Adicionar</button>
-        <button onclick="telaDespesas()">Voltar</button>
-    </div>
+      <button onclick="htmlDespesas()">PDF</button>
+      <button onclick="formularioDespesa()">Adicionar</button>
+      <button onclick="telaDespesas()">Voltar</button>
   `
 
   const tabela = await modTab({
