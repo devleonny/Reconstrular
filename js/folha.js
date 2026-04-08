@@ -228,23 +228,24 @@ async function registroHoras(img) {
 
     const colaborador = await recuperarDado('dados_colaboradores', idColaborador)
     let marcacoes = colaborador?.folha?.[ano]?.[mes]?.[dia] || ['00:00', '00:00']
-    if (marcacoes.lenght == 1) marcacoes.push('00:00')
+
+    if (marcacoes.lenght == 1)
+        marcacoes.push('00:00')
+
     const inputs = marcacoes.map(m => `<input name="horas" type="time" value="${m}">`).join('')
 
-    const elemento = `
-        <div style="background-color: #d2d2d2; min-width: 200px; ${vertical}; gap: 0.5rem; padding: 1rem;">
+    const linhas = [
+        {
+            texto: 'Marcações',
+            elemento: inputs
+        }
+    ]
 
-            <span>Marcações</span>
-            <hr>
-            <div style="${horizontal}; gap: 2rem;">
-                ${inputs}
-                <img onclick="salvarHoras('${idColaborador}')" src="imagens/concluido.png">
-            </div>
+    const botoes = [
+        { texto: 'Salvar', img: 'concluido', funcao: `salvarHoras('${idColaborador}')` }
+    ]
 
-        </div>
-    `
-
-    popup({ elemento, titulo: 'Edição de Horas' })
+    popup({ linhas, botoes, titulo: 'Edição de Horas' })
 }
 
 
@@ -346,7 +347,7 @@ async function gerarTodosPDFs(idColaborador, nome) {
 
         if (contentType.includes('application/json')) {
             const dados = await resposta.json()
- 
+
             if (dados.mensagem) {
                 removerOverlay()
                 return popup({ mensagem: dados.mensagem })
