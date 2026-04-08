@@ -848,11 +848,6 @@ button {
     justify-content: start;
 }
 
-.telaInterna {
-    width: 80vw;
-    padding: 1rem;
-}
-
 .popup-mensagem {
     display: flex;
     align-items: center;

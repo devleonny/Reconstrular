@@ -8,8 +8,6 @@ const equipamentosLinhas = {
     'protecaoAuditiva': { nome: 'Proteção auditiva', risco: '17' }
 }
 
-
-//abrirEPI('13aa2b64-fc40-4ef4-bd49-f4acfdd1d12d')
 async function abrirEPI(idColaborador) {
     removerPopup()
     const colaborador = await recuperarDado('dados_colaboradores', idColaborador)
@@ -165,5 +163,5 @@ async function abrirEPI(idColaborador) {
     </div>
     `
 
-    telaInterna.innerHTML = acumulado
+    tela.innerHTML = acumulado
 }

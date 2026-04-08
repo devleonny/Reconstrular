@@ -3,7 +3,6 @@ const vertical = `display: flex; align-items: start; justify-content: start; fle
 const api = `https://leonny.dev.br`
 const servidor = 'RECONST'
 let stream;
-let telaInterna = null
 let emAtualizacao = false
 let acesso = {}
 let telaAtiva = null
@@ -744,138 +743,6 @@ function visibilidade(input, value) {
     }
 }
 
-async function formularioEPI(idColaborador) {
-
-    const colaborador = await recuperarDado('dados_colaboradores', idColaborador)
-    const equipamentos = colaborador?.epi?.equipamentos || {}
-
-    const opcoes = (ini, fim, valorAtual) => {
-        let stringOpcoes = '<option></option>'
-        for (let i = ini; i <= fim; i++) stringOpcoes += `<option ${valorAtual == i ? 'selected' : ''}>${i}</option>`
-        return stringOpcoes
-    }
-
-    const senhas = (texto, limite) => `
-        <div style="${vertical}; gap: 5px;">
-            <label>${texto}</label>
-            <input type="password" ${limite
-            ? `maxlenght="${limite}" id="pin" data-pin="${colaborador?.pin}" placeholder="Limite de ${limite} dígitos"`
-            : 'id="supervisor" placeholder="Senha de acesso ao App"'
-        }>
-        </div>
-    `
-
-    const tr = (texto, value) => {
-
-        const equipamento = equipamentos[value] || false
-        const visibilidade = `style="display: ${equipamento ? '' : 'none'}"`
-        return `
-        <tr>
-            <td style="text-align: left;">${texto}</td>
-            <td>
-                <input onchange="visibilidade(this, '${value}')" 
-                type="checkbox" 
-                class="megaInput" 
-                value="${value}" 
-                name="camposEpi"
-                ${equipamentos[value] ? 'checked' : ''}>
-            </td>
-            <td><select ${visibilidade} name="${value}_quantidade">${opcoes(1, 10, equipamento?.quantidade)}</select></td>
-            <td><select ${visibilidade} name="${value}_tamanho">${opcoes(37, 47, equipamento?.tamanho)}</select></td>
-        </tr>
-    `}
-
-    const cab = ['Equipamento', '', 'Quantidade', 'Tamanho']
-        .map(op => `<th>${op}</th>`)
-        .join('')
-
-    const elemento = `
-        <div class="painel-cadastro">
-
-            <table>
-                <thead>${cab}</thead>
-                <tbody>
-                    ${tr('Botas de segurança com biqueira reforçada', 'botas')}
-                    ${tr('Capacete de proteção', 'capacete')}
-                    ${tr('Colete fluorescente', 'colete')}
-                    ${tr('Luvas (par)', 'luvas')}
-                    ${tr('Mascara com filtro de particulas', 'mascara')}
-                    ${tr('Óculos de protecção', 'oculos')}
-                    ${tr('Proteção auditiva', 'protecaoAuditiva')}
-                </tbory>
-            </table>
-            <br>
-
-            <div style="${horizontal}; justify-content: space-evenly; width: 100%;">
-                <div style="${vertical}">
-                    ${senhas('Pin Colaborador', 4)}
-                    ${senhas('Senha Supervisor')}
-                </div>
-                <button onclick="salvarEpi('${idColaborador}')">Inserir</button>
-            </div>
-
-        </div>
-    `
-
-    popup({ elemento, titulo: 'Formulário de EPI', nra: false })
-}
-
-async function salvarEpi(idColaborador) {
-
-    overlayAguarde()
-
-    const pinInput = document.getElementById('pin')
-
-    if (pinInput.dataset.pin !== pinInput.value)
-        return popup({ mensagem: 'Pin do colaborador não confere' })
-
-    let colaborador = await recuperarDado('dados_colaboradores', idColaborador)
-    const inputsAtivos = document.querySelectorAll('input[name="camposEpi"]:checked')
-    let epi = {
-        data: new Date().getTime(),
-        equipamentos: {}
-    }
-
-    for (const input of inputsAtivos) {
-        const campo = input.value
-        epi.equipamentos[campo] = {
-            quantidade: Number(document.querySelector(`[name="${campo}_quantidade"]`).value),
-            tamanho: Number(document.querySelector(`[name="${campo}_tamanho"]`).value)
-        }
-    }
-
-    colaborador.epi = epi
-
-    // Verificar acesso do supervisor
-    const senhaSupervisor = document.getElementById('supervisor')
-    const acesso = JSON.parse(localStorage.getItem('acesso'))
-    const resposta = await verificarSupervisor(acesso.usuario, senhaSupervisor.value)
-
-    if (resposta !== 'Senha válida')
-        return popup({ mensagem: resposta })
-
-    await enviar(`dados_colaboradores/${idColaborador}/epi`, epi)
-
-    await adicionarColaborador(idColaborador)
-
-    await enviarAlerta(idColaborador)
-
-}
-
-function infoObra(dados) {
-
-    const obra = dados_obras?.[dados.obra] || {}
-    let dadosObra = '<span>Sem Obra</span>'
-
-    if (!obra?.cidade) return dadosObra
-
-    const cliente = dados_clientes?.[obra?.cliente]
-    const cidade = cidades?.[obra?.cidade]
-    dadosObra = `<span>${cliente?.nome || '--'} / ${cidade?.distrito || '--'} / ${cidade?.nome || '--'}</span>`
-
-    return dadosObra
-}
-
 function dinheiro(valor) {
     if (!valor) return '€ 0,00';
 
@@ -938,52 +805,74 @@ async function tirarFoto() {
 
 }
 
+function marcarLinhaInvalida(elemento) {
+    if (!elemento) return
+
+    const linha = elemento.closest('.linha-padrao')
+    if (!linha) return
+
+    let alerta = linha.querySelector('.alerta-regra')
+
+    if (!alerta) {
+        alerta = document.createElement('img')
+        alerta.src = 'imagens/alerta.png'
+        alerta.className = 'alerta-regra'
+        alerta.setAttribute('data-alerta-regra', 'S')
+        linha.appendChild(alerta)
+    }
+}
+
+function removerLinhaInvalida(elemento) {
+    if (!elemento) return
+
+    const linha = elemento.closest('.linha-padrao')
+    if (!linha) return
+
+    linha.querySelector('.alerta-regra')?.remove()
+}
+
 function verificarRegras() {
-    // REGRAS
     const painel = document.querySelector('.painel-padrao')
     const input = (name) => painel.querySelector(`[name="${name}"]`)
     let liberado = true
 
     const limites = {
-        'nome': { tipo: 'A' },
-        'numeroContribuinte': { limite: 9, tipo: 1 },
-        'segurancaSocial': { limite: 11, tipo: 1 },
-        'pin': { limite: 4, tipo: 1 },
-        'pinEspelho': { limite: 4, tipo: 1 },
-        'telefone': { limite: 9, tipo: 1 },
+        nome: { tipo: 'A' },
+        numeroContribuinte: { limite: 9, tipo: 1 },
+        segurancaSocial: { limite: 11, tipo: 1 },
+        pin: { limite: 4, tipo: 1 },
+        pinEspelho: { limite: 4, tipo: 1 },
+        telefone: { limite: 9, tipo: 1 }
     }
 
-    //Aplicar regras
     for (let [name, regra] of Object.entries(limites)) {
         const campo = input(name)
-        if (!campo) continue;
+        if (!campo) continue
 
-        //Tipo
         if (regra.tipo === 1) {
-            campo.value = campo.value.replace(/\D/g, '');
+            campo.value = campo.value.replace(/\D/g, '')
         } else if (regra.tipo === 'A') {
-            campo.value = campo.value.replace(/[0-9]/g, '');
+            campo.value = campo.value.replace(/[0-9]/g, '')
         }
 
-        if (!regra.limite) continue
+        if (regra.limite) {
+            if (campo.value.length > regra.limite) {
+                campo.value = campo.value.slice(0, regra.limite)
+            }
 
-        //Limite
-        if (campo.value.length > regra.limite) {
-            campo.value = campo.value.slice(0, regra.limite);
+            regra.liberado = campo.value.length === regra.limite
+
+            if (regra.liberado) {
+                campo.classList.remove('invalido')
+                removerLinhaInvalida(campo)
+            } else {
+                campo.classList.add('invalido')
+                marcarLinhaInvalida(campo)
+                liberado = false
+            }
         }
-
-        //Limite === ao tamanho atual
-        regra.liberado = campo.value.length === regra.limite
-        if (regra.liberado) {
-            campo.classList.remove('invalido')
-        } else {
-            campo.classList.add('invalido')
-        }
-
-        if (!regra.liberado) liberado = false
     }
 
-    //Pins
     const pin = painel.querySelector('[name="pin"]')
     const pinEspelho = painel.querySelector('[name="pinEspelho"]')
     const rodapeAlerta = painel.querySelector('.rodape-alerta')
@@ -992,68 +881,82 @@ function verificarRegras() {
             <img src="imagens/${img}.png">
             <span>${msg}</span>
         </div>
-        `
+    `
 
     if (pin.value !== pinEspelho.value || pin.value == '') {
         rodapeAlerta.innerHTML = mensagem('cancel', 'Os Pins não são iguais')
         pin.classList.add('invalido')
         pinEspelho.classList.add('invalido')
+        marcarLinhaInvalida(pin)
+        marcarLinhaInvalida(pinEspelho)
+        liberado = false
     } else {
         pin.classList.remove('invalido')
         pinEspelho.classList.remove('invalido')
+        removerLinhaInvalida(pin)
+        removerLinhaInvalida(pinEspelho)
         rodapeAlerta.innerHTML = mensagem('concluido', 'Pins iguais')
     }
 
-    //Cidade
     const cidade = el('cidade')
     if (!cidade?.id) {
         cidade.classList.add('invalido')
+        marcarLinhaInvalida(cidade)
         liberado = false
     } else {
         cidade.classList.remove('invalido')
+        removerLinhaInvalida(cidade)
     }
 
-    //Campos Fixos
     const camposFixos = ['documento', 'especialidade', 'status']
     for (const campo of camposFixos) {
         const ativo = painel.querySelector(`input[name="${campo}"]:checked`)
         const bloco = painel.querySelector(`[name="${campo}_bloco"]`)
+
         if (!ativo) {
             bloco.classList.add('invalido')
+            marcarLinhaInvalida(bloco)
             liberado = false
         } else {
             bloco.classList.remove('invalido')
+            removerLinhaInvalida(bloco)
         }
     }
 
-    //Campos Flexíveis
     const camposFlex = ['nome', 'dataNascimento', 'email', 'morada', 'numeroDocumento', 'apolice']
     for (const campo of camposFlex) {
-        const el = input(campo)
-        if (el.value == '') {
-            el.classList.add('invalido')
+        const elCampo = input(campo)
+
+        if (elCampo.value == '') {
+            elCampo.classList.add('invalido')
+            marcarLinhaInvalida(elCampo)
             liberado = false
         } else {
-            el.classList.remove('invalido')
+            elCampo.classList.remove('invalido')
+            removerLinhaInvalida(elCampo)
         }
     }
 
-    //Documento
     const numeroDocumento = input('numeroDocumento')
     const docAtivo = painel.querySelector('input[name="documento"]:checked')
+
     if (docAtivo && docAtivo.value == 'Cartão de Cidadão') {
-        if (numeroDocumento.value.length > 8) numeroDocumento.value = numeroDocumento.value.slice(0, 8)
+        if (numeroDocumento.value.length > 8)
+            numeroDocumento.value = numeroDocumento.value.slice(0, 8)
+
         numeroDocumento.value = numeroDocumento.value.replace(/\D/g, '')
+
         if (numeroDocumento.value.length !== 8) {
             liberado = false
             numeroDocumento.classList.add('invalido')
+            marcarLinhaInvalida(numeroDocumento)
         } else {
             numeroDocumento.classList.remove('invalido')
+            removerLinhaInvalida(numeroDocumento)
         }
     }
 
     return liberado
-
 }
 
 function unicoID() {
@@ -1274,19 +1177,6 @@ function pesquisar(input, idTbody) {
             tr.style.display = 'none'; // oculta
         }
     });
-}
-
-async function enviarAlerta(idColaborador) {
-    const url = `${api}/enviar-alerta`
-    const resposta = await fetch(url, {
-        method: 'POST',
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idColaborador, servidor })
-    });
-
-    const dados = await resposta.json();
-
-    popup({ mensagem: dados.mensagem })
 }
 
 async function enviarExcel(idObra) {

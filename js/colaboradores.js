@@ -48,6 +48,7 @@ async function telaColaboradores() {
         'Status': { chave: 'status', tipoPesquisa: 'select' },
         'Especialidade': { chave: 'especialidade' },
         'Folha de Ponto': {},
+        'Ficha de EPI': {},
         'Editar': {}
     }
 
@@ -82,7 +83,7 @@ function labelStatus(st) {
 }
 async function criarLinhaColaboradores(colaborador) {
 
-    const { id, cidade } = colaborador || {}
+    const { id, cidade, epi } = colaborador || {}
 
     const dCidade = await recuperarDado('cidades', cidade) || {}
 
@@ -92,6 +93,11 @@ async function criarLinhaColaboradores(colaborador) {
         .join('')
 
     const estilo = labelStatus(colaborador?.status)
+
+    let qtdeEPIs = 0
+    Object.values(epi?.equipamentos || {}).forEach(e => {
+        qtdeEPIs += e.quantidade
+    })
 
     const tds = `
         <td>
@@ -114,6 +120,12 @@ async function criarLinhaColaboradores(colaborador) {
         </td>
         <td>
             <img src="imagens/relogio.png" onclick="mostrarFolha('${id}')">
+        </td>
+        <td>
+            <div style="${vertical};">
+                <img src="imagens/colaborador.png" onclick="formularioEPI('${id}')">
+                ${qtdeEPIs ? `<div class="labelQuantidade">${qtdeEPIs}</div>` : ''}
+            </div>
         </td>
         <td>
             <img src="imagens/pesquisar.png" data-controle="editar" onclick="adicionarColaborador('${id}')">
@@ -182,39 +194,6 @@ async function adicionarColaborador(id) {
         return `<div style="${vertical}">${anexoString}</div>`
     }
 
-    // EPI
-    let blocoEPI = `
-    <div style="${vertical}; margin-bottom: 1vw;">
-        <button onclick="formularioEPI('${id}')">Inserir EPI</button>
-    </div>
-    `
-    if (colaborador.epi) {
-
-        let camposEpi = ''
-        for (const [equipamento, dados] of Object.entries(colaborador?.epi?.equipamentos || {})) {
-            camposEpi += `
-                <div style="${vertical}; gap: 2px;">
-                    <span><strong>${equipamento.toUpperCase()}</strong></span>
-                    <span>• Quantidade: ${dados.quantidade}</span>
-                    <span>• Tamanho: ${dados.tamanho}</span>
-                </div>
-            `
-        }
-
-        blocoEPI += `
-        <div class="epis">
-            <div style="${horizontal}; justify-content: space-between; width: 100%;">
-                <div style="${vertical}">
-                    ${camposEpi}
-                </div>
-                <img src="imagens/pdf.png" onclick="abrirEPI('${id}')">
-            </div>
-            <hr style="width: 100%;">
-            <span>Inserido em: ${new Date(colaborador.epi.data).toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' })}</span>
-        </div>
-    `
-    }
-
     const cidade = await recuperarDado('cidades', colaborador?.cidade) || null
     const campoCidade = cidade
         ? `${cidade.nome}\n${cidade.distrito}`
@@ -239,31 +218,31 @@ async function adicionarColaborador(id) {
             texto: 'Cidade',
             elemento: `
                 <span class="opcoes" ${cidade ? `id="${colaborador.cidade}"` : ''} name="cidade" onclick="cxOpcoes('cidade')">${campoCidade}</span>`
-            },
-        { 
-            texto: 'Apólice de Seguro', 
-            elemento: `<input value="0010032495" name="apolice" placeholder="Número da Apólice" readOnly>` 
         },
-        { 
-            texto: 'Telefone', 
-            elemento: `<input ${regras} value="${colaborador?.telefone || ''}" name="telefone" placeholder="Telefone">` 
+        {
+            texto: 'Apólice de Seguro',
+            elemento: `<input value="0010032495" name="apolice" placeholder="Número da Apólice" readOnly>`
         },
-        { 
-            texto: 'E-mail', 
-            elemento: `<textarea ${regras} name="email" placeholder="E-mail">${colaborador?.email || ''}</textarea>` 
+        {
+            texto: 'Telefone',
+            elemento: `<input ${regras} value="${colaborador?.telefone || ''}" name="telefone" placeholder="Telefone">`
+        },
+        {
+            texto: 'E-mail',
+            elemento: `<textarea ${regras} name="email" placeholder="E-mail">${colaborador?.email || ''}</textarea>`
         },
         {
             texto: 'Obra Alocada',
             elemento: `<span name="obra" class="opcoes" onclick="cxOpcoes('obra')">Selecione</span>`
         },
         { texto: 'Documento', elemento: caixaDocumentos },
-        { 
-            texto: 'Número de Contribuinte', 
-            elemento: `<input ${regras} value="${colaborador?.numeroContribuinte || ''}" name="numeroContribuinte" placeholder="Máximo de 9 dígitos">` 
+        {
+            texto: 'Número de Contribuinte',
+            elemento: `<input ${regras} value="${colaborador?.numeroContribuinte || ''}" name="numeroContribuinte" placeholder="Máximo de 9 dígitos">`
         },
-        { 
-            texto: 'Segurança Social', 
-            elemento: `<input ${regras} value="${colaborador?.segurancaSocial || ''}" name="segurancaSocial" placeholder="Máximo de 11 dígitos">` 
+        {
+            texto: 'Segurança Social',
+            elemento: `<input ${regras} value="${colaborador?.segurancaSocial || ''}" name="segurancaSocial" placeholder="Máximo de 11 dígitos">`
         },
         { texto: 'Especialidade', elemento: caixaEspecialidades },
         { texto: 'Status', elemento: caixaStatus },
@@ -271,8 +250,6 @@ async function adicionarColaborador(id) {
         { texto: 'Anexos Contrato de Obra', elemento: divAnexos('contratoObra') },
         { texto: 'Exame médico', elemento: `<input name="exame" type="file">` },
         { texto: 'Anexos Exame', elemento: divAnexos('exame') },
-        // separador
-        { texto: 'Epi’s', elemento: blocoEPI },
 
         // foto
         {
@@ -285,8 +262,8 @@ async function adicionarColaborador(id) {
                     <video autoplay playsinline></video>
                     <canvas style="display: none;"></canvas>
                 </div>
-                <img name="foto" ${colaborador?.foto 
-                    ? `src="${api}/uploads/RECONST/${colaborador.foto}"` 
+                <img name="foto" ${colaborador?.foto
+                    ? `src="${api}/uploads/RECONST/${colaborador.foto}"`
                     : ''
                 } style="width: 7rem; border-radius: 3px;">
             </div>
@@ -339,7 +316,7 @@ async function excluirColaborador(id) {
 }
 
 async function salvarColaborador(idColaborador = crypto.randomUUID()) {
-    const liberado = verificarRegras();
+    const liberado = verificarRegras()
     if (!liberado)
         return popup({ mensagem: 'Verifique os campos inválidos!' })
 
@@ -526,4 +503,124 @@ async function gerarExcel(dados, nomeArquivo = 'arquivo.xlsx') {
     link.href = URL.createObjectURL(blob)
     link.download = nomeArquivo
     link.click()
+}
+
+async function formularioEPI(idColaborador) {
+
+    const colaborador = await recuperarDado('dados_colaboradores', idColaborador)
+    const equipamentos = colaborador?.epi?.equipamentos || {}
+
+    const opcoes = (ini, fim, valorAtual) => {
+        let stringOpcoes = '<option></option>'
+        for (let i = ini; i <= fim; i++) stringOpcoes += `<option ${valorAtual == i ? 'selected' : ''}>${i}</option>`
+        return stringOpcoes
+    }
+
+    const senhas = (texto, limite) => `
+        <div style="${vertical}; gap: 5px;">
+            <label>${texto}</label>
+            <input type="password" ${limite
+            ? `maxlenght="${limite}" id="pin" data-pin="${colaborador?.pin}" placeholder="Limite de ${limite} dígitos"`
+            : 'id="supervisor" placeholder="Senha de acesso ao App"'
+        }>
+        </div>
+    `
+
+    const tr = (texto, value) => {
+
+        const equipamento = equipamentos[value] || false
+        const visibilidade = `style="display: ${equipamento ? '' : 'none'}"`
+        return `
+        <tr>
+            <td style="text-align: left;">${texto}</td>
+            <td>
+                <input onchange="visibilidade(this, '${value}')" 
+                type="checkbox" 
+                class="megaInput" 
+                value="${value}" 
+                name="camposEpi"
+                ${equipamentos[value] ? 'checked' : ''}>
+            </td>
+            <td><select ${visibilidade} name="${value}_quantidade">${opcoes(1, 10, equipamento?.quantidade)}</select></td>
+            <td><select ${visibilidade} name="${value}_tamanho">${opcoes(37, 47, equipamento?.tamanho)}</select></td>
+        </tr>
+    `}
+
+    const cab = ['Equipamento', '', 'Quantidade', 'Tamanho']
+        .map(op => `<th>${op}</th>`)
+        .join('')
+
+    const linhas = [
+        {
+            elemento: `
+            <table class="tabela">
+                <thead style="position: static;">${cab}</thead>
+                <tbody>
+                    ${tr('Botas de segurança com biqueira reforçada', 'botas')}
+                    ${tr('Capacete de proteção', 'capacete')}
+                    ${tr('Colete fluorescente', 'colete')}
+                    ${tr('Luvas (par)', 'luvas')}
+                    ${tr('Mascara com filtro de particulas', 'mascara')}
+                    ${tr('Óculos de protecção', 'oculos')}
+                    ${tr('Proteção auditiva', 'protecaoAuditiva')}
+                </tbory>
+            </table>
+            `
+        },
+        {
+            texto: 'Pin Colaborador',
+            elemento: senhas('Pin Colaborador', 4)
+        },
+        {
+            texto: 'Senha Supervisor',
+            elemento: senhas('Senha Supervisor')
+        }
+    ]
+
+    const botoes = [
+        { texto: 'Salvar', img: 'concluido', funcao: `salvarEpi('${idColaborador}')"` },
+        { texto: 'PDF', img: 'pdf', funcao: `abrirEPI('${idColaborador}')"` }
+    ]
+
+    popup({ linhas, botoes, titulo: 'Formulário de EPI', nra: false })
+}
+
+async function salvarEpi(idColaborador) {
+
+    overlayAguarde()
+
+    const pinInput = document.getElementById('pin')
+
+    if (pinInput.dataset.pin !== pinInput.value)
+        return popup({ mensagem: 'Pin do colaborador não confere' })
+
+    let colaborador = await recuperarDado('dados_colaboradores', idColaborador)
+    const inputsAtivos = document.querySelectorAll('input[name="camposEpi"]:checked')
+    let epi = {
+        data: new Date().getTime(),
+        equipamentos: {}
+    }
+
+    for (const input of inputsAtivos) {
+        const campo = input.value
+        epi.equipamentos[campo] = {
+            quantidade: Number(document.querySelector(`[name="${campo}_quantidade"]`).value),
+            tamanho: Number(document.querySelector(`[name="${campo}_tamanho"]`).value)
+        }
+    }
+
+    colaborador.epi = epi
+
+    // Verificar acesso do supervisor
+    const senhaSupervisor = document.getElementById('supervisor')
+    const acesso = JSON.parse(localStorage.getItem('acesso'))
+    const resposta = await verificarSupervisor(acesso.usuario, senhaSupervisor.value)
+
+    if (resposta !== 'Senha válida')
+        return popup({ mensagem: resposta })
+
+    await enviar(`dados_colaboradores/${idColaborador}/epi`, epi)
+
+    removerPopup()
+
 }

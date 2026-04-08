@@ -21,7 +21,7 @@ async function verificarDespesas() {
   telaAtiva = 'despesas'
 
   const btnExtras = `
-      <button onclick="htmlDespesas()">PDF</button>
+      <button onclick="">Excel</button>
       <button onclick="formularioDespesa()">Adicionar</button>
       <button onclick="telaDespesas()">Voltar</button>
   `
@@ -39,8 +39,8 @@ async function verificarDespesas() {
       'Número do Contribuinte': { chave: 'snapshots.fornecedor.numeroContribuinte' },
       'Valor': { chave: 'valor' },
       'IVA': { chave: 'iva' },
-      'Ano': { chave: 'snapshots.ano' },
-      'Mês': { chave: 'snapshots.mes' },
+      'Ano': { chave: 'snapshots.ano', tipoPesquisa: 'select' },
+      'Mês': { chave: 'snapshots.mes', tipoPesquisa: 'select' },
       'Data': { chave: 'data', tipoPesquisa: 'data' },
       'Fatura': {},
       'Tipo de Material': { chave: 'material.nome' },
@@ -53,117 +53,6 @@ async function verificarDespesas() {
 
   await paginacao()
 
-}
-
-function htmlDespesas() {
-  const sAno = document.querySelector('[name="ano"]')
-  const sMes = document.querySelector('[name="mes"]')
-
-  if (sMes.value == '' || sAno.value == '')
-    return popup({ mensagem: 'Preencha os filtros' })
-
-  const ano = sAno.value
-  const mes = meses[sMes.value]
-  const colunas = ['Fornecedor', 'NIF', 'Valor', 'IVA', 'Ano', 'Mês', 'Data', 'Link Fatura', 'Tipo de Material']
-  const linhas = document.querySelectorAll('#body tr')
-
-  let linhasFiltradas = ''
-  const totais = {
-    iva: 0,
-    faturado: 0
-  }
-
-  for (const linha of linhas) {
-
-    const tds = linha.querySelectorAll('td')
-    const linAno = tds[6].textContent
-    const linMes = tds[7].textContent
-
-    if (linAno !== ano || linMes !== mes) continue
-
-    totais.faturado += conversor(tds[4].textContent)
-    totais.iva += conversor(tds[5].textContent)
-
-    const link = tds[9].querySelector('[name="link"]')
-
-    linhasFiltradas += `
-            <tr>
-                <td>${tds[0].textContent}</td>
-                <td>${tds[3].textContent}</td>
-                <td>${tds[4].textContent}</td>
-                <td>${tds[5].textContent}</td>
-                <td>${tds[6].textContent}</td>
-                <td>${tds[7].textContent}</td>
-                <td>${tds[8].querySelectorAll('span')[1].textContent}</td>
-                <td>
-                ${link ? `<a href="${api}/uploads/RECONST/${link.value}" target="_blank">${link.value}</a>` : ''}
-                </td>
-                <td>${tds[10].textContent}</td>
-            </tr>
-        `
-  }
-
-  const tabela1 = `
-        <table class="tabela-pdf">
-            <tbody>
-                <tr>
-                    <td colspan="2" class="escuro" style="text-align: center; font-size: 1.2rem; font-weight: bold;">Despesas</td>
-                    <td class="vermelho">Ano</td>
-                    <td class="ver-claro">${ano}</td>
-                    <td class="vermelho">Mês</td>
-                    <td class="ver-claro">${mes}</td>
-                </tr>
-                <tr>
-                    <td class="escuro">Empresa</td>
-                    <td class="claro">Enumeratributo Unipessoal Lda</td>
-                    <td class="escuro" rowspan="4">Total <br>Faturado</td>
-                    <td rowspan="4">${dinheiro(totais.faturado)}</td>
-                    <td class="escuro" rowspan="4">Total IVA</td>
-                    <td rowspan="4">${dinheiro(totais.iva)}</td>
-                </tr>
-                <tr>
-                    <td class="escuro">Morada Fiscal</td>
-                    <td class="claro">Rua Nuno Tristão 11-A, 2830-095 Barreiro</td>
-                </tr>
-                <tr>
-                    <td class="escuro">Nif</td>
-                    <td class="claro">517637480</td>
-                </tr>
-                <tr>
-                    <td class="escuro">E-mail</td>
-                    <td class="claro">info@reconstrular.com</td>
-                </tr>
-            </tbody>
-
-        </table>
-    `
-
-  const tabela2 = `
-        <table class="tabela-pdf">
-            <thead>
-                <tr>${colunas.map(col => `<th>${col}</th>`).join('')}</tr>
-            </thead>
-            <tbody>${linhasFiltradas}</tbody>
-        </table>
-    `
-  const elemento = `
-        <div class="tela-pdf-despesas">
-            <div style="${horizontal}; gap: 0.5rem; position: fixed; bottom: 1rem; left: 1rem;">
-                <img onclick="gerarPdfDespesas()" src="imagens/pdf.png" style=" width: 3rem;">
-                <img data-controle="excluir" onclick="emailDespesas()" src="imagens/carta.png" style=" width: 3rem;">
-            </div>
-            <div class="pdf-despesas">
-                ${tabela1}
-                <br>
-                ${tabela2}
-            </div>
-        </div>
-    `
-
-  popup({ elemento, titulo: 'Listagem de Despesas por Mês/Ano' })
-
-  // Regras de validação;
-  validarRegrasAcesso()
 }
 
 async function emailDespesas() {
@@ -397,7 +286,7 @@ async function salvarDespesa(idDespesa = ID5digitos()) {
   const foto = document.querySelector('[name="foto"]')
   if (foto && foto.src && !foto.src.includes(api)) {
     const resposta = await importarAnexos({ foto: foto.src });
-    
+
     if (resposta[0].link) {
       despesa.fatura = resposta[0].link;
     } else {
