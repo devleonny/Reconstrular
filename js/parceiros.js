@@ -62,6 +62,8 @@ async function criarLinhaUsuarios(dados) {
 
 async function editarParceiros(usuario) {
 
+    overlayAguarde()
+
     const { cidade, nome_completo, funcao, email, telefone } = await recuperarDado('dados_setores', usuario) || {}
 
     controlesCxOpcoes.cidade = {
@@ -125,7 +127,7 @@ async function editarParceiros(usuario) {
 function confirmarDesativarUsuario(usuario) {
 
     const botoes = [
-        { texto: 'Confirmar', img: 'concluido', funcao: `desativarUsuario('${usuario}')` }
+        { texto: 'Confirmar', img: 'concluido', funcao: `deletarUsuario('${usuario}')` }
     ]
     popup({ botoes, mensagem: 'Tem certeza?', nra: false })
 }
@@ -173,6 +175,16 @@ async function salvarParceiro(usuario = el('usuario').value) {
 
 }
 
+async function deletarUsuario(usuario) {
+
+    overlayAguarde()
+
+    await enviarUsuario({ usuario, excluido: Date.now() })
+
+    removerOverlay()
+
+}
+
 async function enviarUsuario(user) {
     try {
 
@@ -180,7 +192,7 @@ async function enviarUsuario(user) {
 
         const response = await fetch(`${api}/adicionar-usuario`, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
