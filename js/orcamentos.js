@@ -350,9 +350,19 @@ async function execucoes(id, ambienteOuIndice = 0) {
         'Valor Total': {}
     }
 
+    const opcoesZonas = listaZonas
+        .map(ambiente => `
+                <option 
+                    value="${ambiente.ambiente}" 
+                    ${ambienteAtual.ambiente == ambiente.ambiente ? 'selected' : ''}>
+                    ${ambiente.zona}
+                </option>
+            `)
+        .join('')
+
     const pag = 'execucoes'
     const tabela = await modTab({
-        btnExtras: `<span class="titulo-execucoes">${ambienteAtual.zona}</span>`,
+        btnExtras: `<select onchange="execucoes('${id}', this.value)" class="titulo-execucoes">${opcoesZonas}</select>`,
         colunas,
         funcaoAdicional: ['atualizarMedidas'],
         pag,
@@ -404,6 +414,7 @@ async function execucoes(id, ambienteOuIndice = 0) {
                     Concluir Orçamento
                     <img src="imagens/concluido.png">
                 </button>
+
             </div>
         </div>
     `
@@ -446,7 +457,7 @@ async function alterarFinalizacao(id, status) {
         ferramentas: 0,
         materiais: 0
     }
-    
+
     orcamento.finalizado = status
 
     if (status == 'S') {
@@ -458,8 +469,6 @@ async function alterarFinalizacao(id, status) {
             )
 
         for (const item of camposMesclados) {
-            console.log(item);
-
             orcamento.custos.mao_obra += item?.total_mao_obra || 0
             orcamento.custos.ferramentas += item?.total_ferramentas || 0
             orcamento.custos.materiais += item?.total_materiais || 0
