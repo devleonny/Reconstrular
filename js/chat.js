@@ -184,7 +184,8 @@ async function arquivarMensagens(operacao) {
         if (inp.checked) mensagens.push(div.id)
     }
 
-    if (mensagens.length == 0) return removerPopup()
+    if (mensagens.length == 0) 
+        return removerPopup()
 
     const url = `${api}/arquivar-mensagens`
 

@@ -2,12 +2,9 @@
 async function telaPrecos(filtro = null) {
 
     const tMargem = (tabela) => `
-        <div style="${vertical}">
-            <span>Margem</span>
-            <div style="${horizontal}; gap: 5px;">
-                <img onclick="editarMargemEmMassa('${tabela}')" src="imagens/lapis.png" style="width: 1.5rem;">
-                <input name="m_master_${tabela}" type="checkbox" onclick="marcarTodosMargem('${tabela}')">
-            </div>
+        <div style="${horizontal}; gap: 5px;">
+            <img onclick="editarMargemEmMassa('${tabela}')" src="imagens/lapis.png" style="width: 1.5rem;">
+            <input name="m_master_${tabela}" type="checkbox" onclick="marcarTodosMargem('${tabela}')">
         </div>
     `
 
@@ -126,27 +123,15 @@ async function aplicarEmMassa(tabela) {
 
     overlayAguarde()
 
-    return popup({ mensagem: 'função precisa de revisão' })
-
     const margemMassa = document.querySelector(`[name="margemMassa_${tabela}"]`)
     if (!margemMassa)
-        return popup({ mensagem: 'O campo margem não pode ficar vazio!' })
+        return removerPopup()
 
     const margemNum = Number(margemMassa.value)
 
-    let codigos = []
     const chave = `margem_${tabela}`
-    const inputs = document.querySelectorAll(`[name="${chave}"]`)
-    for (const input of inputs) {
-        const tr = input.closest('tr')
-        if (tr.style.display !== 'none') codigos.push(tr.id)
-    }
-
-    for (const codigo of codigos) {
-        campos[codigo][chave] = margemNum
-        const subtotal = campos[codigo][`subtotal_${tabela}`]
-        campos[codigo][`total_${tabela}`] = subtotal * (1 + (margemNum / 100))
-    }
+    const codigos = [...document.querySelectorAll(`[name="${chave}"]:checked`)]
+        .map(input => input.dataset.codigo)
 
     const resposta = await enviarMargens({ codigos, margem: margemNum, tabela })
 
@@ -175,9 +160,9 @@ function criarLinhasCampos(dados) {
     const modeloMargem = (chave) => `
         <td style="${bg(chave)}">
             <div style="${horizontal}; gap: 0.5rem;">
-                <img data-controle="editar" src="imagens/lapis.png" style="width: 1.5rem;" onclick="painelMargem('${id}', '${chave}')">
+                <img src="imagens/lapis.png" style="width: 1.5rem;" onclick="painelMargem('${id}', '${chave}')">
                 <span style="white-space: nowrap;">${dados?.[`margem_${chave}`] || 0} %</span>
-                <input data-controle="editar" type="checkbox" name="margem_${chave}">
+                <input data-codigo="${id}" type="checkbox" name="margem_${chave}">
             </div>
         </td>
     `
@@ -622,6 +607,36 @@ async function apiDesativarCampos(params) {
         const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
 
         const response = await fetch(`${api}/alterar-desativado`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(params)
+        })
+
+        if (!response.ok) {
+            const err = await response.json()
+            throw err
+        }
+
+        const data = await response.json()
+
+        return data
+
+    } catch (err) {
+        return { mensagem: err.message }
+    }
+
+}
+
+async function enviarMargens(params) {
+
+    try {
+
+        const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
+
+        const response = await fetch(`${api}/margens`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

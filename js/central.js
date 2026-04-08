@@ -1506,25 +1506,6 @@ function removerOffline(operacao, idEvento) {
     localStorage.setItem('dados_offline', JSON.stringify(dados_offline))
 }
 
-async function enviarMargens({ codigos, margem, tabela }) {
-    return new Promise((resolve) => {
-        fetch(`${api}/margens`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ codigos, margem, tabela, servidor })
-        })
-            .then(response => response.json())
-            .then(data => {
-                resolve(data);
-            })
-            .catch((err) => {
-                reject({ mensagem: err });
-            });
-    });
-}
-
 async function recAC(identificador) {
 
     const url = `${api}/recuperar`
