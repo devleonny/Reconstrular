@@ -169,6 +169,8 @@ async function salvarParceiro(usuario = el('usuario').value) {
 
     removerPopup()
 
+    await usuariosToolbar()
+
 }
 
 async function enviarUsuario(user) {

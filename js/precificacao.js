@@ -122,13 +122,14 @@ async function aplicarEmMassa(tabela) {
 
     overlayAguarde()
 
+    return popup({ mensagem: 'função precisa de revisão' })
+
     const margemMassa = document.querySelector(`[name="margemMassa_${tabela}"]`)
     if (!margemMassa)
         return popup({ mensagem: 'O campo margem não pode ficar vazio!' })
 
     const margemNum = Number(margemMassa.value)
 
-    campos = await recuperarDados('campos')
     let codigos = []
     const chave = `margem_${tabela}`
     const inputs = document.querySelectorAll(`[name="${chave}"]`)
@@ -214,7 +215,6 @@ function criarLinhasCampos(dados) {
         <td style="white-space: nowrap;">${dinheiro(dados.subtotal)}</td>
         <td style="white-space: nowrap;">${dinheiro(dados.total)}</td>
     `
-
     return `<tr>${tds}</tr>`
 
 }
@@ -285,7 +285,7 @@ async function painelMargem(id, tabela) {
 
     idCampo = id
 
-    const campo = campos[id]
+    const campo = await recuperarDado('campos', id) || {}
 
     const chave = `subtotal_${tabela}`
 
@@ -330,7 +330,7 @@ async function salvarMargem(tabela) {
     const margem = Number(document.getElementById('margem_unidade').value)
     const cMargem = `margem_${tabela}`
     const cTotal = `total_${tabela}`
-    const campo = campos[idCampo]
+    const campo = await recuperarDado('campos', idCampo) || {}
     const subtotal = campo[`subtotal_${tabela}`] || 0
     const total = subtotal * (1 + (margem / 100))
 
@@ -371,7 +371,7 @@ async function composicoes(id, tP) {
                 </div>
                 <div class="rodapeTabela">
                     <button onclick="adicionarLinhaComposicoes({tabela: '${tipoTabela}', baseRef: ${tipoTabela}, idCampo: '${idCampo}'})">Adicionar Linha</button>
-                    <button onclick="salvarComposicao()">Salvar</button>
+                    <button onclick="salvarComposicao('${id}')">Salvar</button>
                 </div>
             </div>`
     }
@@ -531,11 +531,12 @@ async function removerItem(img) {
 
 }
 
-async function salvarComposicao() {
+async function salvarComposicao(idCampo) {
 
     overlayAguarde()
 
     const tabelas = ['materiais', 'ferramentas', 'mao_obra']
+    const campo = await recuperarDado('campos', idCampo) || {}
 
     let subtotalGeral = 0
     let totalGeral = 0
@@ -566,23 +567,26 @@ async function salvarComposicao() {
 
         }
 
+
         const chaveMargem = `margem_${tabela}`
         const chaveSubtotal = `subtotal_${tabela}`
         const chaveTotal = `total_${tabela}`
-        const margem = campos[idCampo][chaveMargem] || 0
+        const margem = campo?.[chaveMargem] || 0
         const total = subtotal * (1 + (margem / 100))
-        campos[idCampo][tabela] = dados
-        campos[idCampo][chaveSubtotal] = subtotal
-        campos[idCampo][chaveTotal] = total
+
+        campo[tabela] ??= {}
+        campo[tabela] = dados
+        campo[chaveSubtotal] = subtotal
+        campo[chaveTotal] = total
 
         subtotalGeral += subtotal
         totalGeral += total
     }
 
-    campos[idCampo].total = totalGeral
-    campos[idCampo].subtotal = subtotalGeral
+    campo.total = totalGeral
+    campo.subtotal = subtotalGeral
 
-    await enviar(`campos/${idCampo}`, campos[idCampo])
+    await enviar(`campos/${idCampo}`, campo)
 
     removerPopup()
 }
