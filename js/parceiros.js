@@ -24,6 +24,7 @@ async function telaUsuarios() {
     }
 
     const tabela = await modTab({
+        btnExtras: `<button onclick="editarParceiros()">Adicionar</button>`,
         colunas,
         pag: 'parceiros',
         base: 'dados_setores',
@@ -119,9 +120,6 @@ async function editarParceiros(usuario) {
 
     popup({ linhas, botoes, titulo })
 
-    if (usuario == acesso.usuario)
-        popup({ mensagem: 'Ao alterar seu usuário o seu acesso será encerrado. (Fazer login novamente)' })
-
 }
 
 function confirmarDesativarUsuario(usuario) {
@@ -142,7 +140,7 @@ async function desativarUsuario(usuario) {
 
 }
 
-async function salvarParceiro(usuario) {
+async function salvarParceiro(usuario = el('usuario').value) {
 
     overlayAguarde()
 
@@ -155,21 +153,57 @@ async function salvarParceiro(usuario) {
     if (!usuario || !cidade || !nome_completo || !email)
         return popup({ mensagem: 'Não deixe Usuário/Nome ou E-mail em branco' })
 
-    await Promise.all([
-        configuracoes(usuario, 'nome_completo', nome_completo),
-        configuracoes(usuario, 'email', email),
-        configuracoes(usuario, 'telefone', telefone),
-        configuracoes(usuario, 'cidade', cidade),
-        configuracoes(usuario, 'funcao', funcao)
-    ])
+    const user = {
+        usuario,
+        nome_completo,
+        email,
+        telefone,
+        cidade,
+        funcao
+    }
+
+    const resposta = await enviarUsuario(user)
+
+    if (resposta.mensagem)
+        return popup({ mensagem: resposta.mensagem })
 
     removerPopup()
 
-    if (usuario == acesso.usuario) {
-        popup({ mensagem: 'Cliente reiniciando em 5 segundos' })
-        setTimeout(() => {
-            location.reload()
-        }, 5000);
+}
 
+async function enviarUsuario(user) {
+    try {
+
+        const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
+
+        const response = await fetch(`${api}/adicionar-usuario`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ ...user })
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+            return {
+                ok: false,
+                mensagem: data?.mensagem || `Erro ${response.status}`
+            }
+        }
+
+        return {
+            ok: true,
+            mensagem: data?.mensagem || null
+        }
+
+    } catch (err) {
+        console.error(err)
+        return {
+            ok: false,
+            mensagem: 'Erro de conexão'
+        }
     }
 }

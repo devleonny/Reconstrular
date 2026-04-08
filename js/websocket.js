@@ -168,12 +168,12 @@ async function comunicacao() {
                 await verificarMensagens()
 
             if (tabela == 'dados_setores') {
-                const { usuario, permissao, empresa, timestamp = 0 } = JSON.parse(localStorage.getItem('acesso')) || {}
+                const { usuario, permissao, empresa, timestamp = 0, token = null } = JSON.parse(localStorage.getItem('acesso')) || {}
                 const us = await recuperarDado('dados_setores', usuario)
 
                 if (us?.timestamp !== timestamp) {
 
-                    localStorage.setItem('acesso', JSON.stringify(us))
+                    localStorage.setItem('acesso', JSON.stringify({ ...us, token }))
 
                     if (us.permissao !== permissao || us.empresa !== empresa) {
 
