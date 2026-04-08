@@ -37,7 +37,7 @@ const dtFormatada = (data) => {
     return `${dia}/${mes}/${ano}`
 }
 
-const modeloTabela = ({ body, linhas, colunas, base, btnExtras, removerPesquisa }) => {
+const modeloTabela = ({ body, linhas, colunas, btnExtras, removerPesquisa }) => {
 
     const ths = colunas
         .map(col => `<th>${col}</th>`).join('')
@@ -58,7 +58,6 @@ const modeloTabela = ({ body, linhas, colunas, base, btnExtras, removerPesquisa 
                 ${pesquisa}
                 ${btnExtras || ''}
             </div>
-            ${base ? `<img class="atualizar" src="imagens/atualizar.png" onclick="atualizarDados('${base}')">` : ''}
         </div>
         <div class="recorteTabela">
             <table class="tabela">
@@ -467,7 +466,7 @@ function telaConfiguracoes() {
         <div class="painel-despesas">
             <br>
             ${btn('preco', 'Configuração da Tarefas', `telaPrecos()`)}
-            ${btn('preco_neg', 'Tarefas Desativadas', `telaPrecos()`)}
+            ${btn('preco_neg', 'Tarefas Desativadas', `telaPrecos('S')`)}
         </div>
     `
 
@@ -707,17 +706,6 @@ async function salvarFuncao(idFuncao = crypto.randomUUID()) {
 
     await enviar(`funcoes/${idFuncao}`, funcao)
     removerPopup()
-
-}
-
-async function atualizarDados(base) {
-
-    overlayAguarde()
-    await sincronizarDados(base)
-
-    const dados = await recuperarDados(base)
-    for (const [id, objeto] of Object.entries(dados).reverse()) criarLinha(objeto, id, base)
-    removerOverlay()
 
 }
 
@@ -1317,7 +1305,6 @@ async function enviarExcel(idObra) {
 
         const dados = await resposta.json();
         if (resposta.ok) {
-            await sincronizarDados('dados_obras')
             await verAndamento(idObra)
         } else {
             popup({ mensagem: `Erro: ${dados.mensagem}` })

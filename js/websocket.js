@@ -173,7 +173,10 @@ async function comunicacao() {
 
                 if (us?.timestamp !== timestamp) {
 
-                    localStorage.setItem('acesso', JSON.stringify({ ...us, token }))
+                    const acessoAtualizado = { ...us, token }
+
+                    localStorage.setItem('acesso', JSON.stringify(acessoAtualizado))
+                    acesso = acessoAtualizado
 
                     if (us.permissao !== permissao || us.empresa !== empresa) {
 

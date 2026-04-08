@@ -206,7 +206,6 @@ async function arquivarMensagens(operacao) {
         if (data.mensagem)
             return popup({ mensagem: data.mensagem })
 
-        await sincronizarDados('mensagens')
         await painelChat()
         removerPopup()
 

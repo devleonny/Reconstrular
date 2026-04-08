@@ -18,6 +18,7 @@
 }
 
 .opcoes {
+    max-width: 200px;
     white-space: pre-wrap;
     text-align: start;
     background-color: #097fe6;

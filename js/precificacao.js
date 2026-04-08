@@ -1,24 +1,23 @@
-let idCampo = null
-let margem = 0
-let desativado = 'N'
 
-async function telaPrecos() {
+async function telaPrecos(filtro = null) {
 
     const tMargem = (tabela) => `
         <div style="${vertical}">
             <span>Margem</span>
             <div style="${horizontal}; gap: 5px;">
-                <img data-controle="editar" onclick="editarMargemEmMassa('${tabela}')" src="imagens/lapis.png" style="width: 1.5rem;">
-                <input data-controle="editar" name="m_master_${tabela}" type="checkbox" onclick="marcarTodosMargem('${tabela}')">
+                <img onclick="editarMargemEmMassa('${tabela}')" src="imagens/lapis.png" style="width: 1.5rem;">
+                <input name="m_master_${tabela}" type="checkbox" onclick="marcarTodosMargem('${tabela}')">
             </div>
         </div>
     `
 
     const btnExtras = `
-        <div style="${horizontal}; gap: 2px;">
-            <button onclick="telaConfiguracoes()">Voltar</button>
-            <button data-controle="inserir" onclick="edicaoItem()">Criar Campo</button>
-            <button data-controle="editar" onclick="confirmarDesativacao()">Desativar Itens</button>
+        <button onclick="telaConfiguracoes()">Voltar</button>
+        <button onclick="edicaoItem()">Criar Campo</button>
+        <button onclick="confirmarDesativacao()">${filtro ? 'Ativar' : 'Desativar'} Itens</button>
+        <div style="${horizontal}; gap: 5px;">
+            <input type="checkbox" onclick="marcarTodosDesativar(this)">
+            <span style="color: white;">Marcar todos</span>
         </div>
     `
 
@@ -28,6 +27,9 @@ async function telaPrecos() {
         btnExtras,
         body: 'campos',
         base: 'campos',
+        filtros: {
+            'desativado': { op: '=', value: filtro || '' }
+        },
         criarLinha: 'criarLinhasCampos',
         colunas: {
             'Marcar': {},
@@ -64,22 +66,23 @@ function confirmarDesativacao() {
 
 async function desativarEmMassa() {
 
-    removerPopup()
+    // Também reativa
     overlayAguarde()
-    const inpDes = document.querySelectorAll('[name="desativar"]')
-    const desativar = []
-    for (const inp of inpDes) {
-        const tr = inp.closest('tr')
-        if (inp.checked) desativar.push(tr.id)
-    }
 
-    const resposta = await desativarCampos(desativar)
+    const filtro = controles.campos?.filtros?.desativado?.value || ''
+    const valor = filtro == 'S'
+        ? ''
+        : 'S'
+
+    const inpDes = document.querySelectorAll('[name="desativar"]:checked')
+    const ids = [...inpDes]
+        .map(i => i.dataset.codigo)
+
+    const resposta = await apiDesativarCampos({ ids, valor })
 
     if (resposta.mensagem)
         return popup({ mensagem: resposta.mensagem })
 
-    await sincronizarDados('campos')
-    await telaPrecos()
     removerOverlay()
 }
 
@@ -91,10 +94,11 @@ function marcarTodosDesativar(inpMaster) {
         if (!tr) continue
 
         const visivel = tr.offsetParent !== null
-        inp.checked = visivel ? inpMaster.checked : false
+        inp.checked = visivel
+            ? inpMaster.checked
+            : false
     }
 }
-
 
 function editarMargemEmMassa(tabela) {
 
@@ -185,7 +189,9 @@ function criarLinhasCampos(dados) {
         };`
 
     const tds = `
-        <td><input data-controle="editar" name="desativar" type="checkbox"></td>
+        <td>
+            <input style="width: 1.5rem; height: 1.5rem;" data-codigo="${id}" name="desativar" type="checkbox">
+        </td>
         <td>${dados.especialidade}</td>
         <td>
             <div style="${horizontal}; gap: 5px;">
@@ -221,18 +227,20 @@ function criarLinhasCampos(dados) {
 
 async function edicaoItem(idCampo) {
 
-    const campo = campos[idCampo] || {}
+    overlayAguarde()
+
+    const campo = await recuperarDado('campos', idCampo) || {}
 
     const opcoesMedidas = ['', 'und', 'ml', 'm2', 'm3']
         .map(op => `<option ${op == campo?.medida ? 'selected' : ''}>${op}</option>`)
         .join('')
 
-    const especialidades = []
-    for (const campo of Object.values(campos)) {
-        if (!especialidades.includes(campo.especialidade)) especialidades.push(campo.especialidade)
-    }
+    const especialidades = await contarPorCampo({
+        base: 'campos',
+        path: 'especialidade'
+    })
 
-    const opcoesEspecialidade = especialidades
+    const opcoesEspecialidade = Object.keys(especialidades)
         .map(op => `<option>${op}</option>`)
         .join('')
 
@@ -257,7 +265,9 @@ async function edicaoItem(idCampo) {
         { texto: 'Salvar', img: 'concluido', funcao: idCampo ? `salvarCampo('${idCampo}')` : 'salvarCampo()' }
     ]
 
-    const titulo = idCampo ? 'Editar Campo' : 'Criar Campo'
+    const titulo = idCampo
+        ? 'Editar Campo'
+        : 'Criar Campo'
 
     popup({ linhas, botoes, titulo })
 
@@ -280,10 +290,6 @@ async function salvarCampo(idCampo = ID5digitos()) {
 }
 
 async function painelMargem(id, tabela) {
-
-    margem = 0
-
-    idCampo = id
 
     const campo = await recuperarDado('campos', id) || {}
 
@@ -347,21 +353,20 @@ async function salvarMargem(tabela) {
     removerPopup()
 }
 
-async function composicoes(id, tP) {
+async function composicoes(id) {
 
-    idCampo = id
     const campo = await recuperarDado('campos', id) || {}
 
     const modeloTabela = (tipoTabela) => {
 
-        const ths = ['Artigo', 'Qtde', 'Preço', 'Total', 'Link', '']
+        const ths = ['Artigo', 'Qtde', 'Preço', 'Total', 'Remover']
             .map(col => `<th>${col}</th>`)
             .join('')
 
         return `
             <div id="${tipoTabela}" class="blocoTabela" style="display: none;">
                 <div class="painelBotoes">
-                    <span class="total-composicao">${dinheiro(campo?.[`subtotal_${tipoTabela}`])}</span>
+                    <span class="total-composicao" id="total-${tipoTabela}">${dinheiro(campo?.[`subtotal_${tipoTabela}`])}</span>
                 </div>
                 <div class="recorteTabela">
                     <table class="tabela">
@@ -370,7 +375,7 @@ async function composicoes(id, tP) {
                     </table>
                 </div>
                 <div class="rodapeTabela">
-                    <button onclick="adicionarLinhaComposicoes({tabela: '${tipoTabela}', baseRef: ${tipoTabela}, idCampo: '${idCampo}'})">Adicionar Linha</button>
+                    <button onclick="adicionarLinhaComposicoes({tabela: '${tipoTabela}', idCampo: '${id}'})">Adicionar Linha</button>
                     <button onclick="salvarComposicao('${id}')">Salvar</button>
                 </div>
             </div>`
@@ -409,21 +414,20 @@ async function composicoes(id, tP) {
 
     toogleTabela('materiais')
 
-    const tabelas = {
-        'materiais': materiais,
-        'ferramentas': ferramentas,
-        'mao_obra': mao_obra
-    }
+    const tabelas = [
+        'materiais',
+        'ferramentas',
+        'mao_obra'
+    ]
 
-    for (const [tabela, baseRef] of Object.entries(tabelas)) {
+    tabelas.forEach(tabela => {
+        const itens = Object.entries(campo?.[tabela] || {})
+        for (const [id, dados] of itens)
+            adicionarLinhaComposicoes({ tabela, dados, id })
+    })
 
-        for (const [id, dados] of Object.entries(campo?.[tabela] || {})) {
-            adicionarLinhaComposicoes({ baseRef, tabela, dados, id })
-        }
+    calcularTotais()
 
-    }
-    0
-    if (tP) await telaPrecos()
 }
 
 async function salvarDuracao(idCampo, input) {
@@ -452,29 +456,37 @@ function toogleTabela(idAtual) {
 
 }
 
-async function adicionarLinhaComposicoes({ baseRef = {}, tabela, dados, id }) {
+async function adicionarLinhaComposicoes({ tabela, dados = {}, id }) {
 
     const tbody = document.getElementById(`body_${tabela}`)
-    if (!tbody) return
+    const { preco = 0, qtde, descricao } = dados || {}
+    const total = (preco || 0) * (qtde || 0)
+    const codSpan = crypto.randomUUID()
 
-    const itemRef = baseRef?.[id] || {}
-    const codSpan = ID5digitos()
+    controlesCxOpcoes[codSpan] = {
+        base: tabela,
+        retornar: ['nome'],
+        funcaoAdicional: [
+            ['preencherItem', codSpan, tabela]
+        ],
+        colunas: {
+            'Nome': { chave: 'nome' },
+            'Preço': { chave: 'preco' }
+        }
+    }
 
     const tds = `
         <td>
             <span ${id ? `id="${id}"` : ''} class="opcoes" name="${codSpan}" 
-            onclick="cxOpcoes('${codSpan}', '${tabela}', ['nome', 'preco[dinheiro]'], 'preencherItem()')">${itemRef.nome || 'Selecionar'}</span>
-        </td>
-        <td><input oninput="preencherItem()" type="number" style="width: 5rem;" value="${dados?.qtde || ''}"></td>
-        <td style="white-space: nowrap;">${dinheiro(itemRef?.preco)}</td>
-        <td style="white-space: nowrap;">
-            ${dinheiro(itemRef?.preco * dados?.qtde || 0)}
+            onclick="cxOpcoes('${codSpan}')">${descricao || 'Selecionar'}</span>
         </td>
         <td>
-            <a href="${itemRef?.link}">${itemRef?.link || ''}</a>
+            <input type="number" style="width: 5rem;" name="qtde" value="${qtde || 0}" oninput="preencherItem('${codSpan}')">
         </td>
+        <td style="white-space: nowrap;" name="preco">${dinheiro(preco)}</td>
+        <td style="white-space: nowrap;" name="total">${dinheiro(total)}</td>
         <td>
-            <img style="width: 2rem;" src="imagens/cancel.png" onclick="removerItem(this)">
+            <img src="imagens/cancel.png" onclick="this.closest('tr').remove()">
         </td>
         `
 
@@ -489,45 +501,56 @@ async function adicionarLinhaComposicoes({ baseRef = {}, tabela, dados, id }) {
 
 }
 
-function visitarSite(img) {
+async function preencherItem(id, tabela) {
 
-    const link = img.previousElementSibling.value
-    if (!link) return
+    const span = document.querySelector(`[name="${id}"]`)
 
-    const url = link.startsWith('http') ? link : `https://${link}`
-    window.open(url, '_blank')
-}
+    if (!span.id)
+        return
 
-async function preencherItem() {
+    const tr = span.closest('tr')
+    const qtde = tr.querySelector('[name="qtde"]').value || 0
+    let preco = 0
 
-    const tabelas = ['materiais', 'ferramentas', 'mao_obra']
-
-    for (const tabela of tabelas) {
-
-        const trs = document.querySelectorAll(`#body_${tabela} tr`)
-
-        for (const tr of trs) {
-
-            const idItem = tr.querySelector('.opcoes').id
-            const dTabela = await recuperarDados(tabela)
-            const item = dTabela[idItem] || {}
-            const tds = tr.querySelectorAll('td')
-            const qtde = Number(tds[1].querySelector('input').value)
-            const total = item?.preco * qtde
-
-            tds[2].textContent = dinheiro(item?.preco)
-            tds[3].textContent = dinheiro(total)
-            tds[4].querySelector('a').textContent = item?.link || ''
-            tds[4].querySelector('a').href = item?.link || ''
-
-        }
+    if (tabela) {
+        const item = await recuperarDado(tabela, span.id) || {}
+        preco = item?.preco || 0
+        tr.querySelector('[name="preco"]').textContent = dinheiro(preco)
+    } else {
+        preco = conversor(tr.querySelector('[name="preco"]').textContent)
     }
+
+    tr.querySelector('[name="total"]').textContent = dinheiro(preco * qtde)
+
+    calcularTotais()
+
 }
 
-async function removerItem(img) {
+function calcularTotais() {
 
-    const tr = img.closest('tr')
-    tr.remove()
+    const tabelas = {
+        'materiais': 0,
+        'ferramentas': 0,
+        'mao_obra': 0
+    }
+
+    let totalGeral = 0
+
+    Object.keys(tabelas).forEach(tabela => {
+
+        [...document.querySelectorAll(`#body_${tabela} tr`)].forEach(tr => {
+            const qtde = tr.querySelector('[name=qtde]').value || 0
+            const preco = conversor(tr.querySelector('[name=preco]').textContent)
+
+            tabelas[tabela] += qtde * preco
+        })
+
+        totalGeral += tabelas[tabela]
+        document.getElementById(`total-${tabela}`).textContent = dinheiro(tabelas[tabela])
+
+    })
+
+    document.querySelector('[name="totalComposicao"]').textContent = dinheiro(totalGeral)
 
 }
 
@@ -552,21 +575,21 @@ async function salvarComposicao(idCampo) {
 
             const tds = tr.querySelectorAll('td')
             const item = tr.querySelector('.opcoes')
-            if (!item.id) continue
+            if (!item.id)
+                continue
 
-            const qtde = Number(tds[1]?.querySelector('input')?.value || 0)
+            const qtde = Number(tr.querySelector('[name="qtde"]').value || 0)
             const descricao = item.textContent
-            const preco = conversor(tds[2].textContent)
+            const preco = conversor(tr.querySelector('[name="preco"]').textContent)
             subtotal += qtde * preco
 
             if (!dados[item.id]) {
-                dados[item.id] = { descricao, preco, qtde }
+                dados[item.id] = { id: item.id, descricao, preco, qtde }
             } else {
                 dados[item.id].qtde += qtde
             }
 
         }
-
 
         const chaveMargem = `margem_${tabela}`
         const chaveSubtotal = `subtotal_${tabela}`
@@ -589,4 +612,35 @@ async function salvarComposicao(idCampo) {
     await enviar(`campos/${idCampo}`, campo)
 
     removerPopup()
+}
+
+
+async function apiDesativarCampos(params) {
+
+    try {
+
+        const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
+
+        const response = await fetch(`${api}/alterar-desativado`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(params)
+        })
+
+        if (!response.ok) {
+            const err = await response.json()
+            throw err
+        }
+
+        const data = await response.json()
+
+        return data
+
+    } catch (err) {
+        return { mensagem: err.message }
+    }
+
 }

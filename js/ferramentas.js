@@ -120,8 +120,20 @@ async function selecionar(name, cod) {
 
     removerPopup()
 
-    if (funcaoAdicional)
-        await window[funcaoAdicional]()
+    if (Array.isArray(funcaoAdicional)) {
+        for (const item of funcaoAdicional) {
+
+            if (typeof item === 'string') {
+                await window[item]?.()
+                continue
+            }
+
+            if (Array.isArray(item)) {
+                const [nome, ...args] = item
+                await window[nome]?.(...args)
+            }
+        }
+    }
 }
 
 async function carregarControles() {
@@ -185,7 +197,7 @@ async function usuariosToolbar() {
         </div>`
 
     if (nomeUsuario)
-        nomeUsuario.innerHTML = `<span><b>${inicialMaiuscula(nome|| '')}</b> ${acesso.usuario || ''}</span>`
+        nomeUsuario.innerHTML = `<span><b>${inicialMaiuscula(nome || '')}</b> ${acesso.usuario || ''}</span>`
 
     const divUsuarios = document.getElementById('divUsuarios')
     if (divUsuarios)
