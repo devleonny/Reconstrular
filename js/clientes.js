@@ -3,7 +3,8 @@ async function telaClientes() {
     telaAtiva = 'clientes'
 
     const btnExtras = `
-        <button data-controle="inserir" onclick="formularioCliente()">Adicionar</button>
+        <button
+         onclick="formularioCliente()">Adicionar</button>
     `
 
     const tabela = await modTab({

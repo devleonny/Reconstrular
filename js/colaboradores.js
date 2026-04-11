@@ -43,8 +43,8 @@ async function telaColaboradores() {
         'Nome Completo': { chave: 'nome' },
         'Telefone': { chave: 'telefone' },
         'Obra Alocada': {},
-        'Distrito': {},
-        'Cidade': { chave: 'snapshots.cidade' },
+        'Distrito': { chave: 'snapshots.cidade.distrito', tipoPesquisa: 'select' },
+        'Cidade': { chave: 'snapshots.cidade.nome', tipoPesquisa: 'select' },
         'Status': { chave: 'status', tipoPesquisa: 'select' },
         'Especialidade': { chave: 'especialidade' },
         'Folha de Ponto': {},
@@ -122,8 +122,8 @@ async function criarLinhaColaboradores(colaborador) {
             <img src="imagens/relogio.png" onclick="mostrarFolha('${id}')">
         </td>
         <td>
-            <div style="${vertical};">
-                <img src="imagens/colaborador.png" onclick="formularioEPI('${id}')">
+            <div style="${vertical}; align-items: center;" onclick="formularioEPI('${id}')">
+                <img src="imagens/colaborador.png">
                 ${qtdeEPIs ? `<div class="labelQuantidade">${qtdeEPIs}</div>` : ''}
             </div>
         </td>

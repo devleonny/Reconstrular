@@ -68,6 +68,7 @@ html {
 }
 
 .toolbar-interno {
+    margin-left: 1rem;
     color: white;
     display: flex;
     align-items: center;
