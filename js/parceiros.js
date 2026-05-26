@@ -9,6 +9,8 @@ const el = (name) => {
 
 async function telaUsuarios() {
 
+    overlayAguarde()
+
     telaAtiva = 'parceiros'
     titulo.textContent = 'Parceiros'
 
@@ -35,6 +37,8 @@ async function telaUsuarios() {
     tela.innerHTML = tabela
 
     await paginacao()
+
+    removerOverlay()
 
 }
 

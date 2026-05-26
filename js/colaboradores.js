@@ -30,6 +30,8 @@ const anos = {
 
 async function telaColaboradores() {
 
+    overlayAguarde()
+
     telaAtiva = 'colaboradores'
     titulo.textContent = 'Colaboradores'
 
@@ -64,6 +66,8 @@ async function telaColaboradores() {
     tela.innerHTML = tabela
 
     await paginacao()
+
+    removerOverlay()
 
 }
 

@@ -163,7 +163,7 @@ async function acessoLogin() {
                 return popup({ mensagem: data.mensagem || 'Falha no acesso' })
 
             } else {
-                localStorage.setItem('acesso', JSON.stringify(data));
+                localStorage.setItem('acesso', JSON.stringify(data))
                 telaPrincipal()
                 removerOverlay()
             }
