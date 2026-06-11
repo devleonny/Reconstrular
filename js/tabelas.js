@@ -5,7 +5,20 @@ function campoBloq() {
 }
 
 async function modTab(configuracoes) {
-    const { btnExtras = '', ocultarPaginacao = false, criarLinha, base, colunas = {}, body = null, pag = null } = configuracoes || {}
+    const {
+        btnExtras = null,
+        ocultarPaginacao = false,
+        ocultarLegenda = false,
+        ocultarPesquisa = false,
+        scroll = true,
+        cor = null,
+        nude = null,
+        criarLinha,
+        base,
+        colunas = {},
+        body = null,
+        pag = null
+    } = configuracoes || {}
 
     if (!body || !pag || !base || !criarLinha)
         return popup({ mensagem: 'body/pag/base/criarLinha Não podem ser null' })
@@ -17,14 +30,15 @@ async function modTab(configuracoes) {
         ...configuracoes
     }
 
-    const ths = Object.keys(colunas)
-        .map(th => `
-            <th>
-                <div style="${horizontal}; width: 100%; justify-content: space-between; gap: 1rem;">
-                    <span>${th}</span>    
-                </div>
-            </th>`
-        )
+    const ths = Object.entries(colunas)
+        .map(([th, query]) => `
+        <th onclick="ordenarColuna({ pag: '${pag}', path: '${query.chave || ''}' })" style="cursor: pointer;">
+            <div style="${horizontal}; width: 100%; justify-content: space-between; gap: 1rem;">
+                <span>${th}</span>
+                <span data-ordem="${query.chave || ''}"></span>
+            </div>
+        </th>
+    `)
         .join('')
 
     const pesquisa = (await Promise.all(
@@ -81,22 +95,20 @@ async function modTab(configuracoes) {
 
     const modelo = `
         <div style="${vertical}; width: 100%;">
-            <div class="topo-tabela">
-                <div style="display: ${ocultarPaginacao ? 'none' : ''};" id="paginacao_${pag}"></div>
-                <div style="display: flex; flex-wrap: wrap;">
-                    ${btnExtras}
-                </div>
+            <div class="topo-tabela${nude ? ' nude' : ''}" ${cor ? `style="background-color: ${cor};"` : ''}">
+                <div id="paginacao_${pag}"></div>
+                ${btnExtras || ''}
             </div>
-            <div class="div-tabela" style="overflow-x: auto;">
-                <table class="tabela">
+            <div style="${!scroll ? `max-height: max-content` : ''};" class="div-tabela${nude ? ' nude' : ''}">
+                <table class="tabela${nude ? ' nude' : ''}">
                     <thead>
                         <tr>${ths}</tr>
-                        <tr>${pesquisa}</tr>
+                        ${ocultarPesquisa ? '' : `<tr>${pesquisa}</tr>`}
                     </thead>
                     <tbody id="${body}"></tbody>
                 </table>
             </div>
-            <div class="rodape-tabela"></div>
+            ${nude ? '' : '<div class="rodape-tabela"></div>'}
         </div>
     `
     return modelo
@@ -293,8 +305,6 @@ function obterChaveLinha(dado, indice = 0) {
 
 function obterTimestampLinha(dado) {
     const candidatos = [
-        dado?.snapshots?.tsUltimoStatus,
-        dado?.tsUltimoStatus,
         dado?.timestamp,
         dado?.snapshots?.timestamp,
         dado?.updatedAt,
@@ -368,7 +378,10 @@ async function paginacao(pag) {
             pagina,
             base,
             body,
+            ocultarPaginacao,
+            ocultarLegenda,
             substituicoes,
+            relacionados,
             ordenar,
             alinPag = horizontal,
             explode = null,
@@ -389,6 +402,7 @@ async function paginacao(pag) {
         const assinaturaAtualConsulta = assinaturaConsulta({
             base: baseResolvida,
             substituicoes,
+            relacionados,
             ordenar,
             explode,
             pagina,
@@ -408,6 +422,7 @@ async function paginacao(pag) {
         const dados = await pesquisarDB({
             base: baseResolvida,
             substituicoes,
+            relacionados,
             ordenar,
             explode,
             pagina,
@@ -436,13 +451,15 @@ async function paginacao(pag) {
         if (!paginaAtual) {
             divPaginacao.innerHTML = `
                 <div style="${alinPag}; align-items: center; padding: 2px; color: white;">
-                    <div style="${horizontal}; gap: 5px;">
-                    <img src="imagens/esq.png" style="width: 2rem;" onclick="mudarPagina(-1, '${pag}')">
-                    <span id="paginaAtual_${pag}">${pagina}</span> de
-                    <span id="totalPaginas_${pag}">${dados.paginas}</span> 
-                    <img src="imagens/dir.png" style="width: 2rem;" onclick="mudarPagina(1, '${pag}')">
+                    <div style="display: ${ocultarPaginacao ? 'none' : 'flex'}; align-items: center; justify-content: center;" gap: 5px;">
+                        <img src="imagens/esq.png" style="width: 2rem;" onclick="mudarPagina(-1, '${pag}')">
+                        <span id="paginaAtual_${pag}">${pagina}</span> de
+                        <span id="totalPaginas_${pag}">${dados.paginas}</span> 
+                        <img src="imagens/dir.png" style="width: 2rem;" onclick="mudarPagina(1, '${pag}')">
                     </div>
-                    <span style="white-space: nowrap;"><span style="font-size: 1rem;" id="resultados_${pag}">${dados.total}</span> ${dados.total !== 1 ? 'Itens' : 'Item'}</span>
+                    <span style="display: ${ocultarLegenda ? 'none' : 'flex'}; align-items: center; justify-content: center; white-space: nowrap;">
+                        <span style="font-size: 1rem;" id="resultados_${pag}">${dados.total}</span> ${dados.total !== 1 ? 'Itens' : 'Item'}
+                    </span>
                 </div>
             `
         } else {
@@ -457,6 +474,7 @@ async function paginacao(pag) {
             tbody.appendChild(criarDino(cols))
             await executarFuncoesAdicionais(funcaoAdicional)
             restaurarPesquisa(pag)
+            aplicarColunasOcultas(pag)
             return
         }
 
@@ -465,7 +483,6 @@ async function paginacao(pag) {
         const tabelaNaoPronta = temLoading || temDino
 
         if (mesmaPagina && !tabelaNaoPronta) {
-            await executarFuncoesAdicionais(funcaoAdicional)
             restaurarPesquisa(pag)
             return
         }
@@ -477,6 +494,8 @@ async function paginacao(pag) {
 
         await executarFuncoesAdicionais(funcaoAdicional)
         restaurarPesquisa(pag)
+        atualizarIndicadorOrdenacao(pag)
+        aplicarColunasOcultas(pag)
     }
 
     async function executarFuncoesAdicionais(funcaoAdicional = []) {
@@ -562,6 +581,7 @@ async function atualizarTabela(tbody, dados, criarLinha, base, reconstruirTudo =
 
     tbody.innerHTML = ''
     tbody.appendChild(fragment)
+
 }
 
 function criarDino(cols) {
@@ -571,7 +591,7 @@ function criarDino(cols) {
     const td = document.createElement('td')
     td.colSpan = cols
     td.innerHTML = `
-        <div style="${horizontal}; width: 100%; gap: 1rem;">
+        <div class="tabela-sem-resultados">
             ${achou() ? `<img src="gifs/offline.gif" style="width: 5rem;">` : '<span>Sem resultados</span>'}
         </div>
     `
@@ -582,4 +602,78 @@ function criarDino(cols) {
 
 function achou() {
     return Math.random() < 0.01
+}
+
+function ordenarColuna({ pag, path }) {
+    const ctrl = controles[pag]
+
+    if (!ctrl) return
+
+    const atual = ctrl.ordenar || {}
+
+    if (atual.path === path) {
+        ctrl.ordenar.direcao = atual.direcao === 'asc' ? 'desc' : 'asc'
+    } else {
+        ctrl.ordenar = {
+            path,
+            direcao: 'asc'
+        }
+    }
+
+    ctrl.pagina = 1
+    paginacao(pag)
+}
+
+function atualizarIndicadorOrdenacao(pag) {
+    const ctrl = controles[pag]
+    if (!ctrl) return
+
+    const { ordenar } = ctrl || {}
+
+    const tabela = document.querySelector(`#${ctrl.body}`)?.closest('table')
+    if (!tabela) return
+
+    tabela.querySelectorAll('[data-ordem]').forEach(el => {
+        el.textContent = ''
+    })
+
+    if (!ordenar?.path) return
+
+    const alvo = tabela.querySelector(`[data-ordem="${CSS.escape(ordenar.path)}"]`)
+    if (!alvo) return
+
+    alvo.textContent = ordenar.direcao === 'asc' ? '▲' : '▼'
+}
+
+function aplicarColunasOcultas(pag) {
+    const ctrl = controles[pag]
+    if (!ctrl || !ctrl.body) return
+
+    const tabela = document.getElementById(ctrl.body)?.closest('table')
+    if (!tabela) return
+
+    const colunasOcultar = ctrl.ocultar || []
+
+    const linhasHeader = tabela.querySelectorAll('thead tr')
+    const thsTitulo = linhasHeader[0]?.querySelectorAll('th') || []
+    const thsPesquisa = linhasHeader[1]?.querySelectorAll('th') || []
+
+    thsTitulo.forEach((th, index) => {
+        const nomeColuna = th.querySelector('span')?.textContent?.trim()
+        const deveOcultar = colunasOcultar.includes(nomeColuna)
+
+        th.style.display = deveOcultar ? 'none' : ''
+
+        if (thsPesquisa[index]) {
+            thsPesquisa[index].style.display = deveOcultar ? 'none' : ''
+        }
+
+        const linhas = tabela.querySelectorAll('tbody tr')
+        linhas.forEach(linha => {
+            if (linha.id === 'dinossauro' || linha.id === 'loading-tabela') return
+            
+            const td = linha.children[index]
+            if (td) td.style.display = deveOcultar ? 'none' : ''
+        })
+    })
 }

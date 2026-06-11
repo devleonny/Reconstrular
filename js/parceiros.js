@@ -26,7 +26,6 @@ async function telaUsuarios() {
     }
 
     const tabela = await modTab({
-        btnExtras: `<button onclick="editarParceiros()">Adicionar</button>`,
         colunas,
         pag: 'parceiros',
         base: 'dados_setores',
@@ -68,49 +67,23 @@ async function editarParceiros(usuario) {
 
     overlayAguarde()
 
-    const { cidade, nome_completo, funcao, email, telefone } = await recuperarDado('dados_setores', usuario) || {}
-
-    controlesCxOpcoes.cidade = {
-        base: 'cidades',
-        colunas: {
-            'Distrito': { chave: 'distrito' },
-            'Cidade': { chave: 'nome' },
-            'Zona': { chave: 'zona' },
-            'Area': { chave: 'area' },
-        },
-        retornar: ['nome', 'distrito']
-    }
-
-    controlesCxOpcoes.funcao = {
-        base: 'funcoes',
-        colunas: {
-            'Nome': { chave: 'nome' }
-        },
-        retornar: ['nome']
-    }
-
-    const dCidades = await recuperarDado('cidades', cidade)
-    const dFuncao = await recuperarDado('funcoes', funcao)
+    const {
+        nome_completo,
+        funcao,
+        email,
+        data_nascimento,
+        telefone
+    } = await recuperarDado('dados_setores', usuario) || {}
 
     const linhas = [
         { texto: 'Usuário', elemento: `<input ${usuario ? 'readOnly="true"' : ''} name="usuario" placeholder="Usuário" value="${usuario || ''}">` },
         { texto: 'Nome', elemento: `<input name="nome_completo" placeholder="Nome Completo" value="${nome_completo || ''}">` },
         { texto: 'E-mail', elemento: `<input name="email" type="email" placeholder="E-mail" value="${email || ''}">` },
         { texto: 'Telefone', elemento: `<input name="telefone" placeholder="Telefone" value="${telefone || ''}">` },
+        { texto: 'Data de Nascimento', elemento: `<input type="date" name="data_nascimento" placeholder="Data de Nascimento" value="${data_nascimento || ''}">` },
         {
-            texto: 'Cidade',
-            elemento: `<span 
-            class="opcoes" ${dCidades ? `id="${cidade}"` : ''} 
-            name="cidade" 
-            onclick="cxOpcoes('cidade')">${dCidades ? dCidades.nome : 'Selecionar'}</span>`
-        },
-        {
-            texto: 'Função',
-            elemento: `<span 
-            class="opcoes" ${dFuncao ? `id="${funcao}"` : ''} 
-            name="funcao" 
-            onclick="cxOpcoes('funcao')">${dFuncao ? dFuncao.nome : 'Selecionar'}</span>`
-        },
+            elemento: `<div class="campo-funcoes"></div>`
+        }
     ]
 
     const botoes = [
@@ -120,12 +93,182 @@ async function editarParceiros(usuario) {
     if (usuario)
         botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarDesativarUsuario('${usuario}')` })
 
-    const titulo = usuario
-        ? `Gerenciar Parceiro`
-        : `Criar acesso parceiro`
+    popup({ linhas, botoes, titulo: 'Adicionar Parceiro' })
 
-    popup({ linhas, botoes, titulo })
+    carregarTabelaFuncoes()
 
+}
+
+async function carregarTabelaFuncoes() {
+    const esquema = [
+        { titulo: 'CEO' },
+        { titulo: 'Diretor Operativo' },
+        { titulo: 'Coordenador Operativo', campos: ['zona'] },
+        { titulo: 'Encarregado de Obra', campos: ['zona', 'distrito', 'area'] },
+        { titulo: 'Trabalhador', campos: ['zona', 'distrito', 'area', 'obra'] }
+    ];
+
+    const estado = {
+        funcaoIndex: null,
+        valores: {}
+    };
+
+    const campoFuncoes = document.querySelector('.campo-funcoes');
+
+    function normalizarCampo(campo) {
+        return campo.toLowerCase();
+    }
+
+    function montarFiltrosAte(campoAtual) {
+        const ordem = ['zona', 'distrito', 'area', 'obra'];
+        const filtros = {};
+        const idxAtual = ordem.indexOf(campoAtual);
+
+        for (let i = 0; i < idxAtual; i++) {
+            const campo = ordem[i];
+            const valor = estado.valores[campo];
+
+            if (Array.isArray(valor) && valor.length === 1) {
+                filtros[campo] = { op: '=', value: valor[0] };
+            }
+        }
+
+        return filtros;
+    }
+
+    async function obterOpcoes(campo) {
+        const filtros = montarFiltrosAte(campo);
+
+        const resultado = await contarPorCampo({
+            base: 'cidades',
+            path: campo,
+            filtros
+        });
+
+        return Object.keys(resultado || {}).filter(r => r !== 'todos');
+    }
+
+    function limparCamposPosteriores(campos, campoAlterado) {
+        const idx = campos.indexOf(campoAlterado);
+        for (let i = idx + 1; i < campos.length; i++) {
+            delete estado.valores[campos[i]];
+        }
+    }
+
+    async function atualizarOpcoesCampos(campos, container) {
+        for (const campo of campos) {
+            const select = container.querySelector(`[data-campo="${campo}"]`);
+            if (!select) continue;
+
+            const opcoes = await obterOpcoes(campo);
+            const selecionados = estado.valores[campo] || [];
+
+            select.innerHTML = opcoes.map(op => `
+                <label class="multi-option">
+                    <input 
+                        type="checkbox" 
+                        value="${op}"
+                        ${selecionados.includes(op) ? 'checked' : ''}
+                    >
+                    <span>${op}</span>
+                </label>
+            `).join('');
+        }
+    }
+
+    const labels = {
+        zona: 'Zona',
+        distrito: 'Distrito',
+        area: 'Área',
+        obra: 'Obra'
+    };
+
+    function criarMultiSelect(campo) {
+        const label = labels[campo] || campo;
+
+        return `
+        <div class="multi-select-wrap">
+            <label class="multi-select-trigger" data-trigger="${campo}">
+                <span>${label}</span>
+                <span>⌵</span>
+            </label>
+            <div class="multi-select-dropdown" data-campo="${campo}"></div>
+        </div>
+    `;
+    }
+
+    async function renderizarCamposExtras(index) {
+        const item = esquema[index];
+        const campos = (item.campos || []).map(normalizarCampo);
+        const linha = campoFuncoes.querySelector(`[data-linha="${index}"]`);
+        const extras = linha.querySelector('.extras-funcao');
+
+        estado.valores = {};
+        extras.innerHTML = campos.map(criarMultiSelect).join('');
+
+        await atualizarOpcoesCampos(campos, extras);
+
+        extras.querySelectorAll('.multi-select-trigger').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const campo = btn.dataset.trigger;
+                const dropdown = extras.querySelector(`[data-campo="${campo}"]`);
+                dropdown.classList.toggle('aberto');
+            });
+        });
+
+        campos.forEach(campo => {
+            const dropdown = extras.querySelector(`[data-campo="${campo}"]`);
+
+            dropdown.addEventListener('change', async e => {
+                if (e.target.type !== 'checkbox') return;
+
+                const marcados = [...dropdown.querySelectorAll('input:checked')].map(i => i.value);
+                estado.valores[campo] = marcados;
+
+                limparCamposPosteriores(campos, campo);
+
+                await atualizarOpcoesCampos(campos, extras);
+                atualizarTextoTriggers(campos, extras);
+            });
+        });
+
+        atualizarTextoTriggers(campos, extras);
+    }
+
+    function atualizarTextoTriggers(campos, container) {
+        campos.forEach(campo => {
+            const btn = container.querySelector(`[data-trigger="${campo}"]`);
+            const selecionados = estado.valores[campo] || [];
+            const label = labels[campo] || campo;
+
+            btn.innerHTML = selecionados.length
+                ? `<span>${label}: ${selecionados.join(', ')}</span><span>⌵</span>`
+                : `<span>${label}</span><span>⌵</span>`;
+        });
+    }
+
+    const elementos = esquema.map(({ titulo, campos = [] }, index) => `
+        <div class="linha-funcao" data-linha="${index}" style="${horizontal}; gap: 1rem;">
+            <input type="radio" name="funcao" value="${index}" style="width: 1.5rem; height: 1.5rem;">
+            <span>${titulo}</span>
+            <div class="extras-funcao"></div>
+        </div>
+    `).join('');
+
+    campoFuncoes.innerHTML = elementos;
+
+    campoFuncoes.querySelectorAll('input[type="radio"][name="funcao"]').forEach(radio => {
+        radio.addEventListener('change', async e => {
+            const novoIndex = Number(e.target.value);
+
+            campoFuncoes.querySelectorAll('.extras-funcao').forEach(el => el.innerHTML = '');
+
+            estado.funcaoIndex = novoIndex;
+            estado.valores = {};
+
+            await renderizarCamposExtras(novoIndex);
+        });
+    });
 }
 
 function confirmarDesativarUsuario(usuario) {
