@@ -55,8 +55,25 @@ async function modTab(configuracoes) {
                     path: query.chave
                 })
 
-                const opcoes = Object.keys(dados)
-                    .filter(r => r != 'todos' && r != 'EM BRANCO')
+                const opcoesLista = Object.keys(dados || {})
+                    .filter(r => r !== 'todos' && r !== 'EM BRANCO')
+                    .flatMap(r => {
+                        try {
+                            const valor = JSON.parse(r)
+
+                            if (Array.isArray(valor)) {
+                                return valor
+                                    .map(item => String(item).trim())
+                                    .filter(Boolean)
+                            }
+
+                            return [String(valor).trim()].filter(Boolean)
+                        } catch {
+                            return [String(r).trim()].filter(Boolean)
+                        }
+                    })
+
+                const opcoes = [...new Set(opcoesLista)]
                     .sort((a, b) => a.localeCompare(b))
                     .map(r => `<option value="${String(r).toLowerCase()}">${r}</option>`)
                     .join('')
@@ -64,9 +81,9 @@ async function modTab(configuracoes) {
                 return `
                     <th style="background-color: white;">
                         <select
-                        data-chave="${query.chave}"
-                        data-op="${query.op || '='}"
-                        onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '${query.op || '='}', elemento: this, pag: '${pag}'})">
+                            data-chave="${query.chave}"
+                            data-op="${query.op || '='}"
+                            onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '${query.op || 'includes'}', elemento: this, pag: '${pag}'})">
                             <option></option>
                             ${opcoes}
                         </select>
@@ -671,7 +688,7 @@ function aplicarColunasOcultas(pag) {
         const linhas = tabela.querySelectorAll('tbody tr')
         linhas.forEach(linha => {
             if (linha.id === 'dinossauro' || linha.id === 'loading-tabela') return
-            
+
             const td = linha.children[index]
             if (td) td.style.display = deveOcultar ? 'none' : ''
         })

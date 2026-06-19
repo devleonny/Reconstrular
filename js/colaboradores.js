@@ -36,9 +36,11 @@ async function telaColaboradores() {
     titulo.textContent = 'Colaboradores'
 
     const btnExtras = `
-        <button onclick="gerarTodosPDFs()">Folhas de Ponto.pdf</button>
-        <button onclick="excelColaboradores()">Trabalhadores.xlsx</button>
-        <button onclick="adicionarColaborador()">Adicionar</button>
+        <div style="display: flex; flex-wrap: wrap; gap: 3px;">
+            <button onclick="gerarTodosPDFs()">Folhas de Ponto.pdf</button>
+            <button onclick="excelColaboradores()">Trabalhadores.xlsx</button>
+            <button onclick="adicionarColaborador()">Adicionar</button>
+        </div>
     `
 
     const colunas = {

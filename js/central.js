@@ -882,38 +882,6 @@ function inicialMaiuscula(string) {
     return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
 }
 
-async function configuracoes(usuario, campo, valor) {
-    try {
-        const response = await fetch(`${api}/configuracoes`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuario, campo, valor, servidor })
-        })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-            return {
-                ok: false,
-                mensagem: data?.mensagem || `Erro ${response.status}`
-            }
-        }
-
-        return {
-            ok: true,
-            mensagem: data?.mensagem || null
-        }
-
-    } catch (err) {
-        console.error(err)
-        return {
-            ok: false,
-            mensagem: 'Erro de conexão'
-        }
-    }
-}
-
-
 function pesquisar(input, idTbody) {
     const termo = input.value.trim().toLowerCase();
     const tbody = document.getElementById(idTbody);

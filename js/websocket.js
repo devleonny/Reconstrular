@@ -5,9 +5,6 @@ let reconectando = false
 
 let priExe = true
 
-// Temporário;
-indexedDB.deleteDatabase('Reconstrular')
-
 connectWebSocket()
 
 function connectWebSocket() {
@@ -167,31 +164,6 @@ async function comunicacao() {
             if (tabela == 'mensagens')
                 await verificarMensagens()
 
-            if (tabela == 'dados_setores') {
-                const { usuario, permissao, empresa, timestamp = 0, token = null } = JSON.parse(localStorage.getItem('acesso')) || {}
-                const us = await recuperarDado('dados_setores', usuario)
-
-                if (us?.timestamp !== timestamp) {
-
-                    const acessoAtualizado = { ...us, token }
-
-                    localStorage.setItem('acesso', JSON.stringify(acessoAtualizado))
-                    acesso = acessoAtualizado
-
-                    if (us.permissao !== permissao || us.empresa !== empresa) {
-
-                        popup({ mensagem: '<b>Seu acesso foi alterado:</b> Salve seus trabalhos, o sistema será reiniciado em 5 minutos...' })
-
-                        setTimeout(() => {
-                            location.reload()
-                        }, 5 * 60 * 1000)
-
-                        await usuariosToolbar()
-                    }
-
-                }
-
-            }
         }
 
         if (tipo == 'status') {

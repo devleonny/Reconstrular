@@ -186,7 +186,6 @@ async function usuariosToolbar() {
     const uOnline = await contarPorCampo({ base: 'dados_setores', path: 'status' })
 
     const { status, funcao } = await recuperarDado('dados_setores', acesso.usuario) || {}
-    const { nome } = await recuperarDado('funcoes', funcao) || {}
 
     const indicadorStatus = status || 'offline'
 
@@ -197,7 +196,7 @@ async function usuariosToolbar() {
         </div>`
 
     if (nomeUsuario)
-        nomeUsuario.innerHTML = `<span><b>${inicialMaiuscula(nome || '')}</b> ${acesso.usuario || ''}</span>`
+        nomeUsuario.innerHTML = `<span><b>${acesso.funcao}</b> ${acesso.usuario || ''}</span>`
 
     const divUsuarios = document.getElementById('divUsuarios')
     if (divUsuarios)
