@@ -36,7 +36,7 @@ async function verificarDespesas() {
       'Fornecedor': { chave: 'snapshots.fornecedor.nome' },
       'Distrito': { chave: 'snapshots.fornecedor.snapshots.cidade.distrito' },
       'Cidade': { chave: 'snapshots.fornecedor.snapshots.cidade.nome' },
-      'Número do Contribuinte': { chave: 'snapshots.fornecedor.numeroContribuinte' },
+      'Número do Contribuinte': { chave: 'snapshots.fornecedor.numero_contribuinte' },
       'Valor': { chave: 'valor' },
       'IVA': { chave: 'iva' },
       'Ano': { chave: 'snapshots.ano', tipoPesquisa: 'select' },
@@ -138,7 +138,7 @@ async function criarLinhaDespesa(dados) {
         <td>${fornecedor?.nome || ''}</td>
         <td>${cidade?.distrito || ''}
         <td>${cidade?.nome || ''}
-        <td>${fornecedor?.numeroContribuinte || ''}</td>
+        <td>${fornecedor?.numero_contribuinte || ''}</td>
         <td>${dinheiro(valor)}</td>
         <td>${dinheiro(iva)}</td>
         <td>${ano || ''}</td>
@@ -160,7 +160,7 @@ async function criarLinhaDespesa(dados) {
 
 async function formularioDespesa(idDespesa) {
 
-  const { numeroContribuinte, material, data, iva, valor, despesa, fornecedor } = await recuperarDado('dados_despesas', idDespesa) || {}
+  const { numero_contribuinte, material, data, iva, valor, despesa, fornecedor } = await recuperarDado('dados_despesas', idDespesa) || {}
   const obra = await recuperarDado('dados_obras', despesa?.obra) || {}
   const dMaterial = material || {}
   const { nome, snapshots } = await recuperarDado('fornecedores', fornecedor) || {}
@@ -204,7 +204,7 @@ async function formularioDespesa(idDespesa) {
     { texto: 'Cidade', elemento: `<input ${placeholder} value="${cidade?.nome || ''}" name="cidade" readOnly>` },
     {
       texto: 'Número do Contribuinte',
-      elemento: `<input ${placeholder} value="${numeroContribuinte || ''}" name="numeroContribuinte" readOnly>`
+      elemento: `<input ${placeholder} value="${numero_contribuinte || ''}" name="numero_contribuinte" readOnly>`
     },
     { texto: 'Valor', elemento: `<input name="valor" placeholder="Valor" type="number" value="${valor || ''}">` },
     { texto: 'IVA', elemento: `<input name="iva" placeholder="IVA" type="number" value="${iva || ''}">` },
@@ -325,7 +325,7 @@ async function buscarLocalidadeFornecedor() {
   const cidade = fornecedor?.snapshots?.cidade || {}
 
   const painel = document.querySelector('.painel-padrao')
-  painel.querySelector('[name="numeroContribuinte"]').value = fornecedor?.numeroContribuinte || '--'
+  painel.querySelector('[name="numero_contribuinte"]').value = fornecedor?.numero_contribuinte || '--'
   painel.querySelector('[name="cidade"]').value = cidade?.nome || '--'
   painel.querySelector('[name="distrito"]').value = cidade?.distrito || '--'
 
@@ -348,7 +348,7 @@ async function telaFornecedores() {
     criarLinha: 'criarLinhaFornecedores',
     colunas: {
       'Nome': { chave: 'nome' },
-      'Número do Contribuinte': { chave: 'numeroContribuinte' },
+      'Número do Contribuinte': { chave: 'numero_contribuinte' },
       'Distrito': { chave: 'snapshots.cidade.distrito' },
       'Cidade': { chave: 'snapshots.cidade.nome' },
       'Editar': {}
@@ -370,7 +370,7 @@ async function criarLinhaFornecedores(fornecedor) {
   const linha = `
       <tr>
           <td style="text-align: left;">${fornecedor.nome || ''}</td>
-          <td>${fornecedor?.numeroContribuinte || ''}</td>
+          <td>${fornecedor?.numero_contribuinte || ''}</td>
           <td>${cidade?.distrito || ''}</td>
           <td>${cidade?.nome || ''}</td>
           <td>
@@ -405,7 +405,7 @@ async function adicionarFornecedor(idFornecedor) {
 
   const linhas = [
     { texto: 'Nome', elemento: `<textarea name="nome">${fornecedor?.nome || ''}</textarea>` },
-    { texto: 'Número do Contribuinte', elemento: `<input name="numeroContribuinte" value="${fornecedor?.numeroContribuinte || ''}">` },
+    { texto: 'Número do Contribuinte', elemento: `<input name="numero_contribuinte" value="${fornecedor?.numero_contribuinte || ''}">` },
     {
       texto: 'Cidade',
       elemento: `<span name="cidade" class="opcoes" onclick="cxOpcoes('cidade')">${dCidade || 'Selecionar'}</span>`
@@ -435,7 +435,7 @@ async function salvarFornecedor(id = unicoID()) {
   const fornecedor = {
     id,
     nome: obVal('nome'),
-    numeroContribuinte: obVal('numeroContribuinte'),
+    numero_contribuinte: obVal('numero_contribuinte'),
     cidade: idCidade
   }
 

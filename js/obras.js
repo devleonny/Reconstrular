@@ -43,8 +43,19 @@ async function telaObras() {
 
 async function criarLinhaObras(obra) {
 
-    const { id, snapshots, nomeCliente } = obra || {}
-    const { cidade } = snapshots || {}
+    const {
+        id,
+        snapshots,
+        nomeCliente
+    } = obra || {}
+
+    const {
+        cliente,
+        cidade,
+        materialReal,
+        maoObraOrcado,
+        materialOrcado
+    } = snapshots || {}
 
     const resultado = obra?.resultado || {}
     const porcentagem = Number(resultado?.porcentagem || 0)
@@ -55,14 +66,9 @@ async function criarLinhaObras(obra) {
             ? 'Em Andamento'
             : 'Finalizado'
 
-    const {
-        materialOrcado,
-        maoObraOrcado,
-        materialReal
-    } = await calcularTotaisOrcamentos(id, obra)
 
     tds = `
-        <td>${nomeCliente || ''}</td>
+        <td>${cliente || ''}</td>
         <td>${cidade?.distrito || ''}</td>
         <td>${cidade?.nome || ''}</td>
         <td>
@@ -121,7 +127,7 @@ async function calcularTotaisOrcamentos(idObra, obra) {
         if (!custos)
             continue
 
-        const {materiais, ferramentas, mao_obra} = custos || {}
+        const { materiais, ferramentas, mao_obra } = custos || {}
 
         totais.materialOrcado += materiais || 0
         totais.ferramentas += ferramentas || 0
@@ -159,11 +165,13 @@ async function adicionarObra(idObra) {
             `
         },
         {
-            texto: 'Vincular Orçamento',
-            elemento: `
-                <img src="imagens/baixar.png" onclick="maisOrcamento()">
-                <div id="orcs-vinculados" style="${vertical}; gap: 2px;"></div>            
-            `
+            texto: `
+                <div style="${horizontal}; gap: 1rem;">
+                    <img src="imagens/baixar.png" onclick="maisOrcamento()">
+                    <span>Vincular Orçamento</span>
+                </div>
+            `,
+            elemento: `<div id="orcs-vinculados" style="${vertical}; gap: 2px;"></div>`
         }
     ]
 
@@ -201,8 +209,8 @@ async function maisOrcamento(idOrcamento) {
         retornar: ['snapshots.cliente'],
         colunas: {
             'Cliente': { chave: 'snapshots.cliente' },
-            'Data Contato': { chave: 'dataContato' },
-            'Data Visita': { chave: 'dataVisita' }
+            'Data Contato': { chave: 'data_contato' },
+            'Data Visita': { chave: 'data_visita' }
         }
     }
 
@@ -276,8 +284,8 @@ async function painelVincularOrcamentos(idObra) {
                     <input onclick="vincularOrcamento(this, '${idObra}', '${idOrcamento}')" ${obra?.orcamentos_vinculados?.[idOrcamento] ? 'checked' : ''} type="checkbox" style="width: 1.5rem; height: 1.5rem;">
                 </td>
                 <td>${nome}</td>
-                <td>${dtFormatada(orcamento?.dataContato)}</td>
-                <td>${dtFormatada(orcamento?.dataVisita)}</td>
+                <td>${dtFormatada(orcamento?.data_contato)}</td>
+                <td>${dtFormatada(orcamento?.data_visita)}</td>
                 <td>${dinheiro(orcamento?.total_geral)}</td>
                 <td><img src="imagens/obras.png" onclick="orcamentoFinal('${idOrcamento}', true)"></td>
             </tr>
@@ -376,29 +384,77 @@ async function pdfObra(nome) {
         .join('')
 
     const html = `
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            ${mapEstilos}
-            <style>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                ${mapEstilos}
+                <style>
+                    @page {
+                        size: 440mm 210mm;
+                        margin: 5mm;
+                    }
 
-                @page {
-                    size: 440mm 210mm;
-                    margin: 5mm;
-                }
+                    html, body {
+                        margin: 0;
+                        padding: 0;
+                        background: white;
+                        font-family: 'Poppins', sans-serif;
+                    }
 
-                body {
-                    font-family: 'Poppins', sans-serif;
-                    background: white;
-                }
+                    body {
+                        width: 430mm;
+                        overflow: hidden;
+                    }
 
-            </style>
-        </head>
-        <body>
-            ${htmlPdf.outerHTML}
-        </body>
-        </html>
-  `
+                    #pdf {
+                        display: block !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+
+                    #pdf > * {
+                        margin: 0 0 2mm 0 !important;
+                        padding: 0 !important;
+                    }
+
+                    #pdf table {
+                        width: 100% !important;
+                        border-collapse: collapse !important;
+                        margin: 0 0 2mm 0 !important;
+                        break-inside: auto !important;
+                        page-break-inside: auto !important;
+                    }
+
+                    #pdf thead {
+                        display: table-header-group;
+                    }
+
+                    #pdf tbody,
+                    #pdf table,
+                    #pdf tr,
+                    #pdf td,
+                    #pdf th {
+                        margin: 0 !important;
+                        padding-top: 0.8mm !important;
+                        padding-bottom: 0.8mm !important;
+                    }
+
+                    #pdf tr {
+                        break-inside: avoid !important;
+                        page-break-inside: avoid !important;
+                    }
+
+                    #pdf > :last-child,
+                    #pdf table:last-child {
+                        margin-bottom: 0 !important;
+                    }
+                </style>
+            </head>
+            <body>
+                ${htmlPdf.outerHTML}
+            </body>
+            </html>
+        `
 
     await pdf(html, nome)
 }

@@ -149,83 +149,12 @@ async function carregarTabelaFuncoes(config = {}) {
         { titulo: 'CEO' },
         { titulo: 'Diretor Operativo' },
         { titulo: 'Coordenador Operativo', campos: ['zona'] },
-        { titulo: 'Encarregado de Obra', campos: ['zona', 'distrito', 'area'] },
+        { titulo: 'Encarregado de Obra', campos: ['zona', 'distrito', 'area', 'obra'] },
         { titulo: 'Trabalhador', campos: ['zona', 'distrito', 'area', 'obra'] }
     ]
 
-    const estado = {
-        funcaoIndex: null,
-        valores: {
-            zona: Array.isArray(config?.valores?.zona) ? [...config.valores.zona] : [],
-            distrito: Array.isArray(config?.valores?.distrito) ? [...config.valores.distrito] : [],
-            area: Array.isArray(config?.valores?.area) ? [...config.valores.area] : [],
-            obra: Array.isArray(config?.valores?.obra) ? [...config.valores.obra] : []
-        }
-    }
-
-    const campoFuncoes = document.querySelector('.campo-funcoes')
-    if (!campoFuncoes) return
-
-    function normalizarCampo(campo) {
-        return String(campo).toLowerCase()
-    }
-
-    function montarFiltrosAte(campoAtual) {
-        const ordem = ['zona', 'distrito', 'area', 'obra']
-        const filtros = {}
-        const idxAtual = ordem.indexOf(campoAtual)
-
-        for (let i = 0; i < idxAtual; i++) {
-            const campo = ordem[i]
-            const valor = estado.valores[campo]
-
-            if (Array.isArray(valor) && valor.length === 1) {
-                filtros[campo] = { op: '=', value: valor[0] }
-            }
-        }
-
-        return filtros
-    }
-
-    async function obterOpcoes(campo) {
-        const filtros = montarFiltrosAte(campo)
-
-        const resultado = await contarPorCampo({
-            base: 'cidades',
-            path: campo,
-            filtros
-        })
-
-        return Object.keys(resultado || {}).filter(r => r !== 'todos')
-    }
-
-    function limparCamposPosteriores(campos, campoAlterado) {
-        const idx = campos.indexOf(campoAlterado)
-        for (let i = idx + 1; i < campos.length; i++) {
-            delete estado.valores[campos[i]]
-        }
-    }
-
-    async function atualizarOpcoesCampos(campos, container) {
-        for (const campo of campos) {
-            const select = container.querySelector(`[data-campo="${campo}"]`)
-            if (!select) continue
-
-            const opcoes = await obterOpcoes(campo)
-            const selecionados = estado.valores[campo] || []
-
-            select.innerHTML = opcoes.map(op => `
-                <label class="multi-option">
-                    <input 
-                        type="checkbox" 
-                        value="${escapeHtml(op)}"
-                        ${selecionados.includes(op) ? 'checked' : ''}
-                    >
-                    <span>${escapeHtml(op)}</span>
-                </label>
-            `).join('')
-        }
-    }
+    const dependentes = ['zona', 'distrito', 'area']
+    const todosCampos = ['zona', 'distrito', 'area', 'obra']
 
     const labels = {
         zona: 'Zona',
@@ -234,65 +163,46 @@ async function carregarTabelaFuncoes(config = {}) {
         obra: 'Obra'
     }
 
+    const campoFuncoes = document.querySelector('.campo-funcoes')
+    if (!campoFuncoes) return
+
+    const estado = {
+        funcaoIndex: null,
+        valores: {
+            zona: Array.isArray(config?.valores?.zona) ? [...config.valores.zona] : [],
+            distrito: Array.isArray(config?.valores?.distrito) ? [...config.valores.distrito] : [],
+            area: Array.isArray(config?.valores?.area) ? [...config.valores.area] : [],
+            obra: Array.isArray(config?.valores?.obra) ? [...config.valores.obra] : []
+        },
+        ultimoCampoDependente: null
+    }
+
+    window.__parceiroEstadoCampos = estado
+
+    function normalizarArray(valor) {
+        if (!valor) return []
+        return Array.isArray(valor) ? valor.filter(Boolean) : [valor].filter(Boolean)
+    }
+
+    function criarRegraOR(valores = []) {
+        return {
+            modo: 'OR',
+            regras: valores.map(value => ({ op: '=', value }))
+        }
+    }
+
     function criarMultiSelect(campo) {
         const label = labels[campo] || campo
 
         return `
-        <div class="multi-select-wrap">
-            <label class="multi-select-trigger" data-trigger="${campo}">
-                <span>${label}</span>
-                <span>⌵</span>
-            </label>
-            <div class="multi-select-dropdown" data-campo="${campo}"></div>
-        </div>
-    `
-    }
-
-    async function renderizarCamposExtras(index, preservarValores = false) {
-        const item = esquema[index]
-        const campos = (item.campos || []).map(normalizarCampo)
-        const linha = campoFuncoes.querySelector(`[data-linha="${index}"]`)
-        const extras = linha.querySelector('.extras-funcao')
-
-        if (!preservarValores) {
-            estado.valores = {}
-        } else {
-            const filtrados = {}
-            for (const campo of campos) {
-                filtrados[campo] = Array.isArray(estado.valores[campo]) ? estado.valores[campo] : []
-            }
-            estado.valores = filtrados
-        }
-
-        extras.innerHTML = campos.map(criarMultiSelect).join('')
-
-        await atualizarOpcoesCampos(campos, extras)
-
-        extras.querySelectorAll('.multi-select-trigger').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const campo = btn.dataset.trigger
-                const dropdown = extras.querySelector(`[data-campo="${campo}"]`)
-                dropdown.classList.toggle('aberto')
-            })
-        })
-
-        campos.forEach(campo => {
-            const dropdown = extras.querySelector(`[data-campo="${campo}"]`)
-
-            dropdown.addEventListener('change', async e => {
-                if (e.target.type !== 'checkbox') return
-
-                const marcados = [...dropdown.querySelectorAll('input:checked')].map(i => i.value)
-                estado.valores[campo] = marcados
-
-                limparCamposPosteriores(campos, campo)
-
-                await atualizarOpcoesCampos(campos, extras)
-                atualizarTextoTriggers(campos, extras)
-            })
-        })
-
-        atualizarTextoTriggers(campos, extras)
+            <div class="multi-select-wrap">
+                <label class="multi-select-trigger" data-trigger="${campo}">
+                    <span>${label}</span>
+                    <span>⌵</span>
+                </label>
+                <div class="multi-select-dropdown" data-campo="${campo}"></div>
+            </div>
+        `
     }
 
     function atualizarTextoTriggers(campos, container) {
@@ -300,7 +210,7 @@ async function carregarTabelaFuncoes(config = {}) {
             const btn = container.querySelector(`[data-trigger="${campo}"]`)
             if (!btn) return
 
-            const selecionados = estado.valores[campo] || []
+            const selecionados = normalizarArray(estado.valores[campo])
             const label = labels[campo] || campo
 
             btn.innerHTML = selecionados.length
@@ -309,7 +219,172 @@ async function carregarTabelaFuncoes(config = {}) {
         })
     }
 
-    const elementos = esquema.map(({ titulo, campos = [] }, index) => `
+    function limparOutrosDependentes(campoBase) {
+        for (const campo of dependentes) {
+            if (campo !== campoBase) {
+                estado.valores[campo] = []
+            }
+        }
+    }
+
+    function montarFiltrosParaCampo(campoAlvo) {
+        const campoBase = estado.ultimoCampoDependente
+
+        if (!campoBase || !dependentes.includes(campoBase)) {
+            return {}
+        }
+
+        if (campoAlvo === campoBase) {
+            return {}
+        }
+
+        const valores = normalizarArray(estado.valores[campoBase])
+        if (!valores.length) {
+            return {}
+        }
+
+        return {
+            [campoBase]: criarRegraOR(valores)
+        }
+    }
+
+    async function obterOpcoes(campo) {
+        if (campo === 'obra') {
+            const resultado = await contarPorCampo({
+                base: 'cidades',
+                path: campo,
+                filtros: {}
+            })
+
+            return Object.keys(resultado || {}).filter(item => item && item !== 'todos')
+        }
+
+        const filtros = montarFiltrosParaCampo(campo)
+
+        const resultado = await contarPorCampo({
+            base: 'cidades',
+            path: campo,
+            filtros
+        })
+
+        return Object.keys(resultado || {}).filter(item => item && item !== 'todos')
+    }
+
+    async function preencherDropdown(campo, container) {
+        const dropdown = container.querySelector(`[data-campo="${campo}"]`)
+        if (!dropdown) return
+
+        const opcoesBase = await obterOpcoes(campo)
+        const selecionados = normalizarArray(estado.valores[campo])
+
+        const opcoes = [...new Set([...opcoesBase, ...selecionados])]
+
+        dropdown.innerHTML = opcoes.map(opcao => `
+            <label class="multi-option">
+                <input
+                    type="checkbox"
+                    value="${escapeHtml(opcao)}"
+                    ${selecionados.includes(opcao) ? 'checked' : ''}
+                >
+                <span>${escapeHtml(opcao)}</span>
+            </label>
+        `).join('')
+    }
+
+    async function atualizarCampos(campos, container) {
+        for (const campo of campos) {
+            await preencherDropdown(campo, container)
+        }
+
+        atualizarTextoTriggers(campos, container)
+    }
+
+    async function aoMudarCampo(campo, container, campos) {
+        const dropdown = container.querySelector(`[data-campo="${campo}"]`)
+        if (!dropdown) return
+
+        const marcados = [...dropdown.querySelectorAll('input:checked')]
+            .map(input => input.value)
+            .filter(Boolean)
+
+        estado.valores[campo] = marcados
+
+        if (dependentes.includes(campo)) {
+            estado.ultimoCampoDependente = marcados.length ? campo : null
+
+            if (estado.ultimoCampoDependente) {
+                limparOutrosDependentes(campo)
+                estado.valores[campo] = marcados
+            }
+        }
+
+        await atualizarCampos(campos, container)
+    }
+
+    async function renderizarCamposExtras(index, preservarValores = false) {
+        const item = esquema[index]
+        const campos = (item.campos || []).map(c => String(c).toLowerCase())
+        const linha = campoFuncoes.querySelector(`[data-linha="${index}"]`)
+        const extras = linha?.querySelector('.extras-funcao')
+
+        if (!extras) return
+
+        if (!preservarValores) {
+            estado.valores = {
+                zona: [],
+                distrito: [],
+                area: [],
+                obra: []
+            }
+            estado.ultimoCampoDependente = null
+        } else {
+            const novosValores = {
+                zona: [],
+                distrito: [],
+                area: [],
+                obra: []
+            }
+
+            for (const campo of todosCampos) {
+                novosValores[campo] = normalizarArray(estado.valores[campo])
+            }
+
+            estado.valores = novosValores
+
+            estado.ultimoCampoDependente =
+                [...dependentes].reverse().find(campo => normalizarArray(estado.valores[campo]).length) || null
+        }
+
+        extras.innerHTML = campos.map(criarMultiSelect).join('')
+
+        extras.querySelectorAll('.multi-select-trigger').forEach(trigger => {
+            trigger.addEventListener('click', () => {
+                const campo = trigger.dataset.trigger
+                const dropdown = extras.querySelector(`[data-campo="${campo}"]`)
+                if (dropdown) dropdown.classList.toggle('aberto')
+            })
+        })
+
+        await atualizarCampos(campos, extras)
+
+        for (const campo of campos) {
+            const dropdown = extras.querySelector(`[data-campo="${campo}"]`)
+            if (!dropdown) continue
+
+            dropdown.addEventListener('change', async (e) => {
+                if (e.target?.type !== 'checkbox') return
+                await aoMudarCampo(campo, extras, campos)
+            })
+        }
+    }
+
+    function atualizarInputFuncao(index) {
+        const inputFuncao = campoFuncoes.querySelector('[name="funcao"]')
+        if (!inputFuncao) return
+        inputFuncao.value = esquema[index]?.titulo || ''
+    }
+
+    const elementos = esquema.map(({ titulo }, index) => `
         <div class="linha-funcao" data-linha="${index}" style="${horizontal}; gap: 1rem;">
             <input type="radio" name="funcao_radio" value="${index}" style="width: 1.5rem; height: 1.5rem;">
             <span>${titulo}</span>
@@ -322,17 +397,11 @@ async function carregarTabelaFuncoes(config = {}) {
         ${elementos}
     `
 
-    function atualizarInputFuncao(index) {
-        const inputFuncao = campoFuncoes.querySelector('[name="funcao"]')
-        if (!inputFuncao) return
-        inputFuncao.value = esquema[index]?.titulo || ''
-    }
-
     campoFuncoes.querySelectorAll('input[type="radio"][name="funcao_radio"]').forEach(radio => {
-        radio.addEventListener('change', async e => {
+        radio.addEventListener('change', async (e) => {
             const novoIndex = Number(e.target.value)
 
-            campoFuncoes.querySelectorAll('.extras-funcao').forEach(el => el.innerHTML = '')
+            campoFuncoes.querySelectorAll('.extras-funcao').forEach(item => item.innerHTML = '')
 
             estado.funcaoIndex = novoIndex
             atualizarInputFuncao(novoIndex)
@@ -355,7 +424,6 @@ async function carregarTabelaFuncoes(config = {}) {
 }
 
 async function salvarParceiro(usuario = el('usuario')?.value) {
-
     try {
         overlayAguarde()
 
@@ -381,6 +449,8 @@ async function salvarParceiro(usuario = el('usuario')?.value) {
         if (!usuario || !nome_completo || !email)
             return popup({ mensagem: 'Não deixe Usuário/Nome ou E-mail em branco' })
 
+        const campoBase = window.__parceiroEstadoCampos?.ultimoCampoDependente || null
+
         const user = {
             usuario,
             nome_completo,
@@ -388,21 +458,19 @@ async function salvarParceiro(usuario = el('usuario')?.value) {
             telefone,
             data_nascimento,
             funcao,
-            ...(zona.length ? { zona } : {}),
-            ...(distrito.length ? { distrito } : {}),
-            ...(area.length ? { area } : {}),
-            ...(obra.length ? { obra } : {})
+            zona: campoBase === 'zona' ? zona : null,
+            distrito: campoBase === 'distrito' ? distrito : null,
+            area: campoBase === 'area' ? area : null,
+            obra: obra.length ? obra : null
         }
 
         await enviar(`dados_setores/${usuario}`, user)
 
         removerPopup()
-
     } catch (err) {
         console.log(err)
         popup({ mensagem: 'Falha ao salvar o cadastro' })
     }
-
 }
 
 function confirmarDesativarUsuario(usuario) {

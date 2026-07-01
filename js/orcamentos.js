@@ -133,8 +133,8 @@ async function criarLinhaOrcamento(orcamento) {
         <td>${cliente || ''}</td>
         <td>${cidade?.distrito || ''}
         <td>${cidade?.nome || ''}
-        <td>${dt(orcamento.dataContato)}</td>
-        <td>${dt(orcamento.dataVisita)}</td>
+        <td>${dt(orcamento.data_contato)}</td>
+        <td>${dt(orcamento.data_visita)}</td>
         <td>
             ${orcamento.emailEnviado ? `<img src="imagens/carta.png">` : ''}
         </td>
@@ -212,7 +212,7 @@ async function formularioOrcamento(idOrcamento) {
         base: 'dados_clientes',
         colunas: {
             'Nome': { chave: 'nome' },
-            'Morada Fiscal': { chave: 'moradaFiscal' },
+            'Morada Fiscal': { chave: 'morada_fiscal' },
             'Distrito': { chave: 'snapshots.cidade.distrito' },
             'Zona': { chave: 'snapshots.cidade.zona' },
             'Cidade': { chave: 'snapshots.cidade.nome' }
@@ -226,11 +226,11 @@ async function formularioOrcamento(idOrcamento) {
         },
         {
             texto: 'Data de contato',
-            elemento: `<input value="${orcamento?.dataContato || ''}" name="dataContato" type="date">`
+            elemento: `<input value="${orcamento?.data_contato || ''}" name="data_contato" type="date">`
         },
         {
             texto: 'Data de visita',
-            elemento: `<input value="${orcamento?.dataVisita || ''}" name="dataVisita" type="date">`
+            elemento: `<input value="${orcamento?.data_visita || ''}" name="data_visita" type="date">`
         }
     ]
 
@@ -270,8 +270,8 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
     const orcamentoAtualizado = {
         ...orcamento || {},
         cliente,
-        dataVisita: document.querySelector('[name="dataVisita"]').value,
-        dataContato: document.querySelector('[name="dataContato"]').value,
+        data_visita: document.querySelector('[name="data_visita"]').value,
+        data_contato: document.querySelector('[name="data_contato"]').value,
         zonas
     }
 
@@ -481,8 +481,8 @@ async function alterarFinalizacao(id, status) {
         orcamento.revisoes[R] = {
             zonas: orcamento.zonas,
             idCliente: orcamento.idCliente,
-            dataContato: orcamento.dataContato,
-            dataVisita: orcamento.dataVisita,
+            data_contato: orcamento.data_contato,
+            data_visita: orcamento.data_visita,
             data: new Date().toLocaleString(),
             usuario: acesso.usuario
         }
@@ -681,8 +681,8 @@ async function comparativoRevisoes(idOrcamento) {
 
         const camposGerais = [
             ['Cliente', revAnt.idCliente, revAtual.idCliente],
-            ['Data contato', revAnt.dataContato, revAtual.dataContato],
-            ['Data visita', revAnt.dataVisita, revAtual.dataVisita]
+            ['Data contato', revAnt.data_contato, revAtual.data_contato],
+            ['Data visita', revAnt.data_visita, revAtual.data_visita]
         ]
 
         const dadosGeraisHTML = camposGerais.map(([label, ant, atu]) => {
@@ -829,8 +829,8 @@ async function listagem(idOrcamento, tabela) {
     const dados = {
         'PEDIDO DE MATERIAIS': 'TOTAL (c/iva)',
         'Empresa': cliente?.nome || '',
-        'Morada de Execução': cliente?.moradaExecucao || '',
-        'Nif': cliente?.numeroContribuinte || '',
+        'Morada de Execução': cliente?.morada_execucao || '',
+        'Nif': cliente?.numero_contribuinte || '',
         'E-mail': cliente?.email || '',
         'Contacto': cliente?.telefone || ''
     }
@@ -943,8 +943,8 @@ async function listagem(idOrcamento, tabela) {
 
 async function orcamentoFinal(idOrcamento, emJanela) {
 
-    const { zonas, dataContato, dataVisita, cliente } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
-    const { nome, numeroContribuinte, email, telefone, moradaFiscal, moradaExecucao } = await recuperarDado('dados_clientes', cliente) || {}
+    const { zonas, data_contato, data_visita, cliente } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
+    const { nome, numero_contribuinte, email, telefone, morada_fiscal, morada_execucao } = await recuperarDado('dados_clientes', cliente) || {}
 
     let totalGeral = 0
 
@@ -957,13 +957,13 @@ async function orcamentoFinal(idOrcamento, emJanela) {
     const dados = {
         'Orçamento': 'TOTAL (s/iva)',
         'Nome': nome || '',
-        'Morada Fiscal': moradaFiscal || '',
-        'Morada de Execução': moradaExecucao || '',
-        'Nif': numeroContribuinte || '',
+        'Morada Fiscal': morada_fiscal || '',
+        'Morada de Execução': morada_execucao || '',
+        'Nif': numero_contribuinte || '',
         'E-mail': email || '',
         'Contacto': telefone || '',
-        'Data contacto': dt(dataContato),
-        'Data de visita': dt(dataVisita),
+        'Data contacto': dt(data_contato),
+        'Data de visita': dt(data_visita),
         'Dias Úteis Estimados': ''
     }
 

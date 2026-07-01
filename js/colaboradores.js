@@ -93,7 +93,7 @@ async function criarLinhaColaboradores(colaborador) {
 
     const dCidade = await recuperarDado('cidades', cidade) || {}
 
-    const algoPendente = (!colaborador.epi || !colaborador.exame || !colaborador.contratoObra)
+    const algoPendente = (!colaborador.epi || !colaborador.exame || !colaborador.contrato_obra)
     const especialidades = (colaborador?.especialidade || [])
         .map(op => `<span>• ${op}</span>`)
         .join('')
@@ -188,7 +188,7 @@ async function adicionarColaborador(id) {
     const caixaDocumentos = `
         <div style="${vertical}; gap: 1rem;">
             ${retornarCaixas('documento')} 
-            <input ${regras} value="${colaborador?.numeroDocumento || ''}" name="numeroDocumento" placeholder="Número do documento">
+            <input ${regras} value="${colaborador?.numero_documento || ''}" name="numero_documento" placeholder="Número do documento">
         </div>
         `
     const divAnexos = (chave) => {
@@ -218,7 +218,7 @@ async function adicionarColaborador(id) {
 
     const linhas = [
         { texto: 'Nome Completo', elemento: `<textarea ${regras} name="nome" placeholder="Nome Completo">${colaborador?.nome || ''}</textarea>` },
-        { texto: 'Data de Nascimento', elemento: `<input ${regras} value="${colaborador?.dataNascimento || ''}" type="date" name="dataNascimento">` },
+        { texto: 'Data de Nascimento', elemento: `<input ${regras} value="${colaborador?.data_nascimento || ''}" type="date" name="data_nascimento">` },
         { texto: 'Morada', elemento: `<textarea ${regras} name="morada" placeholder="Morada">${colaborador?.morada || ''}</textarea>` },
         {
             texto: 'Cidade',
@@ -244,16 +244,16 @@ async function adicionarColaborador(id) {
         { texto: 'Documento', elemento: caixaDocumentos },
         {
             texto: 'Número de Contribuinte',
-            elemento: `<input ${regras} value="${colaborador?.numeroContribuinte || ''}" name="numeroContribuinte" placeholder="Máximo de 9 dígitos">`
+            elemento: `<input ${regras} value="${colaborador?.numero_contribuinte || ''}" name="numero_contribuinte" placeholder="Máximo de 9 dígitos">`
         },
         {
             texto: 'Segurança Social',
-            elemento: `<input ${regras} value="${colaborador?.segurancaSocial || ''}" name="segurancaSocial" placeholder="Máximo de 11 dígitos">`
+            elemento: `<input ${regras} value="${colaborador?.seguranca_social || ''}" name="seguranca_social" placeholder="Máximo de 11 dígitos">`
         },
         { texto: 'Especialidade', elemento: caixaEspecialidades },
         { texto: 'Status', elemento: caixaStatus },
-        { texto: 'Contrato de Obra', elemento: `<input name="contratoObra" type="file">` },
-        { texto: 'Anexos Contrato de Obra', elemento: divAnexos('contratoObra') },
+        { texto: 'Contrato de Obra', elemento: `<input name="contrato_obra" type="file">` },
+        { texto: 'Anexos Contrato de Obra', elemento: divAnexos('contrato_obra') },
         { texto: 'Exame médico', elemento: `<input name="exame" type="file">` },
         { texto: 'Anexos Exame', elemento: divAnexos('exame') },
 
@@ -295,7 +295,8 @@ async function adicionarColaborador(id) {
         { funcao: id ? `salvarColaborador('${id}')` : 'salvarColaborador()', texto: 'Salvar', img: 'concluido' }
     ]
 
-    if (id) botoes.push({ img: 'cancel', texto: 'Excluir', funcao: `confirmarExclusaoColaborador('${id}')` })
+    if (id) 
+        botoes.push({ img: 'cancel', texto: 'Excluir', funcao: `confirmarExclusaoColaborador('${id}')` })
 
     popup({ linhas, botoes, titulo: 'Cadastro de Colaborador' })
 
@@ -335,7 +336,7 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
         ...colaboradorExistente
     }
 
-    const camposFixos = ['nome', 'dataNascimento', 'email', 'morada', 'apolice', 'telefone', 'numeroDocumento', 'segurancaSocial', 'obra', 'numeroContribuinte'];
+    const camposFixos = ['nome', 'data_nascimento', 'email', 'morada', 'apolice', 'telefone', 'numero_documento', 'seguranca_social', 'obra', 'numero_contribuinte'];
     for (const campo of camposFixos) colaborador[campo] = obVal(campo);
 
     const camposRatio = ['status', 'documento'];
@@ -366,7 +367,7 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
 
     colaborador.pin = inputPin.value
 
-    const camposAnexos = ['contratoObra', 'exame'];
+    const camposAnexos = ['contrato_obra', 'exame'];
     for (const campo of camposAnexos) {
         const input = document.querySelector(`[name="${campo}"]`);
         if (!input || !input.files || input.files.length === 0) continue;
@@ -419,7 +420,7 @@ async function excelColaboradores() {
 
         if (!ids.includes(idColaborador)) continue
 
-        const { cidade, contratoObra, epi, exame, excluido, obra, folha, foto, id, obraAlocada, pin, timestamp, ...resto } = colaborador
+        const { cidade, contrato_obra, epi, exame, excluido, obra, folha, foto, id, obraAlocada, pin, timestamp, ...resto } = colaborador
         const c = cidades?.[colaborador?.cidade] || {}
         const nomeCidade = c.nome || ''
         const distrito = c.distrito || ''
@@ -428,7 +429,7 @@ async function excelColaboradores() {
             ...resto,
             distrito,
             cidade: nomeCidade,
-            dataNascimento: dtFormatada(colaborador.dataNascimento),
+            data_nascimento: dtFormatada(colaborador.data_nascimento),
             especialidade: colaborador.especialidade.map(esp => esp).join(', ')
         }
 

@@ -1,22 +1,23 @@
 async function telaClientes() {
 
+    overlayAguarde()
+
     telaAtiva = 'clientes'
 
-    const btnExtras = `
-        <button
-         onclick="formularioCliente()">Adicionar</button>
-    `
+    const { funcao } = acesso
 
     const tabela = await modTab({
-        btnExtras,
+        btnExtras: '<button onclick="formularioCliente()">Adicionar</button>',
         base: 'dados_clientes',
         pag: 'clientes',
         body: 'bodyClientes',
         criarLinha: 'criarLinhaClientes',
         colunas: {
+            'Data da Criação': {},
             'Nome': { chave: 'nome' },
-            'Morada Fiscal': { chave: 'moradaFiscal' },
-            'Morada de Execução': { chave: 'moradaExecucao' },
+            'Morada Fiscal': { chave: 'morada_fiscal' },
+            'Morada de Execução': { chave: 'morada_execucao' },
+            'Zona': { chave: 'snapshots.cidade.zona', tipoPesquisa: 'select' },
             'Distrito': { chave: 'snapshots.cidade.distrito', tipoPesquisa: 'select' },
             'Cidade': { chave: 'snapshots.cidade.nome', tipoPesquisa: 'select' },
             'E-mail': { chave: 'email' },
@@ -29,17 +30,31 @@ async function telaClientes() {
     tela.innerHTML = tabela
 
     await paginacao()
+
+    removerOverlay()
 }
 
 function criarLinhaClientes(dados) {
 
-    const { snapshots, id, email, telefone, nome, moradaFiscal, moradaExecucao } = dados || {}
+    const {
+        timestamp,
+        snapshots,
+        id,
+        email,
+        telefone,
+        nome,
+        morada_fiscal,
+        morada_execucao
+    } = dados || {}
+
     const cidade = snapshots?.cidade || {}
 
     tds = `
+        <td>${new Date(timestamp).toLocaleString()}</td>
         <td>${nome || ''}</td>
-        <td>${moradaFiscal || ''}</td>
-        <td>${moradaExecucao || ''}</td>
+        <td>${morada_fiscal || ''}</td>
+        <td>${morada_execucao || ''}</td>
+        <td>${cidade?.zona || ''}
         <td>${cidade?.distrito || ''}
         <td>${cidade?.nome || ''}
         <td>${email || ''}</td>
@@ -54,7 +69,18 @@ function criarLinhaClientes(dados) {
 
 async function formularioCliente(idCliente) {
 
-    const { snapshots, nome, telefone, email, moradaExecucao, moradaFiscal, numeroContribuinte } = await recuperarDado('dados_clientes', idCliente) || {}
+    if (acesso.funcao !== 'Diretor Operacional')
+        return popup({ mensagem: 'Apenas o <b>Diretor Operacional</b> pode incluir Clientes' })
+
+    const {
+        snapshots,
+        nome,
+        telefone,
+        email,
+        morada_execucao,
+        morada_fiscal,
+        numero_contribuinte
+    } = await recuperarDado('dados_clientes', idCliente) || {}
 
     const botoes = [
         { texto: 'Salvar', img: 'concluido', funcao: idCliente ? `salvarCliente('${idCliente}')` : 'salvarCliente()' }
@@ -80,9 +106,9 @@ async function formularioCliente(idCliente) {
 
     const linhas = [
         { texto: 'Nome', elemento: `<textarea name="nome">${nome || ''}</textarea>` },
-        { texto: 'Morada Fiscal', elemento: `<input oninput="regrasClientes()" name="moradaFiscal" value="${moradaFiscal || ''}">` },
-        { texto: 'Morada de Execução', elemento: `<input oninput="regrasClientes()" name="moradaExecucao" value="${moradaExecucao || ''}">` },
-        { texto: 'Número de Contribuinte', elemento: `<input oninput="regrasClientes()" name="numeroContribuinte" value="${numeroContribuinte || ''}">` },
+        { texto: 'Morada Fiscal', elemento: `<input oninput="regrasClientes()" name="morada_fiscal" value="${morada_fiscal || ''}">` },
+        { texto: 'Morada de Execução', elemento: `<input oninput="regrasClientes()" name="morada_execucao" value="${morada_execucao || ''}">` },
+        { texto: 'Número de Contribuinte', elemento: `<input oninput="regrasClientes()" name="numero_contribuinte" value="${numero_contribuinte || ''}">` },
         { texto: 'Telefone', elemento: `<input oninput="regrasClientes()" name="telefone" value="${telefone || ''}">` },
         { texto: 'E-mail', elemento: `<input oninput="regrasClientes()" name="email" value="${email || ''}">` },
         {
@@ -113,7 +139,7 @@ async function excluirCliente(idCliente) {
 
 function regrasClientes() {
 
-    const campos = ['telefone', 'numeroContribuinte']
+    const campos = ['telefone', 'numero_contribuinte']
     const limite = 9
     let bloqueio = false
     const painel = document.querySelector('.painel-padrao')
@@ -161,9 +187,9 @@ async function salvarCliente(idCliente = unicoID()) {
     const novo = {
         ...cliente,
         nome: obVal('nome'),
-        moradaFiscal: obVal('moradaFiscal'),
-        moradaExecucao: obVal('moradaExecucao'),
-        numeroContribuinte: obVal('numeroContribuinte'),
+        morada_fiscal: obVal('morada_fiscal'),
+        morada_execucao: obVal('morada_execucao'),
+        numero_contribuinte: obVal('numero_contribuinte'),
         telefone: obVal('telefone'),
         email: obVal('email'),
         cidade: painel.querySelector('[name="cidade"]').id

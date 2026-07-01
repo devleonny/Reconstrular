@@ -603,8 +603,8 @@ function verificarRegras() {
 
     const limites = {
         nome: { tipo: 'A' },
-        numeroContribuinte: { limite: 9, tipo: 1 },
-        segurancaSocial: { limite: 11, tipo: 1 },
+        numero_contribuinte: { limite: 9, tipo: 1 },
+        seguranca_social: { limite: 11, tipo: 1 },
         pin: { limite: 4, tipo: 1 },
         pinEspelho: { limite: 4, tipo: 1 },
         telefone: { limite: 9, tipo: 1 }
@@ -688,7 +688,7 @@ function verificarRegras() {
         }
     }
 
-    const camposFlex = ['nome', 'dataNascimento', 'email', 'morada', 'numeroDocumento', 'apolice']
+    const camposFlex = ['nome', 'data_nascimento', 'email', 'morada', 'numero_documento', 'apolice']
     for (const campo of camposFlex) {
         const elCampo = input(campo)
 
@@ -702,22 +702,22 @@ function verificarRegras() {
         }
     }
 
-    const numeroDocumento = input('numeroDocumento')
+    const numero_documento = input('numero_documento')
     const docAtivo = painel.querySelector('input[name="documento"]:checked')
 
     if (docAtivo && docAtivo.value == 'Cartão de Cidadão') {
-        if (numeroDocumento.value.length > 8)
-            numeroDocumento.value = numeroDocumento.value.slice(0, 8)
+        if (numero_documento.value.length > 8)
+            numero_documento.value = numero_documento.value.slice(0, 8)
 
-        numeroDocumento.value = numeroDocumento.value.replace(/\D/g, '')
+        numero_documento.value = numero_documento.value.replace(/\D/g, '')
 
-        if (numeroDocumento.value.length !== 8) {
+        if (numero_documento.value.length !== 8) {
             liberado = false
-            numeroDocumento.classList.add('invalido')
-            marcarLinhaInvalida(numeroDocumento)
+            numero_documento.classList.add('invalido')
+            marcarLinhaInvalida(numero_documento)
         } else {
-            numeroDocumento.classList.remove('invalido')
-            removerLinhaInvalida(numeroDocumento)
+            numero_documento.classList.remove('invalido')
+            removerLinhaInvalida(numero_documento)
         }
     }
 

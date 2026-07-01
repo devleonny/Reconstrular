@@ -95,8 +95,8 @@ async function mostrarFolha(idColaborador) {
 
     obVal('Empresa').textContent = 'Enumeratributo Unipessoal Lda'
     obVal('Nome').textContent = colaborador.nome
-    obVal('Nif').textContent = colaborador.numeroContribuinte
-    obVal('Segurança Social').textContent = colaborador.segurancaSocial
+    obVal('Nif').textContent = colaborador.numero_contribuinte
+    obVal('Segurança Social').textContent = colaborador.seguranca_social
 
     criarFolha(idColaborador)
 

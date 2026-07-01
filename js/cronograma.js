@@ -256,7 +256,7 @@ function renderTabelaSemana(atividades, semana, indiceSemana) {
 
 async function renderCronogramaObra(idObra) {
     const obra = await recuperarDado('dados_obras', idObra) || {}
-    const { moradaExecucao, nome } = await recuperarDado('dados_clientes', obra?.cliente) || {}
+    const { morada_execucao, nome } = await recuperarDado('dados_clientes', obra?.cliente) || {}
 
     const base = []
 
@@ -295,7 +295,7 @@ async function renderCronogramaObra(idObra) {
     })
 
     const resultados = pesquisa?.resultados || []
-    const dataInicio = obra?.dtInicio ? parseDateLocal(obra.dtInicio) : new Date()
+    const dataInicio = obra?.dt_inicio ? parseDateLocal(obra.dt_inicio) : new Date()
     const atividades = montarCronogramaAtividades(resultados, dataInicio)
 
     const totalDiasUteis = atividades.reduce((acc, item) => acc + item.diasNecessarios, 0)
@@ -318,7 +318,7 @@ async function renderCronogramaObra(idObra) {
                 </tr>
                 <tr>
                     <td style="background: #5b707f; color: #fff;">Morada de Execução</td>
-                    <td>${escapeHtml(moradaExecucao || '')}</td>
+                    <td>${escapeHtml(morada_execucao || '')}</td>
                 </tr>
                 <tr>
                     <td style="background: #5b707f; color: #fff;">Data de Início</td>
@@ -326,7 +326,7 @@ async function renderCronogramaObra(idObra) {
                         <input
                             type="date"
                             id="dtInicio"
-                            value="${obra?.dtInicio || toDateInputValue(new Date())}"
+                            value="${obra?.dt_inicio || toDateInputValue(new Date())}"
                             onchange="salvarDtInicio(this, '${idObra}')">
                     </td>
                 </tr>
@@ -349,7 +349,7 @@ async function renderCronogramaObra(idObra) {
         </div>
         <br>
         <div class="acompanhamento">
-            <div id="pdf" style="${vertical}; gap: 1rem; width: 100%;">
+            <div id="pdf" style="${vertical}; width: 100%;">
                 ${tabInfos}
                 ${tabelas}
             </div>
@@ -358,19 +358,23 @@ async function renderCronogramaObra(idObra) {
 }
 
 async function telaCronograma(idObra) {
+
+    overlayAguarde()
     const obra = await recuperarDado('dados_obras', idObra) || {}
 
     titulo.textContent = 'Cronograma'
 
-    if (!obra?.dtInicio) {
+    if (!obra?.dt_inicio) {
         const hoje = toDateInputValue(new Date())
-        await enviar(`dados_obras/${idObra}/dtInicio`, hoje)
+        await enviar(`dados_obras/${idObra}/dt_inicio`, hoje)
     }
 
     await renderCronogramaObra(idObra)
+
+    removerOverlay()
 }
 
 async function salvarDtInicio(input, idObra) {
-    await enviar(`dados_obras/${idObra}/dtInicio`, input.value)
+    await enviar(`dados_obras/${idObra}/dt_inicio`, input.value)
     await renderCronogramaObra(idObra)
 }
