@@ -2,12 +2,14 @@
 async function painelChat() {
 
     const btnExtras = `
-        <div style="${horizontal}; gap: 5px;">
-            <input type="checkbox" onclick="marcarTodos(this)">
-            <span style="color: white;">Marcar todos</span>
+        <div style="${horizontal}; gap: 2px;">
+            <div style="${horizontal}; gap: 5px;">
+                <input type="checkbox" onclick="marcarTodos(this)">
+                <span style="color: white;">Marcar todos</span>
+            </div>
+            <button onclick="confirmarArquivamento()">Arquivar mensagens</button>
+            <button onclick="">Marcar como lida</button>
         </div>
-        <button onclick="confirmarArquivamento()">Arquivar mensagens</button>
-        <button onclick="">Marcar como lida</button>
     `
     const pag = 'mensagens'
     const tabela = await modTab({
