@@ -876,10 +876,16 @@ function inicialMaiuscula(string) {
     if (string == undefined) {
         return ''
     }
-    string.includes('_') ? string = string.split('_').join(' ') : ''
+
+    string = string.replaceAll('_', ' ')
 
     if (string.includes('lpu')) return string.toUpperCase()
-    return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+
+    return string
+        .toLowerCase()
+        .split(' ')
+        .map(palavra => palavra.charAt(0).toUpperCase() + palavra.slice(1))
+        .join(' ')
 }
 
 function pesquisar(input, idTbody) {
@@ -1004,18 +1010,64 @@ async function importarAnexos({ input, foto }) {
 
 function criarAnexoVisual({ nome, link, funcao }) {
 
-    let displayExcluir = 'flex'
+    const formImg = ['jpg', 'jpeg', 'png']
+    const regex = /\.([^.]+)$/
+    const resultado = nome.match(regex)
+    const formato = resultado ? resultado[1] : null
 
-    if (!funcao) displayExcluir = 'none'
+    // Formato imagem;
+    if (formImg.includes(formato)) {
 
-    return `
-        <div class="contornoAnexos" name="${link}">
-            <div onclick="abrirArquivo('${link}')" class="contornoInterno">
-                <img src="imagens/anexo2.png">
-                <label>Arquivo</label>
+        const excluir = funcao
+            ? `<img onclick="${funcao}" src="imagens/cancel.png" style="position: absolute; top: 2px; right: 2px; width: 1.5rem;">`
+            : ''
+
+        return `
+            <div style="position: relative; width: max-content;">
+                ${excluir}
+                <img
+                    class="foto-status"
+                    id="${link}"
+                    src="${api}/uploads/${link}"
+                    onclick="ampliarImagem(this, '${link}')">
             </div>
-            <img src="imagens/cancel.png" style="display: ${displayExcluir};" onclick="${funcao}">
-        </div>`
+        `
+
+    } else {
+
+        const nomeFormatado = nome.length > 15
+            ? `${nome.slice(0, 6)}...${nome.slice(-6)}`
+            : nome;
+
+        const excluir = funcao
+            ? `<img src="imagens/cancel.png" style="width: 1.5rem;" onclick="${funcao}">`
+            : ''
+
+        return `
+            <div class="contorno-anexos" name="${link}">
+                <div onclick="abrirArquivo('${link}')" 
+                class="contorno-iterno" 
+                style="width: 100%; display: flex; align-items: center; justify-content: start; gap: 2px;">
+                    <img src="imagens/anexo2.png" style="width: 1.5rem;">
+                    <label style="font-size: 0.7rem; cursor: pointer;" title="${nome}">${nomeFormatado}</label>
+                    ${excluir}
+                </div>
+            </div>
+        `
+    }
+
+}
+
+function ampliarImagem(img) {
+
+    const elemento = `
+        <div style="position: relative; background-color: #d2d2d2;">
+            <img style="width: 95%;" src="${img.src}">
+        </div>
+    `
+
+    popup({ elemento })
+
 }
 
 function abrirArquivo(link) {

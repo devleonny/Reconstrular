@@ -177,3 +177,27 @@ async function comunicacao() {
         }
     }
 }
+
+async function verificarMensagens() {
+
+    if (!navigator.onLine)
+        return
+
+    const dados = await pesquisarDB({
+        base: 'mensagens',
+        filtros: {
+            'lido': { op: '=', value: 'N' }
+        }
+    })
+
+    const contador = document.getElementById('contadorMensagens')
+    if (!contador)
+        return
+
+    contador.style.display = dados.total > 0
+        ? 'flex'
+        : 'none'
+
+    contador.textContent = dados.total
+
+}

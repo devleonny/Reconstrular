@@ -1,3 +1,43 @@
+function regrasFiltros() {
+
+    const { funcao } = acesso || {}
+
+    const filtros = {
+        funcao: {
+            modo: 'OR',
+            regras: []
+        }
+    }
+
+    if (funcao == 'CEO') {
+
+        filtros.funcao.regras = [{ op: '=', value: 'Diretor Operativo' }]
+
+    } else if (funcao == 'Diretor Operativo') {
+
+        filtros.funcao.regras = [
+            { op: '=', value: 'CEO' },
+            { op: '=', value: 'Coordenador Operativo' }
+        ]
+
+    } else if (funcao == 'Coordenador Operativo') {
+
+        filtros.funcao.regras = [
+            { op: '=', value: 'Encarregado de Obra' }
+        ]
+
+    } else if (funcao == 'Encarregado de Obra') {
+
+        filtros.funcao.regras = [
+            { op: '=', value: 'Coordenador Operativo' }
+        ]
+
+    }
+
+    return filtros
+
+}
+
 
 async function painelChat() {
 
@@ -7,7 +47,7 @@ async function painelChat() {
                 <input type="checkbox" onclick="marcarTodos(this)">
                 <span style="color: white;">Marcar todos</span>
             </div>
-            <button onclick="confirmarArquivamento()">Arquivar mensagens</button>
+            <button onclick="balaoMensagem()">Enviar Mensagem</span>
             <button onclick="">Marcar como lida</button>
         </div>
     `
@@ -20,27 +60,57 @@ async function painelChat() {
             path: 'lido',
             direcao: 'asc'
         },
-        filtros: {
-            'destinatario': { op: '=', value: acesso.usuario }
-        },
         pag,
         criarLinha: 'criarDivMensagem'
     })
 
-    tela.innerHTML = tabela
-
+    tela.innerHTML = `
+        <div class="painel-email">
+            <div class="atalhos-email"></div>
+            ${tabela}
+        </div>
+    `
     await paginacao(pag)
+
+    carregarAtalhosEmail()
 
 }
 
-async function confirmarArquivamento() {
+async function carregarAtalhosEmail() {
 
-    const botoes = [
-        { texto: 'Arquivar', img: 'concluido', funcao: `arquivarMensagens('S')` },
-        { texto: 'Desarquivar', img: 'desarquivar', funcao: `arquivarMensagens('N')` }
-    ]
+    const local = document.querySelector('.atalhos-email')
 
-    popup({ mensagem: 'Arquivar mensagens?', botoes, titulo: 'Arquivar mensagens' })
+    local.innerHTML = `<img style="width: 5rem;" src="gifs/loading.gif">`
+
+    const contagem = await contarPorCampo({
+        base: 'mensagens',
+        path: 'snapshots.funcao'
+    })
+
+    const elementos = Object.entries(contagem)
+        .map(([funcao, quantidade]) => {
+            return `
+                <div class="etiqueta" onclick="filtrarPorFuncao('${funcao}')">
+                    <span class="badge-numero">${quantidade}</span>
+                    <span>${inicialMaiuscula(funcao)}</span>
+                </div>
+                `
+        })
+        .join('')
+
+    local.innerHTML = elementos
+
+}
+
+async function filtrarPorFuncao(funcao) {
+
+    controles.mensagens.filtros ??= {}
+    controles.mensagens.filtros['snapshots.funcao'] = { op: '=', value: funcao }
+
+    if (funcao == 'todos')
+        delete controles.mensagens.filtros['snapshots.funcao']
+
+    await paginacao()
 
 }
 
@@ -54,22 +124,19 @@ function marcarTodos(inputM) {
 
 function criarDivMensagem(m) {
 
-    const { id, remetente, assunto, data, lido, mensagem } = m
-
-    const div = ` 
-        <input name="mensagem" type="checkbox">
-        <img src="imagens/carta.png" onclick="abrirMensagem('${id}')">
-        <span><u>${remetente || ''}</u></span>
-        <span style="font-size: 0.6rem;"><b>${data}</b></span>
-        <span><b>${assunto || '...'}</b></span>
-        <span>${String(mensagem || '').slice(0, 50)}...</span>
-    `
+    const { id, remetente, assunto, data, lido, mensagem, snapshots } = m
 
     return `
     <tr>
-        <td>
+        <td style="padding: 0px;">
             <div name="linha" data-lido="${lido == 'S' ? 'S' : 'N'}" class="m-sagem-${lido == 'S' ? 'S' : 'N'}">
-                ${div}
+                <input name="mensagem" type="checkbox">
+                <img src="imagens/carta.png" onclick="abrirMensagem('${id}')">
+                <span><u>${remetente || ''}</u></span>
+                <span><b>${snapshots?.funcao || ''}</b></span>
+                <span style="font-size: 0.6rem;"><b>${data}</b></span>
+                <span><b>${assunto || '...'}</b></span>
+                <span>${String(mensagem || '').slice(0, 50)}...</span>
             </div>
         </td>
     </tr>
@@ -79,13 +146,23 @@ function criarDivMensagem(m) {
 
 async function abrirMensagem(idMensagem) {
 
-    const { assunto, mensagem, remetente, lido } = await recuperarDado('mensagens', idMensagem) || {}
+    overlayAguarde()
+
+    const {
+        assunto,
+        anexos,
+        mensagem,
+        remetente,
+        lido
+    } = await recuperarDado('mensagens', idMensagem) || {}
+
+    const spansAnexos = Object.entries(anexos || {})
+        .map(([id, anexo]) => {
+            return criarAnexoVisual(anexo)
+        })
+        .join('')
 
     const linhas = [
-        {
-            texto: 'Remetente',
-            elemento: `<input value="${remetente}" readOnly>`
-        },
         {
             texto: 'Assunto',
             elemento: `<textarea readOnly>${assunto || ''}</textarea>`
@@ -93,10 +170,19 @@ async function abrirMensagem(idMensagem) {
         {
             texto: 'Mensagem',
             elemento: `<textarea readOnly>${mensagem || ''}</textarea>`
+        },
+        {
+            texto: 'Anexos',
+            elemento: `<div style="display: flex; flex-wrap: wrap; gap: 5px;">${spansAnexos || 'Sem anexos'}</div>`
+        },
+        {
+            texto: `<button>Responder</button>`,
+            elemento: `<div style="${vertical}; gap: 5px;"></div>`
         }
     ]
 
     popup({ linhas, titulo: `Mensagem de ${remetente}` })
+
 
     if (lido !== 'S')
         await enviar(`mensagens/${idMensagem}/lido`, 'S')
@@ -105,12 +191,22 @@ async function abrirMensagem(idMensagem) {
 
 }
 
-function balaoMensagem(destinatario) {
+function balaoMensagem() {
+
+    controlesCxOpcoes.destinatario = {
+        base: 'dados_setores',
+        retornar: ['usuario'],
+        filtros: regrasFiltros(),
+        colunas: {
+            'Usuario': { chave: 'usuario' },
+            'Funcao': { chave: 'funcao' }
+        }
+    }
 
     const linhas = [
         {
             texto: 'Destinatário',
-            elemento: `<input id="destinatario" value="${destinatario}" readOnly>`
+            elemento: `<span class="opcoes" name="destinatario" onclick="cxOpcoes('destinatario')">Selecionar</span>`
         },
         {
             texto: 'Assunto',
@@ -119,17 +215,21 @@ function balaoMensagem(destinatario) {
         {
             texto: 'Mensagem',
             elemento: `<textarea id="mensagem"></textarea>`
+        },
+        {
+            texto: 'Anexos',
+            elemento: `<input id="anexos" type="file" multiple>`
         }
     ]
 
     const botoes = [
-        { texto: 'Enviar', img: 'concluido', funcao: `enviarMensagem('${destinatario}')` }
+        { texto: 'Enviar', img: 'concluido', funcao: `enviarMensagem()` }
     ]
 
     popup({ linhas, botoes, titulo: 'Enviar mensagem' })
 }
 
-async function enviarMensagem(destinatario) {
+async function enviarMensagem() {
 
     overlayAguarde()
 
@@ -142,8 +242,27 @@ async function enviarMensagem(destinatario) {
     if (!assunto)
         return popup({ mensagem: 'Assunto em branco...' })
 
+    const destinatario = document.querySelector('[name="destinatario"]')?.id
+
+    if (!destinatario)
+        return popup({ mensagem: 'Escolha um destinatário' })
+
+    // Anexos
+    const input = document.getElementById('anexos')
+    const retornoAnexos = await importarAnexos({ input })
+    const anexos = {}
+
+    if (Array.isArray(retornoAnexos)) {
+
+        for (const a of retornoAnexos) {
+            anexos[crypto.randomUUID()] = a
+        }
+
+    }
+
     const id = crypto.randomUUID()
     const m = {
+        anexos,
         id,
         lido: 'N',
         destinatario,
@@ -156,92 +275,5 @@ async function enviarMensagem(destinatario) {
     await enviar(`mensagens/${id}`, m)
 
     removerPopup()
-
-}
-
-async function alertaMensagens() {
-
-    mensagens = await recuperarDados('mensagens')
-
-    const total = Object
-        .values(mensagens)
-        .filter(m => !m?.lido).length
-
-    const badge = document.getElementById('msg')
-
-    if (badge) badge.innerHTML = total == 0
-        ? ''
-        : `<span class="badge-numero">${total}</span>`
-
-}
-
-async function arquivarMensagens(operacao) {
-
-    overlayAguarde()
-
-    const inputsM = document.querySelectorAll('[name="mensagem"]')
-    const mensagens = []
-    for (const inp of inputsM) {
-        const div = inp.closest('div')
-        if (inp.checked) mensagens.push(div.id)
-    }
-
-    if (mensagens.length == 0) 
-        return removerPopup()
-
-    const url = `${api}/arquivar-mensagens`
-
-    try {
-        const response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ mensagens, operacao, servidor })
-        })
-
-        if (!response.ok) {
-            popup({ mensagem: 'Falha ao arquivar mensagens, tente novamente mais tarde.' })
-            const erroServidor = await response.text()
-            console.error(`Resposta do servidor:`, erroServidor)
-        }
-
-        const data = await response.json()
-
-        if (data.mensagem)
-            return popup({ mensagem: data.mensagem })
-
-        await painelChat()
-        removerPopup()
-
-        return
-
-    } catch (erro) {
-        console.log(erro)
-        return popup({ mensagem: 'Falha ao arquivar mensagens, tente novamente mais tarde.' })
-    }
-
-}
-
-async function verificarMensagens() {
-
-    if (!navigator.onLine)
-        return
-
-    const dados = await pesquisarDB({
-        base: 'mensagens',
-        filtros: {
-            'destinatario': { op: '=', value: acesso.usuario },
-            'lido': { op: '=', value: 'N' }
-        }
-    })
-
-    const contador = document.getElementById('contadorMensagens')
-    if (!contador)
-        return
-
-    contador.style.display = dados.total > 0
-        ? 'flex'
-        : 'none'
-
-    contador.textContent = dados.total
 
 }

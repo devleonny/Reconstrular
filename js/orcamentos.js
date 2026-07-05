@@ -148,10 +148,10 @@ async function criarLinhaOrcamento(orcamento) {
             <img src="imagens/pdf.png" onclick="listagem('${idOrcamento}', 'ferramentas')">
         </td>
         <td>
-            <img data-controle="editar" src="imagens/planta.png" onclick="execucoes('${idOrcamento}', 0)">
+            <img src="imagens/planta.png" onclick="execucoes('${idOrcamento}', 0)">
         </td>
         <td>
-            <img data-controle="editar" src="imagens/pesquisar.png" onclick="formularioOrcamento('${idOrcamento}')">
+            <img src="imagens/pesquisar.png" onclick="formularioOrcamento('${idOrcamento}')">
         </td>
         <td>
             <img src="imagens/orcamentos.png" onclick="orcamentoFinal('${idOrcamento}')">
@@ -160,7 +160,7 @@ async function criarLinhaOrcamento(orcamento) {
             ${versao ? `<span onclick="comparativoRevisoes('${idOrcamento}')" class="etiqueta-revisao">${versao}</span>` : ''}
         </td> 
         <td>
-            <img data-controle="excluir" src="imagens/cancel.png" onclick="confirmarExclusaoOrcamento('${idOrcamento}')">
+            <img src="imagens/cancel.png" onclick="confirmarExclusaoOrcamento('${idOrcamento}')">
         </td>
     `
     return `<tr>${tds}</tr>`
@@ -820,7 +820,6 @@ async function comparativoRevisoes(idOrcamento) {
 
 async function listagem(idOrcamento, tabela) {
 
-    campos = await recuperarDados('campos')
     const orcamento = dados_orcamentos[idOrcamento]
     const idCliente = orcamento?.idCliente || ''
     const cliente = dados_clientes[idCliente]
@@ -1053,7 +1052,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
                 <button onclick="imprimirRecorte()">Imprimir</button>
                 <button onclick="pdfOrcamento('Orçamento')">Exportar</button>
                 <button onclick="enviarOrcamentoPorEmail('${idOrcamento}')">Enviar</button>
-                <button data-controle="editar" onclick="execucoes('${idOrcamento}')">Voltar para Zonas</button>
+                <button onclick="execucoes('${idOrcamento}')">Voltar para Zonas</button>
             </div>`}
 
             <div class="orcamento-documento">
