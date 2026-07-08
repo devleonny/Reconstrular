@@ -1,131 +1,179 @@
+let autoDestruicaoGlobal = {}
+let configPopupGlobal = {}
+
 function popup({
     tempo = null,
+    autoDestruicao = [],
     elemento,
     mensagem,
-    imagem = 'gifs/alerta.gif',
+    imagem,
     cor = '#ebebeb',
     linhas = [],
     botoes = [],
-    titulo = 'Reconstrular',
-    nra = true
+    titulo,
+    removerAnteriores = false
 }) {
+    if (!elemento && !mensagem)
+        mensagem = 'Função <b>inativa</b>. <br>Fale com o suporte para reativação.'
 
-    if (!elemento && !mensagem) mensagem = 'Função <b>inativa</b>. <br>Fale com o suporte para reativação.'
+    const idPopup = crypto.randomUUID()
 
-    const idPopup = ID5digitos()
+    autoDestruicaoGlobal[idPopup] = autoDestruicao
+    configPopupGlobal[idPopup] = { removerAnteriores }
 
     const arredondado = botoes.length
         ? ''
-        : `border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;`
+        : 'border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;'
 
-    const linhaFormulario = ({ texto, elemento }) => {
-
+    const linhaFormulario = ({ texto, elemento, editor }) => {
         if (texto) texto = `<span style="text-align: left;">${texto}</span>`
+
+        if (editor !== undefined) {
+            // O ID vira só interno para não conflitar caso existam dois editores,
+            // mas você não precisa se preocupar com ele na hora de chamar a função
+            const idGerado = `editor-${crypto.randomUUID()}`
+
+            elemento = `
+                <div class="editor-container">
+                    
+                    <div class="editor-toolbar">
+
+                        <span 
+                            onclick="document.execCommand('bold', false, null)" 
+                            class="editor-botao"
+                            onmousedown="event.preventDefault()"
+                            style="font-weight: bold;">B</span>
+                        
+                        <span 
+                            onclick="document.execCommand('italic', false, null)"
+                            class="editor-botao"
+                            onmousedown="event.preventDefault()"
+                            style="font-style: italic;">I</span>
+                        
+                        <span 
+                            onclick="document.execCommand('underline', false, null)"
+                            class="editor-botao" 
+                            onmousedown="event.preventDefault()"
+                            style="text-decoration: underline;">U</span>
+                    
+                        <span onclick="document.execCommand('insertUnorderedList', false, null)"
+                            class="editor-botao"
+                            onmousedown="event.preventDefault()"
+                            style="width: 30px; height: 30px;">•</span>
+                        
+                        <input 
+                            type="color"
+                            onmousedown="event.preventDefault()"
+                            onchange="document.execCommand('foreColor', false, this.value)" 
+                            style="width: 30px; height: 30px; padding: 0; border: none;">
+
+                    </div>
+                    
+                    <div id="${idGerado}" 
+                    class="editor-conteudo" 
+                    contenteditable="true">${editor}</div>
+                
+                </div>
+            `
+        }
 
         return `
             <div class="linha-padrao">
                 ${texto || ''}
-                ${elemento}
+                ${elemento || ''}
             </div>`
     }
 
-    // Se img == concluido [ação de confirmar algo] && nra esteja falso [não manter anteriores]; Fechar todos os popups;
-    const botaoPadrao = ({ funcao, img, texto }) => {
-        const removerAnteriores = (!nra && img == 'concluido')
-            ? `removerPopup(null, false)`
-            : ''
-
-        return `
-        <div onclick="${funcao}; ${removerAnteriores}" class="botoes-rodape">
+    const botaoPadrao = ({ funcao = '', img, texto, fechar = false }) => `
+        <div onclick="${funcao}${fechar ? `${funcao ? ';' : ''}${removerAnteriores ? 'removerTodosPopups()' : `removerPopup('${idPopup}')`}` : ''}" class="botoes-rodape">
             <img src="imagens/${img}.png">
             <span>${texto}</span>
-        </div>`
-    }
+        </div>
+    `
+
+    let conteudo = ''
 
     if (linhas.length) {
-
-        const lins = linhas
-            .map(l => linhaFormulario(l))
-            .join('')
-
-        elemento = `
+        conteudo = `
             <div class="painel-padrao">
-                ${lins}
-            </div>`
-
+                ${linhas.map(linhaFormulario).join('')}
+            </div>
+        `
     } else if (mensagem) {
-
-        elemento = `
-        <div class="mensagem" style="${arredondado}; background-color: ${cor};">
-            <img src="${imagem}">
-            <label>${mensagem}</label>
-        </div>`
-
+        conteudo = `
+            <div class="mensagem" style="${arredondado}; background-color: ${cor};">
+                <img src="${imagem || 'gifs/alerta.gif'}">
+                <label>${mensagem}</label>
+            </div>
+        `
     } else {
-
-        elemento = `
+        conteudo = `
             <div class="janela" style="background-color: ${cor}; ${arredondado};">
                 ${elemento}
             </div>
         `
     }
 
-    const bts = botoes
-        .map(b => botaoPadrao(b))
-        .join('')
-
-    const rodapePadrao = botoes.length
-        ? `
-            <div class="rodape-padrao">
-                ${bts}
-            </div>`
+    const rodape = botoes.length
+        ? `<div class="rodape-padrao">${botoes.map(botaoPadrao).join('')}</div>`
         : ''
 
-    const p = `
+    const html = `
         <div id="${idPopup}" class="popup">
-
             <div class="popup-janela-fora">
-                
                 <div class="popup-top">
-
-                    <label style="background-color: transparent; color: white; margin-left: 1rem;">${titulo}</label>
+                    <label style="color:white;margin-left:1rem;">${titulo || 'Reconstrular'}</label>
                     <span onclick="removerPopup('${idPopup}')">×</span>
-
                 </div>
-                
-                ${elemento}
-
-                ${rodapePadrao}
-
+                ${conteudo}
+                ${rodape}
             </div>
+        </div>
+    `
 
-        </div>`
+    document.querySelector('.aguarde')?.remove()
+    document.body.insertAdjacentHTML('beforeend', html)
 
-    const aguarde = document.querySelector('.aguarde')
-    if (aguarde) aguarde.remove()
+    if (tempo)
+        setTimeout(() => removerPopup(idPopup), tempo * 1000)
 
-    document.body.insertAdjacentHTML('beforeend', p)
-
-    if (tempo) {
-        const pop = document.getElementById(idPopup)
-
-        setTimeout(() => {
-            if (pop) pop.remove()
-        }, tempo * 1000)
-    }
-
+    return idPopup
 }
 
-function removerPopup(id = null, nra = true) {
-    const popups = document.querySelectorAll('.popup')
+function limparRecursosPopup(id) {
+    ; (autoDestruicaoGlobal?.[id] || []).forEach(chave => {
+        delete controles?.[chave]
+        delete controlesCxOpcoes?.[chave]
+    })
 
-    if (nra === false) {
-        popups.forEach(p => p.remove())
-    } else if (id) {
-        document.getElementById(id)?.remove()
-    } else {
-        popups[popups.length - 1]?.remove()
-    }
+    delete autoDestruicaoGlobal[id]
+    delete configPopupGlobal[id]
+}
+
+function removerTodosPopups() {
+    const popups = [...document.querySelectorAll('.popup')]
+    if (!popups.length) return
+
+    popups.forEach(p => {
+        limparRecursosPopup(p.id)
+        p.remove()
+    })
+
+    document.querySelector('.aguarde')?.remove()
+}
+
+function removerPopup(id = null) {
+    const popups = [...document.querySelectorAll('.popup')]
+    if (!popups.length) return
+
+    const alvo = id
+        ? document.getElementById(id)
+        : popups[popups.length - 1]
+
+    if (!alvo) return
+
+    limparRecursosPopup(alvo.id)
+    alvo.remove()
 
     document.querySelector('.aguarde')?.remove()
 }

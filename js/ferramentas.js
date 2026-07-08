@@ -206,16 +206,14 @@ async function usuariosToolbar() {
 
 async function painelUsuarios() {
 
-    const colunas = {
-        'Status': { chave: 'status' },
-        'Usuários': { chave: 'usuario' },
-        'Enviar mensagem': {}
-    }
-
     const pag = 'usuariosOnline'
     const tOnline = await modTab({
         pag,
-        colunas,
+        colunas: {
+            'Status': { chave: 'status' },
+            'Usuários': { chave: 'usuario' },
+            'Função': { chave: 'funcao' }
+        },
         body: 'bodyUsuariosOnline',
         base: 'dados_setores',
         criarLinha: 'criarLinhaPainelUsuarios',
@@ -243,7 +241,7 @@ async function painelUsuarios() {
 
 function criarLinhaPainelUsuarios(dados) {
 
-    const { usuario, status } = dados || {}
+    const { usuario, status, funcao } = dados || {}
 
     let gerenciarStatus = `<label>${status || 'offline'}</label>`
 
@@ -271,7 +269,7 @@ function criarLinhaPainelUsuarios(dados) {
             ${usuario}
         </td>
         <td>
-            <img src="imagens/carta.png" onclick="balaoMensagem('${usuario}')">
+            ${funcao || ''}
         </td>
     </tr>`
 }

@@ -38,7 +38,6 @@ function regrasFiltros() {
 
 }
 
-
 async function painelChat() {
 
     const btnExtras = `
@@ -47,21 +46,24 @@ async function painelChat() {
                 <input type="checkbox" onclick="marcarTodos(this)">
                 <span style="color: white;">Marcar todos</span>
             </div>
-            <button onclick="balaoMensagem()">Enviar Mensagem</span>
-            <button onclick="">Marcar como lida</button>
+            <button onclick="balaoMensagem()">Enviar Mensagem</button>
         </div>
     `
+    const { usuario } = acesso || {}
     const pag = 'mensagens'
     const tabela = await modTab({
         btnExtras,
         base: 'mensagens',
         body: 'bodyMensagens',
+        filtros: {
+            destinatario: { op: '=', value: usuario }
+        },
         ordenar: {
             path: 'lido',
             direcao: 'asc'
         },
         pag,
-        criarLinha: 'criarDivMensagem'
+        criarLinha: 'linMensagem'
     })
 
     tela.innerHTML = `
@@ -82,9 +84,14 @@ async function carregarAtalhosEmail() {
 
     local.innerHTML = `<img style="width: 5rem;" src="gifs/loading.gif">`
 
+    const { usuario } = acesso || {}
     const contagem = await contarPorCampo({
         base: 'mensagens',
-        path: 'snapshots.funcao'
+        path: 'snapshots.funcao',
+        filtros: {
+            destinatario: { op: '=', value: usuario },
+            lido: { op: '=', value: 'N' }
+        }
     })
 
     const elementos = Object.entries(contagem)
@@ -122,21 +129,47 @@ function marcarTodos(inputM) {
     }
 }
 
-function criarDivMensagem(m) {
+function linMensagem(m) {
 
-    const { id, remetente, assunto, data, lido, mensagem, snapshots } = m
+    const { id, remetente, assunto, data, lido, mensagem, snapshots, anexos } = m || {}
+
+    const listAnexos = Object.entries(anexos || {})
+        .map(([id, { link, nome }]) => {
+
+            const titulo = nome.length >= 15
+                ? `${nome.slice(0, 15)}...`
+                : nome
+
+            return `
+                <div class="balao-anexo">
+                    <img src="imagens/anexo.png" style="width: 1.5rem;">
+                    <span>${titulo}</span>
+                </div>`
+        })
+        .join('')
+
+    const divAnexos = listAnexos.length
+        ? `<div style="display: flex; flex-wrap: wrap; gap: 5px; padding: 3px; margin-left: 2rem;">${listAnexos}</div>`
+        : ''
+
+    const textoMensagem = mensagem.length > 50
+        ? `${String(mensagem || '').slice(0, 50)}...`
+        : mensagem
 
     return `
     <tr>
         <td style="padding: 0px;">
-            <div name="linha" data-lido="${lido == 'S' ? 'S' : 'N'}" class="m-sagem-${lido == 'S' ? 'S' : 'N'}">
-                <input name="mensagem" type="checkbox">
-                <img src="imagens/carta.png" onclick="abrirMensagem('${id}')">
-                <span><u>${remetente || ''}</u></span>
-                <span><b>${snapshots?.funcao || ''}</b></span>
-                <span style="font-size: 0.6rem;"><b>${data}</b></span>
-                <span><b>${assunto || '...'}</b></span>
-                <span>${String(mensagem || '').slice(0, 50)}...</span>
+            <div class="m-sagem-${lido == 'S' ? 'S' : 'N'}">
+                <div style="${horizontal}; gap: 5px;" name="linha" data-lido="${lido == 'S' ? 'S' : 'N'}" >
+                    <input name="mensagem" type="checkbox">
+                    <img src="imagens/carta.png" onclick="abrirMensagem('${id}')">
+                    <span><u>${remetente || ''}</u></span>
+                    <span><b>${snapshots?.funcao || ''}</b></span>
+                    <span style="font-size: 0.6rem;"><b>${data}</b></span>
+                    <div><b>${assunto || '...'}</b></div>
+                    <span>${textoMensagem}</span>
+                </div>
+                ${divAnexos}
             </div>
         </td>
     </tr>
@@ -153,8 +186,21 @@ async function abrirMensagem(idMensagem) {
         anexos,
         mensagem,
         remetente,
+        respostas,
         lido
     } = await recuperarDado('mensagens', idMensagem) || {}
+
+    const listaRespostas = Object.entries(respostas || {})
+        .sort(([, a], [, b]) => b.timestamp - a.timestamp)
+        .map(([id, { usuario, mensagem, timestamp }]) => {
+            const data = new Date(timestamp).toLocaleString()
+            return `
+            <div class="mensagem-resposta">
+                <span>${data}, <b>${usuario}</b></span>
+                <div>${mensagem}</div>
+            </div>`
+        })
+        .join('')
 
     const spansAnexos = Object.entries(anexos || {})
         .map(([id, anexo]) => {
@@ -165,29 +211,63 @@ async function abrirMensagem(idMensagem) {
     const linhas = [
         {
             texto: 'Assunto',
-            elemento: `<textarea readOnly>${assunto || ''}</textarea>`
+            elemento: `<div readOnly>${assunto || ''}</div>`
         },
         {
             texto: 'Mensagem',
-            elemento: `<textarea readOnly>${mensagem || ''}</textarea>`
+            elemento: `<div>${mensagem || ''}</div>`
         },
         {
             texto: 'Anexos',
             elemento: `<div style="display: flex; flex-wrap: wrap; gap: 5px;">${spansAnexos || 'Sem anexos'}</div>`
         },
         {
-            texto: `<button>Responder</button>`,
-            elemento: `<div style="${vertical}; gap: 5px;"></div>`
+            editor: ''
+        },
+        {
+            elemento: `<div style="${vertical}; gap: 5px; width: 90%;">${listaRespostas || ''}</div>`
         }
     ]
 
-    popup({ linhas, titulo: `Mensagem de ${remetente}` })
+    const botoes = [
+        { texto: 'Responder', img: 'atualizar', funcao: `enviarResposta('${idMensagem}', '${remetente}')` }
+    ]
 
+    popup({ botoes, linhas, titulo: `Mensagem de ${remetente}` })
 
     if (lido !== 'S')
         await enviar(`mensagens/${idMensagem}/lido`, 'S')
 
-    await verificarMensagens()
+    verificarMensagens()
+    carregarAtalhosEmail()
+
+}
+
+async function enviarResposta(idMensagem, remetente) {
+
+    overlayAguarde()
+
+    const editor = document.querySelector('.editor-conteudo')
+
+    if (editor.innerHTML == '')
+        return popup({ mensagem: 'Não deixe a resposta em branco!' })
+
+    const { usuario } = acesso || {}
+
+    const timestamp = Date.now()
+    const resposta = {
+        timestamp,
+        usuario,
+        mensagem: editor.innerHTML
+    }
+
+    // pensar numa atualização só;
+    await enviar(`mensagens/${idMensagem}/respostas/${crypto.randomUUID()}`, resposta),
+    await enviar(`mensagens/${idMensagem}/lido`, 'N'),
+    await enviar(`mensagens/${idMensagem}/destinatario`, remetente),
+    await enviar(`mensagens/${idMensagem}/remetente`, usuario)
+
+    removerTodosPopups()
 
 }
 
@@ -213,8 +293,7 @@ function balaoMensagem() {
             elemento: `<textarea id="assunto"></textarea>`
         },
         {
-            texto: 'Mensagem',
-            elemento: `<textarea id="mensagem"></textarea>`
+            editor: ''
         },
         {
             texto: 'Anexos',
@@ -233,9 +312,9 @@ async function enviarMensagem() {
 
     overlayAguarde()
 
-    const msg = document.querySelector('#mensagem')
-    if (!msg.value)
-        return removerPopup()
+    const msg = document.querySelector('.editor-conteudo')
+    if (msg.innerHTML == '')
+        return popup({ mensagem: 'Mensagem em branco' })
 
     const assunto = document.querySelector('[id="assunto"]').value
 
@@ -269,7 +348,7 @@ async function enviarMensagem() {
         assunto,
         remetente: acesso.usuario,
         data: new Date().toLocaleString(),
-        mensagem: msg.value
+        mensagem: msg.innerHTML
     }
 
     await enviar(`mensagens/${id}`, m)

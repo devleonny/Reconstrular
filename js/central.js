@@ -490,10 +490,10 @@ async function buscarDados() {
 function confirmarSaida() {
 
     const botoes = [
-        { texto: 'Confirmar', img: 'concluido', funcao: `deslogar()` }
+        { texto: 'Confirmar', img: 'concluido', fechar: true, funcao: `deslogar()` }
     ]
 
-    popup({ mensagem: 'Tem certeza?', botoes, titulo: 'Sair', nra: false })
+    popup({ mensagem: 'Tem certeza?', botoes, titulo: 'Sair', removerAnteriores: true })
 }
 
 function deslogar() {

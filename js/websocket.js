@@ -183,10 +183,12 @@ async function verificarMensagens() {
     if (!navigator.onLine)
         return
 
+    const { usuario } = acesso || {}
     const dados = await pesquisarDB({
         base: 'mensagens',
         filtros: {
-            'lido': { op: '=', value: 'N' }
+            destinatario: { op: '=', value: usuario },
+            lido: { op: '=', value: 'N' }
         }
     })
 

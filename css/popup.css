@@ -17,6 +17,45 @@
     max-height: 90vh;
 }
 
+.editor-botao {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgb(220, 220, 220);
+    border-radius: 3px;
+    box-shadow: 0 0 2px #222;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+}
+
+.editor-toolbar {
+    background: #f1f1f1;
+    padding: 5px;
+    border-bottom: 1px solid #ccc;
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.editor-container {
+    min-width: 300px;
+    max-width: 500px;
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.editor-conteudo {
+    min-height: 120px;
+    padding: 10px;
+    outline: none;
+    overflow-y: auto;
+    text-align: left;
+}
+
 .opcoes {
     max-width: 200px;
     white-space: pre-wrap;
