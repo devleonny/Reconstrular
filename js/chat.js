@@ -40,6 +40,8 @@ function regrasFiltros() {
 
 async function painelChat() {
 
+    overlayAguarde()
+
     const btnExtras = `
         <div style="${horizontal}; gap: 2px;">
             <div style="${horizontal}; gap: 5px;">
@@ -47,6 +49,7 @@ async function painelChat() {
                 <span style="color: white;">Marcar todos</span>
             </div>
             <button onclick="balaoMensagem()">Enviar Mensagem</button>
+            <button data-ativo="RECEBIDOS" onclick="alternarTabelasChat(this)">Chats Enviados</button>
         </div>
     `
     const { usuario } = acesso || {}
@@ -55,6 +58,7 @@ async function painelChat() {
         btnExtras,
         base: 'mensagens',
         body: 'bodyMensagens',
+        funcaoAdicional: ['carregarAtalhosEmail', 'verificarMensagens'],
         filtros: {
             destinatario: { op: '=', value: usuario }
         },
@@ -68,14 +72,44 @@ async function painelChat() {
 
     tela.innerHTML = `
         <div class="painel-email">
-            <div class="atalhos-email"></div>
+            <div style="${vertical}; gap: 3px;">
+                <span class="titulo-chat">Chats Recebidos</span>
+                <div class="atalhos-email"></div>
+            </div>
             ${tabela}
         </div>
     `
     await paginacao(pag)
 
-    carregarAtalhosEmail()
+    removerOverlay()
 
+}
+
+async function alternarTabelasChat(botao) {
+    const ativoAtual = botao.dataset.ativo || 'RECEBIDOS'
+    const proximo = ativoAtual === 'ENVIADOS' ? 'RECEBIDOS' : 'ENVIADOS'
+
+    botao.dataset.ativo = proximo
+    botao.textContent = proximo === 'ENVIADOS'
+        ? 'Chats Recebidos'
+        : 'Chats Enviados'
+
+    const { usuario } = acesso || {}
+
+    controles.mensagens.filtros ??= {}
+
+    delete controles.mensagens.filtros.destinatario
+    delete controles.mensagens.filtros.remetente
+
+    if (proximo === 'ENVIADOS') {
+        controles.mensagens.filtros.remetente = { op: '=', value: usuario }
+        document.querySelector('.titulo-chat').textContent = 'Chats Enviados'
+    } else {
+        controles.mensagens.filtros.destinatario = { op: '=', value: usuario }
+        document.querySelector('.titulo-chat').textContent = 'Chats Recebidos'
+    }
+
+    await paginacao()
 }
 
 async function carregarAtalhosEmail() {
@@ -85,13 +119,13 @@ async function carregarAtalhosEmail() {
     local.innerHTML = `<img style="width: 5rem;" src="gifs/loading.gif">`
 
     const { usuario } = acesso || {}
+
+    const filtros = controles.mensagens.filtros || {}
+
     const contagem = await contarPorCampo({
         base: 'mensagens',
         path: 'snapshots.funcao',
-        filtros: {
-            destinatario: { op: '=', value: usuario },
-            lido: { op: '=', value: 'N' }
-        }
+        filtros
     })
 
     const elementos = Object.entries(contagem)
@@ -131,7 +165,7 @@ function marcarTodos(inputM) {
 
 function linMensagem(m) {
 
-    const { id, remetente, assunto, data, lido, mensagem, snapshots, anexos } = m || {}
+    const { id, remetente, assunto, data, lido, destinatario, mensagem, snapshots, anexos } = m || {}
 
     const listAnexos = Object.entries(anexos || {})
         .map(([id, { link, nome }]) => {
@@ -163,8 +197,9 @@ function linMensagem(m) {
                 <div style="${horizontal}; gap: 5px;" name="linha" data-lido="${lido == 'S' ? 'S' : 'N'}" >
                     <input name="mensagem" type="checkbox">
                     <img src="imagens/carta.png" onclick="abrirMensagem('${id}')">
-                    <span><u>${remetente || ''}</u></span>
+                    <span>de <u>${remetente || ''}</u></span>
                     <span><b>${snapshots?.funcao || ''}</b></span>
+                    <span>para <u>${destinatario || ''}</u></span>
                     <span style="font-size: 0.6rem;"><b>${data}</b></span>
                     <div><b>${assunto || '...'}</b></div>
                     <span>${textoMensagem}</span>
@@ -180,6 +215,8 @@ function linMensagem(m) {
 async function abrirMensagem(idMensagem) {
 
     overlayAguarde()
+
+    const { usuario } = acesso || {}
 
     const {
         assunto,
@@ -235,11 +272,8 @@ async function abrirMensagem(idMensagem) {
 
     popup({ botoes, linhas, titulo: `Mensagem de ${remetente}` })
 
-    if (lido !== 'S')
+    if (lido !== 'S' && remetente !== usuario)
         await enviar(`mensagens/${idMensagem}/lido`, 'S')
-
-    verificarMensagens()
-    carregarAtalhosEmail()
 
 }
 
@@ -262,10 +296,19 @@ async function enviarResposta(idMensagem, remetente) {
     }
 
     // pensar numa atualização só;
-    await enviar(`mensagens/${idMensagem}/respostas/${crypto.randomUUID()}`, resposta),
-    await enviar(`mensagens/${idMensagem}/lido`, 'N'),
-    await enviar(`mensagens/${idMensagem}/destinatario`, remetente),
-    await enviar(`mensagens/${idMensagem}/remetente`, usuario)
+    const mensagem = await recuperarDado('mensagens', idMensagem) || {}
+
+    mensagem.respostas ??= {}
+    mensagem.respostas[crypto.randomUUID()] = resposta
+
+    const mensagemFinal = {
+        ...mensagem,
+        lido: 'N',
+        destinatario: remetente,
+        remetente: usuario
+    }
+
+    await enviar(`mensagens/${idMensagem}`, mensagemFinal)
 
     removerTodosPopups()
 
@@ -279,7 +322,7 @@ function balaoMensagem() {
         filtros: regrasFiltros(),
         colunas: {
             'Usuario': { chave: 'usuario' },
-            'Funcao': { chave: 'funcao' }
+            'Funcao': { chave: 'funcao', bloquearPesquisa: true }
         }
     }
 

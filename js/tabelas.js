@@ -43,7 +43,7 @@ async function modTab(configuracoes) {
 
     const pesquisa = (await Promise.all(
         Object.entries(colunas).map(async ([th, query]) => {
-            if (!query.chave)
+            if (!query.chave || query?.bloquearPesquisa)
                 return `
                     <th style="background-color: white;">
                         <img src="imagens/alerta.png" onclick="campoBloq()" title="Campo não permite pesquisa!" style="width: 1.5rem;">
