@@ -103,6 +103,7 @@ async function editarParceiros(usuario) {
         nome_completo = '',
         funcao = '',
         email = '',
+        cidade,
         data_nascimento = '',
         telefone = '',
         zona = [],
@@ -111,12 +112,45 @@ async function editarParceiros(usuario) {
         obra = []
     } = parceiro
 
+    controlesCxOpcoes.cidade = {
+        base: 'cidades',
+        retornar: ['nome', 'distrito'],
+        funcaoAdicional: ['notificarPessoas'],
+        colunas: {
+            'Cidade': { chave: 'nome' },
+            'Distrito': { chave: 'distrito' },
+            'Zona': { chave: 'zona' },
+            'Área': { chave: 'area' }
+        }
+    }
+
+    const { nome } = await recuperarDado('cidades', cidade) || {}
+
     const linhas = [
-        { texto: 'Usuário', elemento: `<input ${usuario ? 'readOnly="true"' : ''} name="usuario" placeholder="Usuário" value="${escapeHtml(usuario || '')}">` },
-        { texto: 'Nome', elemento: `<input name="nome_completo" placeholder="Nome Completo" value="${escapeHtml(nome_completo)}">` },
-        { texto: 'E-mail', elemento: `<input name="email" type="email" placeholder="E-mail" value="${escapeHtml(email)}">` },
-        { texto: 'Telefone', elemento: `<input name="telefone" placeholder="Telefone" value="${escapeHtml(telefone)}">` },
-        { texto: 'Data de Nascimento', elemento: `<input type="date" name="data_nascimento" placeholder="Data de Nascimento" value="${escapeHtml(data_nascimento)}">` },
+        {
+            texto: 'Usuário',
+            elemento: `<input ${usuario ? 'readOnly="true"' : ''} name="usuario" placeholder="Usuário" value="${escapeHtml(usuario || '')}">`
+        },
+        {
+            texto: 'Nome',
+            elemento: `<input name="nome_completo" placeholder="Nome Completo" value="${escapeHtml(nome_completo)}">`
+        },
+        {
+            texto: 'E-mail',
+            elemento: `<input name="email" type="email" placeholder="E-mail" value="${escapeHtml(email)}">`
+        },
+        {
+            texto: 'Telefone',
+            elemento: `<input name="telefone" placeholder="Telefone" value="${escapeHtml(telefone)}">`
+        },
+        {
+            texto: 'Data de Nascimento',
+            elemento: `<input type="date" name="data_nascimento" placeholder="Data de Nascimento" value="${escapeHtml(data_nascimento)}">`
+        },
+        {
+            texto: 'Cidade',
+            elemento: `<span name="cidade" ${cidade ? `id="${cidade}"` : ''} class="opcoes" onclick="cxOpcoes('cidade')">${nome || 'Selecionar'}</span>`
+        },
         {
             elemento: `<div class="campo-funcoes"></div>`
         }
@@ -432,6 +466,7 @@ async function salvarParceiro(usuario = el('usuario')?.value) {
         const telefone = el('telefone')?.value?.trim()
         const data_nascimento = el('data_nascimento')?.value || ''
         const funcao = el('funcao')?.value?.trim() || ''
+        const cidade = el('cidade')?.id || null
 
         const campoFuncoes = document.querySelector('.campo-funcoes')
 
@@ -452,6 +487,7 @@ async function salvarParceiro(usuario = el('usuario')?.value) {
         const campoBase = window.__parceiroEstadoCampos?.ultimoCampoDependente || null
 
         const user = {
+            cidade,
             usuario,
             nome_completo,
             email,
