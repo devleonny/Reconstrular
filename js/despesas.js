@@ -21,9 +21,11 @@ async function verificarDespesas() {
   telaAtiva = 'despesas'
 
   const btnExtras = `
-      <button onclick="">Excel</button>
+    <div style="display: flex; flex-wrap: wrap; gap: 3px;">
+      <button onclick="baixarExcelDespesas()">Excel</button>
       <button onclick="formularioDespesa()">Adicionar</button>
       <button onclick="telaDespesas()">Voltar</button>
+    </div>
   `
 
   const tabela = await modTab({
@@ -49,40 +51,9 @@ async function verificarDespesas() {
     }
   })
 
-  tela.innerHTML = tabela
+  tela.innerHTML = `<div style="width: 90%;">${tabela}</div>`
 
   await paginacao()
-
-}
-
-async function emailDespesas() {
-
-  const pdfhtml = document.querySelector('.pdf-despesas')
-  const html = `
-        <html>
-            <head>
-                <meta charset="UTF-8">
-                <link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/despesas.css">
-                <style>
-                    @page {
-                        size: A4 landscape;
-                    }
-                    body { font-family: 'Poppins', sans-serif; }
-                </style>
-            </head>
-            <body>
-                ${pdfhtml.outerHTML}
-            </body>
-        </html>
-    `
-  const emails = ['fellipe.leonny@outlook.com']//, 'paulo.pires@reconstrular.com']
-
-  const resposta = await pdfEmail({ html, emails, htmlContent: 'Documento em anexo', titulo: 'Listagem de Despesas - Anexo' })
-
-  if (resposta.mensagem)
-    return popup({ mensagem: resposta.mensagem })
-
-  removerOverlay()
 
 }
 
@@ -200,15 +171,31 @@ async function formularioDespesa(idDespesa) {
       texto: 'Fornecedor',
       elemento: `<span ${fornecedor ? `id="${fornecedor}"` : ''} name="fornecedor" class="opcoes" onclick="cxOpcoes('fornecedor')">${nome || 'Selecionar'}</span>`
     },
-    { texto: 'Distrito', elemento: `<input ${placeholder} value="${cidade?.distrito || ''}" name="distrito" readOnly>` },
-    { texto: 'Cidade', elemento: `<input ${placeholder} value="${cidade?.nome || ''}" name="cidade" readOnly>` },
     {
+      texto: 'Distrito',
+      elemento: `<input ${placeholder} value="${cidade?.distrito || ''}" name="distrito" readOnly>`
+    },
+    {
+      texto: 'Cidade',
+      elemento: `<input ${placeholder} value="${cidade?.nome || ''}" name="cidade" readOnly>`
+    },
+    {
+
       texto: 'Número do Contribuinte',
       elemento: `<input ${placeholder} value="${numero_contribuinte || ''}" name="numero_contribuinte" readOnly>`
     },
-    { texto: 'Valor', elemento: `<input name="valor" placeholder="Valor" type="number" value="${valor || ''}">` },
-    { texto: 'IVA', elemento: `<input name="iva" placeholder="IVA" type="number" value="${iva || ''}">` },
-    { texto: 'Data', elemento: `<input name="data" type="date" value="${data || ''}">` },
+    {
+      texto: 'Valor',
+      elemento: `<input name="valor" placeholder="Valor" type="number" value="${valor || ''}">`
+    },
+    {
+      texto: 'IVA',
+      elemento: `<input name="iva" placeholder="IVA" type="number" value="${iva || ''}">`
+    },
+    {
+      texto: 'Data',
+      elemento: `<input name="data" type="date" value="${data || ''}">`
+    },
     {
       texto: 'Tipo de Material',
       elemento: `<span ${material ? `id="${material.id}"` : ''} name="material" class="opcoes" onclick="cxOpcoes('material')">${dMaterial?.nome || 'Selecionar'}</span>`
@@ -233,7 +220,8 @@ async function formularioDespesa(idDespesa) {
     { texto: 'Salvar', funcao: idDespesa ? `salvarDespesa('${idDespesa}')` : 'salvarDespesa()', img: 'concluido' }
   ]
 
-  if (idDespesa) botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExclusaoDespesa('${idDespesa}')` })
+  if (idDespesa)
+    botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExclusaoDespesa('${idDespesa}')` })
 
   popup({ linhas, botoes, titulo: 'Gerenciar Despesa' })
 
@@ -565,5 +553,56 @@ async function excluirGenerico(id) {
   await deletar(`${base}/${id}`)
 
   removerOverlay()
+
+}
+
+async function baixarExcelDespesas() {
+
+  overlayAguarde()
+
+  try {
+
+    const response = await fetch(`${api}/exportar-despesas`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      }
+    })
+
+    if (!response.ok) {
+      let erro = 'Erro ao baixar arquivo';
+      try {
+        const json = await response.json();
+        erro = json.erro || json.detalhe || erro;
+      } catch (_) { }
+      throw new Error(erro);
+    }
+
+    const blob = await response.blob();
+
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="?([^"]+)"?/i);
+    const fileName = match?.[1] || `despesas_${Date.now()}.xlsx`;
+
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    window.URL.revokeObjectURL(url);
+
+    removerOverlay()
+
+  } catch (error) {
+
+    console.error('Erro ao baixar Excel:', error);
+    popup({ mensagem: 'Falha ao gerar o Excel' })
+  }
+
 
 }
