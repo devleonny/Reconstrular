@@ -781,8 +781,10 @@ function telaLogin() {
 
                 </div>
 
-                <button onclick="acessoLogin()">Entrar</button>
+            </div>
 
+            <div class="rodape-padrao">
+                <label class="botoes-rodape" style="color: white; background-color: #5b707f;" onclick="acessoLogin()">Entrar</label>
             </div>
 
         </div>

@@ -99,7 +99,6 @@
 
 .tela-orcamento {
     background-color: white;
-    width: 100%;
     padding: 1rem;
 }
 
@@ -113,4 +112,36 @@
     width: max-content;
     overflow-x: hidden;
     padding: 2rem;
+}
+
+.em_analise {
+    display: inline-block;
+    border-radius: 3px;
+    border: solid 1px #b8b800;
+    background-color: #ffff009a;
+    padding: 0.5rem;
+}
+
+.orcamento_aceite {
+    display: inline-block;
+    border-radius: 3px;
+    border: solid 1px #ff6f00;
+    background-color: #ff6f009a;
+    padding: 0.5rem;
+}
+
+.orcamento_adjudicado {
+    display: inline-block;
+    border-radius: 3px;
+    border: solid 1px #008502;
+    background-color: #00ca03d3;
+    padding: 0.5rem;
+}
+
+.orcamento_recusado {
+    display: inline-block;
+    border-radius: 3px;
+    border: solid 1px #a30000;
+    background-color: #de00009a;
+    padding: 0.5rem;
 }

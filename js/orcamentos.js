@@ -1,4 +1,25 @@
 const voltarOrcamentos = `<button onclick="telaOrcamentos()">Voltar</button>`
+let filtroFinalizado = null
+const dt = (data) => {
+    if (!data) return '-'
+    const [ano, mes, dia] = data.split('-')
+    return `${dia}/${mes}/${ano}`
+}
+
+const tiposDocs = [
+    'em_analise',
+    'orcamento_aceite',
+    'orcamento_adjudicado',
+    'orcamento_recusado'
+]
+
+const statusOrcamento = {
+    '': '',
+    'Em Análise': 'em_analise',
+    'Orçamento Aceite': 'orcamento_aceite',
+    'Orçamento Adjudicado': 'orcamento_adjudicado',
+    'Orçamento Recusado': 'orcamento_recusado'
+}
 
 const ambientes = {
     'Quarto': [
@@ -71,6 +92,7 @@ async function telaOrcamentos() {
             ${btn('orcamentos', 'Dados de Orçamento', 'formularioOrcamento()')}
             ${btn('todos', 'Orçamentos em Aberto', `orcamentos('N')`)}
             ${btn('todos', 'Orçamentos Finalizados', `orcamentos('S')`)}
+            ${btn('todos', 'Orçamentos Recusados', `orcamentos('R')`)}
         </div>
     `
 
@@ -78,7 +100,10 @@ async function telaOrcamentos() {
 
 }
 
-async function orcamentos(finalizado) {
+async function orcamentos(finalizado = filtroFinalizado) {
+
+    if (finalizado)
+        filtroFinalizado = finalizado
 
     telaAtiva = 'orçamentos'
 
@@ -97,15 +122,16 @@ async function orcamentos(finalizado) {
             'Cidade': {},
             'Data de Contato': {},
             'Data de Visita': {},
-            'E-mail enviado': {},
-            'Data/Hora do Envio (E-mail)': {},
-            'Listagem do Material': {},
-            'Listagem de Ferramentas': {},
             'Zonas': {},
             'Editar': {},
             'Orcamento': {},
-            'Versão Atual': {},
-            'Excluir': {}
+
+            '<span class="em_analise">Em Análise</span>': {},
+            '<span class="orcamento_aceite">Orçamento Aceite</span>': {},
+            '<span class="orcamento_adjudicado">Orçamento Adjudicado</span>': {},
+            '<span class="orcamento_recusado">Orçamento Recusado</span>': {},
+
+            'Status': { chave: 'status', tipoPesquisa: 'select' }
         }
     })
 
@@ -117,16 +143,47 @@ async function orcamentos(finalizado) {
 
 async function criarLinhaOrcamento(orcamento) {
 
-    const { snapshots } = orcamento || {}
-    const idOrcamento = orcamento.id
-    const cidade = snapshots?.cidade || {}
-    const cliente = snapshots?.cliente
+    const {
+        id: idOrcamento,
+        status,
+        documentos,
+        finalizado = 'N',
+        snapshots
+    } = orcamento || {}
 
-    const dt = (data) => {
-        if (!data) return '-'
-        const [ano, mes, dia] = data.split('-')
-        return `${dia}/${mes}/${ano}`
-    }
+    const { cidade, cliente } = snapshots || {}
+
+    const tdsAnexos = tiposDocs
+        .map(doc => {
+
+            const idInput = `${doc}_${idOrcamento}`
+
+            const { link, nome } = documentos?.[doc] || {}
+
+            if (link) {
+                return `
+                <td>
+                    <img
+                        src="imagens/pdf.png"
+                        onclick="window.open('${api}/uploads/${link}', '_blank')">
+                </td>
+            `
+            }
+
+            return `
+                <td>
+                    <input
+                        id="${idInput}"
+                        type="file"
+                        style="display:none"
+                        onchange="importarDocumentoOrcamento('${doc}', '${idOrcamento}')">
+                    <label for="${idInput}" style="cursor:pointer;">
+                        <img src="imagens/upload.png">
+                    </label>
+                </td>
+        `
+        })
+        .join('')
 
     const versao = orcamento?.versao
     const tds = `
@@ -135,18 +192,7 @@ async function criarLinhaOrcamento(orcamento) {
         <td>${cidade?.nome || ''}
         <td>${dt(orcamento.data_contato)}</td>
         <td>${dt(orcamento.data_visita)}</td>
-        <td>
-            ${orcamento.emailEnviado ? `<img src="imagens/carta.png">` : ''}
-        </td>
-        <td>
-            ${orcamento?.emailEnviado?.data || ''}
-        </td>
-        <td>
-            <img src="imagens/pdf.png" onclick="listagem('${idOrcamento}', 'materiais')">
-        </td>
-        <td>
-            <img src="imagens/pdf.png" onclick="listagem('${idOrcamento}', 'ferramentas')">
-        </td>
+
         <td>
             <img src="imagens/planta.png" onclick="execucoes('${idOrcamento}', 0)">
         </td>
@@ -156,30 +202,64 @@ async function criarLinhaOrcamento(orcamento) {
         <td>
             <img src="imagens/orcamentos.png" onclick="orcamentoFinal('${idOrcamento}')">
         </td>
+        
+        ${tdsAnexos}
+
         <td>
-            ${versao ? `<span onclick="comparativoRevisoes('${idOrcamento}')" class="etiqueta-revisao">${versao}</span>` : ''}
-        </td> 
-        <td>
-            <img src="imagens/cancel.png" onclick="confirmarExclusaoOrcamento('${idOrcamento}')">
+            <select class="${statusOrcamento?.[status]}" onchange="alterarStatusOrcamento('${idOrcamento}', this.value, '${finalizado}')">
+                ${Object.keys(statusOrcamento).map(s => `<option ${s == status ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
         </td>
     `
     return `<tr>${tds}</tr>`
 }
 
-async function confirmarExclusaoOrcamento(idOrcamento) {
+async function importarDocumentoOrcamento(doc, idOrcamento) {
 
-    const botoes = [
-        { texto: 'Confirmar', img: 'concluido', funcao: `excluirOrcamento('${idOrcamento}')` }
-    ]
-    popup({ botoes, mensagem: 'Deseja excluir o orçamento?', nra: false })
+    try {
+
+        overlayAguarde()
+
+        const input = document.getElementById(`${doc}_${idOrcamento}`)
+
+        if (!input)
+            return
+
+        const anexo = await importarAnexos({ input }) // Lista com 1 objeto;
+
+        await enviar(`dados_orcamentos/${idOrcamento}/documentos/${doc}`, anexo[0])
+
+        popup({ imagem: 'imagens/concluido.png', mensagem: 'Documento anexado' })
+
+    } catch (err) {
+        popup({ mensagem: 'Falha ao processar o anexo, tente novamente' })
+    }
+
+
 }
 
-async function excluirOrcamento(idOrcamento) {
+async function alterarStatusOrcamento(idOrcamento, status, statusAtualFinalizado) {
+
     overlayAguarde()
+    let finalizado = null
 
-    await deletar(`dados_orcamentos/${idOrcamento}`)
+    if (status == 'Orçamento Recusado') {
+        finalizado = 'R'
 
-    removerPopup()
+    } else if (status != 'Orçamento Recusado' && statusAtualFinalizado == 'R') {
+        finalizado = 'N'
+
+    } else {
+        finalizado = statusAtualFinalizado
+    }
+
+    await enviar(`dados_orcamentos/${idOrcamento}`, {
+        status,
+        finalizado
+    })
+
+    removerOverlay()
+
 }
 
 async function formularioOrcamento(idOrcamento) {
@@ -818,129 +898,9 @@ async function comparativoRevisoes(idOrcamento) {
     }
 }
 
-async function listagem(idOrcamento, tabela) {
-
-    const orcamento = dados_orcamentos[idOrcamento]
-    const idCliente = orcamento?.idCliente || ''
-    const cliente = dados_clientes[idCliente]
-
-    let total = 0
-    const dados = {
-        'PEDIDO DE MATERIAIS': 'TOTAL (c/iva)',
-        'Empresa': cliente?.nome || '',
-        'Morada de Execução': cliente?.morada_execucao || '',
-        'Nif': cliente?.numero_contribuinte || '',
-        'E-mail': cliente?.email || '',
-        'Contacto': cliente?.telefone || ''
-    }
-
-    let linhas = ''
-    let i = 0
-    for (const [titulo, dado] of Object.entries(dados)) {
-
-        if (i == 0) {
-            linhas += `
-            <tr>
-                <td colspan="2" style="background-color: #5b707f;">
-                    <div class="titulo-orcamento">
-                        <span>${titulo}</span>
-                    </div>
-                </td>
-                <td class="total-orcamento">${dado}</td>
-            </tr>
-            `
-
-        } else {
-
-            linhas += `
-            <tr>
-                <td style="background-color: #5b707f; color: white;">${titulo}</td>
-                <td style="background-color: #DCE6F5;">${dado}</td>
-                ${i == 1
-                    ? `
-                    <td rowspan="9" style="background-color: white;">
-                        <div class="total-valor"></div>
-                    </td>
-                    `
-                    : ''}
-            </tr>`
-        }
-
-        i++
-    }
-
-    const colunas = [
-        'Especialidade',
-        'Descrição do Material',
-        'Quantidade',
-        'Preço Unitário',
-        'Total',
-        'Link'
-    ].map(col => `<th>${col}</th>`).join('')
-
-    let itens = ''
-
-    for (const [, especialidades] of Object.entries(orcamento?.zonas || {})) {
-        for (const dados of Object.values(especialidades)) {
-
-            const campo = campos?.[dados?.campo] || {}
-            const materiais = campo[tabela] || {}
-
-            for (const material of Object.values(materiais)) {
-
-                const unitario = material?.preco || 0
-                const qtde = material?.qtde || 0
-                const totalLinha = unitario * qtde
-                const link = material?.link
-
-                itens += `
-                    <tr>
-                        <td>${campo?.descricao || ''}</td>
-                        <td style="text-align: left;">${material.descricao || '-'}</td>
-                        <td>${qtde}</td>
-                        <td>${dinheiro(unitario)}</td>
-                        <td>${dinheiro(totalLinha)}</td>
-                        <td>${link ? `<a href="${link}">${link}</a>` : ''}</td>
-                    </tr>
-                    `
-
-                total += totalLinha
-
-            }
-        }
-    }
-
-    const elemento = `
-        <div class="tela-orcamento">
-            <div style="width: 100%; ${horizontal}; justify-content: start; gap: 3px; padding: 0.5rem;">
-                <button onclick="imprimirRecorte()">Imprimir</button>
-                <button onclick="pdfOrcamento('${tabela}')">Exportar</button>
-            </div>
-
-            <div class="orcamento-documento">
-                <table class="tabela-orcamento">
-                    <tbody>
-                        ${linhas}
-                    </tbody>
-                </table>
-
-                <br>
-
-                <table class="tabela-orcamento-2">
-                    <thead>${colunas}</thead>
-                    <tbody>${itens}</tbody>
-                </table>
-            </div>
-        </div>
-    `
-
-    popup({ elemento, titulo: 'Listagem de Materiais' })
-
-    document.querySelector('.total-valor').textContent = dinheiro(total)
-
-}
-
 async function orcamentoFinal(idOrcamento, emJanela) {
+
+    overlayAguarde()
 
     const { zonas, data_contato, data_visita, cliente } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
     const { nome, numero_contribuinte, email, telefone, morada_fiscal, morada_execucao } = await recuperarDado('dados_clientes', cliente) || {}
@@ -1080,6 +1040,8 @@ async function orcamentoFinal(idOrcamento, emJanela) {
     }
 
     document.querySelector('.total-valor').textContent = dinheiro(totalGeral)
+
+    removerOverlay()
 
 }
 
