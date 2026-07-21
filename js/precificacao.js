@@ -9,12 +9,14 @@ async function telaPrecos(filtro = null) {
     `
 
     const btnExtras = `
-        <button onclick="telaConfiguracoes()">Voltar</button>
-        <button onclick="edicaoItem()">Criar Campo</button>
-        <button onclick="confirmarDesativacao()">${filtro ? 'Ativar' : 'Desativar'} Itens</button>
-        <div style="${horizontal}; gap: 5px;">
-            <input type="checkbox" onclick="marcarTodosDesativar(this)">
-            <span style="color: white;">Marcar todos</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 3px;">
+            <button onclick="telaConfiguracoes()">Voltar</button>
+            <button onclick="edicaoItem()">Criar Campo</button>
+            <button onclick="confirmarDesativacao()">${filtro ? 'Ativar' : 'Desativar'} Itens</button>
+            <div style="${horizontal}; gap: 5px;">
+                <input type="checkbox" onclick="marcarTodosDesativar(this)">
+                <span style="color: white;">Marcar todos</span>
+            </div>
         </div>
     `
 
@@ -258,7 +260,7 @@ async function edicaoItem(idCampo) {
 
 }
 
-async function salvarCampo(idCampo = ID5digitos()) {
+async function salvarCampo(idCampo = crypto.randomUUID()) {
 
     let campo = {}
     const cmps = ['descricao', 'medida', 'especialidade']

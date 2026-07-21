@@ -22,7 +22,7 @@ async function verificarDespesas() {
 
   const btnExtras = `
     <div style="display: flex; flex-wrap: wrap; gap: 3px;">
-      <button onclick="baixarExcelDespesas()">Excel</button>
+      <button onclick="cconfirmarBaixarExcel()">Excel</button>
       <button onclick="formularioDespesa()">Adicionar</button>
       <button onclick="telaDespesas()">Voltar</button>
     </div>
@@ -262,7 +262,7 @@ async function excluirDespesa(idDespesa) {
 
 }
 
-async function salvarDespesa(idDespesa = ID5digitos()) {
+async function salvarDespesa(idDespesa = crypto.randomUUID()) {
   overlayAguarde()
 
   const despesa = await recuperarDado('dados_despesas', idDespesa) || {}
@@ -517,7 +517,7 @@ async function adicionarGenerico(id) {
 
 }
 
-async function salvarGenerico(id = ID5digitos()) {
+async function salvarGenerico(id = crypto.randomUUID()) {
 
   overlayAguarde()
 
@@ -556,18 +556,41 @@ async function excluirGenerico(id) {
 
 }
 
+async function cconfirmarBaixarExcel() {
+
+  controles.filtros
+
+  popup({
+    mensagem: 'Verifique os filtros antes de baixar o Excel, <br>do contrário será baixadado todos os <b>meses</b> e <b>anos</b> no arquivo, <br>continuar?',
+    botoes: [
+      {
+        texto: 'Baixar',
+        img: 'planilha',
+        funcao: 'baixarExcelDespesas()'
+      }
+    ]
+  })
+
+}
+
 async function baixarExcelDespesas() {
 
   overlayAguarde()
 
   try {
 
+    const ano = controles?.despesas?.filtros?.['snapshots.ano']?.value
+    const mes = controles?.despesas?.filtros?.['snapshots.mes']?.value
+    const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
+
     const response = await fetch(`${api}/exportar-despesas`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      }
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ mes, ano })
     })
 
     if (!response.ok) {
@@ -596,12 +619,13 @@ async function baixarExcelDespesas() {
 
     window.URL.revokeObjectURL(url);
 
-    removerOverlay()
+    removerTodosPopups()
 
   } catch (error) {
 
-    console.error('Erro ao baixar Excel:', error);
-    popup({ mensagem: 'Falha ao gerar o Excel' })
+    console.error(error)
+    popup({ mensagem: `Falha ao gerar o Excel: ${error}` })
+
   }
 
 

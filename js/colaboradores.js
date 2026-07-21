@@ -378,7 +378,7 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
         for (const anexo of anexos) {
             let idAnexo;
             do {
-                idAnexo = ID5digitos();
+                idAnexo = crypto.randomUUID()
             } while (colaborador[campo][idAnexo]); // evita IDs duplicados
 
             colaborador[campo][idAnexo] = anexo;

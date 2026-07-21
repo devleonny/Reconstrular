@@ -962,16 +962,6 @@ function conversor(stringMonetario) {
     }
 }
 
-function ID5digitos() {
-    const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let id = '';
-    for (let i = 0; i < 5; i++) {
-        const indiceAleatorio = Math.floor(Math.random() * caracteres.length);
-        id += caracteres.charAt(indiceAleatorio);
-    }
-    return id;
-}
-
 function base64ToFile(base64, filename = 'foto.png') {
     const arr = base64.split(',');
     const mime = arr[0].match(/:(.*?);/)[1];
@@ -1147,7 +1137,7 @@ async function fotoTarefa() {
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
 
-    const idFoto = ID5digitos()
+    const idFoto = crypto.randomUUID()
     const foto = `<img name="foto" id="${idFoto}" src="${canvas.toDataURL('image/png')}" class="foto" onclick="ampliarImagem(this, '${idFoto}')">`
     fotos.insertAdjacentHTML('beforeend', foto)
 
