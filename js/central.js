@@ -342,6 +342,7 @@ async function telaPrincipal() {
         ${btn('contas', 'Despesas', 'telaDespesas()')}
         ${btn('orcamentos', 'Orçamentos', 'telaOrcamentos()')}
         ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
+        ${btn('objetivo', 'Objetivos', 'telaObjetivos()')}
         ${btn('chat', 'Chat', 'painelChat()')}
         ${btn('sair', 'Desconectar', 'confirmarSaida()')}
         <div style="padding-bottom: 10rem;"></div>
