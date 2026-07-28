@@ -1,6 +1,8 @@
 
 async function telaObjetivos() {
 
+    overlayAguarde()
+
     const tabela = await modTab({
         base: 'vw_objetivos',
         colunas: {
@@ -9,9 +11,9 @@ async function telaObjetivos() {
             'Realizado Geral': {},
             '% Realizado Geral': {},
             'Objetivo Obras Geral': {},
-            '% Realizado Obras Geral': {},
+            'Realizado Obras Geral': {},
             '% Por Realizar vs Tempo Geral': {},
-            'Cidades': { chave: 'cidades.*.nome' },
+            'Cidades': { chave: 'nome' },
             'Objetivo': {},
             'Realizado': {},
             '% Realizado': {},
@@ -19,6 +21,10 @@ async function telaObjetivos() {
             'Realizado Obras': {},
             '% Realizado Obras': {},
             '% Por Realizar vs Tempo': {}
+        },
+        ordenar: {
+            path: 'distritos',
+            direcao: 'desc'
         },
         criarLinha: 'criarLinhaObjetivos',
         body: 'objetivos',
@@ -29,41 +35,86 @@ async function telaObjetivos() {
     tela.innerHTML = tabela
 
     await paginacao()
+
+    removerOverlay()
 }
 
 
 async function criarLinhaObjetivos(dados) {
 
-    const { distrito, cidades = {} } = dados || {}
+    const { 
+        nome,
+        distrito,
+        id, 
+        objetivo_valor, 
+        objetivo_obras, 
+        zona,
+        total_objetivo_obras,
+        total_objetivo_valor
+    } = dados || {}
 
-    const listaCidades = Object.values(cidades)
-    const rowspan = listaCidades.length
+    return `
+        <tr>
+            <td>${distrito}</td>
+            <td>${dinheiro(total_objetivo_valor || 0)}</td>
+            <td></td>
+            <td>${porcentagemHtml(30)}</td>
+            <td>${total_objetivo_obras || 0}</td>
+            <td></td>
+            <td>${porcentagemHtml(30)}</td>
+            <td>${nome ?? ''}</td>
+            <td style="cursor: pointer;" onclick="gerenciarObjetivo(${objetivo_valor || 0}, '${nome}', ${id}, 'valor')">${dinheiro(objetivo_valor || 0)}</td>
+            <td></td>
+            <td>${porcentagemHtml(30)}</td>
+            <td></td>
+            <td style="cursor: pointer;" onclick="gerenciarObjetivo(${objetivo_obras || 0}, '${nome}', ${id}, 'obras')">${objetivo_obras || 0}</td>
+            <td>${porcentagemHtml(30)}</td>
+            <td>${porcentagemHtml(30)}</td>
+        </tr>
+        `
 
-    const td1 = (valor) => `<td style="padding: 0px;" rowspan="${rowspan}">${valor}</td>`
+}
 
-    const tdsIniciais = `
-        ${td1(distrito)}
-        ${td1('')}
-        ${td1('')}
-        ${td1('')}
-        ${td1('')}
-        ${td1('')}
-        ${td1('')}
-    `
+function gerenciarObjetivo(valorAtual = 0, cidade, id, objetivo) {
 
-    return listaCidades
-        .map(({ nome, id, objetivo_valor, objetivo_obras, zona }, index) => `
-            <tr>
-                ${index === 0 ? tdsIniciais : ''}
-                <td style="padding: 0px;">${nome ?? ''}</td>
-                <td style="padding: 0px;" onclick="alterarValorObjetivo()">${dinheiro(objetivo_valor)}</td>
-                <td style="padding: 0px;">${objetivo_obras || ''}</td>
-                <td style="padding: 0px;"></td>
-                <td style="padding: 0px;"></td>
-                <td style="padding: 0px;"></td>
-                <td style="padding: 0px;"></td>
-                <td style="padding: 0px;"></td>
-            </tr>
-        `)
-        .join('');
+    const titulo = objetivo == 'valor'
+        ? 'Deseja alterar o valor objetivo?'
+        : 'Deseja alterar a quantidade de obras?'
+
+    popup({
+        imagem: 'imagens/objetivo.png',
+        mensagem: `
+            <div style="${vertical}; text-align: left; gap: 5px;">
+                <span>[<b>${cidade}</b>] <br>${titulo}</span>
+                <div style="${horizontal}; gap: 5px;">
+                    ${objetivo == 'valor' ? '<span>€</span>' : ''}
+                    <input id="objetivo" value="${valorAtual}">
+                </div>
+            </div>
+        `,
+        botoes: [
+            {
+                texto: 'Salvar',
+                funcao: `alterarObjetivo(${id}, '${objetivo}')`,
+                img: 'concluido'
+            }
+        ]
+    })
+
+
+}
+
+
+async function alterarObjetivo(id, objetivo) {
+
+
+    overlayAguarde()
+
+    const valorObjetivo = document.getElementById('objetivo')?.value || 0
+
+    await enviar(`cidades/${id}/objetivo_${objetivo}`, valorObjetivo)
+
+    removerTodosPopups()
+
+
 }

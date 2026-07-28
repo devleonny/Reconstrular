@@ -164,7 +164,8 @@ async function acessoLogin() {
 
             } else {
                 localStorage.setItem('acesso', JSON.stringify(data))
-                telaPrincipal()
+                await telaPrincipal()
+                await validarAcesso()
                 removerOverlay()
             }
 
@@ -343,6 +344,7 @@ async function telaPrincipal() {
         ${btn('orcamentos', 'Orçamentos', 'telaOrcamentos()')}
         ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
         ${btn('objetivo', 'Objetivos', 'telaObjetivos()')}
+        ${btn('checklist', 'Tarefas', 'telaTarefas()')}
         ${btn('chat', 'Chat', 'painelChat()')}
         ${btn('sair', 'Desconectar', 'confirmarSaida()')}
         <div style="padding-bottom: 10rem;"></div>

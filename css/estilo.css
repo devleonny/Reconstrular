@@ -907,8 +907,9 @@ button {
 }
 
 .btnLateral img {
+    filter: drop-shadow(0 0 1px black);
     width: 2rem;
-    margin-left: 10px
+    margin-left: 10px;
 }
 
 .menu-container {
@@ -1069,7 +1070,7 @@ input[type="file"] {
 }
 
 .barra {
-    width: 15vw;
+    min-width: 100px;
     flex: 1;
     background: #eee;
     height: 8px;

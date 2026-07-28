@@ -155,6 +155,11 @@ async function comunicacao() {
             // Apenas as tabelas usadas;
             for (const [pag, dados] of Object.entries(controles)) {
 
+                if (dados.base == 'vw_objetivos' && tabela == 'cidades') {
+                    await paginacao(pag)
+                    continue
+                }
+
                 if (dados.base !== tabela)
                     continue
 
