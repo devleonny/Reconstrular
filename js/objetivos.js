@@ -6,21 +6,20 @@ async function telaObjetivos() {
     const tabela = await modTab({
         base: 'vw_objetivos',
         colunas: {
-            'Distrito': { chave: 'distrito' },
-            'Objetivo Geral': {},
-            'Realizado Geral': {},
-            '% Realizado Geral': {},
-            'Objetivo Obras Geral': {},
-            'Realizado Obras Geral': {},
-            '% Por Realizar vs Tempo Geral': {},
+            'Distrito': { chave: 'distrito', op: '=', tipoPesquisa: 'select' },
+            'Objetivo Distrito': {},
+            'Realizado Distrito': {},
+            '% Realizado Distrito': {},
+            'Objetivo Obras Distrito': {},
+            'Realizado Obras Distrito': {},
+            '% Realizado Obras Distrito': {},
             'Cidades': { chave: 'nome' },
-            'Objetivo': {},
-            'Realizado': {},
-            '% Realizado': {},
-            'Objetivo Obras': {},
-            'Realizado Obras': {},
-            '% Realizado Obras': {},
-            '% Por Realizar vs Tempo': {}
+            'Objetivo Cidade': {},
+            'Realizado Cidade': {},
+            '% Realizado Cidade': {},
+            'Objetivo Obras Cidade': {},
+            'Realizado Obras Cidade': {},
+            '% Realizado Obras Cidade': {}
         },
         ordenar: {
             path: 'distritos',
@@ -28,8 +27,7 @@ async function telaObjetivos() {
         },
         criarLinha: 'criarLinhaObjetivos',
         body: 'objetivos',
-        pag: 'objetivos',
-
+        pag: 'objetivos'
     })
 
     tela.innerHTML = tabela
@@ -39,37 +37,63 @@ async function telaObjetivos() {
     removerOverlay()
 }
 
-
 async function criarLinhaObjetivos(dados) {
 
-    const { 
+    const {
         nome,
         distrito,
-        id, 
-        objetivo_valor, 
-        objetivo_obras, 
+        id,
+        objetivo_valor,
+        objetivo_obras,
         zona,
+
         total_objetivo_obras,
-        total_objetivo_valor
+        total_objetivo_valor,
+
+        realizado_geral_obras_cidade,
+        realizado_geral_valor_cidade,
+
+        realizado_geral_obras_distrito,
+        realizado_geral_valor_distrito
     } = dados || {}
+
+    // Distrito
+    const porcValorDistrito = realizado_geral_valor_distrito
+        ? Number(((realizado_geral_valor_distrito / total_objetivo_valor) * 100).toFixed(0))
+        : 0
+
+    const porcQtdeDistrito = total_objetivo_obras
+        ? Number(((realizado_geral_obras_distrito / total_objetivo_obras) * 100).toFixed(0))
+        : 0
+
+    // Cidade
+    const porcValorCidade = realizado_geral_valor_cidade
+        ? Number(((realizado_geral_valor_cidade / objetivo_valor) * 100).toFixed(0))
+        : 0
+
+    const porcQtdeCidade = realizado_geral_obras_cidade
+        ? Number(((realizado_geral_obras_cidade / objetivo_obras) * 100).toFixed(0))
+        : 0
 
     return `
         <tr>
             <td>${distrito}</td>
             <td>${dinheiro(total_objetivo_valor || 0)}</td>
-            <td></td>
-            <td>${porcentagemHtml(30)}</td>
+            <td>${dinheiro(realizado_geral_valor_distrito)}</td>
+            <td>${porcentagemHtml(porcValorDistrito)}</td>
             <td>${total_objetivo_obras || 0}</td>
-            <td></td>
-            <td>${porcentagemHtml(30)}</td>
+            <td>${realizado_geral_obras_distrito}</td>
+
+            <td>${porcentagemHtml(porcQtdeDistrito)}</td>
+
             <td>${nome ?? ''}</td>
-            <td style="cursor: pointer;" onclick="gerenciarObjetivo(${objetivo_valor || 0}, '${nome}', ${id}, 'valor')">${dinheiro(objetivo_valor || 0)}</td>
-            <td></td>
-            <td>${porcentagemHtml(30)}</td>
-            <td></td>
-            <td style="cursor: pointer;" onclick="gerenciarObjetivo(${objetivo_obras || 0}, '${nome}', ${id}, 'obras')">${objetivo_obras || 0}</td>
-            <td>${porcentagemHtml(30)}</td>
-            <td>${porcentagemHtml(30)}</td>
+            <td style="background-color: #00ffff; cursor: pointer;" onclick="gerenciarObjetivo(${objetivo_valor || 0}, '${nome}', ${id}, 'valor')">${dinheiro(objetivo_valor || 0)}</td>
+            <td>${dinheiro(realizado_geral_valor_cidade)}</td>
+            <td>${porcentagemHtml(porcValorCidade)}</td>
+            <td style="background-color: #00ffff; cursor: pointer;" onclick="gerenciarObjetivo(${objetivo_obras || 0}, '${nome}', ${id}, 'obras')">${objetivo_obras || 0}</td>
+            <td>${realizado_geral_obras_cidade}</td>
+            <td>${porcentagemHtml(porcQtdeCidade)}</td>
+
         </tr>
         `
 

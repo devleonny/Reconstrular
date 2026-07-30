@@ -51,7 +51,7 @@ async function verificarDespesas() {
     }
   })
 
-  tela.innerHTML = `<div style="width: 90%;">${tabela}</div>`
+  tela.innerHTML = `<div>${tabela}</div>`
 
   await paginacao()
 
