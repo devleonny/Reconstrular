@@ -1,0 +1,49 @@
+.tarefas {
+    border-radius: 20px;
+    padding: 5px 10px;
+}
+
+.tarefas-Alta {
+    background-color: red;
+    color: #ffe5a0;
+}
+
+.tarefas-Média {
+    background-color: #ffe5a0;
+    color: #973f00;
+}
+
+.tarefas-Baixa {
+    background-color: green;
+    color: wheat;
+}
+
+.tarefas-Não-iniciado {
+    background-color: #00dade;
+    color: #004e50;
+}
+
+.tarefas-Em-curso {
+    background-color: #fffb19;
+    color: #5b5900;
+}
+
+.tarefas-Stand-By {
+    background-color: #ff8870;
+    color: #7e1500;
+}
+
+.tarefas-Dependente {
+    background-color: #ff63cb;
+    color: #520037;
+}
+
+.tarefas-Finalizado {
+    background-color: #0024b5;
+    color: #c7c7ff;
+}
+
+.tarefas-Concluído {
+    background-color: #3eff25;
+    color: #084700;
+}

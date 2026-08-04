@@ -24,15 +24,15 @@ async function telaTarefas() {
         pag: 'tarefas',
         criarLinha: 'criarLinhaTarefa',
         colunas: {
-            'Tarefa': {},
-            'Prioridade': {},
-            'Destinatário': {},
-            'Estado': {},
-            'Data de Início': {},
-            'Data de Fim': {},
+            'Tarefa': { chave: 'tarefa' },
+            'Prioridade': { chave: 'prioridade', tipoPesquisa: 'select' },
+            'Destinatário': { chave: 'destinatario', tipoPesquisa: 'select' },
+            'Estado': { chave: 'estado', tipoPesquisa: 'select' },
+            'Data de Início': { chave: 'data_inicio', tipoPesquisa: 'data' },
+            'Data de Fim': { chave: 'data_fim', tipoPesquisa: 'data' },
             'Imagem / Documento': {},
-            'Notas': {},
-            '': {}
+            'Notas': { chave: 'notas' },
+            'Edição': {}
         }
     })
 
@@ -66,17 +66,20 @@ function criarLinhaTarefa(dados) {
     return `
         <tr>
             <td style="white-space: wrap;">${tarefa || ''}</td>
-            <td>${prioridade || ''}</td>
-            <td></td>
-            <td>${estado || ''}</td>
-            <td>${data_inicio || ''}</td>
-            <td>${data_fim || ''}</td>
+            <td>
+                <span class="tarefas tarefas-${prioridade}">${prioridade || ''}</span>
+            </td>
+            <td>${destinatario}</td>
+            <td>
+                <span class="tarefas tarefas-${estado.replace(' ', '-')}">${estado || ''}</span>
+            </td>
+            <td>${dt(data_inicio)}</td>
+            <td>${dt(data_fim)}</td>
             <td></td>
             <td style="white-space: wrap;">${notas || ''}</td>
             <td><img src="imagens/pesquisar.png" onclick="gerenciarTarefa('${id}')"></td>
         </tr>
     `
-
 
 }
 
@@ -97,6 +100,15 @@ async function gerenciarTarefa(id) {
             notas
         } = id ? await recuperarDado('tarefas', id) : {}
 
+        controlesCxOpcoes.destinatario = {
+            base: 'dados_setores',
+            retornar: ['usuario'],
+            colunas: {
+                'Usuário': { chave: 'usuario' },
+                'Nome': { chave: 'nome_completo' },
+                'Função': { chave: 'funcao' }
+            }
+        }
 
         const linhas = [
             {
@@ -112,16 +124,15 @@ async function gerenciarTarefa(id) {
             `
             },
             {
-                texto: 'Destinatário',
-                elemento: ''
-            },
-            {
                 texto: 'Estado',
                 elemento: `
                 <select name="estado">
                     ${estados.map(e => `<option ${estado == e ? 'selected' : ''}>${e}</option>`).join('')}
-                </select>
-            `
+                </select>`
+            },
+            {
+                texto: 'Destinatário',
+                elemento: `<span class="opcoes" name="destinatario" onclick="cxOpcoes('destinatario')">${destinatario || 'Selecione'}</span>`
             },
             {
                 texto: 'Data de Início',
@@ -133,7 +144,7 @@ async function gerenciarTarefa(id) {
             },
             {
                 texto: 'Imagem / Documento',
-                elemento: `<input type="file">`
+                elemento: `<input type="file" multiple>`
             },
             {
                 texto: 'Notas',
@@ -171,8 +182,14 @@ async function salvarTarefa(id = crypto.randomUUID()) {
 
         const editores = [...document.querySelectorAll('.editor-conteudo')]
 
+        const destinatario = document.querySelector('[name="destinatario"]')?.id
+
+        if (!destinatario)
+            return popup({ mensagem: 'Não deixe o destinatário em branco!' })
+
         const atualizado = {
             ...tarefa,
+            destinatario,
             prioridade: document.querySelector('[name="prioridade"]')?.value,
             estado: document.querySelector('[name="estado"]')?.value,
             data_inicio: document.querySelector('[name="data_inicio"]')?.value,

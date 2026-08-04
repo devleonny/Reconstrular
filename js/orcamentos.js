@@ -1,5 +1,6 @@
 const voltarOrcamentos = `<button onclick="telaOrcamentos()">Voltar</button>`
 let filtroFinalizado = null
+
 const dt = (data) => {
     if (!data) return '-'
     const [ano, mes, dia] = data.split('-')
