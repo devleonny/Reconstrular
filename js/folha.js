@@ -291,6 +291,7 @@ async function salvarHoras(dia, mes, ano, idColaborador) {
         const horas = [...document.querySelectorAll('[name="horas"]')]
 
         await Promise.all(horas.map(async (inputHora) => {
+            
             const hora = inputHora.value
             const id = inputHora.dataset.id
 
