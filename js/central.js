@@ -11,6 +11,8 @@ let toolbar = null
 let titulo = null
 let menus = null
 let nomeUsuario = null
+let overlayTimeout = null
+let sOverlay = false
 
 function obVal(name) {
     const painel = document.querySelector('.painel-padrao')
@@ -31,7 +33,7 @@ const modeloLivre = (texto, elemento) => `
     </div>
 `
 const dtFormatada = (data) => {
-    if (!data) return '--'
+    if (!data) return '-'
     const [ano, mes, dia] = data.split('-')
     return `${dia}/${mes}/${ano}`
 }
@@ -273,24 +275,53 @@ function removerOverlay() {
 
 function overlayAguarde() {
 
-    const aguarde = document.querySelector('.aguarde')
-    if (aguarde) aguarde.remove()
+    if (sOverlay)
+        return
+
+    const aguardeAntigo = document.querySelector('.aguarde')
+
+    if (aguardeAntigo)
+        aguardeAntigo.remove()
 
     const elemento = `
         <div class="aguarde">
-            <div class="div-mensagem"></div>
-            <img src="gifs/loading.gif">
+
+            <div class="loading-container">
+                <img src="gifs/loading.gif" alt="Carregando">
+                <div class="div-mensagem">Aguarde...</div>
+            </div>
+            
         </div>
     `
+
     document.body.insertAdjacentHTML('beforeend', elemento)
+
+    const aguarde = document.querySelector('.aguarde')
 
     let pageHeight = Math.max(
         document.body.scrollHeight,
         document.documentElement.scrollHeight
-    );
+    )
 
-    document.querySelector('.aguarde').style.height = `${pageHeight}px`;
+    aguarde.style.height = `${pageHeight}px`
 
+    clearTimeout(overlayTimeout)
+
+    overlayTimeout = setTimeout(() => {
+
+        const loadingContainer = aguarde.querySelector('.loading-container')
+
+        if (!loadingContainer)
+            return
+
+        loadingContainer.innerHTML = `
+            <div class="popup-fechar">
+                <span>O processo demorou muito, verifique se sua ação foi realizada ou fale com o suporte.</span>
+                <button onclick="removerOverlay()">Fechar</button>
+            </div>
+            `
+
+    }, 30000)
 }
 
 function balaoUsuario(st, texto) {
@@ -420,45 +451,6 @@ function sincronizarApp({ atual, total, remover } = {}) {
 
 }
 
-function pesquisarGenerico(coluna, texto, filtro, id) {
-
-    filtro[coluna] = String(texto).toLowerCase().replace('.', '')
-
-    let tbody = document.getElementById(id);
-    let trs = tbody.querySelectorAll('tr');
-    let contador = 0
-
-    trs.forEach(function (tr) {
-        let tds = tr.querySelectorAll('td');
-        let mostrarLinha = true;
-
-        for (var col in filtro) {
-            let filtroTexto = filtro[col];
-
-            if (filtroTexto && col < tds.length) {
-                let element = tds[col].querySelector('input') || tds[col].querySelector('textarea') || tds[col].querySelector('select') || tds[col].textContent
-                let conteudoCelula = element.value ? element.value : element
-                let texto_campo = String(conteudoCelula).toLowerCase().replace('.', '')
-
-                if (!texto_campo.includes(filtroTexto)) {
-                    mostrarLinha = false;
-                    break;
-                }
-            }
-        }
-
-        mostrarLinha ? contador++ : ''
-
-        tr.style.display = mostrarLinha ? '' : 'none';
-    });
-
-    let contagem = document.getElementById('contagem')
-    if (contagem) {
-        contagem.textContent = contador
-    }
-
-}
-
 function telaConfiguracoes() {
 
     telaAtiva = 'configurações'
@@ -573,36 +565,11 @@ async function tirarFoto() {
 
 }
 
-function marcarLinhaInvalida(elemento) {
-    if (!elemento) return
-
-    const linha = elemento.closest('.linha-padrao')
-    if (!linha) return
-
-    let alerta = linha.querySelector('.alerta-regra')
-
-    if (!alerta) {
-        alerta = document.createElement('img')
-        alerta.src = 'imagens/alerta.png'
-        alerta.className = 'alerta-regra'
-        alerta.setAttribute('data-alerta-regra', 'S')
-        linha.appendChild(alerta)
-    }
-}
-
-function removerLinhaInvalida(elemento) {
-    if (!elemento) return
-
-    const linha = elemento.closest('.linha-padrao')
-    if (!linha) return
-
-    linha.querySelector('.alerta-regra')?.remove()
-}
-
 function verificarRegras() {
+
     const painel = document.querySelector('.painel-padrao')
     const input = (name) => painel.querySelector(`[name="${name}"]`)
-    let liberado = true
+    const campos = []
 
     const limites = {
         nome: { tipo: 'A' },
@@ -632,11 +599,9 @@ function verificarRegras() {
 
             if (regra.liberado) {
                 campo.classList.remove('invalido')
-                removerLinhaInvalida(campo)
             } else {
                 campo.classList.add('invalido')
-                marcarLinhaInvalida(campo)
-                liberado = false
+                campos.push(name)
             }
         }
     }
@@ -655,25 +620,19 @@ function verificarRegras() {
         rodapeAlerta.innerHTML = mensagem('cancel', 'Os Pins não são iguais')
         pin.classList.add('invalido')
         pinEspelho.classList.add('invalido')
-        marcarLinhaInvalida(pin)
-        marcarLinhaInvalida(pinEspelho)
-        liberado = false
+        campos.push('pins não são iguais')
     } else {
         pin.classList.remove('invalido')
         pinEspelho.classList.remove('invalido')
-        removerLinhaInvalida(pin)
-        removerLinhaInvalida(pinEspelho)
         rodapeAlerta.innerHTML = mensagem('concluido', 'Pins iguais')
     }
 
     const cidade = el('cidade')
     if (!cidade?.id) {
         cidade.classList.add('invalido')
-        marcarLinhaInvalida(cidade)
-        liberado = false
+        campos.push('cidade')
     } else {
         cidade.classList.remove('invalido')
-        removerLinhaInvalida(cidade)
     }
 
     const camposFixos = ['documento', 'especialidade', 'status']
@@ -683,11 +642,9 @@ function verificarRegras() {
 
         if (!ativo) {
             bloco.classList.add('invalido')
-            marcarLinhaInvalida(bloco)
-            liberado = false
+            campos.push(campo)
         } else {
             bloco.classList.remove('invalido')
-            removerLinhaInvalida(bloco)
         }
     }
 
@@ -697,11 +654,9 @@ function verificarRegras() {
 
         if (elCampo.value == '') {
             elCampo.classList.add('invalido')
-            marcarLinhaInvalida(elCampo)
-            liberado = false
+            campos.push(campo)
         } else {
             elCampo.classList.remove('invalido')
-            removerLinhaInvalida(elCampo)
         }
     }
 
@@ -715,16 +670,14 @@ function verificarRegras() {
         numero_documento.value = numero_documento.value.replace(/\D/g, '')
 
         if (numero_documento.value.length !== 8) {
-            liberado = false
+            campos.push('numero_documento')
             numero_documento.classList.add('invalido')
-            marcarLinhaInvalida(numero_documento)
         } else {
             numero_documento.classList.remove('invalido')
-            removerLinhaInvalida(numero_documento)
         }
     }
 
-    return liberado
+    return { campos }
 }
 
 function unicoID() {
@@ -805,10 +758,10 @@ function recuperarSenha() {
     ]
 
     const botoes = [
-        { texto: 'Solicitar', img: 'concluido', funcao: `solicitarCodigo()` }
+        { texto: 'Solicitar', img: 'concluido', funcao: `solicitarCodigo()`, fechar: true }
     ]
 
-    popup({ linhas, botoes, titulo: 'Recuperar acesso', nra: false })
+    popup({ linhas, botoes, titulo: 'Recuperar acesso', removerAnteriores: true })
 
 }
 
@@ -838,10 +791,10 @@ async function solicitarCodigo() {
             }
         ]
         const botoes = [
-            { texto: 'Confirmar', img: 'concluido', funcao: `salvarSenha()` }
+            { texto: 'Confirmar', img: 'concluido', fechar: true, funcao: `salvarSenha()` }
         ]
 
-        popup({ linhas, botoes, titulo: 'Informe o código', nra: false })
+        popup({ linhas, botoes, titulo: 'Informe o código', removerAnteriores: true })
     } else {
         popup({ mensagem: resposta.mensagem || 'Falha na solicitação' })
     }
@@ -863,17 +816,6 @@ async function salvarSenha() {
 
     if (resposta.mensagem)
         return popup({ mensagem: resposta.mensagem })
-
-}
-
-function erroConexao(mensagem) {
-
-    const erroConexao = document.getElementById('erroConexao')
-    if (!erroConexao)
-        popup({ mensagem: 'Tente novamente em alguns minutos' })
-
-    sincronizarApp({ remover: true })
-    emAtualizacao = false
 
 }
 

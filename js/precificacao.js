@@ -58,9 +58,9 @@ async function telaPrecos(filtro = null) {
 
 function confirmarDesativacao() {
     const botoes = [
-        { texto: 'Confirmar', img: 'concluido', funcao: `desativarEmMassa()` }
+        { texto: 'Confirmar', img: 'concluido', funcao: `desativarEmMassa()`, fechar: true }
     ]
-    popup({ botoes, mensagem: 'Desativar itens?', nra: false })
+    popup({ botoes, mensagem: 'Desativar itens?', removerAnteriores: true })
 }
 
 async function desativarEmMassa() {

@@ -1,0 +1,42 @@
+.campo-filtros {
+    display: flex;
+    justify-content: start;
+    align-items: start;
+    flex-direction: row;
+    gap: 1rem;
+}
+
+.caixa-filtros {
+    padding: 5px;
+    background-color: #d2d2d2;
+    border-radius: 5px;
+    border: solid 1px #222;
+    min-width: 120px;
+}
+
+.caixa-opcoes {
+    border: solid 1px #b1b1b1;
+    background-color: #f3f3f3;
+    max-height: 200px;
+    overflow-y: auto;
+    flex-direction: column;
+}
+
+.caixa-opcao {
+    gap: 5px;
+    text-align: center;
+    display: flex;
+    justify-content: start;
+    align-items: center;
+}
+
+.caixa-opcao input {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.titulo-filtro {
+    color: #222;
+    font-size: 1.5rem;
+}

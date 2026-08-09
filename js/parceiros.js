@@ -1,3 +1,5 @@
+let cidades = null
+
 const el = (name) => {
     return (
         document.querySelector(`.painel-padrao [name="${name}"]`) ||
@@ -7,14 +9,13 @@ const el = (name) => {
     )
 }
 
-function escapeHtml(texto = '') {
-    return String(texto)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;')
-}
+const esquema = [
+    { titulo: 'CEO' },
+    { titulo: 'Diretor Operativo' },
+    { titulo: 'Coordenador Operativo', campos: ['zona'] },
+    { titulo: 'Encarregado de Obra', campos: ['zona', 'distrito', 'area', 'obra'] },
+    { titulo: 'Trabalhador', campos: ['zona', 'distrito', 'area', 'obra'] }
+]
 
 async function telaNiveis() {
     titulo.textContent = 'Níveis de acesso'
@@ -22,7 +23,6 @@ async function telaNiveis() {
     const acumulado = `
         <div class="painel-despesas">
             <br>
-            ${btn('concluido', 'Autorizações de acesso', '')}
             ${btn('colaborador', 'Adicionar Parceiro', 'editarParceiros()')}
             ${btn('todos', 'Parceiros', 'telaUsuarios()')}
         </div>
@@ -31,24 +31,28 @@ async function telaNiveis() {
 }
 
 async function telaUsuarios() {
+
     overlayAguarde()
 
     telaAtiva = 'parceiros'
     titulo.textContent = 'Parceiros'
 
     const colunas = {
+        'Usuario': { chave: 'usuario' },
         'Nome Completo': { chave: 'nome_completo' },
         'Telefone': { chave: 'telefone' },
         'Email': { chave: 'email' },
         'Função': { chave: 'snapshots.funcao' },
-        'Zona': { chave: 'zona', tipoPesquisa: 'select' },
-        'Distrito': { chave: 'distrito', tipoPesquisa: 'select' },
-        'Area': { chave: 'area', tipoPesquisa: 'select' },
+        'Zona': { chave: 'snapshots.cidade.zona', tipoPesquisa: 'select' },
+        'Distrito': { chave: 'snapshots.cidade.distrito', tipoPesquisa: 'select' },
+        'Area': { chave: 'snapshots.cidade.area', tipoPesquisa: 'select' },
+        'Filtros Aplicados': {},
         'Edição': {}
     }
 
     const tabela = await modTab({
         colunas,
+        btnExtras: `<button onclick="editarParceiros()">Adicionar Parceiro</button>`,
         pag: 'parceiros',
         base: 'dados_setores',
         criarLinha: 'criarLinhaUsuarios',
@@ -63,6 +67,7 @@ async function telaUsuarios() {
 }
 
 async function criarLinhaUsuarios(dados) {
+
     const {
         usuario,
         nome_completo,
@@ -71,20 +76,46 @@ async function criarLinhaUsuarios(dados) {
         snapshots = {},
         cidade,
         funcao,
+        filtros
+    } = dados || {}
+
+    const {
         zona,
         area,
         distrito
-    } = dados || {}
+    } = snapshots?.cidade || {}
 
+    const relacaoFiltros = Object.entries(filtros || {})
+        .map(([filtro, lista]) => {
+
+            if (!lista || !lista.length)
+                return ''
+
+            return `
+            <div style="${vertical}; gap: 3px;">
+                <span><b>${inicialMaiuscula(filtro)}</b></span>
+                <div style="display: flex; flex-wrap: wrap; gap: 3px;">${lista.map(i => `<span class="tag-usuario">${i}</span>`).join('')}</div>
+            </div>
+            `
+        })
+        .join('')
 
     const tds = `
+        <td>
+            <span class="tag-usuario">${usuario}</span>
+        </td>
         <td>${nome_completo || ''}</td>
         <td>${telefone || ''}</td>
         <td>${email || ''}</td>
         <td>${funcao || ''}</td>
-        <td>${zona ? zona.join('<br>') : ''}</td>
-        <td>${distrito ? distrito.join('<br>') : ''}</td>
-        <td>${area ? area.join('<br>') : ''}</td>
+        <td>${zona || ''}</td>
+        <td>${distrito || ''}</td>
+        <td>${area || ''}</td>
+        <td>
+            <div style="${vertical}; gap: 0.5rem;">
+                ${relacaoFiltros}
+            </div>
+        </td>
         <td>
             <img onclick="editarParceiros('${usuario}')" src="imagens/pesquisar.png">
         </td>`
@@ -93,6 +124,7 @@ async function criarLinhaUsuarios(dados) {
 }
 
 async function editarParceiros(usuario) {
+
     overlayAguarde()
 
     const parceiro = usuario
@@ -100,21 +132,25 @@ async function editarParceiros(usuario) {
         : {}
 
     const {
-        nome_completo = '',
-        funcao = '',
-        email = '',
+        nome_completo,
+        funcao,
+        email,
         cidade,
-        data_nascimento = '',
-        telefone = '',
+        data_nascimento,
+        telefone,
+        filtros
+    } = parceiro || {}
+
+    const {
         zona = [],
         distrito = [],
         area = [],
         obra = []
-    } = parceiro
+    } = filtros || {}
 
     controlesCxOpcoes.cidade = {
         base: 'cidades',
-        retornar: ['nome', 'distrito'],
+        retornar: ['nome'],
         funcaoAdicional: ['notificarPessoas'],
         colunas: {
             'Cidade': { chave: 'nome' },
@@ -129,23 +165,28 @@ async function editarParceiros(usuario) {
     const linhas = [
         {
             texto: 'Usuário',
-            elemento: `<input ${usuario ? 'readOnly="true"' : ''} name="usuario" placeholder="Usuário" value="${escapeHtml(usuario || '')}">`
+            elemento: `
+                <div style="${vertical}; gap: 5px;">
+                    <input name="usuario" placeholder="Usuário" oninput="verificarDisponibilidade(this)" value="${usuario || ''}" ${usuario ? 'readOnly="true"' : ''}>
+                    <div data-valido="${usuario ? 'S' : 'N'}" id="status_usuario"></div>
+                </div>
+            `
         },
         {
             texto: 'Nome',
-            elemento: `<input name="nome_completo" placeholder="Nome Completo" value="${escapeHtml(nome_completo)}">`
+            elemento: `<input name="nome_completo" placeholder="Nome Completo" value="${nome_completo || ''}">`
         },
         {
             texto: 'E-mail',
-            elemento: `<input name="email" type="email" placeholder="E-mail" value="${escapeHtml(email)}">`
+            elemento: `<input name="email" type="email" placeholder="E-mail" value="${email || ''}">`
         },
         {
             texto: 'Telefone',
-            elemento: `<input name="telefone" placeholder="Telefone" value="${escapeHtml(telefone)}">`
+            elemento: `<input name="telefone" placeholder="Telefone" value="${telefone || ''}">`
         },
         {
             texto: 'Data de Nascimento',
-            elemento: `<input type="date" name="data_nascimento" placeholder="Data de Nascimento" value="${escapeHtml(data_nascimento)}">`
+            elemento: `<input type="date" name="data_nascimento" placeholder="Data de Nascimento" value="${data_nascimento || ''}">`
         },
         {
             texto: 'Cidade',
@@ -167,312 +208,244 @@ async function editarParceiros(usuario) {
 
     await carregarTabelaFuncoes({
         funcao,
-        valores: {
-            zona: Array.isArray(zona) ? zona : [],
-            distrito: Array.isArray(distrito) ? distrito : [],
-            area: Array.isArray(area) ? area : [],
-            obra: Array.isArray(obra) ? obra : []
-        }
+        filtros
     })
 
     removerOverlay()
 }
 
-async function carregarTabelaFuncoes(config = {}) {
-    const esquema = [
-        { titulo: 'CEO' },
-        { titulo: 'Diretor Operativo' },
-        { titulo: 'Coordenador Operativo', campos: ['zona'] },
-        { titulo: 'Encarregado de Obra', campos: ['zona', 'distrito', 'area', 'obra'] },
-        { titulo: 'Trabalhador', campos: ['zona', 'distrito', 'area', 'obra'] }
-    ]
+async function verificarDisponibilidade(input) {
 
-    const dependentes = ['zona', 'distrito', 'area']
-    const todosCampos = ['zona', 'distrito', 'area', 'obra']
+    const usuario = input.value.trim('')
 
-    const labels = {
-        zona: 'Zona',
-        distrito: 'Distrito',
-        area: 'Área',
-        obra: 'Obra'
+    const statusUsuario = document.getElementById('status_usuario')
+
+    let pesquisa = null
+
+    if (usuario.length > 5) {
+
+        pesquisa = await pesquisarDB({
+            base: 'dados_setores',
+            filtros: {
+                usuario: { op: '=', value: usuario }
+            }
+        })
+
     }
+
+    const modelo = (texto, img) => `
+        <div style="${horizontal}; gap: 0.5rem;">
+            <img src="imagens/${img}.png" style="width: 1.5rem;">
+            <span>${texto}</span>
+        </div>
+    `
+
+    // Validador;
+    statusUsuario.dataset.valido = (!pesquisa || pesquisa.resultados.length)
+        ? 'N'
+        : 'S'
+
+    statusUsuario.innerHTML = (!pesquisa || pesquisa.resultados.length)
+        ? modelo('Não disponível', 'cancel')
+        : modelo('Usuário válido', 'concluido')
+
+
+}
+
+async function carregarTabelaFuncoes({ funcao, filtros } = {}) {
+
+    const pesquisa = await pesquisarDB({
+        base: 'cidades',
+        limite: 9999,
+    })
+
+    if (!pesquisa.resultados)
+        return popup({ mensagem: 'Não foi possível baixar os dados das cidades: Fale com o suporte.' })
+
+    cidades = pesquisa.resultados
+
+    const opcoesHTML = Object.values(esquema)
+        .map(({ titulo }) => {
+
+            return `
+            <div style="${horizontal}; justify-content: start; gap: 1rem;">
+                <input ${funcao == titulo ? 'checked' : ''} onclick="mostrarFiltros('${titulo}')" data-valor="${titulo}" style="width: 1.5rem; height: 1.5rem;" type="radio" name="funcao">
+                <span>${titulo}</span>
+            </div>
+            `
+        })
+        .join('')
 
     const campoFuncoes = document.querySelector('.campo-funcoes')
-    if (!campoFuncoes) return
 
-    const estado = {
-        funcaoIndex: null,
-        valores: {
-            zona: Array.isArray(config?.valores?.zona) ? [...config.valores.zona] : [],
-            distrito: Array.isArray(config?.valores?.distrito) ? [...config.valores.distrito] : [],
-            area: Array.isArray(config?.valores?.area) ? [...config.valores.area] : [],
-            obra: Array.isArray(config?.valores?.obra) ? [...config.valores.obra] : []
-        },
-        ultimoCampoDependente: null
-    }
+    campoFuncoes.innerHTML = `
+        ${opcoesHTML}
+        <br>
+        <span class="titulo-filtro">Filtros</span>
+        <div class="campo-filtros"></div>
+    `
 
-    window.__parceiroEstadoCampos = estado
+    mostrarFiltros(funcao, filtros)
 
-    function normalizarArray(valor) {
-        if (!valor) return []
-        return Array.isArray(valor) ? valor.filter(Boolean) : [valor].filter(Boolean)
-    }
+}
 
-    function criarRegraOR(valores = []) {
-        return {
-            modo: 'OR',
-            regras: valores.map(value => ({ op: '=', value }))
-        }
-    }
+function mostrarFiltros(titulo, filtros) {
 
-    function criarMultiSelect(campo) {
-        const label = labels[campo] || campo
+    const campoFiltros = document.querySelector('.campo-filtros')
+
+    const modelo = (campo, opcoes) => {
+
+        const ehCampoNumerico = ['zona', 'area'].includes(campo)
+
+        const lista = opcoes
+            .sort((a, b) =>
+                ehCampoNumerico
+                    ? a - b
+                    : a.localeCompare(b)
+            )
+            .map(o => {
+
+                const marcado = (filtros?.[campo] || []).includes(o)
+
+                return `
+                    <div class="caixa-opcao">
+                        <input ${marcado ? 'checked' : ''} name="${campo}" data-valor="${o}" onclick="filtrarCidades()" type="checkbox">
+                        <span>${o}</span>
+                    </div>
+                `
+            })
+            .join('')
+
 
         return `
-            <div class="multi-select-wrap">
-                <label class="multi-select-trigger" data-trigger="${campo}">
-                    <span>${label}</span>
-                    <span>⌵</span>
-                </label>
-                <div class="multi-select-dropdown" data-campo="${campo}"></div>
+            <div class="caixa-filtros">
+                <span style="font-size: 1.1rem;">${inicialMaiuscula(campo)}</span>
+                <div class="caixa-opcoes">
+                    ${lista}
+                </div>
             </div>
         `
     }
 
-    function atualizarTextoTriggers(campos, container) {
-        campos.forEach(campo => {
-            const btn = container.querySelector(`[data-trigger="${campo}"]`)
-            if (!btn) return
+    const esqFuncao = esquema
+        .filter(c => c.titulo == titulo)
 
-            const selecionados = normalizarArray(estado.valores[campo])
-            const label = labels[campo] || campo
+    const caixas = (esqFuncao?.[0]?.campos || [])
+        .map(campo => {
 
-            btn.innerHTML = selecionados.length
-                ? `<span>${label}: ${selecionados.join(', ')}</span><span>⌵</span>`
-                : `<span>${label}</span><span>⌵</span>`
+            const opcoes = [...
+                new Set(cidades.map(c => c[campo]))
+            ]
+
+            return modelo(campo, opcoes)
         })
-    }
+        .join('')
 
-    function limparOutrosDependentes(campoBase) {
-        for (const campo of dependentes) {
-            if (campo !== campoBase) {
-                estado.valores[campo] = []
-            }
-        }
-    }
+    campoFiltros.innerHTML = caixas || '<span>Nenhum filtro disponível</span>'
 
-    function montarFiltrosParaCampo(campoAlvo) {
-        const campoBase = estado.ultimoCampoDependente
+    filtrarCidades(filtros)
 
-        if (!campoBase || !dependentes.includes(campoBase)) {
-            return {}
-        }
-
-        if (campoAlvo === campoBase) {
-            return {}
-        }
-
-        const valores = normalizarArray(estado.valores[campoBase])
-        if (!valores.length) {
-            return {}
-        }
-
-        return {
-            [campoBase]: criarRegraOR(valores)
-        }
-    }
-
-    async function obterOpcoes(campo) {
-        if (campo === 'obra') {
-            const resultado = await contarPorCampo({
-                base: 'cidades',
-                path: campo,
-                filtros: {}
-            })
-
-            return Object.keys(resultado || {}).filter(item => item && item !== 'todos')
-        }
-
-        const filtros = montarFiltrosParaCampo(campo)
-
-        const resultado = await contarPorCampo({
-            base: 'cidades',
-            path: campo,
-            filtros
-        })
-
-        return Object.keys(resultado || {}).filter(item => item && item !== 'todos')
-    }
-
-    async function preencherDropdown(campo, container) {
-        const dropdown = container.querySelector(`[data-campo="${campo}"]`)
-        if (!dropdown) return
-
-        const opcoesBase = await obterOpcoes(campo)
-        const selecionados = normalizarArray(estado.valores[campo])
-
-        const opcoes = [...new Set([...opcoesBase, ...selecionados])]
-
-        dropdown.innerHTML = opcoes.map(opcao => `
-            <label class="multi-option">
-                <input
-                    type="checkbox"
-                    value="${escapeHtml(opcao)}"
-                    ${selecionados.includes(opcao) ? 'checked' : ''}
-                >
-                <span>${escapeHtml(opcao)}</span>
-            </label>
-        `).join('')
-    }
-
-    async function atualizarCampos(campos, container) {
-        for (const campo of campos) {
-            await preencherDropdown(campo, container)
-        }
-
-        atualizarTextoTriggers(campos, container)
-    }
-
-    async function aoMudarCampo(campo, container, campos) {
-        const dropdown = container.querySelector(`[data-campo="${campo}"]`)
-        if (!dropdown) return
-
-        const marcados = [...dropdown.querySelectorAll('input:checked')]
-            .map(input => input.value)
-            .filter(Boolean)
-
-        estado.valores[campo] = marcados
-
-        if (dependentes.includes(campo)) {
-            estado.ultimoCampoDependente = marcados.length ? campo : null
-
-            if (estado.ultimoCampoDependente) {
-                limparOutrosDependentes(campo)
-                estado.valores[campo] = marcados
-            }
-        }
-
-        await atualizarCampos(campos, container)
-    }
-
-    async function renderizarCamposExtras(index, preservarValores = false) {
-        const item = esquema[index]
-        const campos = (item.campos || []).map(c => String(c).toLowerCase())
-        const linha = campoFuncoes.querySelector(`[data-linha="${index}"]`)
-        const extras = linha?.querySelector('.extras-funcao')
-
-        if (!extras) return
-
-        if (!preservarValores) {
-            estado.valores = {
-                zona: [],
-                distrito: [],
-                area: [],
-                obra: []
-            }
-            estado.ultimoCampoDependente = null
-        } else {
-            const novosValores = {
-                zona: [],
-                distrito: [],
-                area: [],
-                obra: []
-            }
-
-            for (const campo of todosCampos) {
-                novosValores[campo] = normalizarArray(estado.valores[campo])
-            }
-
-            estado.valores = novosValores
-
-            estado.ultimoCampoDependente =
-                [...dependentes].reverse().find(campo => normalizarArray(estado.valores[campo]).length) || null
-        }
-
-        extras.innerHTML = campos.map(criarMultiSelect).join('')
-
-        extras.querySelectorAll('.multi-select-trigger').forEach(trigger => {
-            trigger.addEventListener('click', () => {
-                const campo = trigger.dataset.trigger
-                const dropdown = extras.querySelector(`[data-campo="${campo}"]`)
-                if (dropdown) dropdown.classList.toggle('aberto')
-            })
-        })
-
-        await atualizarCampos(campos, extras)
-
-        for (const campo of campos) {
-            const dropdown = extras.querySelector(`[data-campo="${campo}"]`)
-            if (!dropdown) continue
-
-            dropdown.addEventListener('change', async (e) => {
-                if (e.target?.type !== 'checkbox') return
-                await aoMudarCampo(campo, extras, campos)
-            })
-        }
-    }
-
-    function atualizarInputFuncao(index) {
-        const inputFuncao = campoFuncoes.querySelector('[name="funcao"]')
-        if (!inputFuncao) return
-        inputFuncao.value = esquema[index]?.titulo || ''
-    }
-
-    const elementos = esquema.map(({ titulo }, index) => `
-        <div class="linha-funcao" data-linha="${index}" style="${horizontal}; gap: 1rem;">
-            <input type="radio" name="funcao_radio" value="${index}" style="width: 1.5rem; height: 1.5rem;">
-            <span>${titulo}</span>
-            <div class="extras-funcao"></div>
-        </div>
-    `).join('')
-
-    campoFuncoes.innerHTML = `
-        <input type="hidden" name="funcao" value="${escapeHtml(config?.funcao || '')}">
-        ${elementos}
-    `
-
-    campoFuncoes.querySelectorAll('input[type="radio"][name="funcao_radio"]').forEach(radio => {
-        radio.addEventListener('change', async (e) => {
-            const novoIndex = Number(e.target.value)
-
-            campoFuncoes.querySelectorAll('.extras-funcao').forEach(item => item.innerHTML = '')
-
-            estado.funcaoIndex = novoIndex
-            atualizarInputFuncao(novoIndex)
-
-            await renderizarCamposExtras(novoIndex, false)
-        })
-    })
-
-    const indexInicial = esquema.findIndex(item => item.titulo === config?.funcao)
-
-    if (indexInicial >= 0) {
-        const radio = campoFuncoes.querySelector(`input[name="funcao_radio"][value="${indexInicial}"]`)
-        if (radio) {
-            radio.checked = true
-            estado.funcaoIndex = indexInicial
-            atualizarInputFuncao(indexInicial)
-            await renderizarCamposExtras(indexInicial, true)
-        }
-    }
 }
 
-async function salvarParceiro(usuario = el('usuario')?.value) {
+async function filtrarCidades(filtros = null) {
+
+    // Zona
+    if (filtros) {
+
+        for (const input of [...document.querySelectorAll('[name="zona"]')]) {
+            const zona = Number(input.dataset.valor)
+            input.checked = (filtros?.zona || []).includes(zona)
+        }
+
+    }
+
+    const zonasMarcadas = [...document.querySelectorAll('[name="zona"]:checked')]
+        .map(input => Number(input.dataset.valor))
+
+    // Distritos
+    const distritos = cidades
+        .filter(c => zonasMarcadas.includes(c.zona))
+        .map(c => c.distrito)
+
+    for (const input of [...document.querySelectorAll('[name="distrito"]')]) {
+
+        const div = input.parentElement
+
+        const distrito = input.dataset.valor
+
+        if (distritos.includes(distrito)) {
+
+            if (filtros)
+                input.checked = (filtros?.distrito || []).includes(distrito)
+
+            div.style.display = 'flex'
+        } else {
+            input.checked = false
+            div.style.display = 'none'
+        }
+
+    }
+
+    // Areas
+    const distritosMarcados = [...document.querySelectorAll('[name="distrito"]:checked')]
+        .map(input => input.dataset.valor)
+
+    const areas = cidades
+        .filter(c => distritosMarcados.includes(c.distrito))
+        .map(c => c.area)
+
+    for (const input of [...document.querySelectorAll('[name="area"]')]) {
+
+        const div = input.parentElement
+
+        const area = Number(input.dataset.valor)
+
+        if (areas.includes(area)) {
+
+            if (filtros)
+                input.checked = (filtros?.area || []).includes(area)
+
+            div.style.display = 'flex'
+
+        } else {
+            input.checked = false
+            div.style.display = 'none'
+        }
+
+    }
+
+}
+
+
+async function salvarParceiro(usuario) {
+
     try {
         overlayAguarde()
 
+        const inputUsuario = el('usuario')
+
+        const valido = document.getElementById('status_usuario').dataset.valido == 'S'
+
+        if (!valido)
+            return popup({ mensagem: 'Já existe um usuário com este nome, tente outro.' })
+
+        usuario = usuario || inputUsuario?.value
         const nome_completo = el('nome_completo')?.value?.trim()
         const email = el('email')?.value?.trim()
         const telefone = el('telefone')?.value?.trim()
         const data_nascimento = el('data_nascimento')?.value || ''
-        const funcao = el('funcao')?.value?.trim() || ''
         const cidade = el('cidade')?.id || null
 
-        const campoFuncoes = document.querySelector('.campo-funcoes')
+        // Radio
+        const funcao = [...document.querySelectorAll('[name="funcao"]:checked')]?.[0]?.dataset?.valor
 
         const coletarMarcados = (campo) => {
-            return [...(campoFuncoes?.querySelectorAll(`[data-campo="${campo}"] input[type="checkbox"]:checked`) || [])]
-                .map(input => input.value)
+            return [...(document.querySelectorAll(`[name="${campo}"]:checked`) || [])]
+                .map(input => {
+                    return ['zona', 'area'].includes(campo)
+                        ? Number(input.dataset.valor)
+                        : input.dataset.valor
+                })
                 .filter(Boolean)
         }
 
@@ -484,8 +457,6 @@ async function salvarParceiro(usuario = el('usuario')?.value) {
         if (!usuario || !nome_completo || !email)
             return popup({ mensagem: 'Não deixe Usuário/Nome ou E-mail em branco' })
 
-        const campoBase = window.__parceiroEstadoCampos?.ultimoCampoDependente || null
-
         const user = {
             cidade,
             usuario,
@@ -494,10 +465,12 @@ async function salvarParceiro(usuario = el('usuario')?.value) {
             telefone,
             data_nascimento,
             funcao,
-            zona: campoBase === 'zona' ? zona : null,
-            distrito: campoBase === 'distrito' ? distrito : null,
-            area: campoBase === 'area' ? area : null,
-            obra: obra.length ? obra : null
+            filtros: {
+                zona,
+                distrito,
+                area,
+                obra
+            }
         }
 
         await enviar(`dados_setores/${usuario}`, user)
@@ -511,9 +484,9 @@ async function salvarParceiro(usuario = el('usuario')?.value) {
 
 function confirmarDesativarUsuario(usuario) {
     const botoes = [
-        { texto: 'Confirmar', img: 'concluido', funcao: `deletarUsuario('${usuario}')` }
+        { fechar: true, texto: 'Confirmar', img: 'concluido', funcao: `deletarUsuario('${usuario}')` }
     ]
-    popup({ botoes, mensagem: 'Tem certeza?', nra: false })
+    popup({ botoes, mensagem: 'Tem certeza?', removerAnteriores: true })
 }
 
 async function deletarUsuario(usuario) {

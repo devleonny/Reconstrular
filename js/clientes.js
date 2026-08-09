@@ -190,10 +190,10 @@ async function notificarPessoas() {
 function confirmarExclusaoCliente(idCliente) {
 
     const botoes = [
-        { texto: 'Confirmar', img: 'concluido', funcao: `excluirCliente('${idCliente}')` }
+        { texto: 'Confirmar', img: 'concluido', funcao: `excluirCliente('${idCliente}')`, fechar: true }
     ]
 
-    popup({ mensagem: 'Tem certeza?', botoes, titulo: 'Exclusão de Cliente', nra: false })
+    popup({ mensagem: 'Tem certeza?', botoes, titulo: 'Exclusão de Cliente', removerAnteriores: true })
 }
 
 async function excluirCliente(idCliente) {

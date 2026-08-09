@@ -105,6 +105,10 @@ function mostrarStatus(msg, cls) {
 }
 
 async function validarFacial(fotoUrl) {
+
+    if (!usuarioAtual.nome)
+        return popup({ mensagem: 'Não foi possível identificar o colaborador: Fale com o suporte.' })
+    
     const acumulado = `
         
         <div class="card">
@@ -167,8 +171,11 @@ function pararCam() {
 }
 
 async function baterPonto() {
-    if (!refDescriptor) return mostrarStatus('Sem referência facial', 'err');
-    if (!stream) return mostrarStatus('Câmera não iniciada', 'err');
+    if (!refDescriptor)
+        return mostrarStatus('Sem referência facial', 'err');
+
+    if (!stream)
+        return mostrarStatus('Câmera não iniciada', 'err');
 
     let tentativa = 60;
 

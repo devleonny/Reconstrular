@@ -251,9 +251,9 @@ async function salvarObra(idObra = crypto.randomUUID()) {
 function confirmarExclusaoObra(idObra) {
 
     const botoes = [
-        { texto: 'Confirmar', img: 'concluido', funcao: `excluirObra('${idObra}')` }
+        { texto: 'Confirmar', img: 'concluido', funcao: `excluirObra('${idObra}')`, fechar: true }
     ]
-    popup({ mensagem: 'Tem certeza?', botoes, nra: false })
+    popup({ mensagem: 'Tem certeza?', botoes, removerAnteriores: true })
 }
 
 async function excluirObra(idObra) {

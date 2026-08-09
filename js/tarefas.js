@@ -62,6 +62,11 @@ function criarLinhaTarefa(dados) {
         notas
     } = dados || {}
 
+    const listagemAnexos = Object.entries(anexos || {})
+        .map(([id, anexo]) => {
+            return criarAnexoVisual(anexo)
+        })
+        .join('')
 
     return `
         <tr>
@@ -75,7 +80,11 @@ function criarLinhaTarefa(dados) {
             </td>
             <td>${dt(data_inicio)}</td>
             <td>${dt(data_fim)}</td>
-            <td></td>
+            <td>
+                <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+                    ${listagemAnexos}
+                </div>
+            </td>
             <td style="white-space: wrap;">${notas || ''}</td>
             <td><img src="imagens/pesquisar.png" onclick="gerenciarTarefa('${id}')"></td>
         </tr>
@@ -99,6 +108,12 @@ async function gerenciarTarefa(id) {
             anexos,
             notas
         } = id ? await recuperarDado('tarefas', id) : {}
+
+        const listagemAnexos = Object.entries(anexos || {})
+            .map(([id, anexo]) => {
+                return criarAnexoVisual(anexo)
+            })
+            .join('')
 
         controlesCxOpcoes.destinatario = {
             base: 'dados_setores',
@@ -132,7 +147,7 @@ async function gerenciarTarefa(id) {
             },
             {
                 texto: 'Destinatário',
-                elemento: `<span class="opcoes" name="destinatario" onclick="cxOpcoes('destinatario')">${destinatario || 'Selecione'}</span>`
+                elemento: `<span ${destinatario ? `id="${destinatario}"` : ''} class="opcoes" name="destinatario" onclick="cxOpcoes('destinatario')">${destinatario || 'Selecione'}</span>`
             },
             {
                 texto: 'Data de Início',
@@ -144,7 +159,12 @@ async function gerenciarTarefa(id) {
             },
             {
                 texto: 'Imagem / Documento',
-                elemento: `<input type="file" multiple>`
+                elemento: `
+                    <div style="${vertical}; gap: 5px;">
+                        <input id="anexos" type="file" multiple>
+                        <div style="display: flex; flex-wrap: wrap;">${listagemAnexos}</div>
+                    </div>
+                    `
             },
             {
                 texto: 'Notas',
@@ -187,8 +207,19 @@ async function salvarTarefa(id = crypto.randomUUID()) {
         if (!destinatario)
             return popup({ mensagem: 'Não deixe o destinatário em branco!' })
 
+        // Anexos
+        const input = document.getElementById('anexos')
+        const respAnexos = await importarAnexos({ input }) || []
+        const anexos = Object.fromEntries(
+            respAnexos.map(a => [crypto.randomUUID(), a])
+        )
+
         const atualizado = {
             ...tarefa,
+            anexos: {
+                ...tarefa?.anexos,
+                ...anexos
+            },
             destinatario,
             prioridade: document.querySelector('[name="prioridade"]')?.value,
             estado: document.querySelector('[name="estado"]')?.value,
@@ -203,9 +234,8 @@ async function salvarTarefa(id = crypto.randomUUID()) {
 
         removerTodosPopups()
 
-
     } catch (err) {
-        console.log(err)
+        console.error(err)
         popup({ mensagem: 'Falha ao salvar a tarefa: Fale com o suporte.' })
     }
 

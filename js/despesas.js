@@ -251,9 +251,9 @@ function alterarModal() {
 function confirmarExclusaoDespesa(idDespesa) {
 
   const botoes = [
-    { texto: 'Confirmar', img: 'concluido', funcao: `excluirDespesa('${idDespesa}')` }
+    { texto: 'Confirmar', img: 'concluido', funcao: `excluirDespesa('${idDespesa}')`, fechar: true }
   ]
-  popup({ mensagem: 'Tem cezesa?', botoes, titulo: 'Exclusão de Despesa', nra: false })
+  popup({ mensagem: 'Tem cezesa?', botoes, titulo: 'Exclusão de Despesa', removerAnteriores: true })
 }
 
 async function excluirDespesa(idDespesa) {
@@ -539,10 +539,10 @@ async function salvarGenerico(id = crypto.randomUUID()) {
 function confirmarExcluirGenerico(id) {
 
   const botoes = [
-    { texto: 'Confirmar', img: 'concluido', funcao: `excluirGenerico('${id}')` }
+    { texto: 'Confirmar', img: 'concluido', funcao: `excluirGenerico('${id}')`, fechar: true }
   ]
 
-  popup({ botoes, mensagem: 'Tem certeza?', nra: false })
+  popup({ botoes, mensagem: 'Tem certeza?', removerAnteriores: true })
 
 }
 

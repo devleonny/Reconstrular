@@ -234,7 +234,7 @@ async function painelUsuarios() {
     if (divOnline)
         return
 
-    popup({ elemento, titulo: 'Painel de Usuários', nra: true })
+    popup({ elemento, titulo: 'Painel de Usuários' })
 
     await paginacao(pag)
 }

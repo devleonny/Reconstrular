@@ -110,8 +110,6 @@ async function criarFolha(idColaborador) {
         return el
     }
 
-    const colaborador = await recuperarDado('dados_colaboradores', idColaborador)
-    let folha = colaborador?.folha || {}
     const ano = Number(document.querySelector('[name="ano"]').value)
     const mesString = document.querySelector('[name="mes"]').value
     const mes = Number(mesString)
@@ -121,17 +119,31 @@ async function criarFolha(idColaborador) {
     const horaSaida = '17:00'
     const horasDiarias = 8
 
+    // Registros;
+    const pesquisa = await pesquisarDB({
+        base: 'registros_ponto',
+        limite: 999,
+        filtros: {
+            colaborador: { op: '=', value: idColaborador },
+            ano: { op: '=', value: ano },
+            mes: { op: '=', value: mes }
+        }
+    })
+
     function estilo(hora, tipo) {
         let estilo = ''
 
         const [h, m] = hora.split(':').map(Number)
 
-        if (h === 0 && m === 0 || hora == '') return ''
+        if (h === 0 && m === 0 || hora == '') 
+            return ''
 
         if (tipo === 'entrada') {
             const [hE, mE] = horaEntrada.split(':').map(Number)
             if (h > hE || (h === hE && m > mE)) {
                 estilo = 'negativo'
+            } else {
+                estilo = 'positivo'
             }
 
         } else if (tipo === 'saida') {
@@ -158,13 +170,22 @@ async function criarFolha(idColaborador) {
     let minutosRealizados = 0
 
     for (let i = 1; i <= ultimoDia; i++) {
+
         const dia = i < 10 ? `0${i}` : i
         const data = new Date(ano, mes - 1, i)
         const indiceSem = data.getDay()
         const diaDaSemana = semana[indiceSem]
-        const entradas = folha?.[ano]?.[mesString]?.[dia] || ['00:00', '00:00']
+
+        const entradas = pesquisa.resultados
+            .filter(registro => registro.dia == i)
+            .map(registro => registro.hora)
+            .sort((a, b) => a.localeCompare(b))  // 'HH:MM' ordena certo como string
+
         const hora1 = entradas[0] || '00:00'
-        const hora2 = entradas[1] ? entradas[1] : (entradas[0] && !entradas[1]) ? '17:00' : '00:00'
+        const hora2 = entradas[1]
+            ? entradas[1]
+            : (entradas[0] && !entradas[1]) ? '17:00' : '00:00'
+
         const resultado = calcularHoras(hora1, hora2, '08:00')
         const [h, m] = resultado.total.split(':').map(Number)
         const fds = indiceSem == 0 || indiceSem == 6
@@ -172,7 +193,8 @@ async function criarFolha(idColaborador) {
         minutosRealizados += minutosDiarios
         const estiloDiferenca = resultado.diferenca.includes('-') ? 'negativo' : 'positivo'
 
-        if (!fds) diasUteis++
+        if (!fds)
+            diasUteis++
 
         trs += `
         <tr data-colaborador="${idColaborador}" data-dia="${dia}" data-mes="${mesString}" data-ano="${ano}">
@@ -186,8 +208,8 @@ async function criarFolha(idColaborador) {
             </td>
             <td>
                 <div style="${horizontal}; gap: 0.5rem;">
-                    <img data-controle="editar" style="width: 1.5rem;" onclick="registroHoras(this)" src="imagens/lapis.png">
                     <span class="${estilo(resultado.total, 'total')}">${resultado.total}</span>
+                    <img style="width: 1.5rem;" onclick="registroHoras(${i}, ${mes}, ${ano}, '${idColaborador}')" src="imagens/lapis.png">
                 </div>
             </td>
             <td><span class="${estiloDiferenca}">${resultado.diferenca}</span></td>
@@ -212,62 +234,76 @@ async function criarFolha(idColaborador) {
 
 }
 
-let sData = {}
+async function registroHoras(dia, mes, ano, idColaborador) {
 
-async function registroHoras(img) {
+    try {
 
-    const tr = img.closest('tr')
+        overlayAguarde()
 
-    const dia = tr.dataset.dia
-    const mes = tr.dataset.mes
-    const ano = tr.dataset.ano
-    const idColaborador = tr.dataset.colaborador
+        const pesquisa = await pesquisarDB({
+            base: 'registros_ponto',
+            limite: 999,
+            filtros: {
+                colaborador: { op: '=', value: idColaborador },
+                ano: { op: '=', value: ano },
+                mes: { op: '=', value: mes },
+                dia: { op: '=', value: dia }
+            }
+        })
 
-    // Salve Data;
-    sData = { dia, mes, ano, idColaborador }
+        const marcacoes = !pesquisa.resultados.length
+            ? [{ hora: '00:00' }, { hora: '00:00' }]
+            : pesquisa.resultados.length == 1
+                ? [...pesquisa.resultados, { hora: '00:00' }]
+                : pesquisa.resultados
 
-    const colaborador = await recuperarDado('dados_colaboradores', idColaborador)
-    let marcacoes = colaborador?.folha?.[ano]?.[mes]?.[dia] || ['00:00', '00:00']
+        const inputs = marcacoes
+            .sort((a, b) => a.hora.localeCompare(b.hora)) 
+            .map(registro => `<input data-id="${registro?.id || crypto.randomUUID()}" name="horas" type="time" value="${registro?.hora || '00:00'}">`)
+            .join('')
 
-    if (marcacoes.lenght == 1)
-        marcacoes.push('00:00')
+        const linhas = [
+            {
+                texto: 'Marcações',
+                elemento: inputs
+            }
+        ]
 
-    const inputs = marcacoes.map(m => `<input name="horas" type="time" value="${m}">`).join('')
+        const botoes = [
+            { texto: 'Salvar', img: 'concluido', funcao: `salvarHoras(${dia}, ${mes}, ${ano}, '${idColaborador}')` }
+        ]
 
-    const linhas = [
-        {
-            texto: 'Marcações',
-            elemento: inputs
-        }
-    ]
+        popup({ linhas, botoes, titulo: 'Edição de Horas' })
 
-    const botoes = [
-        { texto: 'Salvar', img: 'concluido', funcao: `salvarHoras('${idColaborador}')` }
-    ]
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao abrir os registros: Fale com o suporte.' })
+    }
 
-    popup({ linhas, botoes, titulo: 'Edição de Horas' })
 }
 
 
-async function salvarHoras() {
+async function salvarHoras(dia, mes, ano, idColaborador) {
 
-    overlayAguarde()
+    try {
+        overlayAguarde()
 
-    const inputs = document.querySelectorAll('[name="horas"]')
-    const horas = []
-    for (const inp of inputs) horas.push(inp.value)
+        const horas = [...document.querySelectorAll('[name="horas"]')]
 
-    const colaborador = await recuperarDado('dados_colaboradores', sData.idColaborador)
-    colaborador.folha ??= {}
-    colaborador.folha[sData.ano] ??= {}
-    colaborador.folha[sData.ano][sData.mes] ??= {}
-    colaborador.folha[sData.ano][sData.mes][sData.dia] = horas
+        await Promise.all(horas.map(async (inputHora) => {
+            const hora = inputHora.value
+            const id = inputHora.dataset.id
 
-    await enviar(`dados_colaboradores/${sData.idColaborador}/folha/${sData.ano}/${sData.mes}/${sData.dia}`, horas)
+            await enviar(`registros_ponto/${id}`, { hora, dia, mes, ano, colaborador: idColaborador })
+        }))
 
-    await mostrarFolha(sData.idColaborador)
+        await criarFolha(idColaborador)
+        removerPopup()
 
-    removerPopup()
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao salvar as horas: Fale com o suporte.' })
+    }
 
 }
 

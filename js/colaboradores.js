@@ -89,9 +89,8 @@ function labelStatus(st) {
 }
 async function criarLinhaColaboradores(colaborador) {
 
-    const { id, cidade, epi } = colaborador || {}
-
-    const dCidade = await recuperarDado('cidades', cidade) || {}
+    const { id, epi, snapshots } = colaborador || {}
+    const { cidade } = snapshots || {}
 
     const algoPendente = (!colaborador.epi || !colaborador.exame || !colaborador.contrato_obra)
     const especialidades = (colaborador?.especialidade || [])
@@ -101,6 +100,7 @@ async function criarLinhaColaboradores(colaborador) {
     const estilo = labelStatus(colaborador?.status)
 
     let qtdeEPIs = 0
+
     Object.values(epi?.equipamentos || {}).forEach(e => {
         qtdeEPIs += e.quantidade
     })
@@ -114,8 +114,8 @@ async function criarLinhaColaboradores(colaborador) {
         </td>
         <td>${colaborador?.telefone || ''}</td>
         <td></td>
-        <td>${dCidade.distrito || ''}</td>
-        <td>${dCidade?.nome || ''}</td>
+        <td>${cidade?.distrito || ''}</td>
+        <td>${cidade?.nome || ''}</td>
         <td>
             <span class="${estilo}">${colaborador?.status || ''}</span>
         </td>
@@ -142,6 +142,8 @@ async function criarLinhaColaboradores(colaborador) {
 }
 
 async function adicionarColaborador(id) {
+
+    overlayAguarde()
 
     const colaborador = await recuperarDado('dados_colaboradores', id) || {}
 
@@ -202,7 +204,7 @@ async function adicionarColaborador(id) {
 
     const cidade = await recuperarDado('cidades', colaborador?.cidade) || null
     const campoCidade = cidade
-        ? `${cidade.nome}\n${cidade.distrito}`
+        ? cidade.nome
         : 'Selecione'
 
     controlesCxOpcoes.cidade = {
@@ -213,7 +215,7 @@ async function adicionarColaborador(id) {
             'Zona': { chave: 'zona' },
             'Area': { chave: 'area' }
         },
-        retornar: ['nome', 'distrito']
+        retornar: ['nome']
     }
 
     const linhas = [
@@ -295,7 +297,7 @@ async function adicionarColaborador(id) {
         { funcao: id ? `salvarColaborador('${id}')` : 'salvarColaborador()', texto: 'Salvar', img: 'concluido' }
     ]
 
-    if (id) 
+    if (id)
         botoes.push({ img: 'cancel', texto: 'Excluir', funcao: `confirmarExclusaoColaborador('${id}')` })
 
     popup({ linhas, botoes, titulo: 'Cadastro de Colaborador' })
@@ -307,10 +309,10 @@ async function adicionarColaborador(id) {
 function confirmarExclusaoColaborador(id) {
 
     const botoes = [
-        { texto: 'Confirmar', img: 'concluido', funcao: `excluirColaborador('${id}')` }
+        { texto: 'Confirmar', img: 'concluido', funcao: `excluirColaborador('${id}')`, fechar: true }
     ]
 
-    popup({ mensagem: 'Tem certeza?', botoes, titulo: 'Excluir colaborador', nra: false })
+    popup({ mensagem: 'Tem certeza?', botoes, titulo: 'Excluir colaborador', removerAnteriores: true })
 }
 
 async function excluirColaborador(id) {
@@ -323,9 +325,17 @@ async function excluirColaborador(id) {
 }
 
 async function salvarColaborador(idColaborador = crypto.randomUUID()) {
-    const liberado = verificarRegras()
-    if (!liberado)
-        return popup({ mensagem: 'Verifique os campos inválidos!' })
+
+    const { campos } = verificarRegras()
+
+    if (campos.length)
+        return popup({
+            mensagem: `
+            <div style="${vertical}; gap: 4px;">
+                <span>Verifique os campos inválidos:</span>
+                ${campos.map(c => `<span>• ${inicialMaiuscula(c)}</span>`).join('')}
+            </div>`
+        })
 
     overlayAguarde()
 
@@ -527,7 +537,7 @@ async function formularioEPI(idColaborador) {
         <div style="${vertical}; gap: 5px;">
             <label>${texto}</label>
             <input type="password" ${limite
-            ? `maxlenght="${limite}" id="pin" data-pin="${colaborador?.pin}" placeholder="Limite de ${limite} dígitos"`
+            ? `maxlength="${limite}" id="pin" data-pin="${colaborador?.pin}" placeholder="Limite de ${limite} dígitos"`
             : 'id="supervisor" placeholder="Senha de acesso ao App"'
         }>
         </div>
@@ -585,11 +595,11 @@ async function formularioEPI(idColaborador) {
     ]
 
     const botoes = [
-        { texto: 'Salvar', img: 'concluido', funcao: `salvarEpi('${idColaborador}')"` },
+        { texto: 'Salvar', img: 'concluido', funcao: `salvarEpi('${idColaborador}')"`, fechar: true },
         { texto: 'PDF', img: 'pdf', funcao: `abrirEPI('${idColaborador}')"` }
     ]
 
-    popup({ linhas, botoes, titulo: 'Formulário de EPI', nra: false })
+    popup({ linhas, botoes, titulo: 'Formulário de EPI', removerAnteriores: true })
 }
 
 async function salvarEpi(idColaborador) {
