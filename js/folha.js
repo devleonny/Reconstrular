@@ -55,7 +55,7 @@ async function mostrarFolha(idColaborador) {
         <div class="painelFiltros">
             ${modelo('Ano', `<select name="ano" onchange="criarFolha('${idColaborador}')">${optionsSelect(anos)}</select>`)}
             ${modelo('Mês', `<select name="mes" onchange="criarFolha('${idColaborador}')">${optionsSelect(meses)}</select>`)}
-            <img src="imagens/pdf.png" onclick="gerarTodosPDFs('${idColaborador}', '${colaborador.nome}')">
+            <img src="imagens/pdf.png" onclick="gerarPdfFolha('${idColaborador}')">
             <button onclick="telaColaboradores()">Voltar</button>
         </div>
 
@@ -135,7 +135,7 @@ async function criarFolha(idColaborador) {
 
         const [h, m] = hora.split(':').map(Number)
 
-        if (h === 0 && m === 0 || hora == '') 
+        if (h === 0 && m === 0 || hora == '')
             return ''
 
         if (tipo === 'entrada') {
@@ -258,7 +258,7 @@ async function registroHoras(dia, mes, ano, idColaborador) {
                 : pesquisa.resultados
 
         const inputs = marcacoes
-            .sort((a, b) => a.hora.localeCompare(b.hora)) 
+            .sort((a, b) => a.hora.localeCompare(b.hora))
             .map(registro => `<input data-id="${registro?.id || crypto.randomUUID()}" name="horas" type="time" value="${registro?.hora || '00:00'}">`)
             .join('')
 
@@ -291,7 +291,7 @@ async function salvarHoras(dia, mes, ano, idColaborador) {
         const horas = [...document.querySelectorAll('[name="horas"]')]
 
         await Promise.all(horas.map(async (inputHora) => {
-            
+
             const hora = inputHora.value
             const id = inputHora.dataset.id
 
@@ -335,74 +335,147 @@ function calcularHoras(hora1, hora2, esperado) {
     };
 }
 
-async function gerarTodosPDFs(idColaborador, nome) {
+function gerarTodosPDFs() {
+
+    const opMeses = Object.entries({ '': '', ...meses })
+        .sort(([a], [b]) => Number(a) - Number(b))
+        .map(([m, mes]) => `<option value="${m}">${mes}</option>`)
+        .join('')
+
+    popup({
+        imagem: 'imagens/relogio.png',
+        mensagem: `
+            <div style="${vertical}; gap: 5px;">
+
+                <span>Selecione o ano e/ou mês:</span>
+                
+                <select name="pdf_ano">${['', '2026'].map(o => `<option value="${o}">${o}</option>`).join('')}</select>
+                <select name="pdf_mes">${opMeses}</select>
+
+            </div>
+        `,
+        botoes: [
+            {
+                texto: 'Baixar',
+                funcao: 'gerarPdfFolha()',
+                img: 'concluido'
+            }
+        ]
+    })
+
+}
+
+async function gerarPdfFolha(idColaborador) {
+
     try {
+
         overlayAguarde()
 
-        const hoje = new Date()
-        const mes = document.querySelector('[name="mes"]').value || hoje.getMonth()
-        const ano = document.querySelector('[name="ano"]').value || hoje.getFullYear()
+        const mes = document.querySelector(`[name="${!idColaborador ? 'pdf_' : ''}mes"]`).value
+        const ano = document.querySelector(`[name="${!idColaborador ? 'pdf_' : ''}ano"]`).value
 
-        let colaboradores = []
-
-        // Se o colaborador específico não for informado, então a função percorre as linhas visíveis;
-        if (!idColaborador) {
-            const trs = document.querySelectorAll('#body tr')
-            for (const tr of trs) {
-                if (tr.style.display == 'none') continue
-                const nome = tr.querySelectorAll('span')[0].textContent
-                colaboradores.push({ idColaborador: tr.id, nome })
-            }
-        } else {
-            colaboradores = [{ idColaborador, nome }]
+        const req = {
+            ...(idColaborador ? { idColaborador } : {}),
+            ...(mes ? { mes } : {}),
+            ...(ano ? { ano } : {})
         }
 
-        console.log(colaboradores);
+        await baixarFolha(req)
 
-
-        const requisicao = {
-            colaboradores,
-            servidor,
-            ano,
-            mes,
-            mesTexto: meses[mes]
-        }
-
-        const resposta = await fetch(`${api}/folhas-em-massa`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requisicao)
-        })
-
-        // erro HTTP
-        if (!resposta.ok) {
-            removerOverlay()
-            return popup({ mensagem: `Erro: ${resposta.status} - Falha ao gerar os PDFs` })
-        }
-
-        const contentType = resposta.headers.get('content-type') || ''
-
-        if (contentType.includes('application/json')) {
-            const dados = await resposta.json()
-
-            if (dados.mensagem) {
-                removerOverlay()
-                return popup({ mensagem: dados.mensagem })
-            }
-        }
-
-        // fluxo DOWNLOAD
-        const blob = await resposta.blob()
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement("a")
-        link.href = url
-        link.download = `folhas - ${ano} - ${meses[mes]}.tar`
-        link.click()
-        URL.revokeObjectURL(url)
-        removerOverlay()
-        return
+        removerTodosPopups()
 
     } catch (err) {
-        popup({ mensagem: `Falha ao gerar PDFs<br><small>${err.message}</small>` })
+        console.error(err)
+        popup({ mensagem: `Falha ao baixar PDFs: Fale com o suporte.` })
     }
+}
+
+async function baixarFolha(req = null) {
+
+    overlayAguarde()
+
+    const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
+
+    const resposta = await fetch(`${api}/folha-pdf`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(req)
+    })
+
+    if (!resposta.ok) {
+        const textoErro = await resposta.text()
+
+        let mensagemErro = textoErro
+
+        try {
+            const erroJson = JSON.parse(textoErro)
+
+            mensagemErro =
+                erroJson.mensagem ||
+                textoErro
+        } catch (err) {
+
+            console.log(err)
+            // A resposta não era JSON
+        }
+
+        return popup({
+            mensagem: mensagemErro ||
+                `Erro HTTP ${resposta.status}`
+        })
+    }
+
+    const contentDisposition =
+        resposta.headers.get(
+            'Content-Disposition'
+        )
+
+    if (!contentDisposition) {
+        return popup({
+            mensagem:
+                'A API não enviou o nome do arquivo.'
+        })
+    }
+
+    const resultado = contentDisposition.match(
+        /filename="([^"]+)"/i
+    )
+
+    if (!resultado || !resultado[1]) {
+
+        return popup({
+            mensagem:
+                'A API enviou um nome de arquivo inválido.'
+        })
+    }
+
+    const blob = await resposta.blob()
+
+    if (!blob.size) {
+        return popup({
+            mensagem:
+                'A API retornou um arquivo vazio.'
+        })
+    }
+
+    const url = URL.createObjectURL(blob)
+
+    const link = document.createElement('a')
+
+    link.href = url
+    link.download = resultado[1]
+
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+
+    setTimeout(() => {
+        URL.revokeObjectURL(url)
+    }, 100)
+
+    removerOverlay()
+
 }
