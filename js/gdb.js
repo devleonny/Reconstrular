@@ -43,7 +43,10 @@ async function pesquisarDB(params) {
     return await resposta.json()
 }
 
-async function baixarRelatorioExcel(schema, nome = 'relatorio') {
+async function baixarRelatorioExcel(dados = null) {
+
+    if(!dados)
+        return
 
     const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
 
@@ -53,7 +56,7 @@ async function baixarRelatorioExcel(schema, nome = 'relatorio') {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify(schema)
+        body: JSON.stringify(dados)
     })
 
     if (!response.ok) {
@@ -67,14 +70,13 @@ async function baixarRelatorioExcel(schema, nome = 'relatorio') {
 
     const a = document.createElement('a')
     a.href = url
-    a.download = `${nome}-${Date.now()}.xlsx`
+    a.download = dados?.titulo || `relatorio-${Date.now()}.xlsx`
     document.body.appendChild(a)
     a.click()
 
     a.remove()
     window.URL.revokeObjectURL(url)
 }
-
 
 async function contarPorCampo({
     base,

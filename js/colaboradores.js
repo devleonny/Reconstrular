@@ -37,9 +37,17 @@ async function telaColaboradores() {
 
     const btnExtras = `
         <div style="display: flex; flex-wrap: wrap; gap: 3px;">
-            <button onclick="gerarTodosPDFs()">Folhas de Ponto.pdf</button>
-            <button onclick="excelColaboradores()">Trabalhadores.xlsx</button>
-            <button onclick="adicionarColaborador()">Adicionar</button>
+
+            <button onclick="gerarTodosPDFs()">
+            <img src="imagens/pdf.png">
+            Folhas de Ponto
+            </button>
+
+            <button onclick="excelColaboradores()">
+                <img src="imagens/planilha.png">
+                Baixar Planilha
+                </button>
+            <button onclick="adicionarColaborador()">Adicionar Colaborador</button>
         </div>
     `
 
@@ -239,10 +247,6 @@ async function adicionarColaborador(id) {
             texto: 'E-mail',
             elemento: `<textarea ${regras} name="email" placeholder="E-mail">${colaborador?.email || ''}</textarea>`
         },
-        {
-            texto: 'Obra Alocada',
-            elemento: `<span name="obra" class="opcoes" onclick="cxOpcoes('obra')">Selecione</span>`
-        },
         { texto: 'Documento', elemento: caixaDocumentos },
         {
             texto: 'Número de Contribuinte',
@@ -347,7 +351,8 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
     }
 
     const camposFixos = ['nome', 'data_nascimento', 'email', 'morada', 'apolice', 'telefone', 'numero_documento', 'seguranca_social', 'obra', 'numero_contribuinte'];
-    for (const campo of camposFixos) colaborador[campo] = obVal(campo);
+    for (const campo of camposFixos)
+        colaborador[campo] = obVal(campo);
 
     const camposRatio = ['status', 'documento'];
     for (const campo of camposRatio) {
@@ -418,158 +423,82 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
 
 async function excelColaboradores() {
 
-    const linhas = []
+    try {
+        overlayAguarde()
 
-    const trs = document.querySelectorAll('tbody tr')
-
-    const ids = [...trs]
-        .filter(tr => tr.style.display !== 'none')
-        .map(tr => tr.id)
-
-    for (const [idColaborador, colaborador] of Object.entries(dados_colaboradores)) {
-
-        if (!ids.includes(idColaborador)) continue
-
-        const { cidade, contrato_obra, epi, exame, excluido, obra, folha, foto, id, obraAlocada, pin, timestamp, ...resto } = colaborador
-        const c = cidades?.[colaborador?.cidade] || {}
-        const nomeCidade = c.nome || ''
-        const distrito = c.distrito || ''
-
-        const linha = {
-            ...resto,
-            distrito,
-            cidade: nomeCidade,
-            data_nascimento: dtFormatada(colaborador.data_nascimento),
-            especialidade: colaborador.especialidade.map(esp => esp).join(', ')
+        const dados = {
+            base: "dados_colaboradores",
+            titulo: `Colaboradores_${Date.now()}`,
+            formatacao: {
+                datas: ['data_nascimento'],
+            }
         }
 
-        linhas.push(linha)
+        await baixarRelatorioExcel(dados)
+
+        removerOverlay()
+
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao gerar o arquivo Excel: Fale com o suporte.' })
     }
 
-    await gerarExcel(linhas, `colaboradores-${new Date().getTime()}.xlsx`)
-
-}
-
-async function gerarExcel(dados, nomeArquivo = 'arquivo.xlsx') {
-    if (!Array.isArray(dados) || !dados.length) return
-
-    const workbook = new ExcelJS.Workbook()
-    const worksheet = workbook.addWorksheet('Dados')
-
-    const colunas = Object.keys(dados[0])
-
-    worksheet.columns = colunas.map(chave => ({
-        header: chave.toUpperCase(),
-        key: chave,
-        width: 20
-    }))
-
-    // Cabeçalho
-    const headerRow = worksheet.getRow(1)
-    headerRow.eachCell(cell => {
-        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
-        cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FF2F75B5' }
-        }
-        cell.border = {
-            top: { style: 'thin' },
-            left: { style: 'thin' },
-            bottom: { style: 'thin' },
-            right: { style: 'thin' }
-        }
-        cell.alignment = { vertical: 'middle', horizontal: 'center' }
-    })
-
-    // Dados
-    dados.forEach((linha, index) => {
-        const row = worksheet.addRow(linha)
-
-        row.eachCell(cell => {
-            cell.border = {
-                top: { style: 'thin' },
-                left: { style: 'thin' },
-                bottom: { style: 'thin' },
-                right: { style: 'thin' }
-            }
-
-            if (index % 2 === 0) {
-                cell.fill = {
-                    type: 'pattern',
-                    pattern: 'solid',
-                    fgColor: { argb: 'FFF2F2F2' }
-                }
-            }
-        })
-    })
-
-    // Filtro
-    worksheet.autoFilter = {
-        from: { row: 1, column: 1 },
-        to: { row: worksheet.rowCount, column: colunas.length }
-    }
-
-    const buffer = await workbook.xlsx.writeBuffer()
-
-    const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    })
-
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = nomeArquivo
-    link.click()
 }
 
 async function formularioEPI(idColaborador) {
 
-    const colaborador = await recuperarDado('dados_colaboradores', idColaborador)
-    const equipamentos = colaborador?.epi?.equipamentos || {}
 
-    const opcoes = (ini, fim, valorAtual) => {
-        let stringOpcoes = '<option></option>'
-        for (let i = ini; i <= fim; i++) stringOpcoes += `<option ${valorAtual == i ? 'selected' : ''}>${i}</option>`
-        return stringOpcoes
-    }
+    try {
 
-    const senhas = (texto, limite) => `
+        overlayAguarde()
+
+        const { pin, epi } = await recuperarDado('dados_colaboradores', idColaborador) || {}
+        const { equipamentos } = epi || {}
+
+        const opcoes = (ini, fim, valorAtual) => {
+            let stringOpcoes = '<option></option>'
+            for (let i = ini; i <= fim; i++) stringOpcoes += `<option ${valorAtual == i ? 'selected' : ''}>${i}</option>`
+            return stringOpcoes
+        }
+
+        const senhas = (texto, limite) => `
         <div style="${vertical}; gap: 5px;">
             <label>${texto}</label>
             <input type="password" ${limite
-            ? `maxlength="${limite}" id="pin" data-pin="${colaborador?.pin}" placeholder="Limite de ${limite} dígitos"`
-            : 'id="supervisor" placeholder="Senha de acesso ao App"'
-        }>
+                ? `maxlength="${limite}" id="pin" data-pin="${pin}" placeholder="Limite de ${limite} dígitos"`
+                : 'id="supervisor" placeholder="Senha de acesso ao App"'
+            }>
         </div>
     `
 
-    const tr = (texto, value) => {
+        const tr = (texto, value) => {
 
-        const equipamento = equipamentos[value] || false
-        const visibilidade = `style="display: ${equipamento ? '' : 'none'}"`
-        return `
-        <tr>
-            <td style="text-align: left;">${texto}</td>
-            <td>
-                <input onchange="visibilidade(this, '${value}')" 
-                type="checkbox" 
-                class="megaInput" 
-                value="${value}" 
-                name="camposEpi"
-                ${equipamentos[value] ? 'checked' : ''}>
-            </td>
-            <td><select ${visibilidade} name="${value}_quantidade">${opcoes(1, 10, equipamento?.quantidade)}</select></td>
-            <td><select ${visibilidade} name="${value}_tamanho">${opcoes(37, 47, equipamento?.tamanho)}</select></td>
-        </tr>
-    `}
+            const equipamento = equipamentos?.[value]
+            const visibilidade = `style="display: ${equipamento ? '' : 'none'}"`
+            return `
+                <tr>
+                    <td style="text-align: left;">${texto}</td>
+                    <td>
+                        <input onchange="visibilidade(this, '${value}')" 
+                        type="checkbox" 
+                        class="megaInput" 
+                        value="${value}" 
+                        name="camposEpi"
+                        ${equipamentos[value] ? 'checked' : ''}>
+                    </td>
+                    <td><select ${visibilidade} name="${value}_quantidade">${opcoes(1, 10, equipamento?.quantidade)}</select></td>
+                    <td><select ${visibilidade} name="${value}_tamanho">${opcoes(37, 47, equipamento?.tamanho)}</select></td>
+                </tr>
+                `
+        }
 
-    const cab = ['Equipamento', '', 'Quantidade', 'Tamanho']
-        .map(op => `<th>${op}</th>`)
-        .join('')
+        const cab = ['Equipamento', '', 'Quantidade', 'Tamanho']
+            .map(op => `<th>${op}</th>`)
+            .join('')
 
-    const linhas = [
-        {
-            elemento: `
+        const linhas = [
+            {
+                elemento: `
             <table class="tabela">
                 <thead style="position: static;">${cab}</thead>
                 <tbody>
@@ -583,23 +512,28 @@ async function formularioEPI(idColaborador) {
                 </tbory>
             </table>
             `
-        },
-        {
-            texto: 'Pin Colaborador',
-            elemento: senhas('Pin Colaborador', 4)
-        },
-        {
-            texto: 'Senha Supervisor',
-            elemento: senhas('Senha Supervisor')
-        }
-    ]
+            },
+            {
+                texto: 'Pin Colaborador',
+                elemento: senhas('Pin Colaborador', 4)
+            },
+            {
+                texto: 'Senha Supervisor',
+                elemento: senhas('Senha Supervisor')
+            }
+        ]
 
-    const botoes = [
-        { texto: 'Salvar', img: 'concluido', funcao: `salvarEpi('${idColaborador}')"`, fechar: true },
-        { texto: 'PDF', img: 'pdf', funcao: `abrirEPI('${idColaborador}')"` }
-    ]
+        const botoes = [
+            { texto: 'Salvar', img: 'concluido', funcao: `salvarEpi('${idColaborador}')"`, fechar: true },
+            { texto: 'PDF', img: 'pdf', funcao: `abrirEPI('${idColaborador}')"` }
+        ]
 
-    popup({ linhas, botoes, titulo: 'Formulário de EPI', removerAnteriores: true })
+        popup({ linhas, botoes, titulo: 'Formulário de EPI', removerAnteriores: true })
+
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao abrir Ficha de EPI: Fale com o suporte.' })
+    }
 }
 
 async function salvarEpi(idColaborador) {

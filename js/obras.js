@@ -17,6 +17,13 @@ async function telaObras() {
                 campoBusca: 'id',
                 retorno: 'nome',
                 destino: 'nomeCliente'
+            },
+            {
+                path: 'id',
+                tabela: 'vw_obras_colaboradores',
+                campoBusca: 'id_obra',
+                retorno: 'colaboradores',
+                destino: 'colaboradores'
             }
         ],
         colunas: {
@@ -25,6 +32,7 @@ async function telaObras() {
             'Cidade': { chave: 'snapshots.cidade.nome' },
             'Porcentagem': {},
             'Status': {},
+            'Colaboradores': {},
             'Material Orçamentado': {},
             'Material Real': {},
             'Material Real vs Material Orçamentado': {},
@@ -46,7 +54,8 @@ async function criarLinhaObras(obra) {
     const {
         id,
         snapshots,
-        nomeCliente
+        nomeCliente,
+        colaboradores
     } = obra || {}
 
     const {
@@ -66,7 +75,6 @@ async function criarLinhaObras(obra) {
             ? 'Em Andamento'
             : 'Finalizado'
 
-
     tds = `
         <td>${cliente || ''}</td>
         <td>${cidade?.distrito || ''}</td>
@@ -78,7 +86,9 @@ async function criarLinhaObras(obra) {
             <span class="${st.replace(' ', '_')}">${st}</span>
             ${resultado?.excedente ? '<span class="excedente">Excedente</span>' : ''}
         </td>
-
+        <td>
+            ${(colaboradores || []).map(({nome})=> `<span class="tag-usuario">${nome}</span>`).join('')}
+        </td>
         <td>${dinheiro(materialOrcado)}</td>
         <td>${dinheiro(materialReal)}</td>
         <td>
@@ -140,88 +150,145 @@ async function calcularTotaisOrcamentos(idObra, obra) {
 
 async function adicionarObra(idObra) {
 
-    const { snapshots, cliente, orcamentos_vinculados } = await recuperarDado('dados_obras', idObra) || {}
+    try {
 
-    controlesCxOpcoes.cliente = {
-        base: 'dados_clientes',
-        retornar: ['nome'],
-        colunas: {
-            'Cliente': { chave: 'nome' },
-            'Cidade': { chave: 'snapshots.cidade.nome' },
-            'Distrito': { chave: 'snapshots.cidade.distrito' },
-            'Zona': { chave: 'snapshots.cidade.zona' },
-            'Área': { chave: 'snapshots.cidade.area' }
+        overlayAguarde()
+
+        const {
+            snapshots,
+            cliente,
+            colaboradores,
+            orcamentos_vinculados
+        } = await recuperarDado('dados_obras', idObra) || {}
+
+        controlesCxOpcoes.cliente = {
+            base: 'dados_clientes',
+            retornar: ['nome'],
+            colunas: {
+                'Cliente': { chave: 'nome' },
+                'Cidade': { chave: 'snapshots.cidade.nome' },
+                'Distrito': { chave: 'snapshots.cidade.distrito' },
+                'Zona': { chave: 'snapshots.cidade.zona' },
+                'Área': { chave: 'snapshots.cidade.area' }
+            }
         }
-    }
 
-    const linhas = [
-        {
-            texto: 'Cliente',
-            elemento: `
+        const linhas = [
+            {
+                texto: 'Cliente',
+                elemento: `
             <span ${cliente ? `id="${cliente}"` : ''} 
                 class="opcoes" 
                 name="cliente" 
                 onclick="cxOpcoes('cliente')">${snapshots?.cliente || 'Selecionar'}</span>
             `
-        },
-        {
-            texto: `
+            },
+            {
+                texto: `
                 <div style="${horizontal}; gap: 1rem;">
-                    <img src="imagens/baixar.png" onclick="maisOrcamento()">
-                    <span>Vincular Orçamento</span>
+                    <img src="imagens/baixar.png" onclick="maisCampo('orcs-vinculados', 'dados_orcamentos')">
+                    <span>Orçamentos</span>
                 </div>
             `,
-            elemento: `<div id="orcs-vinculados" style="${vertical}; gap: 2px;"></div>`
-        }
-    ]
+                elemento: `<div id="orcs-vinculados" style="${vertical}; gap: 2px;"></div>`
+            },
+            {
+                texto: `
+                    <div style="${horizontal}; gap: 1rem;">
+                        <img src="imagens/baixar.png" onclick="maisCampo('colaboradores', 'dados_colaboradores')">
+                        <span>Colaboradores</span>
+                    </div>
+                `,
+                elemento: `<div id="colaboradores" style="${vertical}; gap: 2px;"></div>`
+            }
+        ]
 
-    const botoes = [
-        {
-            funcao: idObra
-                ? `salvarObra('${idObra}')`
-                : 'salvarObra()',
-            img: 'concluido',
-            texto: 'Salvar'
-        }
-    ]
+        const botoes = [
+            {
+                funcao: idObra
+                    ? `salvarObra('${idObra}')`
+                    : 'salvarObra()',
+                img: 'concluido',
+                texto: 'Salvar'
+            }
+        ]
 
-    if (idObra)
-        botoes.push({ funcao: `confirmarExclusaoObra('${idObra}')`, img: 'cancel', texto: 'Excluir' })
+        if (idObra)
+            botoes.push({ funcao: `confirmarExclusaoObra('${idObra}')`, img: 'cancel', texto: 'Excluir' })
 
-    popup({ linhas, botoes, titulo: 'Formulário de Obra' })
+        popup({ linhas, botoes, titulo: 'Formulário de Obra' })
 
+        await Promise.all([
+        (orcamentos_vinculados || [])
+            .map(async (id) => {
+            await maisCampo('orcs-vinculados', 'dados_orcamentos', id)
+            }),
+        (colaboradores || [])
+            .map(async (id) => {
+            await maisCampo('colaboradores', 'dados_colaboradores', id)
+            })
+        ])
 
-    for (const id of (orcamentos_vinculados || []))
-        await maisOrcamento(id)
+        removerOverlay()
 
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao abrir os detalhes da Obra: Fale com o suporte.' })
+    }
 
 }
 
-async function maisOrcamento(idOrcamento) {
+async function maisCampo(local, tabela, id = null) {
 
-    const id = crypto.randomUUID()
+    let termo = 'Selecione'
+    const idFinal = id || crypto.randomUUID()
 
-    const { snapshots } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
-    const cliente = snapshots?.cliente || 'Selecione'
+    if (tabela == 'dados_orcamentos') {
 
-    controlesCxOpcoes[id] = {
-        base: 'dados_orcamentos',
-        retornar: ['snapshots.cliente'],
-        colunas: {
-            'Cliente': { chave: 'snapshots.cliente' },
-            'Data Contato': { chave: 'data_contato' },
-            'Data Visita': { chave: 'data_visita' }
+        const { snapshots } = id ? await recuperarDado('dados_orcamentos', id) || {} : {}
+        termo = snapshots?.cliente || 'Selecione'
+
+        controlesCxOpcoes[idFinal] = {
+            base: tabela,
+            retornar: ['snapshots.cliente'],
+            colunas: {
+                'Cliente': { chave: 'snapshots.cliente' },
+                'Data Contato': { chave: 'data_contato' },
+                'Data Visita': { chave: 'data_visita' }
+            }
         }
+
+    } else if (tabela == 'dados_colaboradores') {
+
+        const { nome } = id ? await recuperarDado('dados_colaboradores', id) || {} : {}
+        termo = nome || 'Selecione'
+
+        controlesCxOpcoes[idFinal] = {
+            base: tabela,
+            retornar: ['nome'],
+            colunas: {
+                'Nome': { chave: 'nome' },
+                'Status': { chave: 'status' },
+                'Especialidade': { chave: 'especialidade' },
+                'Cidade': { chave: 'snapshots.cidade.nome' },
+                'Distrito': { chave: 'snapshots.cidade.distrito' },
+                'Area': { chave: 'snapshots.cidade.area' }
+            }
+        }
+
     }
 
     const span = `
         <div style="${horizontal}; gap: 5px;">
-            <img src="imagens/cancel.png" style="width: 1.5rem;" onclick="this.parentElement.remove()">
-            <span ${idOrcamento ? `id="${idOrcamento}"` : ''} name="${id}" class="opcoes" onclick="cxOpcoes('${id}')">${cliente}</span>
+            <img src="imagens/fechar.png" style="width: 1.5rem;" onclick="this.parentElement.remove()">
+            <span ${id ? `id="${id}"` : ''} name="${idFinal}" class="opcoes" onclick="cxOpcoes('${idFinal}')">${termo}</span>
         </div>
         `
 
-    document.getElementById('orcs-vinculados').insertAdjacentHTML('beforeend', span)
+    const elemento = document.getElementById(local)
+
+    if (elemento)
+        elemento.insertAdjacentHTML('beforeend', span)
 
 }
 
@@ -229,22 +296,40 @@ async function salvarObra(idObra = crypto.randomUUID()) {
 
     overlayAguarde()
 
-    const painel = document.querySelector('.painel-padrao')
-    const spanCliente = painel.querySelector('[name="cliente"]')
+    try {
 
-    if (!spanCliente.id)
+        const painel = document.querySelector('.painel-padrao')
+        const spanCliente = painel.querySelector('[name="cliente"]')
+
+        if (!spanCliente.id)
+            removerPopup()
+
+        const orcamentos_vinculados = [...new Set(
+            [...document.querySelectorAll('#orcs-vinculados span')]
+                .map(span => span.id)
+                .filter(Boolean)
+        )]
+
+        const colaboradores = [...new Set(
+            [...document.querySelectorAll('#colaboradores span')]
+                .map(span => span.id)
+                .filter(Boolean)
+        )]
+
+        const obraAtualizada = {
+            orcamentos_vinculados,
+            colaboradores,
+            cliente: spanCliente.id
+        }
+
+        await enviar(`dados_obras/${idObra}`, obraAtualizada)
+
         removerPopup()
 
-    const orcamentosVinculados = [...new Set(
-        [...document.querySelectorAll('#orcs-vinculados span')]
-            .map(span => span.id)
-            .filter(Boolean)
-    )]
-
-    await enviar(`dados_obras/${idObra}/orcamentos_vinculados`, orcamentosVinculados)
-    await enviar(`dados_obras/${idObra}/cliente`, spanCliente.id)
-
-    removerPopup()
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao salvar a Obra: Fale com o suporte' })
+    }
 
 }
 
@@ -906,4 +991,69 @@ async function pdf(html, nome = 'documento') {
         popup({ mensagem: err.message })
     }
 
+}
+
+async function pdf({ id, estilos = [], nome = 'documento', orientacao = '' }) {
+
+    const htmlPdf = document.getElementById(id)
+    if (!id || !htmlPdf)
+        return
+
+    overlayAguarde()
+
+    estilos = estilos
+        .map(estilo => `<link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/${estilo}.css">`)
+        .join('')
+
+    const html = `
+        <html>
+            <head>
+                <meta charset="UTF-8">
+                ${estilos}
+                <style>
+                    @page { size: A4; margin: 10mm; }
+                    html, body { margin: 0; padding: 0; }
+                    body { font-family: 'Poppins', sans-serif; background: white; }
+                    .topo-tabela * { visibility: hidden; }
+                    .div-tabela { max-height: max-content; }
+                    .tabela thead tr:nth-child(2) { display: none; }
+                </style>
+            </head>
+            <body>${htmlPdf.outerHTML}</body>
+        </html>`
+
+    try {
+        const response = await fetch(`${api}/pdf-vers2`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ html })
+        })
+
+        if (!response.ok) {
+            let msg = 'Falha ao baixar PDF'
+            try {
+                const text = await response.text()
+                const j = JSON.parse(text)
+                msg = j?.mensagem || j?.error || text || msg
+            } catch { }
+            popup({ mensagem: msg })
+            removerOverlay()
+            return
+        }
+
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${nome}.pdf`
+        a.click()
+
+        URL.revokeObjectURL(url)
+        removerOverlay()
+
+    } catch (err) {
+        removerOverlay()
+        popup({ mensagem: err?.message || 'Falha ao gerar PDF' })
+    }
 }
