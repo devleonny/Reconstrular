@@ -109,27 +109,27 @@ async function formularioCliente(idCliente) {
     const linhas = [
         {
             texto: 'Nome',
-            elemento: `<textarea name="nome">${nome || ''}</textarea>`
+            elemento: `<textarea placeholder="Nome do Cliente" name="nome">${nome || ''}</textarea>`
         },
         {
             texto: 'Morada Fiscal',
-            elemento: `<input oninput="regrasClientes()" name="morada_fiscal" value="${morada_fiscal || ''}">`
+            elemento: `<textarea oninput="regrasClientes()" placeholder="Morada Fiscal" name="morada_fiscal">${morada_fiscal || ''}</textarea>`
         },
         {
             texto: 'Morada de Execução',
-            elemento: `<input oninput="regrasClientes()" name="morada_execucao" value="${morada_execucao || ''}">`
+            elemento: `<textarea oninput="regrasClientes()" placeholder="Morada de Execução" name="morada_execucao">${morada_execucao || ''}</textarea>`
         },
         {
             texto: 'Número de Contribuinte',
-            elemento: `<input oninput="regrasClientes()" name="numero_contribuinte" value="${numero_contribuinte || ''}">`
+            elemento: `<input oninput="regrasClientes()" placeholder="Limite 9 Dígitos" name="numero_contribuinte" value="${numero_contribuinte || ''}">`
         },
         {
             texto: 'Telefone',
-            elemento: `<input oninput="regrasClientes()" name="telefone" value="${telefone || ''}">`
+            elemento: `<input oninput="regrasClientes()" placeholder="Limite 9 Dígitos" name="telefone" value="${telefone || ''}">`
         },
         {
             texto: 'E-mail',
-            elemento: `<input oninput="regrasClientes()" name="email" value="${email || ''}">`
+            elemento: `<input oninput="regrasClientes()" placeholder="E-mail" name="email" value="${email || ''}">`
         },
         {
             texto: 'Cidade',

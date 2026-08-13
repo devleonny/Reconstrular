@@ -27,6 +27,7 @@ async function telaObras() {
             }
         ],
         colunas: {
+            'Ordem': { chave: 'ordem' },
             'Cliente': { chave: 'snapshots.cliente' },
             'Distrito': { chave: 'snapshots.cidade.distrito' },
             'Cidade': { chave: 'snapshots.cidade.nome' },
@@ -53,6 +54,7 @@ async function criarLinhaObras(obra) {
 
     const {
         id,
+        ordem,
         snapshots,
         nomeCliente,
         colaboradores
@@ -76,6 +78,9 @@ async function criarLinhaObras(obra) {
             : 'Finalizado'
 
     tds = `
+        <td>
+            <span class="tag-usuario">${ordem}</span>
+        </td>
         <td>${cliente || ''}</td>
         <td>${cidade?.distrito || ''}</td>
         <td>${cidade?.nome || ''}</td>
@@ -87,7 +92,7 @@ async function criarLinhaObras(obra) {
             ${resultado?.excedente ? '<span class="excedente">Excedente</span>' : ''}
         </td>
         <td>
-            ${(colaboradores || []).map(({nome})=> `<span class="tag-usuario">${nome}</span>`).join('')}
+            ${(colaboradores || []).map(({ nome }) => `<span class="tag-usuario">${nome}</span>`).join('')}
         </td>
         <td>${dinheiro(materialOrcado)}</td>
         <td>${dinheiro(materialReal)}</td>
@@ -219,14 +224,14 @@ async function adicionarObra(idObra) {
         popup({ linhas, botoes, titulo: 'Formulário de Obra' })
 
         await Promise.all([
-        (orcamentos_vinculados || [])
-            .map(async (id) => {
-            await maisCampo('orcs-vinculados', 'dados_orcamentos', id)
-            }),
-        (colaboradores || [])
-            .map(async (id) => {
-            await maisCampo('colaboradores', 'dados_colaboradores', id)
-            })
+            (orcamentos_vinculados || [])
+                .map(async (id) => {
+                    await maisCampo('orcs-vinculados', 'dados_orcamentos', id)
+                }),
+            (colaboradores || [])
+                .map(async (id) => {
+                    await maisCampo('colaboradores', 'dados_colaboradores', id)
+                })
         ])
 
         removerOverlay()
