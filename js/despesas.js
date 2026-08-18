@@ -1,59 +1,63 @@
-const voltar = `<button onclick="telaDespesas()">Voltar</button>`
 
-function telaDespesas() {
+async function telaFerramentas() {
 
-  const acumulado = `
-        <div class="painel-despesas">
-            <br>
-            ${btn('todos', 'Verificar Despesas', 'verificarDespesas()')}
-            ${btn('fornecedor', 'Fornecedores', 'telaFornecedores()')}
-            ${btn('caixa', 'Materiais', `telaGenerica('materiais')`)}
-            ${btn('ferramentas', 'Ferramentas', `telaGenerica('ferramentas')`)}
-            ${btn('colaborador', 'Mão de Obra', `telaGenerica('mao_obra')`)}
-        </div>
-    `
-  tela.innerHTML = acumulado
+  await telaGenerica('ferramentas', 'Ferramentas')
+
+}
+
+async function telaMaoObra() {
+
+  await telaGenerica('mao_obra', 'Mão de Obra')
+
+}
+
+async function telaMateriais() {
+
+  await telaGenerica('materiais', 'Materiais')
 
 }
 
 async function verificarDespesas() {
 
-  telaAtiva = 'despesas'
+  try {
 
-  const btnExtras = `
-    <div style="display: flex; flex-wrap: wrap; gap: 3px;">
-      <button onclick="cconfirmarBaixarExcel()">Excel</button>
-      <button onclick="formularioDespesa()">Adicionar</button>
-      <button onclick="telaDespesas()">Voltar</button>
-    </div>
-  `
+    overlayAguarde()
 
-  const tabela = await modTab({
-    btnExtras,
-    pag: 'despesas',
-    base: 'dados_despesas',
-    body: 'bodyDespesas',
-    criarLinha: 'criarLinhaDespesa',
-    colunas: {
-      'Fornecedor': { chave: 'snapshots.fornecedor.nome' },
-      'Distrito': { chave: 'snapshots.fornecedor.snapshots.cidade.distrito' },
-      'Cidade': { chave: 'snapshots.fornecedor.snapshots.cidade.nome' },
-      'Número do Contribuinte': { chave: 'snapshots.fornecedor.numero_contribuinte' },
-      'Valor': { chave: 'valor' },
-      'IVA': { chave: 'iva' },
-      'Ano': { chave: 'snapshots.ano', tipoPesquisa: 'select' },
-      'Mês': { chave: 'snapshots.mes', tipoPesquisa: 'select' },
-      'Data': { chave: 'data', tipoPesquisa: 'data' },
-      'Fatura': {},
-      'Tipo de Material': { chave: 'material.nome' },
-      'Obra': {},
-      'Detalhes': {},
-    }
-  })
+    telaAtiva = 'despesas'
 
-  tela.innerHTML = `<div>${tabela}</div>`
+    const tabela = await modTab({
+      btnExtras: '<button onclick="formularioDespesa()">Adicionar Despesa</button>',
+      pag: 'despesas',
+      base: 'dados_despesas',
+      body: 'bodyDespesas',
+      criarLinha: 'criarLinhaDespesa',
+      colunas: {
+        'Fornecedor': { chave: 'snapshots.fornecedor.nome' },
+        'Distrito': { chave: 'snapshots.fornecedor.snapshots.cidade.distrito' },
+        'Cidade': { chave: 'snapshots.fornecedor.snapshots.cidade.nome' },
+        'Número do Contribuinte': { chave: 'snapshots.fornecedor.numero_contribuinte' },
+        'Valor': { chave: 'valor' },
+        'IVA': { chave: 'iva' },
+        'Ano': { chave: 'snapshots.ano', tipoPesquisa: 'select' },
+        'Mês': { chave: 'snapshots.mes', tipoPesquisa: 'select' },
+        'Data': { chave: 'data', tipoPesquisa: 'data' },
+        'Fatura': {},
+        'Tipo de Material': { chave: 'material.nome' },
+        'Obra': {},
+        'Detalhes': {},
+      }
+    })
 
-  await paginacao()
+    tela.innerHTML = montarPagina({ titulo: 'Despesas', imagem: 'contas', tabela })
+
+    await paginacao()
+
+    removerOverlay()
+
+  } catch (err) {
+    console.log(err)
+    popup({ mensagem: 'Falha ao abrir a tela de Despesas: Fale com o suporte.' })
+  }
 
 }
 
@@ -321,31 +325,35 @@ async function buscarLocalidadeFornecedor() {
 
 async function telaFornecedores() {
 
-  const btnExtras = `
-  <div style="${horizontal}; gap: 2px;">
-    <button onclick="adicionarFornecedor()">Adicionar</button>
-    ${voltar}
-  </div>
-  `
+  try {
 
-  const tabela = await modTab({
-    btnExtras,
-    base: 'fornecedores',
-    pag: 'fornecedores',
-    body: 'bodyFornecedores',
-    criarLinha: 'criarLinhaFornecedores',
-    colunas: {
-      'Nome': { chave: 'nome' },
-      'Número do Contribuinte': { chave: 'numero_contribuinte' },
-      'Distrito': { chave: 'snapshots.cidade.distrito' },
-      'Cidade': { chave: 'snapshots.cidade.nome' },
-      'Editar': {}
-    }
-  })
+    overlayAguarde()
 
-  tela.innerHTML = tabela
+    const tabela = await modTab({
+      btnExtras: '<button onclick="adicionarFornecedor()">Adicionar</button>',
+      base: 'fornecedores',
+      pag: 'fornecedores',
+      body: 'bodyFornecedores',
+      criarLinha: 'criarLinhaFornecedores',
+      colunas: {
+        'Nome': { chave: 'nome' },
+        'Número do Contribuinte': { chave: 'numero_contribuinte' },
+        'Distrito': { chave: 'snapshots.cidade.distrito' },
+        'Cidade': { chave: 'snapshots.cidade.nome' },
+        'Editar': {}
+      }
+    })
 
-  await paginacao()
+    tela.innerHTML = montarPagina({ tabela, titulo: 'Fornecedores', imagem: 'fornecedor' })
+
+    await paginacao()
+
+    removerOverlay()
+
+  } catch (err) {
+    console.log(err)
+    popup({ mensagem: 'Falha ao abrir a tela de Fornecedores: Fale com o suporte.' })
+  }
 
 }
 
@@ -433,32 +441,42 @@ async function salvarFornecedor(id = unicoID()) {
 
 }
 
-async function telaGenerica(nomeBase) {
+async function telaGenerica(nomeBase, titulo) {
 
-  const btnExtras = `
-      <div style="${horizontal}; gap: 2px;">
-        <button onclick="adicionarGenerico(undefined, '${nomeBase}')">Adicionar</button>
-        ${voltar}
-      </div>
-    `
+  try {
 
-  const tabela = await modTab({
-    pag: 'generico',
-    btnExtras,
-    base: nomeBase,
-    body: `bodyGenerico`,
-    criarLinha: 'criarLinhaGenerica',
-    colunas: {
-      'Nome': { chave: 'nome' },
-      'Preço': {},
-      'Link': { chave: 'link' },
-      'Editar': {}
-    }
-  })
+    overlayAguarde()
 
-  tela.innerHTML = tabela
+    telaAtiva = nomeBase
 
-  await paginacao()
+    const tabela = await modTab({
+      pag: 'generico',
+      btnExtras: `<button onclick="adicionarGenerico(undefined, '${nomeBase}')">Adicionar</button>`,
+      base: nomeBase,
+      body: `bodyGenerico`,
+      criarLinha: 'criarLinhaGenerica',
+      colunas: {
+        'Nome': { chave: 'nome' },
+        'Preço': {},
+        ...(
+          nomeBase !== 'mao_obra'
+            ? { 'Link': { chave: 'link' } }
+            : {}
+        ),
+        'Editar': {}
+      }
+    })
+
+    tela.innerHTML = montarPagina({ tabela, titulo, imagem: 'pasta' })
+
+    await paginacao()
+    removerOverlay()
+
+  } catch (err) {
+    console.log(err)
+    popup({ mensagem: `Falha ao abrir a tela de ${titulo}: Fale com o suporte.` })
+  }
+
 
 }
 
@@ -466,15 +484,19 @@ async function criarLinhaGenerica(dados) {
 
   const { id, nome, preco, link } = dados || {}
 
+  const tdLink = telaAtiva !== 'mao_obra'
+    ? `<td>
+        <a href="${link || '#'}" target="_blank" rel="noopener">
+          ${link || ''}
+        </a>
+      </td>`
+    : ''
+
   const linha = `
     <tr>
       <td>${nome || ''}</td>
       <td>${dinheiro(preco) || ''}</td>
-      <td>
-        <a href="${link || '#'}" target="_blank" rel="noopener">
-          ${link || ''}
-        </a>
-      </td>
+      ${tdLink}
       <td>
         <img src="imagens/pesquisar.png" onclick="adicionarGenerico('${id}')">
       </td>
@@ -556,7 +578,7 @@ async function excluirGenerico(id) {
 
 }
 
-async function cconfirmarBaixarExcel() {
+async function confirmarBaixarExcel() {
 
   controles.filtros
 

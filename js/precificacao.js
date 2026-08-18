@@ -1,17 +1,18 @@
 
 async function telaPrecos(filtro = null) {
 
-    const tMargem = (tabela) => `
+    try {
+        overlayAguarde()
+        const tMargem = (tabela) => `
         <div style="${horizontal}; gap: 5px;">
             <img onclick="editarMargemEmMassa('${tabela}')" src="imagens/lapis.png" style="width: 1.5rem;">
             <input name="m_master_${tabela}" type="checkbox" onclick="marcarTodosMargem('${tabela}')">
         </div>
     `
 
-    const btnExtras = `
+        const btnExtras = `
         <div style="display: flex; flex-wrap: wrap; gap: 3px;">
-            <button onclick="telaConfiguracoes()">Voltar</button>
-            <button onclick="edicaoItem()">Criar Campo</button>
+            <button onclick="edicaoItem()">Criar Composição</button>
             <button onclick="confirmarDesativacao()">${filtro ? 'Ativar' : 'Desativar'} Itens</button>
             <div style="${horizontal}; gap: 5px;">
                 <input type="checkbox" onclick="marcarTodosDesativar(this)">
@@ -20,39 +21,50 @@ async function telaPrecos(filtro = null) {
         </div>
     `
 
-    const pag = 'campos'
-    const tabela = await modTab({
-        pag,
-        btnExtras,
-        body: 'campos',
-        base: 'campos',
-        filtros: {
-            'desativado': { op: '=', value: filtro || '' }
-        },
-        criarLinha: 'criarLinhasCampos',
-        colunas: {
-            'Marcar': {},
-            'Especialidade': { chave: 'especialidade' },
-            'Descrição': { chave: 'descricao' },
-            'Unidade de Medida': { chave: 'medida' },
-            'Composição': {},
-            'Subtotal Materiais': {},
-            [tMargem('materiais')]: {},
-            'Total Materiais': {},
-            'Subtotal Ferramentas': {},
-            [tMargem('ferramentas')]: {},
-            'Total Ferramentas': {},
-            'Subtotal Mão Obra': {},
-            [tMargem('mao_obra')]: {},
-            'Total Mão Obra': {},
-            'Sub-total': {},
-            'Total': {}
-        }
-    })
+        const pag = 'campos'
+        const tabela = await modTab({
+            pag,
+            btnExtras,
+            body: 'campos',
+            base: 'campos',
+            filtros: {
+                'desativado': { op: '=', value: filtro || '' }
+            },
+            criarLinha: 'criarLinhasCampos',
+            colunas: {
+                'Marcar': {},
+                'Especialidade': { chave: 'especialidade' },
+                'Descrição': { chave: 'descricao' },
+                'Unidade de Medida': { chave: 'medida' },
+                'Composição': {},
+                'Subtotal Materiais': {},
+                [tMargem('materiais')]: {},
+                'Total Materiais': {},
+                'Subtotal Ferramentas': {},
+                [tMargem('ferramentas')]: {},
+                'Total Ferramentas': {},
+                'Subtotal Mão Obra': {},
+                [tMargem('mao_obra')]: {},
+                'Total Mão Obra': {},
+                'Sub-total': {},
+                'Total': {}
+            }
+        })
 
-    tela.innerHTML = tabela
+        const imagem = filtro == 'S'
+            ? 'preco_neg'
+            : 'preco'
 
-    await paginacao(pag)
+        tela.innerHTML = montarPagina({ tabela, titulo: 'Composições', imagem })
+
+        await paginacao(pag)
+
+        removerOverlay()
+
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao abrir a tela de Preços: Fale com o suporte.' })
+    }
 
 }
 
@@ -254,7 +266,7 @@ async function edicaoItem(idCampo) {
 
     const titulo = idCampo
         ? 'Editar Campo'
-        : 'Criar Campo'
+        : 'Criar Composição'
 
     popup({ linhas, botoes, titulo })
 

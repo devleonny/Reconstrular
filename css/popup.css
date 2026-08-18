@@ -340,7 +340,7 @@
 
 .aguarde {
     display: flex;
-    align-items: center;
+    align-items: start;
     justify-content: center;
     background-color: rgba(0, 0, 0, 0.7);
     position: absolute;

@@ -1,5 +1,16 @@
-const voltarOrcamentos = `<button onclick="telaOrcamentos()">Voltar</button>`
 let filtroFinalizado = null
+
+async function orcamentosEmAberto() {
+    await orcamentos('N')
+}
+
+async function orcamentosFinalizados() {
+    await orcamentos('S')
+}
+
+async function orcamentosRecusados() {
+    await orcamentos('R')
+}
 
 const dt = (data) => {
     if (!data) return '-'
@@ -85,61 +96,79 @@ function povoarLista(ini, lim, texto) {
     return lista
 }
 
-async function telaOrcamentos() {
+async function orcamentos(finalizado = filtroFinalizado) {
 
-    const acumulado = `
-        <div class="painel-despesas">
-            <br>
-            ${btn('orcamentos', 'Dados de Orçamento', 'formularioOrcamento()')}
-            ${btn('todos', 'Orçamentos em Aberto', `orcamentos('N')`)}
-            ${btn('todos', 'Orçamentos Finalizados', `orcamentos('S')`)}
-            ${btn('todos', 'Orçamentos Recusados', `orcamentos('R')`)}
-        </div>
-    `
+    try {
+        overlayAguarde()
 
-    tela.innerHTML = acumulado
+        if (finalizado)
+            filtroFinalizado = finalizado
+
+        const titulo = filtroFinalizado == 'S'
+            ? 'Orçamentos Finalizados'
+            : filtroFinalizado == 'R'
+                ? 'Orçamentos Recusados'
+                : 'Orçamentos Em Aberto'
+
+        const imagem = filtroFinalizado == 'S'
+            ? 'doublecheck'
+            : filtroFinalizado == 'R'
+                ? 'cancel'
+                : 'alerta'
+
+        telaAtiva = 'orçamentos'
+
+        const tabela = await modTab({
+            base: 'dados_orcamentos',
+            pag: 'orcamentos',
+            filtros: {
+                'finalizado': { op: '=', value: finalizado }
+            },
+            body: 'bodyOrcamentos',
+            criarLinha: 'criarLinhaOrcamento',
+            colunas: {
+                'Cliente': { chave: 'snapshots.cliente' },
+                'Distrito': {},
+                'Cidade': {},
+                'Data de Contato': {},
+                'Data de Visita': {},
+                'Zonas': {},
+                'Editar': {},
+                'Orcamento': {},
+
+                '<span class="em_analise">Em Análise</span>': {},
+                '<span class="orcamento_aceite">Orçamento Aceite</span>': {},
+                '<span class="orcamento_adjudicado">Orçamento Adjudicado</span>': {},
+                '<span class="orcamento_recusado">Orçamento Recusado</span>': {},
+
+                'Status': { chave: 'status', tipoPesquisa: 'select' }
+            }
+        })
+
+        tela.innerHTML = montarPagina({ titulo, imagem, tabela })
+
+        await paginacao()
+
+        removerOverlay()
+
+    } catch (err) {
+        console.log(err)
+        popup({ mensagem: 'Falha ao abrir a tela de Orçamentos: Fale com o suporte.' })
+    }
 
 }
 
-async function orcamentos(finalizado = filtroFinalizado) {
+function montarPagina({ titulo, imagem, tabela }) {
 
-    if (finalizado)
-        filtroFinalizado = finalizado
-
-    telaAtiva = 'orçamentos'
-
-    const tabela = await modTab({
-        btnExtras: voltarOrcamentos,
-        base: 'dados_orcamentos',
-        pag: 'orcamentos',
-        filtros: {
-            'finalizado': { op: '=', value: finalizado }
-        },
-        body: 'bodyOrcamentos',
-        criarLinha: 'criarLinhaOrcamento',
-        colunas: {
-            'Cliente': { chave: 'snapshots.cliente' },
-            'Distrito': {},
-            'Cidade': {},
-            'Data de Contato': {},
-            'Data de Visita': {},
-            'Zonas': {},
-            'Editar': {},
-            'Orcamento': {},
-
-            '<span class="em_analise">Em Análise</span>': {},
-            '<span class="orcamento_aceite">Orçamento Aceite</span>': {},
-            '<span class="orcamento_adjudicado">Orçamento Adjudicado</span>': {},
-            '<span class="orcamento_recusado">Orçamento Recusado</span>': {},
-
-            'Status': { chave: 'status', tipoPesquisa: 'select' }
-        }
-    })
-
-    tela.innerHTML = tabela
-
-    await paginacao()
-
+    return `
+            <div style="${vertical};">
+                <div class="titulo-tabelas">
+                    <img src="imagens/${imagem}.png">
+                    <span>${titulo}</span>
+                </div>
+                ${tabela}
+            </div>
+        `
 }
 
 async function criarLinhaOrcamento(orcamento) {
@@ -573,7 +602,7 @@ async function alterarFinalizacao(id, status) {
 
     }
 
-    await telaOrcamentos()
+    await orcamentos()
 
     removerOverlay()
 }

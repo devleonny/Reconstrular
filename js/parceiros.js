@@ -9,13 +9,7 @@ const el = (name) => {
   );
 };
 
-const esquema = [
-  { titulo: 'CEO' },
-  { titulo: 'Diretor Operativo' },
-  { titulo: 'Coordenador Operativo', campos: ['zona'] },
-  { titulo: 'Encarregado de Obra', campos: ['zona', 'distrito', 'area', 'obra'] },
-  { titulo: 'Trabalhador', campos: ['zona', 'distrito', 'area', 'obra'] }
-];
+let esquema = {}
 
 async function telaNiveis() {
   titulo.textContent = 'Níveis de acesso';
@@ -31,38 +25,46 @@ async function telaNiveis() {
 }
 
 async function telaUsuarios() {
-  overlayAguarde();
 
-  telaAtiva = 'parceiros';
-  titulo.textContent = 'Parceiros';
+  try {
+    overlayAguarde();
 
-  const colunas = {
-    'Usuario': { chave: 'usuario' },
-    'Nome Completo': { chave: 'nome_completo' },
-    'Telefone': { chave: 'telefone' },
-    'Email': { chave: 'email' },
-    'Função': { chave: 'snapshots.funcao' },
-    'Zona': { chave: 'snapshots.cidade.zona', tipoPesquisa: 'select' },
-    'Distrito': { chave: 'snapshots.cidade.distrito', tipoPesquisa: 'select' },
-    'Area': { chave: 'snapshots.cidade.area', tipoPesquisa: 'select' },
-    'Filtros Aplicados': {},
-    'Edição': {}
-  };
+    telaAtiva = 'parceiros';
+    titulo.textContent = 'Parceiros';
 
-  const tabela = await modTab({
-    colunas,
-    btnExtras: `<button onclick="editarParceiros()">Adicionar Parceiro</button>`,
-    pag: 'parceiros',
-    base: 'dados_setores',
-    criarLinha: 'criarLinhaUsuarios',
-    body: 'bodyParceiros'
-  });
+    const colunas = {
+      'Usuario': { chave: 'usuario' },
+      'Nome Completo': { chave: 'nome_completo' },
+      'Telefone': { chave: 'telefone' },
+      'Email': { chave: 'email' },
+      'Função': { chave: 'snapshots.funcao' },
+      'Zona': { chave: 'snapshots.cidade.zona', tipoPesquisa: 'select' },
+      'Distrito': { chave: 'snapshots.cidade.distrito', tipoPesquisa: 'select' },
+      'Area': { chave: 'snapshots.cidade.area', tipoPesquisa: 'select' },
+      'Filtros Aplicados': {},
+      'Edição': {}
+    };
 
-  tela.innerHTML = tabela;
+    const tabela = await modTab({
+      colunas,
+      btnExtras: `<button onclick="editarParceiros()">Adicionar Parceiro</button>`,
+      pag: 'parceiros',
+      base: 'dados_setores',
+      criarLinha: 'criarLinhaUsuarios',
+      body: 'bodyParceiros'
+    });
 
-  await paginacao();
+    tela.innerHTML = montarPagina({ tabela, titulo: 'Parceiros', imagem: 'niveis' })
 
-  removerOverlay();
+    await paginacao()
+
+    removerOverlay()
+
+  } catch (err) {
+    console.error(err)
+    popup({ mensagem: 'Falha ao abrir a tela de Parceiros: Fale com o suporte.' })
+  }
+
 }
 
 async function criarLinhaUsuarios(dados) {
@@ -123,93 +125,101 @@ async function criarLinhaUsuarios(dados) {
 }
 
 async function editarParceiros(usuario) {
-  overlayAguarde();
 
-  const parceiro = usuario
-    ? await recuperarDado('dados_setores', usuario) || {}
-    : {};
+  try {
 
-  const {
-    nome_completo,
-    funcao,
-    email,
-    cidade,
-    data_nascimento,
-    telefone,
-    filtros
-  } = parceiro || {};
+    overlayAguarde();
 
-  const {
-    zona = [],
-    distrito = [],
-    area = [],
-    obra = []
-  } = filtros || {};
+    const parceiro = usuario
+      ? await recuperarDado('dados_setores', usuario) || {}
+      : {};
 
-  controlesCxOpcoes.cidade = {
-    base: 'cidades',
-    retornar: ['nome'],
-    funcaoAdicional: ['notificarPessoas'],
-    colunas: {
-      'Cidade': { chave: 'nome' },
-      'Distrito': { chave: 'distrito' },
-      'Zona': { chave: 'zona' },
-      'Área': { chave: 'area' }
-    }
-  };
+    const {
+      nome_completo,
+      funcao,
+      email,
+      cidade,
+      data_nascimento,
+      telefone,
+      filtros
+    } = parceiro || {};
 
-  const { nome } = await recuperarDado('cidades', cidade) || {};
+    const {
+      zona = [],
+      distrito = [],
+      area = [],
+      obra = []
+    } = filtros || {};
 
-  const linhas = [
-    {
-      texto: 'Usuário',
-      elemento: `
+    controlesCxOpcoes.cidade = {
+      base: 'cidades',
+      retornar: ['nome'],
+      funcaoAdicional: ['notificarPessoas'],
+      colunas: {
+        'Cidade': { chave: 'nome' },
+        'Distrito': { chave: 'distrito' },
+        'Zona': { chave: 'zona' },
+        'Área': { chave: 'area' }
+      }
+    };
+
+    const { nome } = await recuperarDado('cidades', cidade) || {};
+
+    const linhas = [
+      {
+        texto: 'Usuário',
+        elemento: `
         <div style="${vertical}; gap: 5px;">
           <input name="usuario" placeholder="Usuário" oninput="verificarDisponibilidade(this)" value="${usuario || ''}" ${usuario ? 'readOnly="true"' : ''}>
           <div data-valido="${usuario ? 'S' : 'N'}" id="status_usuario"></div>
         </div>
       `
-    },
-    {
-      texto: 'Nome',
-      elemento: `<input name="nome_completo" placeholder="Nome Completo" value="${nome_completo || ''}">`
-    },
-    {
-      texto: 'E-mail',
-      elemento: `<input name="email" type="email" placeholder="E-mail" value="${email || ''}">`
-    },
-    {
-      texto: 'Telefone',
-      elemento: `<input oninput="formatarTelefone(this)" name="telefone" placeholder="Limite 9 Dígitos" value="${telefone || ''}">`
-    },
-    {
-      texto: 'Data de Nascimento',
-      elemento: `<input type="date" name="data_nascimento" placeholder="Data de Nascimento" value="${data_nascimento || ''}">`
-    },
-    {
-      texto: 'Cidade',
-      elemento: `<span name="cidade" ${cidade ? `id="${cidade}"` : ''} class="opcoes" onclick="cxOpcoes('cidade')">${nome || 'Selecionar'}</span>`
-    },
-    {
-      elemento: `<div class="campo-funcoes"></div>`
-    }
-  ];
+      },
+      {
+        texto: 'Nome',
+        elemento: `<input name="nome_completo" placeholder="Nome Completo" value="${nome_completo || ''}">`
+      },
+      {
+        texto: 'E-mail',
+        elemento: `<input name="email" type="email" placeholder="E-mail" value="${email || ''}">`
+      },
+      {
+        texto: 'Telefone',
+        elemento: `<input oninput="formatarTelefone(this)" name="telefone" placeholder="Limite 9 Dígitos" value="${telefone || ''}">`
+      },
+      {
+        texto: 'Data de Nascimento',
+        elemento: `<input type="date" name="data_nascimento" placeholder="Data de Nascimento" value="${data_nascimento || ''}">`
+      },
+      {
+        texto: 'Cidade',
+        elemento: `<span name="cidade" ${cidade ? `id="${cidade}"` : ''} class="opcoes" onclick="cxOpcoes('cidade')">${nome || 'Selecionar'}</span>`
+      },
+      {
+        elemento: `<div class="campo-funcoes"></div>`
+      }
+    ];
 
-  const botoes = [
-    { texto: 'Salvar', img: 'concluido', funcao: `salvarParceiro('${usuario || ''}')` }
-  ];
+    const botoes = [
+      { texto: 'Salvar', img: 'concluido', funcao: `salvarParceiro('${usuario || ''}')` }
+    ];
 
-  if (usuario)
-    botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarDesativarUsuario('${usuario}')` });
+    if (usuario)
+      botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarDesativarUsuario('${usuario}')` });
 
-  popup({ linhas, botoes, titulo: 'Adicionar Parceiro' });
+    popup({ linhas, botoes, titulo: 'Adicionar Parceiro' });
 
-  await carregarTabelaFuncoes({
-    funcao,
-    filtros
-  });
+    await carregarTabelaFuncoes({
+      funcao,
+      filtros
+    });
 
-  removerOverlay();
+    removerOverlay();
+
+  } catch (err) {
+    console.error(err)
+    popup({ mensagem: 'Falha ao abrir o formulário: Fale com o suporte.' })
+  }
 }
 
 function formatarTelefone(input) {
@@ -254,10 +264,16 @@ async function verificarDisponibilidade(input) {
 }
 
 async function carregarTabelaFuncoes({ funcao, filtros } = {}) {
-  const pesquisa = await pesquisarDB({
-    base: 'vw_cidades',
-    limite: 9999,
-  });
+
+  const [pesquisa, pesquisaEsquema] = await Promise.all([
+    await pesquisarDB({
+      base: 'vw_cidades',
+      limite: 9999,
+    }),
+    pesquisarDB({ base: 'funcoes' })
+  ])
+
+  esquema = pesquisaEsquema.resultados || []
 
   if (!pesquisa.resultados)
     return popup({ mensagem: 'Não foi possível baixar os dados das cidades: Fale com o suporte.' });

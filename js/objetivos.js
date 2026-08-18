@@ -1,40 +1,48 @@
 
 async function telaObjetivos() {
 
-    overlayAguarde()
+    try {
 
-    const tabela = await modTab({
-        base: 'vw_objetivos',
-        colunas: {
-            'Distrito': { chave: 'distrito', op: '=', tipoPesquisa: 'select' },
-            'Objetivo Distrito': {},
-            'Realizado Distrito': {},
-            '% Realizado Distrito': {},
-            'Objetivo Obras Distrito': {},
-            'Realizado Obras Distrito': {},
-            '% Realizado Obras Distrito': {},
-            'Cidades': { chave: 'nome' },
-            'Objetivo Cidade': {},
-            'Realizado Cidade': {},
-            '% Realizado Cidade': {},
-            'Objetivo Obras Cidade': {},
-            'Realizado Obras Cidade': {},
-            '% Realizado Obras Cidade': {}
-        },
-        ordenar: {
-            path: 'distritos',
-            direcao: 'desc'
-        },
-        criarLinha: 'criarLinhaObjetivos',
-        body: 'objetivos',
-        pag: 'objetivos'
-    })
+        overlayAguarde()
 
-    tela.innerHTML = tabela
+        const tabela = await modTab({
+            base: 'vw_objetivos',
+            colunas: {
+                'Distrito': { chave: 'distrito', op: '=', tipoPesquisa: 'select' },
+                'Objetivo Distrito': {},
+                'Realizado Distrito': {},
+                '% Realizado Distrito': {},
+                'Objetivo Obras Distrito': {},
+                'Realizado Obras Distrito': {},
+                '% Realizado Obras Distrito': {},
+                'Cidades': { chave: 'nome' },
+                'Objetivo Cidade': {},
+                'Realizado Cidade': {},
+                '% Realizado Cidade': {},
+                'Objetivo Obras Cidade': {},
+                'Realizado Obras Cidade': {},
+                '% Realizado Obras Cidade': {}
+            },
+            ordenar: {
+                path: 'distritos',
+                direcao: 'desc'
+            },
+            criarLinha: 'criarLinhaObjetivos',
+            body: 'objetivos',
+            pag: 'objetivos'
+        })
 
-    await paginacao()
+        tela.innerHTML = montarPagina({ titulo: 'Objetivos', tabela, imagem: 'objetivo' })
 
-    removerOverlay()
+        await paginacao()
+
+        removerOverlay()
+
+    } catch (err) {
+        console.log(err)
+        popup({ mensagem: 'Falha ao abrir a tela de Objetivos: Fale com o suporte.' })
+    }
+
 }
 
 async function criarLinhaObjetivos(dados) {

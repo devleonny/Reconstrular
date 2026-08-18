@@ -365,22 +365,7 @@ async function telaPrincipal() {
     if (!acesso)
         return removerAcesso()
 
-    document.querySelector('.botoesMenu').innerHTML = `
-        ${btn('casa', 'Início', 'telaInicial()')}
-        ${btn('niveis', 'Níveis de Acesso', 'telaNiveis()')}
-        ${btn('cracha', 'Colaboradores', 'telaColaboradores()')}
-        ${btn('obras', 'Obras', 'telaObras()')}
-        ${btn('pessoas', 'Clientes', 'telaClientes()')}
-        ${btn('contas', 'Despesas', 'telaDespesas()')}
-        ${btn('orcamentos', 'Orçamentos', 'telaOrcamentos()')}
-        ${btn('configuracoes', 'Configurações', 'telaConfiguracoes()')}
-        ${btn('objetivo', 'Objetivos', 'telaObjetivos()')}
-        ${btn('checklist', 'Tarefas', 'telaTarefas()')}
-        ${btn('chat', 'Chat', 'painelChat()')}
-        ${btn('sair', 'Desconectar', 'confirmarSaida()')}
-        <div style="padding-bottom: 10rem;"></div>
-    `
-
+    criarMenus('inicial')
     telaInicial()
 
     tela.classList.remove('login')
@@ -451,22 +436,9 @@ function sincronizarApp({ atual, total, remover } = {}) {
 
 }
 
-function telaConfiguracoes() {
-
-    telaAtiva = 'configurações'
-
-    const acumulado = `
-        <div class="painel-despesas">
-            <br>
-            ${btn('preco', 'Configuração da Tarefas', `telaPrecos()`)}
-            ${btn('preco_neg', 'Tarefas Desativadas', `telaPrecos('S')`)}
-        </div>
-    `
-
-    tela.innerHTML = acumulado
-
+async function telaPrecosDesativada() {
+    await telaPrecos('S')
 }
-
 
 async function buscarDados() {
     const painel = document.querySelector('.painel-padrao')

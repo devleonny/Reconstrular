@@ -73,7 +73,7 @@ async function telaColaboradores() {
         criarLinha: 'criarLinhaColaboradores'
     })
 
-    tela.innerHTML = tabela
+    tela.innerHTML = montarPagina({ titulo: 'Colaboradores', imagem: 'colaborador', tabela })
 
     await paginacao()
 

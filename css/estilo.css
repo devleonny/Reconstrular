@@ -103,6 +103,51 @@ html {
     font-size: 0.6rem;
 }
 
+.botao-lateral {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    gap: 10px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    width: 100%;
+    background-color: #ffffff;
+}
+
+.botao-lateral.nivel-2 {
+    background-color: #f7c5c5;
+}
+
+.botao-lateral.nivel-1 {
+    background-color: #f3f3f3;
+}
+
+.menu-item {
+    flex-direction: column;
+    display: flex;
+    gap: 1px;
+    width: 100%;
+}
+
+.menu-secundario {
+    flex-direction: column;
+    gap: 1px;
+    display: none;
+    margin-left: 16px;
+}
+
+.menu-secundario .menu-item:last-child>.menu-principal .botao-lateral {
+    border-bottom-left-radius: 8px;
+    margin-bottom: 5px;
+}
+
+.botao-lateral img {
+    filter: drop-shadow(0 0 0.2px black);
+    width: 2rem;
+    margin-left: 10px
+}
+
 .popup-fechar {
     background-color: #ffffffe3;
     border-radius: 3px;
@@ -115,6 +160,8 @@ html {
 }
 
 .loading-container {
+    position: fixed;
+    margin-top: 30vh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -881,7 +928,7 @@ button {
     background-color: white;
     height: max-content;
     width: 100%;
-    max-height: 80vh;
+    max-height: 70vh;
     overflow: auto;
 }
 
@@ -1092,6 +1139,23 @@ input[type="file"] {
 .aguarde img {
     width: 35vw;
     animation: fade 0.3s ease;
+}
+
+.titulo-tabelas {
+    gap: 1rem;
+    display: flex;
+    align-items: start;
+    justify-content: center;
+    margin-left: 2rem;
+    border-radius: 1rem 1rem 0 0;
+    background-color: #d2d2d2;
+    padding: 5px 2rem;
+    font-size: 1.5rem;
+    color: #212121;
+}
+
+.titulo-tabelas img {
+    filter: drop-shadow(0 0 0.2px black);
 }
 
 @keyframes fade {

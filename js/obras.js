@@ -1,52 +1,59 @@
 async function telaObras() {
 
-    telaAtiva = 'obras'
+    try {
 
-    titulo.textContent = 'Obras'
+        telaAtiva = 'obras'
 
-    const tabela = await modTab({
-        btnExtras: `<button onclick="adicionarObra()">Adicionar</button>`,
-        pag: 'obras',
-        body: 'bodyObras',
-        base: 'dados_obras',
-        criarLinha: 'criarLinhaObras',
-        substituicoes: [
-            {
-                path: 'cliente',
-                tabela: 'dados_clientes',
-                campoBusca: 'id',
-                retorno: 'nome',
-                destino: 'nomeCliente'
-            },
-            {
-                path: 'id',
-                tabela: 'vw_obras_colaboradores',
-                campoBusca: 'id_obra',
-                retorno: 'colaboradores',
-                destino: 'colaboradores'
+        titulo.textContent = 'Obras'
+
+        const tabela = await modTab({
+            btnExtras: `<button onclick="adicionarObra()">Adicionar Obra</button>`,
+            pag: 'obras',
+            body: 'bodyObras',
+            base: 'dados_obras',
+            criarLinha: 'criarLinhaObras',
+            substituicoes: [
+                {
+                    path: 'cliente',
+                    tabela: 'dados_clientes',
+                    campoBusca: 'id',
+                    retorno: 'nome',
+                    destino: 'nomeCliente'
+                },
+                {
+                    path: 'id',
+                    tabela: 'vw_obras_colaboradores',
+                    campoBusca: 'id_obra',
+                    retorno: 'colaboradores',
+                    destino: 'colaboradores'
+                }
+            ],
+            colunas: {
+                'Ordem': { chave: 'ordem' },
+                'Cliente': { chave: 'snapshots.cliente' },
+                'Distrito': { chave: 'snapshots.cidade.distrito' },
+                'Cidade': { chave: 'snapshots.cidade.nome' },
+                'Porcentagem': {},
+                'Status': {},
+                'Colaboradores': {},
+                'Material Orçamentado': {},
+                'Material Real': {},
+                'Material Real vs Material Orçamentado': {},
+                'Mão de Obra Orçamentado': {},
+                'Acompanhamento': {},
+                'Cronograma': {},
+                '': {}
             }
-        ],
-        colunas: {
-            'Ordem': { chave: 'ordem' },
-            'Cliente': { chave: 'snapshots.cliente' },
-            'Distrito': { chave: 'snapshots.cidade.distrito' },
-            'Cidade': { chave: 'snapshots.cidade.nome' },
-            'Porcentagem': {},
-            'Status': {},
-            'Colaboradores': {},
-            'Material Orçamentado': {},
-            'Material Real': {},
-            'Material Real vs Material Orçamentado': {},
-            'Mão de Obra Orçamentado': {},
-            'Acompanhamento': {},
-            'Cronograma': {},
-            '': {}
-        }
-    })
+        })
 
-    tela.innerHTML = tabela
+        tela.innerHTML = montarPagina({ tabela, imagem: 'obras', titulo: 'Obras' })
 
-    await paginacao()
+        await paginacao()
+
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao abrir a tela de parceiros: Fale com o suporte.' })
+    }
 
 }
 

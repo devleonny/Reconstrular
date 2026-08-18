@@ -15,36 +15,41 @@ const estados = [
 
 async function telaTarefas() {
 
-    overlayAguarde()
 
-    const tabela = await modTab({
-        btnExtras: '<button onclick="gerenciarTarefa()">Adicionar Tarefa</button>',
-        base: 'tarefas',
-        body: 'tarefas',
-        pag: 'tarefas',
-        criarLinha: 'criarLinhaTarefa',
-        colunas: {
-            'Tarefa': { chave: 'tarefa' },
-            'Prioridade': { chave: 'prioridade', tipoPesquisa: 'select' },
-            'Destinatário': { chave: 'destinatario', tipoPesquisa: 'select' },
-            'Estado': { chave: 'estado', tipoPesquisa: 'select' },
-            'Data de Início': { chave: 'data_inicio', tipoPesquisa: 'data' },
-            'Data de Fim': { chave: 'data_fim', tipoPesquisa: 'data' },
-            'Imagem / Documento': {},
-            'Notas': { chave: 'notas' },
-            'Edição': {}
-        }
-    })
+    try {
 
-    tela.innerHTML = `
-        <div>
-            ${tabela}
-        </div>
-    `
+        overlayAguarde()
 
-    await paginacao('tarefas')
+        const tabela = await modTab({
+            btnExtras: '<button onclick="gerenciarTarefa()">Adicionar Tarefa</button>',
+            base: 'tarefas',
+            body: 'tarefas',
+            pag: 'tarefas',
+            criarLinha: 'criarLinhaTarefa',
+            colunas: {
+                'Tarefa': { chave: 'tarefa' },
+                'Prioridade': { chave: 'prioridade', tipoPesquisa: 'select' },
+                'Destinatário': { chave: 'destinatario', tipoPesquisa: 'select' },
+                'Estado': { chave: 'estado', tipoPesquisa: 'select' },
+                'Data de Início': { chave: 'data_inicio', tipoPesquisa: 'data' },
+                'Data de Fim': { chave: 'data_fim', tipoPesquisa: 'data' },
+                'Imagem / Documento': {},
+                'Notas': { chave: 'notas' },
+                'Edição': {}
+            }
+        })
 
-    removerOverlay()
+        tela.innerHTML = montarPagina({ titulo: 'Tarefas', imagem: 'checklist', tabela })
+
+        await paginacao('tarefas')
+
+        removerOverlay()
+
+    } catch (err) {
+        console.log(err)
+        popup({ mensagem: 'Falha ao abrir a tela de Tarefas: Fale com o suporte.' })
+    }
+
 }
 
 

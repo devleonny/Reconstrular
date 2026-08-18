@@ -1,37 +1,42 @@
 async function telaClientes() {
 
-    overlayAguarde()
+    try {
+        overlayAguarde()
 
-    telaAtiva = 'clientes'
+        telaAtiva = 'clientes'
 
-    const { funcao } = acesso
+        const tabela = await modTab({
+            btnExtras: '<button onclick="formularioCliente()">Adicionar Cliente</button>',
+            base: 'dados_clientes',
+            pag: 'clientes',
+            body: 'bodyClientes',
+            criarLinha: 'criarLinhaClientes',
+            colunas: {
+                'Data da Criação': {},
+                'Nome': { chave: 'nome' },
+                'Morada Fiscal': { chave: 'morada_fiscal' },
+                'Morada de Execução': { chave: 'morada_execucao' },
+                'Zona': { chave: 'snapshots.cidade.zona', tipoPesquisa: 'select' },
+                'Distrito': { chave: 'snapshots.cidade.distrito', tipoPesquisa: 'select' },
+                'Cidade': { chave: 'snapshots.cidade.nome', tipoPesquisa: 'select' },
+                'E-mail': { chave: 'email' },
+                'Telefone': { chave: 'telefone' },
+                'Detalhes': {}
+            }
 
-    const tabela = await modTab({
-        btnExtras: '<button onclick="formularioCliente()">Adicionar</button>',
-        base: 'dados_clientes',
-        pag: 'clientes',
-        body: 'bodyClientes',
-        criarLinha: 'criarLinhaClientes',
-        colunas: {
-            'Data da Criação': {},
-            'Nome': { chave: 'nome' },
-            'Morada Fiscal': { chave: 'morada_fiscal' },
-            'Morada de Execução': { chave: 'morada_execucao' },
-            'Zona': { chave: 'snapshots.cidade.zona', tipoPesquisa: 'select' },
-            'Distrito': { chave: 'snapshots.cidade.distrito', tipoPesquisa: 'select' },
-            'Cidade': { chave: 'snapshots.cidade.nome', tipoPesquisa: 'select' },
-            'E-mail': { chave: 'email' },
-            'Telefone': { chave: 'telefone' },
-            'Detalhes': {}
-        }
+        })
 
-    })
+        tela.innerHTML = montarPagina({ tabela, titulo: 'Clientes', imagem: 'pessoas' })
 
-    tela.innerHTML = tabela
+        await paginacao()
 
-    await paginacao()
+        removerOverlay()
 
-    removerOverlay()
+    } catch (err) {
+        console.log(err)
+        popup({ mensagem: 'Falha ao abrir a tela de Clientes: Fale com o suporte.' })
+    }
+
 }
 
 function criarLinhaClientes(dados) {
