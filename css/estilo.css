@@ -3,7 +3,7 @@ html {
     zoom: 1;
     background: linear-gradient(45deg, #323639, #5b707f);
     font-family: 'Poppins', sans-serif;
-    min-height: 100vh;
+    height: 100vh;
     width: 100%;
     margin: 0;
     display: flex;
@@ -21,7 +21,7 @@ html {
 
 .toolbar-top {
     z-index: 9999;
-    min-height: 6vh;
+    height: 6vh;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -33,7 +33,6 @@ html {
 }
 
 .cabecalho-usuario {
-
     display: flex;
     justify-content: center;
     align-items: center;
@@ -167,17 +166,6 @@ html {
     justify-content: center;
 }
 
-.tela {
-    flex: 1;
-    min-width: 0;
-    min-height: 100vh;
-    flex-direction: column;
-    padding: 1rem;
-    justify-content: start;
-    align-items: stretch;
-    display: flex;
-}
-
 .tela.login {
     flex-direction: column;
     margin-top: 2rem;
@@ -188,9 +176,20 @@ html {
     height: 100vh;
 }
 
+.tela {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    flex-direction: column;
+    padding: 1rem;
+    justify-content: start;
+    align-items: stretch;
+    display: flex;
+}
+
 .layout {
     width: 100%;
-    min-height: 100vh;
+    height: 94vh;
     display: flex;
     align-items: stretch;
 }
@@ -275,7 +274,7 @@ html {
     scrollbar-width: none;
     -ms-overflow-style: none;
     background-color: #222222ec;
-    min-height: 100vh;
+    min-height: 0;
 }
 
 .side-menu::-webkit-scrollbar {

@@ -126,6 +126,7 @@ const esquemaBotoes = {
         {
             nome: 'Colaboradores',
             img: 'cracha',
+            bloqueio: ['Trabalhador'],
             sub: [
                 { nome: 'Ver Colaboradores', funcao: 'telaColaboradores', img: 'cracha' },
                 { nome: 'Adicionar Parceiro', funcao: 'adicionarColaborador', img: 'baixar' },
@@ -135,7 +136,7 @@ const esquemaBotoes = {
         },
         {
             nome: 'Obras',
-            bloqueio: ['cliente', 'técnico'],
+            bloqueio: ['Trabalhador'],
             img: 'obras',
             sub: [
                 { nome: 'Ver Obras', funcao: 'telaObras', img: 'obras' },
@@ -144,7 +145,7 @@ const esquemaBotoes = {
         },
         {
             nome: 'Clientes',
-            bloqueio: ['cliente', 'técnico'],
+            bloqueio: ['Trabalhador'],
             img: 'pessoas',
             sub: [
                 { nome: 'Ver Clientes', funcao: 'telaClientes', img: 'pessoas' },
@@ -153,7 +154,7 @@ const esquemaBotoes = {
         },
         {
             nome: 'Despesas',
-            bloqueio: ['cliente', 'técnico'],
+            bloqueio: ['Trabalhador'],
             img: 'contas',
             sub: [
                 { nome: 'Verificar Despesas', funcao: 'verificarDespesas', img: 'contas' },
@@ -167,7 +168,7 @@ const esquemaBotoes = {
         },
         {
             nome: 'Orçamentos',
-            bloqueio: ['cliente', 'técnico'],
+            bloqueio: ['Trabalhador'],
             img: 'orcamentos',
             sub: [
                 { nome: 'Criar Orçamento', funcao: 'formularioOrcamento', img: 'baixar' },
@@ -178,7 +179,7 @@ const esquemaBotoes = {
         },
         {
             nome: 'Composições',
-            bloqueio: ['Trabalhador'],
+            permitido: ['CEO', 'Diretor Operativo'],
             img: 'configuracoes',
             sub: [
                 { nome: 'Criar Composição', funcao: 'edicaoItem', img: 'baixar' },
