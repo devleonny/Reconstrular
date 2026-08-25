@@ -212,7 +212,7 @@ async function editarParceiros(usuario) {
     await carregarTabelaFuncoes({
       funcao,
       filtros
-    });
+    })
 
     removerOverlay();
 
@@ -493,6 +493,9 @@ async function salvarParceiro(usuario) {
     overlayAguarde();
 
     const inputUsuario = el('usuario');
+
+    if (inputUsuario?.value == '')
+      return popup({ mensagem: 'Não deixe o usuário em  branco' });
 
     const valido = document.getElementById('status_usuario').dataset.valido == 'S';
 

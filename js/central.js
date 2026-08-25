@@ -106,23 +106,6 @@ function exibirSenha(img) {
 
 }
 
-function cadastrar() {
-
-    const campos = ['Nome Completo', 'Usuário', 'Senha', 'E-mail', 'Telefone']
-
-    const linhas = campos
-        .map(c => {
-            return { texto: c, elemento: `<input name="${c}">` }
-        })
-
-    const botoes = [
-        { texto: 'Criar acesso', funcao: `salvarCadastro()` }
-    ]
-
-    popup({ elemento, botoes, linhas, titulo: 'Cadastro' })
-
-}
-
 async function acessoLogin() {
 
     overlayAguarde()
@@ -700,7 +683,7 @@ function telaLogin() {
 
                     <label>Senha</label>
                     <div style="${horizontal}; gap: 10px;">
-                        <input type="password" placeholder="Senha">
+                        <input onkeydown="if(event.key === 'Enter') acessoLogin()" type="password" placeholder="Senha">
                         <img src="imagens/olhoFechado.png" class="olho" onclick="exibirSenha(this)">
                     </div>
                     

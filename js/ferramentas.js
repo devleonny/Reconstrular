@@ -190,7 +190,7 @@ async function usuariosToolbar() {
     const indicadorStatus = status || 'offline'
 
     const usuariosToolbarString = `
-        <div class="botaoUsuarios">
+        <div class="botao-usuarios">
             <img name="imgStatus" onclick="painelUsuarios()" src="imagens/${indicadorStatus}.png">
             <label style="font-size: 1.2rem;">${uOnline?.online || 0}</label>
         </div>`

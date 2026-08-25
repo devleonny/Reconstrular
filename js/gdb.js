@@ -45,7 +45,7 @@ async function pesquisarDB(params) {
 
 async function baixarRelatorioExcel(dados = null) {
 
-    if(!dados)
+    if (!dados)
         return
 
     const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
@@ -138,6 +138,9 @@ async function deletar(caminho) {
         }
 
         const data = await response.json()
+
+        if (data.aguardando_aprovacao)
+            return popup({ mensagem: 'Exclusão encaminhada para os níveis responsáveis' })
 
         if (data.mensagem)
             return popup({ mensagem: data.mensagem })
