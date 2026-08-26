@@ -1,5 +1,4 @@
-function regrasFiltros() {
-
+function regrasFiltros(esquema = false) {
     const { funcao } = acesso || {}
 
     const filtros = {
@@ -9,32 +8,105 @@ function regrasFiltros() {
         }
     }
 
-    if (funcao == 'CEO') {
-
-        filtros.funcao.regras = [{ op: '=', value: 'Diretor Operativo' }]
-
-    } else if (funcao == 'Diretor Operativo') {
-
+    if (funcao === 'CEO') {
+        filtros.funcao.regras = [
+            { op: '=', value: 'Diretor Operativo' }
+        ]
+    } else if (funcao === 'Diretor Operativo') {
         filtros.funcao.regras = [
             { op: '=', value: 'CEO' },
             { op: '=', value: 'Coordenador Operativo' }
         ]
-
-    } else if (funcao == 'Coordenador Operativo') {
-
+    } else if (funcao === 'Coordenador Operativo') {
         filtros.funcao.regras = [
             { op: '=', value: 'Encarregado de Obra' }
         ]
-
-    } else if (funcao == 'Encarregado de Obra') {
-
+    } else if (funcao === 'Encarregado de Obra') {
         filtros.funcao.regras = [
             { op: '=', value: 'Coordenador Operativo' }
         ]
-
     }
 
-    return filtros
+    if (esquema !== true) {
+        return filtros
+    }
+
+    const relacoes = {
+        'CEO': [
+            'Diretor Operativo'
+        ],
+        'Diretor Operativo': [
+            'CEO',
+            'Coordenador Operativo'
+        ],
+        'Coordenador Operativo': [
+            'Encarregado de Obra'
+        ],
+        'Encarregado de Obra': [
+            'Coordenador Operativo'
+        ]
+    }
+
+    const escaparHtml = valor => {
+        return String(valor)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;')
+    }
+
+    const destacarFuncaoAtual = cargo => {
+        const cargoHtml = escaparHtml(cargo)
+
+        if (cargo === funcao) {
+            return `
+                <span class="funcao-atual">
+                    ◉ ${cargoHtml}
+                </span>
+            `
+        }
+
+        return cargoHtml
+    }
+
+    const montarRelacoes = (cargo, nivel = 0) => {
+        const destinos = relacoes[cargo] || []
+
+        const indentacao = '│   '.repeat(nivel)
+        const prefixo = nivel === 0 ? '' : `${indentacao}└── `
+
+        let html = `
+            <div class="linha-hierarquia">
+                ${prefixo}${destacarFuncaoAtual(cargo)}
+            </div>
+        `
+
+        destinos.forEach((destino, indice) => {
+            const ultimaRelacao = indice === destinos.length - 1
+            const prefixoDestino = nivel === 0
+                ? '└── '
+                : `${'│   '.repeat(nivel)}${ultimaRelacao ? '└── ' : '├── '}`
+
+            html += `
+                <div class="linha-hierarquia">
+                    ${prefixoDestino}${destacarFuncaoAtual(destino)}
+                </div>
+            `
+        })
+
+        return html
+    }
+
+    const htmlHierarquia = Object.keys(relacoes)
+        .map(cargo => montarRelacoes(cargo))
+        .join('<br>')
+
+    return montarPagina({ 
+        tabela: `<div class="esquema-hierarquia">${htmlHierarquia}</div>`, 
+        titulo: 'Hierarquia', 
+        imagem: 'hierarquia' 
+    })
 
 }
 
@@ -42,75 +114,54 @@ async function painelChat() {
 
     overlayAguarde()
 
-    const btnExtras = `
-        <div style="${horizontal}; gap: 2px;">
-            <div style="${horizontal}; gap: 5px;">
-                <input type="checkbox" onclick="marcarTodos(this)">
-                <span style="color: white;">Marcar todos</span>
-            </div>
-            <button onclick="balaoMensagem()">Enviar Mensagem</button>
-            <button data-ativo="RECEBIDOS" onclick="alternarTabelasChat(this)">Chats Enviados</button>
-        </div>
-    `
     const { usuario } = acesso || {}
-    const pag = 'mensagens'
-    const tabela = await modTab({
-        btnExtras,
+
+    const tRecebidos = await modTab({
+        pag: 'tRecebidos',
         base: 'mensagens',
-        body: 'bodyMensagens',
+        body: 'tRecebidos',
         funcaoAdicional: ['carregarAtalhosEmail', 'verificarMensagens'],
         filtros: {
-            destinatario: { op: '=', value: usuario }
+            'snapshots.destinatario': { op: '=', value: usuario }
         },
-        ordenar: {
-            path: 'lido',
-            direcao: 'asc'
-        },
-        pag,
         criarLinha: 'linMensagem'
+    })
+
+    const tEnviados = await modTab({
+        pag: 'tEnviados',
+        base: 'mensagens',
+        body: 'tEnviados',
+        filtros: {
+            remetente: { op: '=', value: usuario }
+        },
+        criarLinha: 'linMensagem'
+    })
+
+    const painelEsquerda = montarPagina({
+        tabela: `<div class="atalhos-email"></div>`,
+        titulo: 'Atalhos',
+        imagem: 'chat'
     })
 
     tela.innerHTML = `
         <div class="painel-email">
             <div style="${vertical}; gap: 3px;">
-                <span class="titulo-chat">Chats Recebidos</span>
-                <div class="atalhos-email"></div>
+                ${painelEsquerda}
+                <br>
+                ${regrasFiltros(true)}
             </div>
-            ${tabela}
+            <div class="painel-chat-tabelas">
+                ${montarPagina({ tabela: tRecebidos, titulo: 'Recebidos', imagem: 'alerta' })}
+                ${montarPagina({ tabela: tEnviados, titulo: 'Enviados', imagem: 'enviado' })}
+            </div>
         </div>
     `
-    await paginacao(pag)
+    await paginacao()
 
     removerOverlay()
 
 }
 
-async function alternarTabelasChat(botao) {
-    const ativoAtual = botao.dataset.ativo || 'RECEBIDOS'
-    const proximo = ativoAtual === 'ENVIADOS' ? 'RECEBIDOS' : 'ENVIADOS'
-
-    botao.dataset.ativo = proximo
-    botao.textContent = proximo === 'ENVIADOS'
-        ? 'Chats Recebidos'
-        : 'Chats Enviados'
-
-    const { usuario } = acesso || {}
-
-    controles.mensagens.filtros ??= {}
-
-    delete controles.mensagens.filtros.destinatario
-    delete controles.mensagens.filtros.remetente
-
-    if (proximo === 'ENVIADOS') {
-        controles.mensagens.filtros.remetente = { op: '=', value: usuario }
-        document.querySelector('.titulo-chat').textContent = 'Chats Enviados'
-    } else {
-        controles.mensagens.filtros.destinatario = { op: '=', value: usuario }
-        document.querySelector('.titulo-chat').textContent = 'Chats Recebidos'
-    }
-
-    await paginacao()
-}
 
 async function carregarAtalhosEmail() {
 
@@ -120,12 +171,12 @@ async function carregarAtalhosEmail() {
 
     const { usuario } = acesso || {}
 
-    const filtros = controles.mensagens.filtros || {}
-
     const contagem = await contarPorCampo({
         base: 'mensagens',
         path: 'snapshots.funcao',
-        filtros
+        filtros: {
+            'snapshots.envolvidos': { op: 'includes', value: usuario }
+        }
     })
 
     const elementos = Object.entries(contagem)
@@ -145,11 +196,13 @@ async function carregarAtalhosEmail() {
 
 async function filtrarPorFuncao(funcao) {
 
-    controles.mensagens.filtros ??= {}
-    controles.mensagens.filtros['snapshots.funcao'] = { op: '=', value: funcao }
+    controles.tEnviados.filtros['snapshots.funcao'] = { op: '=', value: funcao }
+    controles.tRecebidos.filtros['snapshots.funcao'] = { op: '=', value: funcao }
 
-    if (funcao == 'todos')
-        delete controles.mensagens.filtros['snapshots.funcao']
+    if (funcao == 'todos') {
+        delete controles.tEnviados.filtros['snapshots.funcao']
+        delete controles.tRecebidos.filtros['snapshots.funcao']
+    }
 
     await paginacao()
 
@@ -165,7 +218,17 @@ function marcarTodos(inputM) {
 
 function linMensagem(m) {
 
-    const { id, remetente, assunto, data, lido, destinatario, mensagem, snapshots, anexos } = m || {}
+    const {
+        id,
+        respostas,
+        remetente,
+        assunto,
+        data,
+        destinatario,
+        mensagem,
+        snapshots,
+        anexos
+    } = m || {}
 
     const listAnexos = Object.entries(anexos || {})
         .map(([id, { link, nome }]) => {
@@ -186,26 +249,40 @@ function linMensagem(m) {
         ? `<div style="display: flex; flex-wrap: wrap; gap: 5px; padding: 3px; margin-left: 2rem;">${listAnexos}</div>`
         : ''
 
-    const textoMensagem = mensagem.length > 50
-        ? `${String(mensagem || '').slice(0, 50)}...`
-        : mensagem
+    const listaRespostas = Object.entries(respostas || {})
+        .sort(([, a], [, b]) => b.timestamp - a.timestamp)
+        .map(([id, { usuario, mensagem, timestamp }], i) => {
+
+            const data = new Date(timestamp).toLocaleString()
+            return `
+                <div ${i == 0 ? 'style="background-color: #ffeea3"' : ''} class="mensagem-resposta">
+                    <span>${data}, <b>${usuario}</b></span>
+                    <span>${mensagem}</span>
+                    ${i == 0 ? `<img src="gifs/alerta.gif" style="position: absolute; top: 0; right: 0;">` : ''}
+                </div>`
+        })
+        .join('')
+
+    const campoRespostas = listaRespostas
+        ? `<div class="bloco-respostas">${listaRespostas || ''}</div>`
+        : ''
 
     return `
     <tr>
         <td style="padding: 0px;">
-            <div class="m-sagem-${lido == 'S' ? 'S' : 'N'}">
-                <div style="${horizontal}; gap: 5px;" name="linha" data-lido="${lido == 'S' ? 'S' : 'N'}" >
-                    <input name="mensagem" type="checkbox">
+            <div class="m-sagem">
+                <span style="font-size: 0.6rem;"><b>${data}</b></span>
+                <div style="${horizontal}; gap: 5px;" name="linha">
                     <img src="imagens/carta.png" onclick="abrirMensagem('${id}')">
                     <span>de <u>${remetente || ''}</u></span>
                     <span><b>${snapshots?.funcao || ''}</b></span>
                     <span>para <u>${destinatario || ''}</u></span>
-                    <span style="font-size: 0.6rem;"><b>${data}</b></span>
-                    <div><b>${assunto || '...'}</b></div>
-                    <span>${textoMensagem}</span>
                 </div>
-                ${divAnexos}
+                <div><b>Assunto:</b> ${assunto || 'Sem Assunto'}</div>
+                <span style="white-space: wrap;"><b>Mensagem:</b> \n${mensagem}</span>
             </div>
+            ${divAnexos}
+            ${campoRespostas}
         </td>
     </tr>
     `
@@ -222,9 +299,9 @@ async function abrirMensagem(idMensagem) {
         assunto,
         anexos,
         mensagem,
+        destinatario,
         remetente,
-        respostas,
-        lido
+        respostas
     } = await recuperarDado('mensagens', idMensagem) || {}
 
     const listaRespostas = Object.entries(respostas || {})
@@ -247,18 +324,23 @@ async function abrirMensagem(idMensagem) {
 
     const linhas = [
         {
-            texto: 'Assunto',
-            elemento: `<div readOnly>${assunto || ''}</div>`
+            elemento: `
+                <div style="${vertical}">
+                    <span>➤ Assunto</span>
+                    <div style="display: flex; flex-wrap: wrap;">${assunto || 'Sem Assunto'}</div>
+
+                    <br>
+                    <span>➤ Mensagem</span>   
+                    <div style="display: flex; flex-wrap: wrap;">${mensagem || 'Sem Mensagem'}</div>
+
+                    <br>
+                    <span>➤ Anexos</span>   
+                    <div style="display: flex; flex-wrap: wrap; gap: 5px;">${spansAnexos || 'Sem anexos'}</div>
+                </div>
+            `
         },
         {
-            texto: 'Mensagem',
-            elemento: `<div>${mensagem || ''}</div>`
-        },
-        {
-            texto: 'Anexos',
-            elemento: `<div style="display: flex; flex-wrap: wrap; gap: 5px;">${spansAnexos || 'Sem anexos'}</div>`
-        },
-        {
+            texto: 'Responder',
             editor: ''
         },
         {
@@ -266,18 +348,20 @@ async function abrirMensagem(idMensagem) {
         }
     ]
 
+    const novoDestinatario = usuario == destinatario
+        ? remetente
+        : destinatario
+
     const botoes = [
-        { texto: 'Responder', img: 'atualizar', funcao: `enviarResposta('${idMensagem}', '${remetente}')` }
+        { texto: 'Responder', img: 'atualizar', funcao: `enviarResposta('${idMensagem}', '${novoDestinatario}')` }
     ]
 
     popup({ botoes, linhas, titulo: `Mensagem de ${remetente}` })
 
-    if (lido !== 'S' && remetente !== usuario)
-        await enviar(`mensagens/${idMensagem}/lido`, 'S')
 
 }
 
-async function enviarResposta(idMensagem, remetente) {
+async function enviarResposta(idMensagem, destinatario) {
 
     overlayAguarde()
 
@@ -290,25 +374,13 @@ async function enviarResposta(idMensagem, remetente) {
 
     const timestamp = Date.now()
     const resposta = {
+        destinatario,
         timestamp,
         usuario,
         mensagem: editor.innerHTML
     }
 
-    // pensar numa atualização só;
-    const mensagem = await recuperarDado('mensagens', idMensagem) || {}
-
-    mensagem.respostas ??= {}
-    mensagem.respostas[crypto.randomUUID()] = resposta
-
-    const mensagemFinal = {
-        ...mensagem,
-        lido: 'N',
-        destinatario: remetente,
-        remetente: usuario
-    }
-
-    await enviar(`mensagens/${idMensagem}`, mensagemFinal)
+    await enviar(`mensagens/${idMensagem}/respostas/${crypto.randomUUID()}`, resposta)
 
     removerTodosPopups()
 
@@ -322,6 +394,9 @@ function balaoMensagem() {
         filtros: regrasFiltros(),
         colunas: {
             'Usuario': { chave: 'usuario' },
+            'Nome': { chave: 'nome_completo' },
+            'Cidade': { chave: 'snapshots.cidade.nome' },
+            'Distrito': { chave: 'snapshots.cidade.distrito' },
             'Funcao': { chave: 'funcao', bloquearPesquisa: true }
         }
     }
@@ -353,49 +428,55 @@ function balaoMensagem() {
 
 async function enviarMensagem() {
 
-    overlayAguarde()
+    try {
 
-    const msg = document.querySelector('.editor-conteudo')
-    if (msg.innerHTML == '')
-        return popup({ mensagem: 'Mensagem em branco' })
+        overlayAguarde()
 
-    const assunto = document.querySelector('[id="assunto"]').value
+        const msg = document.querySelector('.editor-conteudo')
+        if (msg.innerHTML == '')
+            return popup({ mensagem: 'Mensagem em branco' })
 
-    if (!assunto)
-        return popup({ mensagem: 'Assunto em branco...' })
+        const assunto = document.querySelector('[id="assunto"]').value
 
-    const destinatario = document.querySelector('[name="destinatario"]')?.id
+        if (!assunto)
+            return popup({ mensagem: 'Assunto em branco...' })
 
-    if (!destinatario)
-        return popup({ mensagem: 'Escolha um destinatário' })
+        const destinatario = document.querySelector('[name="destinatario"]')?.id
 
-    // Anexos
-    const input = document.getElementById('anexos')
-    const retornoAnexos = await importarAnexos({ input })
-    const anexos = {}
+        if (!destinatario)
+            return popup({ mensagem: 'Escolha um destinatário' })
 
-    if (Array.isArray(retornoAnexos)) {
+        // Anexos
+        const input = document.getElementById('anexos')
+        const retornoAnexos = await importarAnexos({ input })
+        const anexos = {}
 
-        for (const a of retornoAnexos) {
-            anexos[crypto.randomUUID()] = a
+        if (Array.isArray(retornoAnexos)) {
+
+            for (const a of retornoAnexos) {
+                anexos[crypto.randomUUID()] = a
+            }
+
         }
 
+        const id = crypto.randomUUID()
+        const m = {
+            anexos,
+            id,
+            destinatario,
+            assunto,
+            remetente: acesso.usuario,
+            data: new Date().toLocaleString(),
+            mensagem: msg.innerHTML
+        }
+
+        await enviar(`mensagens/${id}`, m)
+
+        removerPopup()
+
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao enviar a mensagem: Fale com o suporte.' })
     }
-
-    const id = crypto.randomUUID()
-    const m = {
-        anexos,
-        id,
-        lido: 'N',
-        destinatario,
-        assunto,
-        remetente: acesso.usuario,
-        data: new Date().toLocaleString(),
-        mensagem: msg.innerHTML
-    }
-
-    await enviar(`mensagens/${id}`, m)
-
-    removerPopup()
 
 }

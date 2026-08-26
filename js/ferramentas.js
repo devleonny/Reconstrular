@@ -141,7 +141,7 @@ async function carregarControles() {
     cUsuario.style.display = ''
     const modelo = (imagem, funcao, idElemento) => {
         return `
-        <div onclick="${funcao}" style="${vertical};">
+        <div onclick="${funcao}" style="${horizontal}; gap: 5px;">
             <img src="imagens/${imagem}.png">
             <div id="${idElemento}" style="display: none;" class="labelQuantidade"></div>
         </div>

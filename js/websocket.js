@@ -192,8 +192,7 @@ async function verificarMensagens() {
     const dados = await pesquisarDB({
         base: 'mensagens',
         filtros: {
-            destinatario: { op: '=', value: usuario },
-            lido: { op: '=', value: 'N' }
+            'snapshots.destinatario': { op: '=', value: usuario }
         }
     })
 

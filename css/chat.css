@@ -6,24 +6,33 @@
 }
 
 .mensagem-resposta {
+    position: relative;
     background-color: #f5f5f5;
-    width: 100%;
+    width: -webkit-fill-available;
     flex-direction: column;
     display: flex;
     align-items: start;
     justify-content: start;
     gap: 2px;
-    border: solid 1px #9e9e9e;
-    border-radius: 3px;
-    padding: 5px;
+    border-top: solid 1px #9e9e9e;
 }
 
 .mensagem-resposta span {
+    margin-left: 0.5rem;
     font-size: 0.7rem;
     font-style: italic;
 }
 
-.titulo-chat{
+.bloco-respostas {
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+    background-color: #2563eb;
+    max-height: 100px;
+}
+
+.titulo-chat {
     font-size: 1.5rem;
     color: white;
 }
@@ -75,7 +84,7 @@
     flex-direction: column;
     align-items: start;
     justify-content: center;
-    min-width: 200px;
+    width: 100%;
 }
 
 .painel-email {
@@ -104,30 +113,15 @@
     background-color: #222222ec;
 }
 
-.m-sagem-S {
-    gap: 0.5rem;
-    width: 100%;
+.m-sagem {
+    gap: 5px;
     display: flex;
     align-items: start;
     justify-content: start;
     text-align: left;
     flex-direction: column;
-    background-color: #ffffff;
     border-radius: 3px;
-    padding: 0.5rem 0;
-}
-
-.m-sagem-N {
-    gap: 0.5rem;
-    width: 100%;
-    display: flex;
-    align-items: start;
-    justify-content: start;
-    text-align: left;
-    flex-direction: column;
-    background-color: #fff5a8;
-    border-radius: 3px;
-    padding: 0.5rem 0;
+    padding: 3px 0.5rem;
 }
 
 .mensagens-funcao {
@@ -144,4 +138,53 @@
     border-radius: 9999px;
     background: #e53935;
     color: #fff;
+}
+
+.esquema-hierarquia {
+    width: 90%;
+    display: inline-block;
+    padding: 16px 20px;
+    border: 1px solid #dbe2ea;
+    border-radius: 5px;
+    background: #f8fafc;
+    color: #1e293b;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 14px;
+    line-height: 1.8;
+    white-space: nowrap;
+}
+
+.linha-hierarquia {
+    min-height: 25px;
+}
+
+.funcao-atual {
+    display: inline-block;
+    padding: 1px 8px;
+    border: 1px solid #2563eb;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.titulo-hierarquia {
+    margin-bottom: 10px;
+    color: #0f172a;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+}
+
+.painel-chat-tabelas {
+    gap: 1rem;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: row;
+}
+
+
+@media (orientation: portrait) {
+    .painel-chat-tabelas {
+        flex-direction: column;
+    }
 }
