@@ -984,7 +984,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
                 <td colspan="2" style="background-color: #5b707f;">
 
                     <div style="${horizontal}; gap: 1rem;">
-                        <span class="tag-usuario">${contrato}</span>
+                        <span class="tag-orcamento">${contrato}</span>
                         <div class="titulo-orcamento">
                             <span>${titulo}</span>
                         </div>
@@ -1083,6 +1083,8 @@ async function orcamentoFinal(idOrcamento, emJanela) {
                     <thead>${colunas}</thead>
                     <tbody>${itens.join('')}</tbody>
                 </table>
+
+                <span class="id-orcamento">${idOrcamento}</span>
             </div>
 
         </div>
@@ -1103,10 +1105,10 @@ async function orcamentoFinal(idOrcamento, emJanela) {
 
 function imprimirRecorte() {
 
-    esconderEditaveis(true)
-
     const origem = document.querySelector('.orcamento-documento')
-    if (!origem) return
+
+    if (!origem) 
+        return
 
     const iframe = document.createElement('iframe')
     iframe.style.position = 'fixed'
@@ -1128,10 +1130,7 @@ function imprimirRecorte() {
 
     const style = doc.createElement('style')
     style.textContent = `
-        @page {
-            size: A4 portrait;
-            margin: 5mm;
-        }
+        @page { size: A4 portrait; }
         * {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
