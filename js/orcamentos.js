@@ -1065,7 +1065,8 @@ async function orcamentoFinal(idOrcamento, emJanela) {
                 <button onclick="orcamentos()">Voltar para Orçamentos</button>
                 <button onclick="execucoes('${idOrcamento}')">Voltar para Zonas</button>
                 <button onclick="imprimirRecorte()">Imprimir</button>
-                <button onclick="pdfOrcamento('${idOrcamento}')">Exportar</button>
+                <img src="imagens/pdf.png" onclick="pdfOrcamento('${idOrcamento}')">
+
                 
             </div>`}
             
@@ -1172,7 +1173,7 @@ async function pdfOrcamento(idOrcamento) {
 
         const html = document.querySelector('.orcamento-documento').outerHTML
 
-        await pdf({ html, estilos: ['estilo', 'orcamentos'], nome })
+        await pdf({ html, estilos: [ 'orcamentos'], nome })
 
     } catch (err) {
         console.error(err)

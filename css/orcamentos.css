@@ -109,8 +109,15 @@
     padding: 1rem;
 }
 
+.tag-orcamento {
+    color: white;
+    border-radius: 15px 3px;
+    padding: 5px 10px;
+    border: solid 1px red;
+    background-color: #ff0000db;
+}
+
 .orcamento-documento {
-    font-size: 12px;
     display: flex;
     align-items: start;
     flex-direction: column;
