@@ -1069,22 +1069,21 @@ async function orcamentoFinal(idOrcamento, emJanela) {
                 
             </div>`}
             
-            <div id="pdf">
-                <div class="orcamento-documento">
-                    <table class="tabela-orcamento">
-                        <tbody>
-                            ${linhas}
-                        </tbody>
-                    </table>
+            <div class="orcamento-documento">
+                <table class="tabela-orcamento">
+                    <tbody>
+                        ${linhas}
+                    </tbody>
+                </table>
 
-                    <br>
+                <br>
 
-                    <table class="tabela-orcamento-2">
-                        <thead>${colunas}</thead>
-                        <tbody>${itens.join('')}</tbody>
-                    </table>
-                </div>
+                <table class="tabela-orcamento-2">
+                    <thead>${colunas}</thead>
+                    <tbody>${itens.join('')}</tbody>
+                </table>
             </div>
+
         </div>
     `
 
@@ -1171,9 +1170,9 @@ async function pdfOrcamento(idOrcamento) {
         const { contrato, snapshots } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
         const nome = [contrato, snapshots?.cliente].filter(Boolean).join('-')
 
-        const html = document.getElementById('pdf').outerHTML
+        const html = document.querySelector('.orcamento-documento').outerHTML
 
-        await pdf({ html, estilos: ['orcamentos'], nome })
+        await pdf({ html, estilos: ['estilo', 'orcamentos'], nome })
 
     } catch (err) {
         console.error(err)
