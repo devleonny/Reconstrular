@@ -298,64 +298,116 @@ async function alterarStatusOrcamento(idOrcamento, status, statusAtualFinalizado
 
 async function formularioOrcamento(idOrcamento) {
 
-    const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
-    const cliente = orcamento?.snapshots?.cliente || 'Selecione'
+    try {
+        overlayAguarde()
 
-    const zonas = (lista, ambiente) => {
+        const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
+        const cliente = orcamento?.snapshots?.cliente || 'Selecione'
 
-        const zonaNoOrcamento = orcamento?.zonas?.[ambiente]?.zona || {}
+        const zonas = (lista, ambiente) => {
 
-        const opcoes = lista
-            .map(zona => `<option ${zonaNoOrcamento == zona ? 'selected' : ''}>${zona}</option>`)
-            .join('')
+            const zonaNoOrcamento = orcamento?.zonas?.[ambiente]?.zona || {}
 
-        return `<select data-ambiente="${ambiente}" name="zonas">${opcoes}</select>`
+            const opcoes = lista
+                .map(zona => `<option ${zonaNoOrcamento == zona ? 'selected' : ''}>${zona}</option>`)
+                .join('')
 
+            return `<select data-ambiente="${ambiente}" name="zonas">${opcoes}</select>`
+
+        }
+
+        const botoes = [
+            {
+                texto: 'Salvar',
+                img: 'concluido',
+                funcao: idOrcamento
+                    ? `salvarOrcamento('${idOrcamento}')`
+                    : 'salvarOrcamento()'
+            }
+        ]
+
+        if (idOrcamento)
+            botoes.push({
+                texto: 'Excluir',
+                img: 'cancel',
+                funcao: `confirmarExcluirOrcamento('${idOrcamento}')`
+            })
+
+        controlesCxOpcoes.cliente = {
+            retornar: ['nome'],
+            base: 'dados_clientes',
+            colunas: {
+                'Nome': { chave: 'nome' },
+                'Morada Fiscal': { chave: 'morada_fiscal' },
+                'Distrito': { chave: 'snapshots.cidade.distrito' },
+                'Zona': { chave: 'snapshots.cidade.zona' },
+                'Cidade': { chave: 'snapshots.cidade.nome' }
+            }
+        }
+
+        const linhas = [
+            {
+                texto: 'Cliente',
+                elemento: `<span ${orcamento?.cliente ? `id="${orcamento?.cliente}"` : ''} name="cliente" class="opcoes" onclick="cxOpcoes('cliente')">${cliente || 'Selecione'}</span>`
+            },
+            {
+                texto: 'Data de contato',
+                elemento: `<input value="${orcamento?.data_contato || ''}" name="data_contato" type="date">`
+            },
+            {
+                texto: 'Data de visita',
+                elemento: `<input value="${orcamento?.data_visita || ''}" name="data_visita" type="date">`
+            }
+        ]
+
+        for (const [ambiente, lista] of Object.entries(ambientes)) {
+            linhas.push({
+                texto: ambiente,
+                elemento: zonas(lista, ambiente)
+            })
+        }
+
+        popup({ linhas, botoes, titulo: 'Criar orçamento' })
+
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao editar o orçamento: Fale com o suporte.' })
     }
+}
 
-    const funcao = idOrcamento
-        ? `salvarOrcamento('${idOrcamento}')`
-        : 'salvarOrcamento()'
+function confirmarExcluirOrcamento(idOrcamento) {
 
     const botoes = [
-        { texto: 'Salvar', img: 'concluido', funcao }
-    ]
-
-    controlesCxOpcoes.cliente = {
-        retornar: ['nome'],
-        base: 'dados_clientes',
-        colunas: {
-            'Nome': { chave: 'nome' },
-            'Morada Fiscal': { chave: 'morada_fiscal' },
-            'Distrito': { chave: 'snapshots.cidade.distrito' },
-            'Zona': { chave: 'snapshots.cidade.zona' },
-            'Cidade': { chave: 'snapshots.cidade.nome' }
-        }
-    }
-
-    const linhas = [
         {
-            texto: 'Cliente',
-            elemento: `<span ${orcamento?.cliente ? `id="${orcamento?.cliente}"` : ''} name="cliente" class="opcoes" onclick="cxOpcoes('cliente')">${cliente || 'Selecione'}</span>`
-        },
-        {
-            texto: 'Data de contato',
-            elemento: `<input value="${orcamento?.data_contato || ''}" name="data_contato" type="date">`
-        },
-        {
-            texto: 'Data de visita',
-            elemento: `<input value="${orcamento?.data_visita || ''}" name="data_visita" type="date">`
+            texto: 'Confirmar',
+            img: 'concluido',
+            funcao: `excluirOrcamento('${idOrcamento}')`
         }
     ]
 
-    for (const [ambiente, lista] of Object.entries(ambientes)) {
-        linhas.push({
-            texto: ambiente,
-            elemento: zonas(lista, ambiente)
-        })
+    popup({
+        mensagem: `Tem certeza que deseja excluir este orçamento?`,
+        botoes
+    })
+
+}
+
+async function excluirOrcamento(idOrcamento) {
+
+    try {
+        overlayAguarde()
+
+        await deletar(`dados_orcamentos/${idOrcamento}`)
+
+        removerTodosPopups()
+
+        popup({ mensagem: 'Exclusão realizada/enviada para aprovação!' })
+
+    } catch (err) {
+        popup({ mensagem: 'Falha ao excluir o orçamento: Fale com o suporte.' })
+        console.error(err)
     }
 
-    popup({ linhas, botoes, titulo: 'Criar orçamento', funcao })
 }
 
 async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
@@ -937,20 +989,20 @@ async function orcamentoFinal(idOrcamento, emJanela) {
 
     overlayAguarde()
 
-    const { 
-        zonas, 
+    const {
+        zonas,
         contrato,
-        data_contato, 
-        data_visita, 
-        cliente 
+        data_contato,
+        data_visita,
+        cliente
     } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
 
-    const { 
-        nome, 
-        numero_contribuinte, 
-        email, telefone, 
-        morada_fiscal, 
-        morada_execucao 
+    const {
+        nome,
+        numero_contribuinte,
+        email, telefone,
+        morada_fiscal,
+        morada_execucao
     } = await recuperarDado('dados_clientes', cliente) || {}
 
     let totalGeral = 0
@@ -1129,7 +1181,7 @@ async function pdfOrcamento(idOrcamento) {
 
         const html = document.querySelector('.orcamento-documento').outerHTML
 
-        await pdf({ html, estilos: [ 'orcamentos'], nome })
+        await pdf({ html, estilos: ['orcamentos'], nome })
 
     } catch (err) {
         console.error(err)
