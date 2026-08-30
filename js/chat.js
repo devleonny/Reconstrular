@@ -102,10 +102,10 @@ function regrasFiltros(esquema = false) {
         .map(cargo => montarRelacoes(cargo))
         .join('<br>')
 
-    return montarPagina({ 
-        tabela: `<div class="esquema-hierarquia">${htmlHierarquia}</div>`, 
-        titulo: 'Hierarquia', 
-        imagem: 'hierarquia' 
+    return montarPagina({
+        tabela: `<div class="esquema-hierarquia">${htmlHierarquia}</div>`,
+        titulo: 'Hierarquia',
+        imagem: 'hierarquia'
     })
 
 }
@@ -114,7 +114,7 @@ async function painelChat() {
 
     overlayAguarde()
 
-    const { usuario } = acesso || {}
+    const { usuario, funcao } = acesso || {}
 
     const tRecebidos = await modTab({
         pag: 'tRecebidos',
@@ -122,7 +122,30 @@ async function painelChat() {
         body: 'tRecebidos',
         funcaoAdicional: ['carregarAtalhosEmail', 'verificarMensagens'],
         filtros: {
-            'snapshots.destinatario': { op: '=', value: usuario }
+            modo: 'OR',
+            regras: [
+                {
+                    modo: 'AND',
+                    regras: [
+                        {
+                            path: 'funcao',
+                            op: 'includes',
+                            value: funcao
+                        },
+                        {
+                        
+                            path: 'realizada',
+                            op: '!=',
+                            value: true
+                        }
+                    ]
+                },
+                {
+                    path: 'snapshots.destinatario',
+                    op: '=',
+                    value: usuario
+                }
+            ]
         },
         criarLinha: 'linMensagem'
     })
@@ -132,7 +155,11 @@ async function painelChat() {
         base: 'mensagens',
         body: 'tEnviados',
         filtros: {
-            remetente: { op: '=', value: usuario }
+            modo: 'OR',
+            regras: [
+                { path: 'funcao', op: 'includes', value: funcao },
+                { path: 'snapshots.envolvidos', op: 'includes', value: usuario }
+            ]
         },
         criarLinha: 'linMensagem'
     })
@@ -151,8 +178,8 @@ async function painelChat() {
                 ${regrasFiltros(true)}
             </div>
             <div class="painel-chat-tabelas">
-                ${montarPagina({ tabela: tRecebidos, titulo: 'Recebidos', imagem: 'alerta' })}
-                ${montarPagina({ tabela: tEnviados, titulo: 'Enviados', imagem: 'enviado' })}
+                ${montarPagina({ tabela: tRecebidos, titulo: 'Responder', imagem: 'alerta' })}
+                ${montarPagina({ tabela: tEnviados, titulo: 'Chats', imagem: 'chat' })}
             </div>
         </div>
     `
@@ -224,30 +251,49 @@ function linMensagem(m) {
         remetente,
         assunto,
         data,
+        funcao,
+        acao,
+        realizada,
         destinatario,
         mensagem,
         snapshots,
         anexos
     } = m || {}
 
-    const listAnexos = Object.entries(anexos || {})
-        .map(([id, { link, nome }]) => {
 
-            const titulo = nome.length >= 15
-                ? `${nome.slice(0, 15)}...`
-                : nome
+    const { funcao: funcaoUsuario } = acesso || {}
 
-            return `
-                <div class="balao-anexo">
-                    <img src="imagens/anexo.png" style="width: 1.5rem;">
-                    <span>${titulo}</span>
-                </div>`
-        })
+    const botaoAcao = acao && (funcao || []).includes(funcaoUsuario) && !realizada
+        ? `<button onclick="confirmarAcao('${id}', '${acao}')">Confirmar Exclusão</button>`
+        : realizada
+            ? `
+            <div style="${horizontal}; gap: 5px;">
+                <img src="imagens/concluido.png">
+                <span>Ação realizada</span>
+            </div>
+            `
+            : ''
+
+    const listAnexos = Object.values(anexos || {})
+        .map(anexo => criarAnexoVisual(anexo))
         .join('')
 
-    const divAnexos = listAnexos.length
-        ? `<div style="display: flex; flex-wrap: wrap; gap: 5px; padding: 3px; margin-left: 2rem;">${listAnexos}</div>`
-        : ''
+    const divAnexos = `
+            <div class="bloco-anexos">
+                <img 
+                    src="imagens/anexo.png"
+                    style="cursor:pointer;"
+                    onclick="document.getElementById('inputArquivos_${id}').click()">
+                <input
+                    type="file"
+                    id="inputArquivos_${id}"
+                    multiple
+                    style="display:none;"
+                    onchange="salvarAnexosChat(this, '${id}')">
+                ${listAnexos || 'Sem anexos'}
+            </div>
+        `
+
 
     const listaRespostas = Object.entries(respostas || {})
         .sort(([, a], [, b]) => b.timestamp - a.timestamp)
@@ -258,7 +304,6 @@ function linMensagem(m) {
                 <div ${i == 0 ? 'style="background-color: #ffeea3"' : ''} class="mensagem-resposta">
                     <span>${data}, <b>${usuario}</b></span>
                     <span>${mensagem}</span>
-                    ${i == 0 ? `<img src="gifs/alerta.gif" style="position: absolute; top: 0; right: 0;">` : ''}
                 </div>`
         })
         .join('')
@@ -267,122 +312,162 @@ function linMensagem(m) {
         ? `<div class="bloco-respostas">${listaRespostas || ''}</div>`
         : ''
 
+    const responder = `
+        <div style="${horizontal}; gap: 5px; width: 95%;">
+            <textarea id="${id}-chat" style="resize: vertical; padding: 0.5rem;" placeholder="Digite algo..."></textarea>
+            <img src="imagens/concluido.png" onclick="enviarRespostaChat('${id}', '${destinatario}', '${remetente}')">
+        </div>
+    `
+
+    const para = destinatario
+        ? `<span>para <u>${destinatario || ''}</u></span>`
+        : ''
+
     return `
     <tr>
         <td style="padding: 0px;">
+
             <div class="m-sagem">
                 <span style="font-size: 0.6rem;"><b>${data}</b></span>
                 <div style="${horizontal}; gap: 5px;" name="linha">
-                    <img src="imagens/carta.png" onclick="abrirMensagem('${id}')">
+                    <img src="imagens/carta.png">
                     <span>de <u>${remetente || ''}</u></span>
                     <span><b>${snapshots?.funcao || ''}</b></span>
-                    <span>para <u>${destinatario || ''}</u></span>
+                    ${para}
                 </div>
-                <div><b>Assunto:</b> ${assunto || 'Sem Assunto'}</div>
-                <span style="white-space: wrap;"><b>Mensagem:</b> \n${mensagem}</span>
+                <span><b>Assunto:</b></span> 
+                <span>${assunto || 'Sem Assunto'}</span>
+
+                <span><b>Mensagem:</b></span>
+                <div style="white-space: wrap;">${mensagem}</div>
+
+                ${botaoAcao}
+            
+                <span><b>Anexos:</b></span>
+                ${divAnexos}
+                
+                <span><b>Responder:</b></span>
+                ${responder}
+
             </div>
-            ${divAnexos}
             ${campoRespostas}
+            
         </td>
     </tr>
     `
 
 }
 
-async function abrirMensagem(idMensagem) {
+function confirmarAcao(idMensagem, acao) {
 
-    overlayAguarde()
-
-    const { usuario } = acesso || {}
-
-    const {
-        assunto,
-        anexos,
-        mensagem,
-        destinatario,
-        remetente,
-        respostas
-    } = await recuperarDado('mensagens', idMensagem) || {}
-
-    const listaRespostas = Object.entries(respostas || {})
-        .sort(([, a], [, b]) => b.timestamp - a.timestamp)
-        .map(([id, { usuario, mensagem, timestamp }]) => {
-            const data = new Date(timestamp).toLocaleString()
-            return `
-            <div class="mensagem-resposta">
-                <span>${data}, <b>${usuario}</b></span>
-                <div>${mensagem}</div>
-            </div>`
-        })
-        .join('')
-
-    const spansAnexos = Object.entries(anexos || {})
-        .map(([id, anexo]) => {
-            return criarAnexoVisual(anexo)
-        })
-        .join('')
-
-    const linhas = [
+    const botoes = [
         {
-            elemento: `
-                <div style="${vertical}">
-                    <span>➤ Assunto</span>
-                    <div style="display: flex; flex-wrap: wrap;">${assunto || 'Sem Assunto'}</div>
-
-                    <br>
-                    <span>➤ Mensagem</span>   
-                    <div style="display: flex; flex-wrap: wrap;">${mensagem || 'Sem Mensagem'}</div>
-
-                    <br>
-                    <span>➤ Anexos</span>   
-                    <div style="display: flex; flex-wrap: wrap; gap: 5px;">${spansAnexos || 'Sem anexos'}</div>
-                </div>
-            `
-        },
-        {
-            texto: 'Responder',
-            editor: ''
-        },
-        {
-            elemento: `<div style="${vertical}; gap: 5px; width: 90%;">${listaRespostas || ''}</div>`
+            texto: 'Confirmar',
+            img: 'concluido',
+            funcao: `executarAcao('${idMensagem}', '${acao}')`
         }
     ]
 
-    const novoDestinatario = usuario == destinatario
-        ? remetente
-        : destinatario
-
-    const botoes = [
-        { texto: 'Responder', img: 'atualizar', funcao: `enviarResposta('${idMensagem}', '${novoDestinatario}')` }
-    ]
-
-    popup({ botoes, linhas, titulo: `Mensagem de ${remetente}` })
-
+    popup({
+        mensagem: 'Tem certeza disso?',
+        botoes
+    })
 
 }
 
-async function enviarResposta(idMensagem, destinatario) {
+async function executarAcao(idMensagem, acao) {
 
-    overlayAguarde()
+    try {
 
-    const editor = document.querySelector('.editor-conteudo')
+        overlayAguarde()
 
-    if (editor.innerHTML == '')
-        return popup({ mensagem: 'Não deixe a resposta em branco!' })
+        const resposta = await deletar(acao)
 
-    const { usuario } = acesso || {}
+        console.log(resposta)
 
-    const timestamp = Date.now()
-    const resposta = {
-        destinatario,
-        timestamp,
-        usuario,
-        mensagem: editor.innerHTML
+        if (resposta.success) {
+            await enviar(`mensagens/${idMensagem}/realizada`, true)
+            removerTodosPopups()
+        } else
+            popup({ mensagem: 'Falha ao executar a ação: Fale com o suporte.' })
+
+    } catch (err) {
+
+        console.error(err)
+        popup({ mensagem: 'Falha ao executar a ação: Fale com o suporte.' })
+
     }
 
-    await enviar(`mensagens/${idMensagem}/respostas/${crypto.randomUUID()}`, resposta)
+}
 
-    removerTodosPopups()
+async function salvarAnexosChat(input, idMensagem) {
+
+    try {
+
+        overlayAguarde()
+
+        if (!input || !input.files || input.files.length === 0)
+            return
+
+        const resposta = (await importarAnexos({ input }) || [])
+
+        if (!resposta.length)
+            return popup({ mensagem: 'Escolha alguns anexos' })
+
+        const anexosAtuais = Object.assign({},
+            ...resposta.map(anexo => ({ [crypto.randomUUID()]: anexo }))
+        )
+
+        const { anexos } = await recuperarDado('mensagens', idMensagem) || {}
+
+        await enviar(`mensagens/${idMensagem}/anexos`, {
+            ...anexosAtuais,
+            ...anexos
+        })
+
+        removerOverlay()
+
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao anexas arquivos, tente novamente em breve' })
+    }
+
+}
+
+async function enviarRespostaChat(idMensagem, destinatario, remetente) {
+
+    try {
+
+        overlayAguarde()
+
+        const mensagem = document.getElementById(`${idMensagem}-chat`)
+
+        if (!mensagem.value)
+            return popup({ mensagem: 'Não deixe a resposta em branco!' })
+
+        const { usuario } = acesso || {}
+
+        const novoDestinatario = usuario == destinatario
+            ? remetente
+            : destinatario
+
+        const timestamp = Date.now()
+        const resposta = {
+            destinatario: novoDestinatario,
+            timestamp,
+            usuario,
+            mensagem: mensagem.value
+        }
+
+        await enviar(`mensagens/${idMensagem}/respostas/${crypto.randomUUID()}`, resposta)
+
+        mensagem.value = ''
+        removerOverlay()
+
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao enviar resposta: Fale com o suporte.' })
+    }
 
 }
 

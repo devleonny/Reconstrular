@@ -1,4 +1,5 @@
 .tabela-obras {
+    font-size: 12px;
     min-width: 100%;
     background-color: white;
     border-collapse: collapse;
@@ -30,14 +31,14 @@
 }
 
 .acompanhamento {
+    height: 100%;
+    width: 100%;
     overflow-x: auto;
     display: flex;
     align-items: start;
     justify-content: start;
     flex-direction: column;
-    padding: 1rem;
     background-color: white;
-    width: 100%;
 }
 
 .dias-uteis {

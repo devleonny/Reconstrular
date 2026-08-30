@@ -165,6 +165,46 @@ html {
     justify-content: center;
 }
 
+.botao-flutuante {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    bottom: 5rem;
+    right: 2rem;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 999px;
+    padding: 0;
+    background-color: #e53935;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    z-index: 1000;
+}
+
+.botao-flutuante:hover {
+    background-color: #d32f2f;
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.botao-flutuante:active {
+    transform: scale(0.95);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .botao-flutuante {
+        bottom: 4rem;
+        right: 1rem;
+        width: 3rem;
+        height: 3rem;
+    }
+}
+
 .tela.login {
     flex-direction: column;
     margin-top: 2rem;
@@ -178,7 +218,9 @@ html {
 .tela {
     flex: 1;
     min-width: 0;
-    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
+    box-sizing: border-box;
     flex-direction: column;
     padding: 1rem;
     justify-content: start;
@@ -493,12 +535,16 @@ img {
     height: 60vh;
 }
 
-.invalido {
-    padding-left: 1vw;
-    padding-right: 1vw;
-    border: solid 1px red;
-    border-radius: 5px;
-    background-color: #f7c5c5;
+.opcoes-formulario {
+    background-color: #5b707f26;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0.5rem;
+    border-radius: 10px;
+    border: solid 1px #5b707f;
 }
 
 .excedente {

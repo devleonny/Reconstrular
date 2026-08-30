@@ -72,124 +72,82 @@ function criarLinhaClientes(dados) {
 
 }
 
-async function formularioCliente(idCliente) {
+async function formularioCliente(idCliente = crypto.randomUUID()) {
 
-    overlayAguarde()
+    try {
 
-    if (acesso.funcao !== 'Diretor Operativo')
-        return popup({ mensagem: 'Apenas o <b>Diretor Operativo</b> pode incluir Clientes' })
+        overlayAguarde()
 
-    const {
-        snapshots,
-        nome,
-        telefone,
-        cidade,
-        email,
-        morada_execucao,
-        morada_fiscal,
-        numero_contribuinte
-    } = await recuperarDado('dados_clientes', idCliente) || {}
+        const {
+            nome,
+            telefone,
+            cidade,
+            email,
+            morada_execucao,
+            morada_fiscal,
+            numero_contribuinte
+        } = await recuperarDado('dados_clientes', idCliente) || {}
 
-    const botoes = [
-        { texto: 'Salvar', img: 'concluido', funcao: idCliente ? `salvarCliente('${idCliente}')` : 'salvarCliente()' }
-    ]
+        const botoes = [
+            { texto: 'Salvar', img: 'concluido', funcao: `salvarCliente('${idCliente}')` }
+        ]
 
-    if (idCliente)
-        botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExclusaoCliente('${idCliente}')` })
+        if (idCliente)
+            botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExclusaoCliente('${idCliente}')` })
 
-    const { nome: nomeCidade } = await recuperarDado('cidades', cidade) || {}
+        const { nome: nomeCidade } = await recuperarDado('cidades', cidade) || {}
 
-    controlesCxOpcoes.cidade = {
-        base: 'cidades',
-        retornar: ['nome'],
-        funcaoAdicional: ['notificarPessoas'],
-        colunas: {
-            'Cidade': { chave: 'nome' },
-            'Distrito': { chave: 'distrito' },
-            'Zona': { chave: 'zona' },
-            'Área': { chave: 'area' }
+        controlesCxOpcoes.cidade = {
+            base: 'cidades',
+            retornar: ['nome'],
+            funcaoAdicional: ['verificarRegras'],
+            colunas: {
+                'Cidade': { chave: 'nome' },
+                'Distrito': { chave: 'distrito' },
+                'Zona': { chave: 'zona' },
+                'Área': { chave: 'area' }
+            }
         }
+
+        const linhas = [
+            {
+                texto: 'Nome',
+                elemento: `<textarea oninput="verificarRegras()" placeholder="Nome do Cliente" name="nome">${nome || ''}</textarea>`
+            },
+            {
+                texto: 'Morada Fiscal',
+                elemento: `<textarea placeholder="Morada Fiscal" name="morada_fiscal">${morada_fiscal || ''}</textarea>`
+            },
+            {
+                texto: 'Morada de Execução',
+                elemento: `<textarea placeholder="Morada de Execução" name="morada_execucao">${morada_execucao || ''}</textarea>`
+            },
+            {
+                texto: 'Número de Contribuinte',
+                elemento: `<input oninput="verificarRegras()" placeholder="Limite 9 Dígitos" name="numero_contribuinte" value="${numero_contribuinte || ''}">`
+            },
+            {
+                texto: 'Telefone',
+                elemento: `<input oninput="verificarRegras()" placeholder="Limite 9 Dígitos" name="telefone" value="${telefone || ''}">`
+            },
+            {
+                texto: 'E-mail',
+                elemento: `<input oninput="verificarRegras()" placeholder="E-mail" name="email" value="${email || ''}">`
+            },
+            {
+                texto: 'Cidade',
+                elemento: `<span name="cidade" ${cidade ? `id="${cidade}"` : ''} class="opcoes" onclick="cxOpcoes('cidade')">${nomeCidade || 'Selecionar'}</span>`
+            }
+        ]
+
+        popup({ linhas, botoes, titulo: 'Formulário de Cliente' })
+
+        verificarRegras()
+
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao abrir o cadastro do cliente: Fale com o suporte.' })
     }
-
-    const linhas = [
-        {
-            texto: 'Nome',
-            elemento: `<textarea placeholder="Nome do Cliente" name="nome">${nome || ''}</textarea>`
-        },
-        {
-            texto: 'Morada Fiscal',
-            elemento: `<textarea oninput="regrasClientes()" placeholder="Morada Fiscal" name="morada_fiscal">${morada_fiscal || ''}</textarea>`
-        },
-        {
-            texto: 'Morada de Execução',
-            elemento: `<textarea oninput="regrasClientes()" placeholder="Morada de Execução" name="morada_execucao">${morada_execucao || ''}</textarea>`
-        },
-        {
-            texto: 'Número de Contribuinte',
-            elemento: `<input oninput="regrasClientes()" placeholder="Limite 9 Dígitos" name="numero_contribuinte" value="${numero_contribuinte || ''}">`
-        },
-        {
-            texto: 'Telefone',
-            elemento: `<input oninput="regrasClientes()" placeholder="Limite 9 Dígitos" name="telefone" value="${telefone || ''}">`
-        },
-        {
-            texto: 'E-mail',
-            elemento: `<input oninput="regrasClientes()" placeholder="E-mail" name="email" value="${email || ''}">`
-        },
-        {
-            texto: 'Cidade',
-            elemento: `<span name="cidade" ${cidade ? `id="${cidade}"` : ''} class="opcoes" onclick="cxOpcoes('cidade')">${nomeCidade || 'Selecionar'}</span>`
-        },
-        {
-            texto: 'Notificação',
-            elemento: `
-            <div id="notificacoes" style="display: flex; flex-wrap: wrap; gap: 3px;">
-                <img src="gifs/loading.gif" style="width: 5rem;">
-            </div>`
-        }
-    ]
-
-    popup({ linhas, botoes, titulo: 'Formulário de Cliente' })
-
-    regrasClientes()
-}
-
-async function notificarPessoas() {
-
-    const cidade = document.querySelector('[name="cidade"]')?.id
-
-    if (!cidade)
-        return
-
-    const { zona, nome } = await recuperarDado('cidades', cidade)
-
-    const [coordenadores, encarregados] = await Promise.all([
-        pesquisarDB({
-            base: 'dados_setores',
-            filtros: {
-                zona: { op: 'includes', value: zona },
-                funcao: { op: '=', value: 'Coordenador Operativo' }
-            }
-        }),
-        pesquisarDB({
-            base: 'dados_setores',
-            filtros: {
-                cidade: { op: '=', value: cidade },
-                funcao: { op: '=', value: 'Encarregado de Obra' }
-            }
-        })
-    ])
-
-    const usuariosNotificados = [...coordenadores.resultados, ...encarregados.resultados]
-    const local = document.getElementById('notificacoes')
-    local.innerHTML = ''
-
-    for (const { usuario } of usuariosNotificados)
-        local.insertAdjacentHTML('beforeend', `<span class="ativo">${usuario}</span>`)
-
-    if (!usuariosNotificados.length)
-        local.insertAdjacentHTML('beforeend', `<span class="notificacao-clientes">Nenhum representante localizado</span>`)
-
 }
 
 function confirmarExclusaoCliente(idCliente) {
@@ -207,89 +165,55 @@ async function excluirCliente(idCliente) {
 
 }
 
-function regrasClientes() {
+async function salvarCliente(idCliente) {
 
-    const campos = ['telefone', 'numero_contribuinte']
-    const limite = 9
-    let bloqueio = false
-    const painel = document.querySelector('.painel-padrao')
+    try {
 
-    const cidade = painel.querySelector('[name="cidade"]').id
+        overlayAguarde()
 
-    if (!cidade)
-        return true
+        const { campos } = verificarRegras()
 
-    for (const campo of campos) {
+        if (campos.length)
+            return popup({
+                imagem: 'gifs/interrogacao.gif',
+                mensagem: `
+                    <div style="${vertical}; gap: 4px;">
+                        <span>Verifique os campos inválidos:</span>
+                        ${campos.map(c => `<span>• ${inicialMaiuscula(c)}</span>`).join('')}
+                    </div>
+            `
+            })
 
-        const el = painel.querySelector(`[name="${campo}"]`)
-        el.value = el.value.replace(/\D/g, '');
-        if (el.value.length > limite) {
-            el.value = el.value.slice(0, limite);
+        const cliente = {
+            nome: obVal('nome'),
+            morada_fiscal: obVal('morada_fiscal'),
+            morada_execucao: obVal('morada_execucao'),
+            numero_contribuinte: obVal('numero_contribuinte'),
+            telefone: obVal('telefone'),
+            email: obVal('email'),
+            cidade: obVal('cidade')
         }
 
-        if (el.value.length !== limite) {
-            el.classList.add('invalido')
-            bloqueio = true
-        } else {
-            el.classList.remove('invalido')
+        await enviar(`dados_clientes/${idCliente}`, cliente)
+
+        const { usuario } = acesso || {}
+        const mensagem = {
+            funcao: ['Coordenador Operativo'],
+            assunto: 'Cadastro de Cliente Realizado',
+            remetente: usuario,
+            data: new Date().toLocaleString(),
+            mensagem: `<i>Cadastro/Atualização de cliente <b>realizado</b>:</i> <br> <b>Nome</b>: ${cliente.nome}`
         }
 
+        await Promise.all([
+            enviar(`dados_clientes/${idCliente}`, cliente),
+            enviar(`mensagens/${idCliente}`, mensagem)
+        ])
+
+        removerTodosPopups()
+
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao salvar o cliente: Fale com o suporte.' })
     }
-
-    return bloqueio
-
-}
-
-async function salvarCliente(idCliente = unicoID()) {
-
-    if (regrasClientes())
-        return popup({ mensagem: 'Não deixe campos sem preenchimento' })
-
-    const painel = document.querySelector('.painel-padrao')
-
-    const obVal = (texto) => {
-        const el = painel.querySelector(`[name="${texto}"]`)
-        return el.value
-    }
-
-    const cliente = await recuperarDado('dados_clientes', idCliente) || {}
-
-    const novo = {
-        ...cliente,
-        nome: obVal('nome'),
-        morada_fiscal: obVal('morada_fiscal'),
-        morada_execucao: obVal('morada_execucao'),
-        numero_contribuinte: obVal('numero_contribuinte'),
-        telefone: obVal('telefone'),
-        email: obVal('email'),
-        cidade: painel.querySelector('[name="cidade"]').id
-    }
-
-    const usuariosNotificados = [...document.querySelectorAll('#notificacoes span')]
-        .map(span => {
-
-            const { usuario } = acesso || {}
-            const destinatario = span.textContent
-            const id = crypto.randomUUID()
-
-            const m = {
-                id,
-                lido: 'N',
-                destinatario,
-                assunto: 'Cadastro de Cliente Realizado',
-                remetente: usuario,
-                data: new Date().toLocaleString(),
-                mensagem: `<i>Cadastro de cliente <b>realizado</b>:</i> <br> <b>Nome</b>: ${novo.nome}`
-            }
-
-            enviar(`mensagens/${id}`, m)
-
-        })
-
-    await enviar(`dados_clientes/${idCliente}`, novo)
-
-    // Notificações
-    await Promise.all(usuariosNotificados)
-
-    removerPopup()
 }

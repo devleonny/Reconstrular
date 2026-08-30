@@ -17,7 +17,7 @@ let sOverlay = false
 function obVal(name) {
     const painel = document.querySelector('.painel-padrao')
     const el = painel.querySelector(`[name="${name}"]`)
-    return el ? el.value : '';
+    return el ? el.value || el.id : null
 }
 
 const modelo = (texto, valor, name) => `
@@ -423,20 +423,6 @@ async function telaPrecosDesativada() {
     await telaPrecos('S')
 }
 
-async function buscarDados() {
-    const painel = document.querySelector('.painel-padrao')
-    const spanCliente = (painel || document).querySelector('[name="cliente"]')
-    const idCliente = spanCliente?.id
-
-    const { snapshots, telefone, email } = await recuperarDado('dados_clientes', idCliente) || {}
-
-    painel.querySelector(`[name="cidade"]`).cidade = snapshots?.cidade?.nome || ''
-    painel.querySelector(`[name="distrito"]`).distrito = snapshots?.cidade?.distrito || ''
-    painel.querySelector(`[name="telefone"]`).telefone = telefone || ''
-    painel.querySelector(`[name="email"]`).email = email || ''
-
-}
-
 function confirmarSaida() {
 
     const botoes = [
@@ -535,9 +521,28 @@ function verificarRegras() {
         telefone: { limite: 9, tipo: 1 }
     }
 
+    function inv(el, remover) {
+
+        if (el.tagName == 'SPAN') {
+            el.style.color = remover
+                ? ''
+                : '#222'
+        }
+
+        el.style.backgroundColor = remover
+            ? ''
+            : '#f7c5c5'
+
+        el.style.border = remover
+            ? ''
+            : 'solid 1px red'
+
+    }
+
     for (let [name, regra] of Object.entries(limites)) {
         const campo = input(name)
-        if (!campo) continue
+        if (!campo)
+            continue
 
         if (regra.tipo === 1) {
             campo.value = campo.value.replace(/\D/g, '')
@@ -553,41 +558,45 @@ function verificarRegras() {
             regra.liberado = campo.value.length === regra.limite
 
             if (regra.liberado) {
-                campo.classList.remove('invalido')
+                inv(campo, true)
             } else {
-                campo.classList.add('invalido')
+                inv(campo)
                 campos.push(name)
             }
         }
     }
 
     const pin = painel.querySelector('[name="pin"]')
-    const pinEspelho = painel.querySelector('[name="pinEspelho"]')
-    const rodapeAlerta = painel.querySelector('.rodape-alerta')
-    const mensagem = (img, msg) => `
+    if (pin) {
+
+        const pinEspelho = painel.querySelector('[name="pinEspelho"]')
+        const rodapeAlerta = painel.querySelector('.rodape-alerta')
+        const mensagem = (img, msg) => `
         <div class="rodape-alerta">
             <img src="imagens/${img}.png">
             <span>${msg}</span>
-        </div>
-    `
+        </div>`
 
-    if (pin.value !== pinEspelho.value || pin.value == '') {
-        rodapeAlerta.innerHTML = mensagem('cancel', 'Os Pins não são iguais')
-        pin.classList.add('invalido')
-        pinEspelho.classList.add('invalido')
-        campos.push('pins não são iguais')
-    } else {
-        pin.classList.remove('invalido')
-        pinEspelho.classList.remove('invalido')
-        rodapeAlerta.innerHTML = mensagem('concluido', 'Pins iguais')
+        if (pin.value !== pinEspelho.value || pin.value == '') {
+            rodapeAlerta.innerHTML = mensagem('cancel', 'Os Pins não são iguais')
+            inv(pin)
+            inv(pinEspelho)
+            campos.push('pins não são iguais')
+        } else {
+            inv(pin, true)
+            inv(pinEspelho, true)
+            rodapeAlerta.innerHTML = mensagem('concluido', 'Pins iguais')
+        }
     }
 
     const cidade = el('cidade')
-    if (!cidade?.id) {
-        cidade.classList.add('invalido')
-        campos.push('cidade')
-    } else {
-        cidade.classList.remove('invalido')
+    if (cidade) {
+        if (!cidade?.id) {
+            inv(cidade)
+            campos.push('cidade')
+        } else {
+            inv(cidade, true)
+        }
     }
 
     const camposFixos = ['documento', 'especialidade', 'status']
@@ -595,57 +604,52 @@ function verificarRegras() {
         const ativo = painel.querySelector(`input[name="${campo}"]:checked`)
         const bloco = painel.querySelector(`[name="${campo}_bloco"]`)
 
+        if (!bloco)
+            continue
+
         if (!ativo) {
-            bloco.classList.add('invalido')
+            inv(bloco)
             campos.push(campo)
         } else {
-            bloco.classList.remove('invalido')
+            inv(bloco, true)
         }
     }
 
-    const camposFlex = ['nome', 'data_nascimento', 'email', 'morada', 'numero_documento', 'apolice']
+    const camposFlex = ['nome', 'nome_completo', 'data_nascimento', 'email', 'morada', 'numero_documento', 'apolice']
     for (const campo of camposFlex) {
         const elCampo = input(campo)
+        if (!elCampo)
+            continue
 
         if (elCampo.value == '') {
-            elCampo.classList.add('invalido')
+            inv(elCampo)
             campos.push(campo)
         } else {
-            elCampo.classList.remove('invalido')
+            inv(elCampo, true)
         }
     }
 
     const numero_documento = input('numero_documento')
-    const docAtivo = painel.querySelector('input[name="documento"]:checked')
+    if (numero_documento) {
+        const docAtivo = painel.querySelector('input[name="documento"]:checked')
 
-    if (docAtivo && docAtivo.value == 'Cartão de Cidadão') {
-        if (numero_documento.value.length > 8)
-            numero_documento.value = numero_documento.value.slice(0, 8)
+        if (docAtivo && docAtivo.value == 'Cartão de Cidadão') {
 
-        numero_documento.value = numero_documento.value.replace(/\D/g, '')
+            if (numero_documento.value.length > 8)
+                numero_documento.value = numero_documento.value.slice(0, 8)
 
-        if (numero_documento.value.length !== 8) {
-            campos.push('numero_documento')
-            numero_documento.classList.add('invalido')
-        } else {
-            numero_documento.classList.remove('invalido')
+            numero_documento.value = numero_documento.value.replace(/\D/g, '')
+
+            if (numero_documento.value.length !== 8) {
+                campos.push('numero_documento')
+                inv(numero_documento)
+            } else {
+                inv(numero_documento, true)
+            }
         }
     }
 
     return { campos }
-}
-
-function unicoID() {
-    var d = new Date().getTime();
-    if (window.performance && typeof window.performance.now === "function") {
-        d += performance.now();
-    }
-    var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-        var r = (d + Math.random() * 16) % 16 | 0;
-        d = Math.floor(d / 16);
-        return (c == 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-    });
-    return uuid;
 }
 
 function telaLogin() {

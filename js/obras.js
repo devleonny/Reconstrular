@@ -432,13 +432,13 @@ async function verAndamento(id, resetar) {
     controles.andamento.idObraAtual = id
 
     const acumulado = `
-        <div style="${vertical}; gap: 1rem;">
+        <div style="${vertical}; gap: 1rem; padding: 1rem;">
             <div class="painel-1-tarefas">
-                <input placeholder="Pesquisa" oninput="pesquisarObras(this)">
-                <select id="etapas" onchange="atualizarToolbar({nomeTarefa: this.value})"></select>
                 <button style="background-color: red;" onclick="pdfObra('Checklist')">PDF</button>
                 <button onclick="telaCronograma('${id}')">Cronograma</button>
-                <button onclick="telaObras()">Voltar</button>
+
+                <input placeholder="Pesquisa" oninput="pesquisarObras(this)">
+                <select id="etapas" onchange="atualizarToolbar({nomeTarefa: this.value})"></select>
             </div>
 
             <div style="${horizontal}; gap: 1rem;">

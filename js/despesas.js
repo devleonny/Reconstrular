@@ -25,11 +25,18 @@ async function verificarDespesas() {
 
     telaAtiva = 'despesas'
 
+    const { funcao } = acesso || {}
+
+    const filtros = funcao !== 'CEO'
+      ? { obra: { op: 'NOT_EMPTY' } }
+      : {}
+
     const tabela = await modTab({
       btnExtras: '<button onclick="formularioDespesa()">Adicionar Despesa</button>',
       pag: 'despesas',
       base: 'dados_despesas',
       body: 'bodyDespesas',
+      filtros,
       criarLinha: 'criarLinhaDespesa',
       colunas: {
         'Fornecedor': { chave: 'snapshots.fornecedor.nome' },
@@ -379,65 +386,93 @@ async function criarLinhaFornecedores(fornecedor) {
 
 }
 
-async function adicionarFornecedor(idFornecedor) {
+async function adicionarFornecedor(idFornecedor = crypto.randomUUID()) {
 
-  const fornecedor = await recuperarDado('fornecedores', idFornecedor)
-  const { nome, distrito } = await recuperarDado('cidades', fornecedor?.cidade) || {}
+  try {
 
-  controlesCxOpcoes.cidade = {
-    base: 'cidades',
-    retornar: ['nome', 'distrito'],
-    colunas: {
-      'Cidade': { chave: 'nome' },
-      'Distrito': { chave: 'distrito' },
-      'Zona': { chave: 'zona' },
-      'Área': { chave: 'area' }
+    overlayAguarde()
+
+    const fornecedor = await recuperarDado('fornecedores', idFornecedor)
+    const { nome, distrito } = await recuperarDado('cidades', fornecedor?.cidade) || {}
+
+    controlesCxOpcoes.cidade = {
+      base: 'cidades',
+      retornar: ['nome'],
+      funcaoAdicional: ['verificarRegras'],
+      colunas: {
+        'Cidade': { chave: 'nome' },
+        'Distrito': { chave: 'distrito' },
+        'Zona': { chave: 'zona' },
+        'Área': { chave: 'area' }
+      }
     }
+
+    const dCidade = [nome, distrito]
+      .filter(d => d)
+      .join('\n')
+
+    const linhas = [
+      {
+        texto: 'Nome',
+        elemento: `<textarea oninput="verificarRegras()" placeholder="Nome do fornecedor" name="nome">${fornecedor?.nome || ''}</textarea>`
+      },
+      {
+        texto: 'Número do Contribuinte',
+        elemento: `<input oninput="verificarRegras()" name="numero_contribuinte" placeholder="Máximo de 9 dígitos" value="${fornecedor?.numero_contribuinte || ''}">`
+      },
+      {
+        texto: 'Cidade',
+        elemento: `<span name="cidade" class="opcoes" onclick="cxOpcoes('cidade')">${dCidade || 'Selecionar'}</span>`
+      }
+    ]
+
+    const botoes = [
+      { texto: 'Salvar', img: 'concluido', funcao: `salvarFornecedor('${idFornecedor}')` }
+    ]
+
+    popup({ linhas, botoes, titulo: 'Gerenciar Fornecedor' })
+
+    verificarRegras()
+
+  } catch (err) {
+    console.error(err)
+    popup({ mensagem: 'Falha ao abrir' })
   }
-
-  const dCidade = [nome, distrito]
-    .filter(d => d)
-    .join('\n')
-
-  const linhas = [
-    { texto: 'Nome', elemento: `<textarea name="nome">${fornecedor?.nome || ''}</textarea>` },
-    { texto: 'Número do Contribuinte', elemento: `<input name="numero_contribuinte" value="${fornecedor?.numero_contribuinte || ''}">` },
-    {
-      texto: 'Cidade',
-      elemento: `<span name="cidade" class="opcoes" onclick="cxOpcoes('cidade')">${dCidade || 'Selecionar'}</span>`
-    }
-  ]
-
-  const botoes = [
-    { texto: 'Salvar', img: 'concluido', funcao: idFornecedor ? `salvarFornecedor('${idFornecedor}')` : 'salvarFornecedor()' }
-  ]
-
-  if (idFornecedor)
-    botoes.push({ texto: 'Excluir', img: 'cancel', funcao: '' })
-
-  popup({ linhas, botoes, titulo: 'Formulário de Obra' })
 
 }
 
-async function salvarFornecedor(id = unicoID()) {
+async function salvarFornecedor(id) {
 
-  overlayAguarde()
+  try {
+    overlayAguarde()
 
-  const idCidade = document.querySelector('[name="cidade"]')?.id
+    const { campos } = verificarRegras()
 
-  if (!idCidade)
-    return popup({ mensagem: 'Selecione uma cidade' })
+    if (campos.length)
+      return popup({
+        imagem: 'gifs/interrogacao.gif',
+        mensagem: `
+              <div style="${vertical}; gap: 4px;">
+                  <span>Verifique os campos inválidos:</span>
+                  ${campos.map(c => `<span>• ${inicialMaiuscula(c)}</span>`).join('')}
+              </div>
+            `
+      })
 
-  const fornecedor = {
-    id,
-    nome: obVal('nome'),
-    numero_contribuinte: obVal('numero_contribuinte'),
-    cidade: idCidade
+    const fornecedor = {
+      nome: obVal('nome'),
+      numero_contribuinte: obVal('numero_contribuinte'),
+      cidade: obVal('cidade')
+    }
+
+    await enviar(`fornecedores/${id}`, fornecedor)
+
+    removerPopup()
+
+  } catch (err) {
+    console.error(err)
+    popup({ mensagem: 'Falha ao salvar o fornecedor: Fale com o suporte.' })
   }
-
-  await enviar(`fornecedores/${id}`, fornecedor)
-
-  removerPopup()
 
 }
 
@@ -508,34 +543,42 @@ async function criarLinhaGenerica(dados) {
 
 async function adicionarGenerico(id) {
 
-  const { base } = controles?.generico || {}
+  try {
+    overlayAguarde()
 
-  const dados = await recuperarDado(base, id) || {}
+    const { base } = controles?.generico || {}
 
-  const linhas = [
-    {
-      texto: 'Nome',
-      elemento: `<textarea name="nome">${dados?.nome || ''}</textarea>`
-    },
-    {
-      texto: 'Preço',
-      elemento: `<input name="preco" type="number" value="${dados?.preco || ''}">`
-    },
-    {
-      texto: 'Link',
-      elemento: `<textarea name="link">${dados?.link || ''}</textarea>`
-    }
-  ]
+    const dados = await recuperarDado(base, id) || {}
 
-  const botoes = [
-    { texto: 'Salvar', img: 'concluido', funcao: id ? `salvarGenerico('${id}')` : `salvarGenerico()` },
-  ]
+    const linhas = [
+      {
+        texto: 'Nome',
+        elemento: `<textarea name="nome">${dados?.nome || ''}</textarea>`
+      },
+      {
+        texto: 'Preço',
+        elemento: `<input name="preco" type="number" value="${dados?.preco || ''}">`
+      },
+      {
+        texto: 'Link',
+        elemento: `<textarea name="link">${dados?.link || ''}</textarea>`
+      }
+    ]
 
-  if (id)
-    botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExcluirGenerico('${id}')` })
+    const botoes = [
+      { texto: 'Salvar', img: 'concluido', funcao: id ? `salvarGenerico('${id}')` : `salvarGenerico()` },
+    ]
 
-  const titulo = id ? 'Salvar Item' : 'Editar Item'
-  popup({ linhas, botoes, titulo })
+    if (id)
+      botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExcluirGenerico('${id}')` })
+
+    const titulo = id ? 'Salvar Item' : 'Editar Item'
+    popup({ linhas, botoes, titulo })
+
+  } catch (err) {
+    console.error(err)
+    popup({ mensagem: 'Falha ao abrir o formulário: Fale com o suporte.' })
+  }
 
 }
 

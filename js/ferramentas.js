@@ -84,6 +84,8 @@ function linCxOpcoes(dado) {
 
 async function selecionar(name, cod) {
 
+    overlayAguarde()
+
     if (cod == 'null')
         return popup({ mensagem: 'O objeto "base" em controlesCx precisa contem o próprio "id" / "codigo" / "etc"' })
 
@@ -243,26 +245,12 @@ function criarLinhaPainelUsuarios(dados) {
 
     const { usuario, status, funcao } = dados || {}
 
-    let gerenciarStatus = `<label>${status || 'offline'}</label>`
-
-    if (usuario == acesso.usuario) {
-
-        const statusOpcoes = ['online', 'Em almoço', 'Não perturbe', 'Em reunião', 'Apenas Whatsapp']
-        if (acesso?.permissao == 'adm')
-            statusOpcoes.push('Invisível')
-
-        gerenciarStatus = `
-            <select class="opcoesSelect" onchange="mudarStatus(this)">
-                ${statusOpcoes.map(op => `<option ${acesso?.status == op ? 'selected' : ''}>${op}</option>`).join('')}
-            </select>`
-    }
-
     return `
     <tr>
         <td>
             <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
                 <img src="imagens/${status || 'offline'}.png" style="width: 1.5rem;">
-                ${gerenciarStatus}
+                <label>${status || 'offline'}</label>
             </div>
         </td>
         <td>

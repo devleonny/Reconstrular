@@ -7,8 +7,6 @@ function campoBloq() {
 async function modTab(configuracoes) {
     const {
         btnExtras = null,
-        ocultarPaginacao = false,
-        ocultarLegenda = false,
         ocultarPesquisa = false,
         scroll = true,
         cor = null,

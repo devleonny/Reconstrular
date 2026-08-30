@@ -161,7 +161,7 @@ async function orcamentos(finalizado = filtroFinalizado) {
 function montarPagina({ titulo, imagem, tabela }) {
 
     return `
-            <div style="${vertical};">
+            <div style="${vertical}; width: 100%;">
                 <div class="titulo-tabelas">
                     <img src="imagens/${imagem}.png">
                     <span>${titulo}</span>

@@ -343,12 +343,12 @@ async function renderCronogramaObra(idObra) {
         .join('')
 
     tela.innerHTML = `
-        <div style="${horizontal}; gap: 2rem;">
-            <button style="background-color: red;" onclick="pdfObra('Cronograma')">PDF</button>
-            <button onclick="verAndamento('${idObra}', true)">Voltar</button>
-        </div>
-        <br>
         <div class="acompanhamento">
+            
+            <div class="botao-flutuante">
+                <img src="imagens/pdf2.png" onclick="pdfObra('Cronograma')">
+            </div>
+
             <div id="pdf" style="${vertical}; width: 100%;">
                 ${tabInfos}
                 ${tabelas}

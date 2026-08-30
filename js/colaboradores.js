@@ -186,7 +186,7 @@ async function adicionarColaborador(id) {
         }
 
         return `
-            <div name="${name}_bloco" style="${vertical}; gap: 5px;">
+            <div name="${name}_bloco" class="opcoes-formulario">
                 ${opcoesStatus}
             </div>`
 
@@ -217,6 +217,7 @@ async function adicionarColaborador(id) {
 
     controlesCxOpcoes.cidade = {
         base: 'cidades',
+        funcaoAdicional: ['verificarRegras'],
         colunas: {
             'Cidade': { chave: 'nome' },
             'Distrito': { chave: 'distrito' },
@@ -227,9 +228,18 @@ async function adicionarColaborador(id) {
     }
 
     const linhas = [
-        { texto: 'Nome Completo', elemento: `<textarea ${regras} name="nome" placeholder="Nome Completo">${colaborador?.nome || ''}</textarea>` },
-        { texto: 'Data de Nascimento', elemento: `<input ${regras} value="${colaborador?.data_nascimento || ''}" type="date" name="data_nascimento">` },
-        { texto: 'Morada', elemento: `<textarea ${regras} name="morada" placeholder="Morada">${colaborador?.morada || ''}</textarea>` },
+        { 
+            texto: 'Nome Completo', 
+            elemento: `<textarea ${regras} name="nome" placeholder="Nome Completo">${colaborador?.nome || ''}</textarea>` 
+        },
+        { 
+            texto: 'Data de Nascimento', 
+            elemento: `<input ${regras} value="${colaborador?.data_nascimento || ''}" type="date" name="data_nascimento">` 
+        },
+        { 
+            texto: 'Morada', 
+            elemento: `<textarea ${regras} name="morada" placeholder="Morada">${colaborador?.morada || ''}</textarea>` 
+        },
         {
             texto: 'Cidade',
             elemento: `
@@ -330,94 +340,111 @@ async function excluirColaborador(id) {
 
 async function salvarColaborador(idColaborador = crypto.randomUUID()) {
 
-    const { campos } = verificarRegras()
+    try {
+        const { campos } = verificarRegras()
 
-    if (campos.length)
-        return popup({
-            mensagem: `
-            <div style="${vertical}; gap: 4px;">
-                <span>Verifique os campos inválidos:</span>
-                ${campos.map(c => `<span>• ${inicialMaiuscula(c)}</span>`).join('')}
-            </div>`
-        })
+        if (campos.length)
+            return popup({
+                imagem: 'gifs/interrogacao.gif',
+                mensagem: `
+                    <div style="${vertical}; gap: 4px;">
+                        <span>Verifique os campos inválidos:</span>
+                        ${campos.map(c => `<span>• ${inicialMaiuscula(c)}</span>`).join('')}
+                    </div>
+            `
+            })
 
-    overlayAguarde()
+        overlayAguarde()
 
-    const colaboradorExistente = await recuperarDado('dados_cola') || {}
+        const colaborador = {}
 
-    const colaborador = {
-        id: idColaborador,
-        ...colaboradorExistente
-    }
+        const camposFixos = [
+            'nome',
+            'data_nascimento',
+            'email',
+            'morada',
+            'apolice',
+            'telefone',
+            'numero_documento',
+            'seguranca_social',
+            'obra',
+            'numero_contribuinte'
+        ]
 
-    const camposFixos = ['nome', 'data_nascimento', 'email', 'morada', 'apolice', 'telefone', 'numero_documento', 'seguranca_social', 'obra', 'numero_contribuinte'];
-    for (const campo of camposFixos)
-        colaborador[campo] = obVal(campo);
+        for (const campo of camposFixos)
+            colaborador[campo] = obVal(campo)
 
-    const camposRatio = ['status', 'documento'];
-    for (const campo of camposRatio) {
-        colaborador[campo] = document.querySelector(`input[name="${campo}"]:checked`)?.value || '';
-    }
-
-    const especialidades = document.querySelectorAll(`input[name="especialidade"]:checked`)
-    colaborador.especialidade = []
-    for (const especialidade of especialidades) {
-        colaborador.especialidade.push(especialidade.value)
-    }
-
-    // Verificação do PIN;
-    const inputPin = document.querySelector('[name="pin"]')
-    const pinExistente = inputPin.dataset.existente
-
-    if (pinExistente && pinExistente !== inputPin.value) {
-
-        const resposta = await colaboradorPin(colaborador.pin, idColaborador)
-
-        if (resposta?.mensagem) {
-            inputPin.classList.add('invalido')
-            return popup({ mensagem: resposta?.mensagem })
+        const camposRatio = ['status', 'documento']
+        for (const campo of camposRatio) {
+            colaborador[campo] = document.querySelector(`input[name="${campo}"]:checked`)?.value || ''
         }
 
-    }
-
-    colaborador.pin = inputPin.value
-
-    const camposAnexos = ['contrato_obra', 'exame'];
-    for (const campo of camposAnexos) {
-        const input = document.querySelector(`[name="${campo}"]`);
-        if (!input || !input.files || input.files.length === 0) continue;
-
-        const anexos = await importarAnexos({ input });
-
-        if (!colaborador[campo]) colaborador[campo] = {};
-        for (const anexo of anexos) {
-            let idAnexo;
-            do {
-                idAnexo = crypto.randomUUID()
-            } while (colaborador[campo][idAnexo]); // evita IDs duplicados
-
-            colaborador[campo][idAnexo] = anexo;
-        }
-    }
-
-    // Cidade;
-    colaborador.cidade = el('cidade').id
-
-    const foto = document.querySelector('[name="foto"]')
-    if (foto.src && !foto.src.includes(api)) {
-        const resposta = await importarAnexos({ foto: foto.src })
-
-        if (resposta[0].link) {
-            colaborador.foto = resposta[0].link
-        } else {
-            return popup({ mensagem: 'Falha no envio da Foto: tente novamente.' })
+        const especialidades = document.querySelectorAll(`input[name="especialidade"]:checked`)
+        colaborador.especialidade = []
+        for (const especialidade of especialidades) {
+            colaborador.especialidade.push(especialidade.value)
         }
 
+        // Verificação do PIN;
+        const inputPin = document.querySelector('[name="pin"]')
+        const pinExistente = inputPin.dataset.existente
+
+        if (pinExistente && pinExistente !== inputPin.value) {
+
+            const resposta = await colaboradorPin(colaborador.pin, idColaborador)
+
+            if (resposta?.mensagem) {
+                inputPin.classList.add('invalido')
+                return popup({ mensagem: resposta?.mensagem })
+            }
+
+        }
+
+        colaborador.pin = inputPin.value
+
+        const camposAnexos = ['contrato_obra', 'exame']
+        for (const campo of camposAnexos) {
+            const input = document.querySelector(`[name="${campo}"]`)
+            if (!input || !input.files || input.files.length === 0) continue
+
+            const anexos = await importarAnexos({ input })
+
+            if (!colaborador[campo]) 
+                colaborador[campo] = {}
+
+            for (const anexo of anexos) {
+                let idAnexo;
+                do {
+                    idAnexo = crypto.randomUUID()
+                } while (colaborador[campo][idAnexo]) // evita IDs duplicados
+
+                colaborador[campo][idAnexo] = anexo
+            }
+        }
+
+        // Cidade;
+        colaborador.cidade = el('cidade').id
+
+        const foto = document.querySelector('[name="foto"]')
+        if (foto.src && !foto.src.includes(api)) {
+            const resposta = await importarAnexos({ foto: foto.src })
+
+            if (resposta[0].link) {
+                colaborador.foto = resposta[0].link
+            } else {
+                return popup({ mensagem: 'Falha no envio da Foto: tente novamente.' })
+            }
+
+        }
+
+        await enviar(`dados_colaboradores/${idColaborador}`, colaborador)
+
+        removerPopup()
+
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao salvar o colaborador: Fale com o suporte.' })
     }
-
-    await enviar(`dados_colaboradores/${idColaborador}`, colaborador)
-
-    removerPopup()
 }
 
 
