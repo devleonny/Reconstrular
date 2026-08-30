@@ -110,6 +110,12 @@
 }
 
 .orcamento-documento {
+    font-size: 12px;
+    display: flex;
+    align-items: start;
+    flex-direction: column;
+    justify-content: start;
+    gap: 1rem;
     padding: 1rem;
     background-color: white;
 }
