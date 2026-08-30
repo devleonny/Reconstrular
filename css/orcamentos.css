@@ -137,6 +137,21 @@
     background-color: white;
 }
 
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .orcamento-documento, .orcamento-documento * {
+        visibility: visible;
+    }
+    .orcamento-documento {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+}
+
 .formulario-orcamento {
     height: 70vh;
     overflow-y: auto;
@@ -176,3 +191,4 @@
     background-color: #de00009a;
     padding: 0.5rem;
 }
+

@@ -1057,6 +1057,10 @@ async function orcamentoFinal(idOrcamento, emJanela) {
     const elemento = `
         <div class="tela-orcamento">
 
+            <div class="botao-flutuante">
+                <img src="imagens/pdf2.png" onclick="pdfOrcamento('${idOrcamento}')">
+            </div>
+
             ${emJanela
             ? ''
             : `
@@ -1064,10 +1068,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
 
                 <button onclick="orcamentos()">Voltar para Orçamentos</button>
                 <button onclick="execucoes('${idOrcamento}')">Voltar para Zonas</button>
-                <button onclick="imprimirRecorte()">Imprimir</button>
-                <img src="imagens/pdf.png" onclick="pdfOrcamento('${idOrcamento}')">
 
-                
             </div>`}
             
             <div class="orcamento-documento">
@@ -1092,7 +1093,6 @@ async function orcamentoFinal(idOrcamento, emJanela) {
 
     if (emJanela) {
         popup({ elemento, titulo: 'Orçamento' })
-        esconderEditaveis(true)
     } else {
         tela.innerHTML = elemento
     }
@@ -1101,49 +1101,6 @@ async function orcamentoFinal(idOrcamento, emJanela) {
 
     removerOverlay()
 
-}
-
-function imprimirRecorte() {
-
-    const origem = document.querySelector('.orcamento-documento')
-
-    if (!origem) 
-        return
-
-    const iframe = document.createElement('iframe')
-    iframe.style.position = 'fixed'
-    iframe.style.width = '0'
-    iframe.style.height = '0'
-    iframe.style.border = '0'
-
-    document.body.appendChild(iframe)
-
-    const doc = iframe.contentWindow.document
-    doc.open()
-    doc.write('<html><head><meta charset="UTF-8"></head><body></body></html>')
-    doc.close()
-
-    const destino = origem.cloneNode(true)
-    doc.body.appendChild(destino)
-
-    copiarEstilos(origem, destino)
-
-    const style = doc.createElement('style')
-    style.textContent = `
-        @page { size: A4 portrait; }
-        * {
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
-    `
-    doc.head.appendChild(style)
-
-    iframe.contentWindow.focus()
-    iframe.contentWindow.print()
-
-    setTimeout(() => iframe.remove(), 500)
-
-    esconderEditaveis(false)
 }
 
 function copiarEstilos(origem, destino) {
