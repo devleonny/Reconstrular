@@ -127,6 +127,7 @@ async function orcamentos(finalizado = filtroFinalizado) {
             body: 'bodyOrcamentos',
             criarLinha: 'criarLinhaOrcamento',
             colunas: {
+                'Número': { chave: 'contrato' },
                 'Cliente': { chave: 'snapshots.cliente' },
                 'Distrito': {},
                 'Cidade': {},
@@ -174,6 +175,7 @@ function montarPagina({ titulo, imagem, tabela }) {
 async function criarLinhaOrcamento(orcamento) {
 
     const {
+        contrato,
         id: idOrcamento,
         status,
         documentos,
@@ -215,8 +217,10 @@ async function criarLinhaOrcamento(orcamento) {
         })
         .join('')
 
-    const versao = orcamento?.versao
     const tds = `
+        <td>
+            <span class="tag-usuario">${contrato}</span>
+        </td>
         <td>${cliente || ''}</td>
         <td>${cidade?.distrito || ''}
         <td>${cidade?.nome || ''}
@@ -380,6 +384,7 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
     const orcamentoAtualizado = {
         ...orcamento || {},
         cliente,
+        finalizado: 'N',
         data_visita: document.querySelector('[name="data_visita"]').value,
         data_contato: document.querySelector('[name="data_contato"]').value,
         zonas
@@ -932,8 +937,21 @@ async function orcamentoFinal(idOrcamento, emJanela) {
 
     overlayAguarde()
 
-    const { zonas, data_contato, data_visita, cliente } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
-    const { nome, numero_contribuinte, email, telefone, morada_fiscal, morada_execucao } = await recuperarDado('dados_clientes', cliente) || {}
+    const { 
+        zonas, 
+        contrato,
+        data_contato, 
+        data_visita, 
+        cliente 
+    } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
+
+    const { 
+        nome, 
+        numero_contribuinte, 
+        email, telefone, 
+        morada_fiscal, 
+        morada_execucao 
+    } = await recuperarDado('dados_clientes', cliente) || {}
 
     let totalGeral = 0
 
@@ -964,9 +982,14 @@ async function orcamentoFinal(idOrcamento, emJanela) {
             linhas += `
             <tr>
                 <td colspan="2" style="background-color: #5b707f;">
-                    <div class="titulo-orcamento">
-                        <span>${titulo}</span>
+
+                    <div style="${horizontal}; gap: 1rem;">
+                        <span class="tag-usuario">${contrato}</span>
+                        <div class="titulo-orcamento">
+                            <span>${titulo}</span>
+                        </div>
                     </div>
+
                 </td>
                 <td class="total-orcamento">${dado}</td>
             </tr>
@@ -1038,26 +1061,29 @@ async function orcamentoFinal(idOrcamento, emJanela) {
             ? ''
             : `
             <div style="width: 100%; ${horizontal}; justify-content: start; gap: 3px; padding: 0.5rem;">
+
                 <button onclick="orcamentos()">Voltar para Orçamentos</button>
-                <button onclick="imprimirRecorte()">Imprimir</button>
-                <button onclick="pdfOrcamento('Orçamento')">Exportar</button>
-                <button onclick="enviarOrcamentoPorEmail('${idOrcamento}')">Enviar</button>
                 <button onclick="execucoes('${idOrcamento}')">Voltar para Zonas</button>
+                <button onclick="imprimirRecorte()">Imprimir</button>
+                <button onclick="pdfOrcamento('${idOrcamento}')">Exportar</button>
+                
             </div>`}
+            
+            <div id="pdf">
+                <div class="orcamento-documento">
+                    <table class="tabela-orcamento">
+                        <tbody>
+                            ${linhas}
+                        </tbody>
+                    </table>
 
-            <div class="orcamento-documento">
-                <table class="tabela-orcamento">
-                    <tbody>
-                        ${linhas}
-                    </tbody>
-                </table>
+                    <br>
 
-                <br>
-
-                <table class="tabela-orcamento-2">
-                    <thead>${colunas}</thead>
-                    <tbody>${itens.join('')}</tbody>
-                </table>
+                    <table class="tabela-orcamento-2">
+                        <thead>${colunas}</thead>
+                        <tbody>${itens.join('')}</tbody>
+                    </table>
+                </div>
             </div>
         </div>
     `
@@ -1121,75 +1147,6 @@ function imprimirRecorte() {
     esconderEditaveis(false)
 }
 
-async function enviarOrcamentoPorEmail(idOrcamento) {
-
-    overlayAguarde()
-
-    const orcamento = dados_orcamentos[idOrcamento]
-    const idCliente = orcamento?.idCliente || ''
-    const cliente = clientes[idCliente]
-    const emails = [] // Incluir outros e-mails;
-    const titulo = cliente?.nome ? `Orçamento disponível - ${cliente.nome}` : 'Orçamento disponível'
-
-    if (cliente.email) emails.push(cliente.email)
-
-    const htmlContent = `
-            <div style="${vertical}; gap: 2px;">
-            
-            <h1>Orçamento em anexo</h1>
-            <span><b>Nome:</b> ${cliente?.nome || '...'}</span>
-            <span><b>Total do Orçamento:</b> ${dinheiro(orcamento?.total_geral)}</span>
-
-            </div>
-    `
-    esconderEditaveis(true)
-    const htmlPdf = document.querySelector('.orcamento-documento')
-
-    const html = `
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/orcamentos.css">
-            <style>
-
-                @page {
-                    size: A4;
-                    margin: 5mm;
-                }
-
-                body {
-                    font-family: 'Poppins', sans-serif;
-                    background: white;
-                }
-
-            </style>
-        </head>
-        <body>
-            ${htmlPdf.outerHTML}
-        </body>
-        </html>
-  `
-
-    const resposta = await pdfEmail({ html, emails, htmlContent, titulo })
-    esconderEditaveis(false)
-
-    if (resposta.mensagem)
-        return popup({ mensagem: JSON.stringify(resposta.mensagem) })
-
-    if (resposta.success) {
-
-        orcamento.emailEnviado = {
-            usuario: acesso.usuario,
-            data: new Date().toLocaleString()
-        }
-
-        await enviar(`dados_orcamentos/${idOrcamento}/emailEnviado`, orcamento.emailEnviado)
-        await orcamentos(finalizado)
-        return popup({ mensagem, titulo: 'Enviado com sucesso', imagem: 'imagens/concluido.png()' })
-    }
-
-}
-
 function copiarEstilos(origem, destino) {
 
     const origemEls = origem.querySelectorAll('*')
@@ -1206,50 +1163,22 @@ function copiarEstilos(origem, destino) {
 }
 
 
-async function pdfOrcamento(nome = 'Documento') {
+async function pdfOrcamento(idOrcamento) {
 
-    esconderEditaveis(true)
-    const htmlPdf = document.querySelector('.orcamento-documento')
+    try {
+        overlayAguarde()
 
-    const html = `
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/orcamentos.css">
-            <style>
+        const { contrato, snapshots } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
+        const nome = [contrato, snapshots?.cliente].filter(Boolean).join('-')
 
-                @page {
-                    size: A4;
-                    margin: 5mm;
-                }
+        const html = document.getElementById('pdf').outerHTML
 
-                body {
-                    font-family: 'Poppins', sans-serif;
-                    background: white;
-                }
+        await pdf({ html, estilos: ['orcamentos'], nome })
 
-            </style>
-        </head>
-        <body>
-            ${htmlPdf.outerHTML}
-        </body>
-        </html>
-  `
-    await pdf(html, `${nome}-${new Date().getTime()}`)
-    esconderEditaveis(false)
-}
-
-function esconderEditaveis(gatilho) {
-
-    const editaveis = document.querySelectorAll('[name="editaveis"]')
-    const titulo = document.querySelector('[name="titulo"]')
-
-    if (titulo)
-        titulo.textContent = gatilho ? 'ORÇAMENTO' : 'Selecionar Zonas'
-
-    editaveis.forEach(e => {
-        e.style.display = gatilho ? 'none' : ''
-    })
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao gerar o PDF: Fale com o suporte.' })
+    }
 
 }
 

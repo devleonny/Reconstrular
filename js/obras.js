@@ -63,7 +63,6 @@ async function criarLinhaObras(obra) {
         id,
         ordem,
         snapshots,
-        nomeCliente,
         colaboradores
     } = obra || {}
 
@@ -970,102 +969,4 @@ function porcentagemHtml(percentual) {
         </div>
     </div>
   `
-}
-
-async function pdf(html, nome = 'documento') {
-
-    if (!html) return
-
-    overlayAguarde()
-
-    try {
-
-        const response = await fetch(`${api}/pdf`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ html })
-        })
-
-        const blob = await response.blob()
-        const url = URL.createObjectURL(blob)
-
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${nome}-${Date.now()}.pdf`
-        a.click()
-
-        URL.revokeObjectURL(url)
-
-        removerOverlay()
-    } catch (err) {
-        popup({ mensagem: err.message })
-    }
-
-}
-
-async function pdf({ id, estilos = [], nome = 'documento', orientacao = '' }) {
-
-    const htmlPdf = document.getElementById(id)
-    if (!id || !htmlPdf)
-        return
-
-    overlayAguarde()
-
-    estilos = estilos
-        .map(estilo => `<link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/${estilo}.css">`)
-        .join('')
-
-    const html = `
-        <html>
-            <head>
-                <meta charset="UTF-8">
-                ${estilos}
-                <style>
-                    @page { size: A4; margin: 10mm; }
-                    html, body { margin: 0; padding: 0; }
-                    body { font-family: 'Poppins', sans-serif; background: white; }
-                    .topo-tabela * { visibility: hidden; }
-                    .div-tabela { max-height: max-content; }
-                    .tabela thead tr:nth-child(2) { display: none; }
-                </style>
-            </head>
-            <body>${htmlPdf.outerHTML}</body>
-        </html>`
-
-    try {
-        const response = await fetch(`${api}/pdf-vers2`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ html })
-        })
-
-        if (!response.ok) {
-            let msg = 'Falha ao baixar PDF'
-            try {
-                const text = await response.text()
-                const j = JSON.parse(text)
-                msg = j?.mensagem || j?.error || text || msg
-            } catch { }
-            popup({ mensagem: msg })
-            removerOverlay()
-            return
-        }
-
-        const blob = await response.blob()
-        const url = URL.createObjectURL(blob)
-
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${nome}.pdf`
-        a.click()
-
-        URL.revokeObjectURL(url)
-        removerOverlay()
-
-    } catch (err) {
-        removerOverlay()
-        popup({ mensagem: err?.message || 'Falha ao gerar PDF' })
-    }
 }

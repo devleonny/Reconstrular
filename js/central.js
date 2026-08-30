@@ -1178,3 +1178,73 @@ async function pdfEmail({ html, emails, htmlContent = 'Documento em anexo', titu
     }
 
 }
+
+async function pdf({ id, html = null, estilos = [], nome = 'documento' }) {
+
+    try {
+        overlayAguarde()
+
+        console.log(nome)
+        
+        if (!id && !html)
+            return popup({ mensagem: 'ID do elemento ou html não localizado: Fale com o suporte.' })
+
+        const htmlPdf = html || document.getElementById(id).outerHTML
+
+        estilos = estilos
+            .map(estilo => `<link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/${estilo}.css">`)
+            .join('')
+
+        const htmlFinal = `
+            <html>
+                <head>
+                    <meta charset="UTF-8">
+                    ${estilos}
+                    <style>
+                        @page { size: A4; margin: 10mm; }
+                        html, body { margin: 0; padding: 0; }
+                        body { 
+                            width: 100%;
+                            display: flex; 
+                            align-items: start;
+                            justify-content: center;
+                            font-family: 'Poppins', sans-serif; 
+                            background: white; 
+                        }
+
+                    </style>
+                </head>
+                <body>${htmlPdf}</body>
+            </html>`
+
+        const response = await fetch(`${api}/pdf`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ html: htmlFinal })
+        })
+
+        if (!response.ok) {
+            let msg = 'Falha ao baixar PDF'
+            const text = await response.text()
+            const j = JSON.parse(text)
+            msg = j?.mensagem || j?.error || text || msg
+
+            popup({ mensagem: msg })
+        }
+
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${nome}.pdf`
+        a.click()
+
+        URL.revokeObjectURL(url)
+        removerOverlay()
+
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao gerar PDF: Fale com o suporte.' })
+    }
+}
