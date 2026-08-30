@@ -1183,8 +1183,6 @@ async function pdf({ id, html = null, estilos = [], nome = 'documento' }) {
 
     try {
         overlayAguarde()
-
-        console.log(nome)
         
         if (!id && !html)
             return popup({ mensagem: 'ID do elemento ou html não localizado: Fale com o suporte.' })
@@ -1201,7 +1199,7 @@ async function pdf({ id, html = null, estilos = [], nome = 'documento' }) {
                     <meta charset="UTF-8">
                     ${estilos}
                     <style>
-                        @page { size: A4; margin: 10mm; }
+                        @page { size: A4; margin: 0mm; }
                         html, body { margin: 0; padding: 0; }
                         body { 
                             width: 100%;

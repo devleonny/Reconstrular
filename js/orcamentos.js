@@ -219,7 +219,7 @@ async function criarLinhaOrcamento(orcamento) {
 
     const tds = `
         <td>
-            <span class="tag-usuario">${contrato}</span>
+            <span class="tag-orcamento">${contrato}</span>
         </td>
         <td>${cliente || ''}</td>
         <td>${cidade?.distrito || ''}
