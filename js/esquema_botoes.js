@@ -1,48 +1,53 @@
 let menusAbertos = {}
 
-function criarMenus(chave) {
+function podeExibirMenu(item, funcao) {
+    const permitido = Array.isArray(item?.permitido) ? item.permitido : []
+    const bloqueio = Array.isArray(item?.bloqueio) ? item.bloqueio : []
 
+    if (permitido.length > 0 && !permitido.includes(funcao)) {
+        return false
+    }
+
+    if (bloqueio.includes(funcao)) {
+        return false
+    }
+
+    return true
+}
+
+function criarMenus(chave) {
     telaAtiva = chave
+
     const botoesMenu = document.querySelector('.botoesMenu')
     const { funcao } = JSON.parse(localStorage.getItem('acesso')) || {}
     const lista = esquemaBotoes[chave] || []
 
     const html = lista
-        .map((item, i) => {
-
-            const permitido = item.permitido || []
-            const bloqueio = item.bloqueio || []
-
-            if (permitido.length > 0 && !permitido.includes(funcao)) {
-                return ''
-            }
-
-            if (permitido.length === 0 && bloqueio.includes(funcao)) {
-                return ''
-            }
-
-            return renderMenuItem(item, `menu_${i}`, 0)
-        })
+        .filter((item) => podeExibirMenu(item, funcao))
+        .map((item, i) => renderMenuItem(item, `menu_${i}`, 0, funcao))
         .join('')
 
     botoesMenu.innerHTML = html
 }
 
-function renderMenuItem(item, id, nivel) {
-    const temFilhos = item.sub && item.sub.length
+function renderMenuItem(item, id, nivel, funcao) {
+    const subPermitidos = (item.sub || [])
+        .filter((sub) => podeExibirMenu(sub, funcao))
+
+    const temFilhos = subPermitidos.length > 0
 
     return `
         <div class="menu-item">
-            <div 
-                class="menu-principal nivel-${nivel}" 
+            <div
+                class="menu-principal nivel-${nivel}"
                 onclick="acaoMenu('${id}', '${item.funcao || ''}', ${temFilhos})">
                 ${criarAtalhoMenu(item, nivel)}
             </div>
 
             ${temFilhos ? `
                 <div class="menu-secundario" id="${id}">
-                    ${item.sub
-                .map((sub, i) => renderMenuItem(sub, `${id}_${i}`, nivel + 1))
+                    ${subPermitidos
+                .map((sub, i) => renderMenuItem(sub, `${id}_${i}`, nivel + 1, funcao))
                 .join('')
             }
                 </div>
@@ -129,9 +134,9 @@ const esquemaBotoes = {
             bloqueio: ['Trabalhador'],
             sub: [
                 { nome: 'Ver Colaboradores', funcao: 'telaColaboradores', img: 'cracha' },
-                { nome: 'Adicionar Parceiro', funcao: 'adicionarColaborador', img: 'baixar' },
+                { nome: 'Adicionar Parceiro', bloqueio: ['Encarregado de Obra'], funcao: 'adicionarColaborador', img: 'baixar' },
                 { nome: 'Baixar em Excel', funcao: 'excelColaboradores', img: 'planilha' },
-                { nome: 'Baixar em PDF', funcao: 'gerarTodosPDFs', img: 'pdf' }
+                { nome: 'Baixar em PDF', bloqueio: ['Encarregado de Obra'], funcao: 'gerarTodosPDFs', img: 'pdf' }
             ]
         },
         {
@@ -158,7 +163,7 @@ const esquemaBotoes = {
             img: 'contas',
             sub: [
                 { nome: 'Verificar Despesas', funcao: 'verificarDespesas', img: 'contas' },
-                { nome: 'Baixar em Excel', funcao: 'confirmarBaixarExcel', img: 'planilha' },
+                { nome: 'Baixar em Excel', permitido: ['CEO'], funcao: 'confirmarBaixarExcel', img: 'planilha' },
                 { nome: 'Adicionar Despesa', funcao: 'formularioDespesa', img: 'baixar' },
                 { nome: 'Fornecedores', funcao: 'telaFornecedores', img: 'fornecedor' },
                 { nome: 'Materiais', funcao: 'telaMateriais', img: 'caixa' },

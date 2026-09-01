@@ -1197,11 +1197,7 @@ async function pdf({ id, html = null, estilos = [], nome = 'documento' }) {
                     <style>
                         @page { size: A4; margin: 0mm; }
                         html, body { margin: 0; padding: 0; }
-                        body { 
-                            width: 100%;
-                            display: flex; 
-                            align-items: start;
-                            justify-content: center;
+                        body {
                             font-family: 'Poppins', sans-serif; 
                             background: white; 
                         }

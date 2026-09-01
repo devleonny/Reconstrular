@@ -25,18 +25,11 @@ async function verificarDespesas() {
 
     telaAtiva = 'despesas'
 
-    const { funcao } = acesso || {}
-
-    const filtros = funcao !== 'CEO'
-      ? { obra: { op: 'NOT_EMPTY' } }
-      : {}
-
     const tabela = await modTab({
       btnExtras: '<button onclick="formularioDespesa()">Adicionar Despesa</button>',
       pag: 'despesas',
       base: 'dados_despesas',
       body: 'bodyDespesas',
-      filtros,
       criarLinha: 'criarLinhaDespesa',
       colunas: {
         'Fornecedor': { chave: 'snapshots.fornecedor.nome' },
@@ -92,8 +85,8 @@ async function criarLinhaDespesa(dados) {
         <td>${cidade?.distrito || ''}
         <td>${cidade?.nome || ''}
         <td>${fornecedor?.numero_contribuinte || ''}</td>
-        <td>${dinheiro(valor)}</td>
-        <td>${dinheiro(iva)}</td>
+        <td style="white-space: nowrap;">${dinheiro(valor)}</td>
+        <td style="white-space: nowrap;">${dinheiro(iva)}</td>
         <td>${ano || ''}</td>
         <td>${meses[mes] || ''}</td>
         <td>
@@ -113,81 +106,85 @@ async function criarLinhaDespesa(dados) {
 
 async function formularioDespesa(idDespesa) {
 
-  const { numero_contribuinte, material, data, iva, valor, despesa, fornecedor } = await recuperarDado('dados_despesas', idDespesa) || {}
-  const obra = await recuperarDado('dados_obras', despesa?.obra) || {}
-  const dMaterial = material || {}
-  const { nome, snapshots } = await recuperarDado('fornecedores', fornecedor) || {}
-  const cidade = snapshots?.cidade || {}
+  try {
 
-  const placeholder = `placeholder="Escolha o fornecedor"`
+    overlayAguarde()
 
-  controlesCxOpcoes.fornecedor = {
-    base: 'fornecedores',
-    retornar: ['nome'],
-    funcaoAdicional: ['buscarLocalidadeFornecedor'],
-    colunas: {
-      'Nome': { chave: 'nome' },
-      'Cidade': { chave: 'snapshots.cidade.nome' },
-      'Distrito': { chave: 'snapshots.cidade.distrito' }
+    const { numero_contribuinte, material, data, iva, valor, despesa, fornecedor } = await recuperarDado('dados_despesas', idDespesa) || {}
+    const obra = await recuperarDado('dados_obras', despesa?.obra) || {}
+    const dMaterial = material || {}
+    const { nome, snapshots } = await recuperarDado('fornecedores', fornecedor) || {}
+    const cidade = snapshots?.cidade || {}
+
+    const placeholder = `placeholder="Escolha o fornecedor"`
+
+    controlesCxOpcoes.fornecedor = {
+      base: 'fornecedores',
+      retornar: ['nome'],
+      funcaoAdicional: ['buscarLocalidadeFornecedor'],
+      colunas: {
+        'Nome': { chave: 'nome' },
+        'Cidade': { chave: 'snapshots.cidade.nome' },
+        'Distrito': { chave: 'snapshots.cidade.distrito' }
+      }
     }
-  }
 
-  controlesCxOpcoes.obra = {
-    base: 'dados_obras',
-    retornar: ['nome'],
-    colunas: {
-      'Nome': { chave: 'nome' }
+    controlesCxOpcoes.obra = {
+      base: 'dados_obras',
+      retornar: ['ordem'],
+      colunas: {
+        'Número': { chave: 'ordem' }
+      }
     }
-  }
 
-  controlesCxOpcoes.material = {
-    base: 'materiais',
-    retornar: ['nome'],
-    colunas: {
-      'Nome': { chave: 'nome' }
+    controlesCxOpcoes.material = {
+      base: 'materiais',
+      retornar: ['nome'],
+      colunas: {
+        'Nome': { chave: 'nome' }
+      }
     }
-  }
 
-  const linhas = [
-    {
-      texto: 'Fornecedor',
-      elemento: `<span ${fornecedor ? `id="${fornecedor}"` : ''} name="fornecedor" class="opcoes" onclick="cxOpcoes('fornecedor')">${nome || 'Selecionar'}</span>`
-    },
-    {
-      texto: 'Distrito',
-      elemento: `<input ${placeholder} value="${cidade?.distrito || ''}" name="distrito" readOnly>`
-    },
-    {
-      texto: 'Cidade',
-      elemento: `<input ${placeholder} value="${cidade?.nome || ''}" name="cidade" readOnly>`
-    },
-    {
+    const linhas = [
+      {
+        texto: 'Fornecedor',
+        elemento: `<span ${fornecedor ? `id="${fornecedor}"` : ''} name="fornecedor" class="opcoes" onclick="cxOpcoes('fornecedor')">${nome || 'Selecionar'}</span>`
+      },
+      {
+        texto: 'Distrito',
+        elemento: `<input ${placeholder} value="${cidade?.distrito || ''}" name="distrito" readOnly>`
+      },
+      {
+        texto: 'Cidade',
+        elemento: `<input ${placeholder} value="${cidade?.nome || ''}" name="cidade" readOnly>`
+      },
+      {
 
-      texto: 'Número do Contribuinte',
-      elemento: `<input ${placeholder} value="${numero_contribuinte || ''}" name="numero_contribuinte" readOnly>`
-    },
-    {
-      texto: 'Valor',
-      elemento: `<input name="valor" placeholder="Valor" type="number" value="${valor || ''}">`
-    },
-    {
-      texto: 'IVA',
-      elemento: `<input name="iva" placeholder="IVA" type="number" value="${iva || ''}">`
-    },
-    {
-      texto: 'Data',
-      elemento: `<input name="data" type="date" value="${data || ''}">`
-    },
-    {
-      texto: 'Tipo de Material',
-      elemento: `<span ${material ? `id="${material.id}"` : ''} name="material" class="opcoes" onclick="cxOpcoes('material')">${dMaterial?.nome || 'Selecionar'}</span>`
-    },
-    {
-      texto: 'Obra',
-      elemento: `<span name="obra" class="opcoes" onclick="cxOpcoes('obra')">${obra?.nome || 'Selecionar'}</span>`
-    },
-    {
-      texto: 'Upload Fatura', elemento: `
+        texto: 'Número do Contribuinte',
+        elemento: `<input ${placeholder} value="${numero_contribuinte || ''}" name="numero_contribuinte" readOnly>`
+      },
+      {
+        texto: 'Valor',
+        elemento: `<input name="valor" placeholder="Valor" type="number" value="${valor || ''}">`
+      },
+      {
+        texto: 'IVA',
+        elemento: `<input name="iva" placeholder="IVA" type="number" value="${iva || ''}">`
+      },
+      {
+        texto: 'Data',
+        elemento: `<input name="data" type="date" value="${data || ''}">`
+      },
+      {
+        texto: 'Tipo de Material',
+        elemento: `<span ${material ? `id="${material.id}"` : ''} name="material" class="opcoes" onclick="cxOpcoes('material')">${dMaterial?.nome || 'Selecionar'}</span>`
+      },
+      {
+        texto: 'Obra',
+        elemento: `<span name="obra" class="opcoes" onclick="cxOpcoes('obra')">${obra?.nome || 'Selecionar'}</span>`
+      },
+      {
+        texto: 'Upload Fatura', elemento: `
             <div style="${horizontal}; gap: 1rem;">
                 <select id="modal" onchange="alterarModal()">
                     <option>Upload</option>
@@ -196,18 +193,23 @@ async function formularioDespesa(idDespesa) {
                 <div id="upload"></div>
             </div>
             ` }
-  ]
+    ]
 
-  const botoes = [
-    { texto: 'Salvar', funcao: idDespesa ? `salvarDespesa('${idDespesa}')` : 'salvarDespesa()', img: 'concluido' }
-  ]
+    const botoes = [
+      { texto: 'Salvar', funcao: idDespesa ? `salvarDespesa('${idDespesa}')` : 'salvarDespesa()', img: 'concluido' }
+    ]
 
-  if (idDespesa)
-    botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExclusaoDespesa('${idDespesa}')` })
+    if (idDespesa)
+      botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExclusaoDespesa('${idDespesa}')` })
 
-  popup({ linhas, botoes, titulo: 'Gerenciar Despesa' })
+    popup({ linhas, botoes, titulo: 'Gerenciar Despesa' })
 
-  alterarModal()
+    alterarModal()
+
+  } catch (err) {
+    console.error(err)
+    popup({ mensagem: 'Falha ao abrir o formulário: Fale com o suporte.' })
+  }
 }
 
 function alterarModal() {
@@ -245,46 +247,56 @@ async function excluirDespesa(idDespesa) {
 }
 
 async function salvarDespesa(idDespesa = crypto.randomUUID()) {
-  overlayAguarde()
 
-  const despesa = await recuperarDado('dados_despesas', idDespesa) || {}
+  try {
 
-  const idMaterial = document.querySelector('[name="material"]')?.id
-  const material = await recuperarDado('materiais', idMaterial) || {}
+    overlayAguarde()
 
-  // Foto da Fatura
-  const foto = document.querySelector('[name="foto"]')
-  if (foto && foto.src && !foto.src.includes(api)) {
-    const resposta = await importarAnexos({ foto: foto.src });
+    const despesa = await recuperarDado('dados_despesas', idDespesa) || {}
+    const idMaterial = document.querySelector('[name="material"]')?.id
+    const material = await recuperarDado('materiais', idMaterial) || {}
 
-    if (resposta[0].link) {
-      despesa.fatura = resposta[0].link;
-    } else {
-      removerOverlay();
-      return popup({ mensagem: 'Falha no envio da Foto: tente novamente.' })
+    // Foto da Fatura
+    const foto = document.querySelector('[name="foto"]')
+    if (foto && foto.src && !foto.src.includes(api)) {
+      const resposta = await importarAnexos({ foto: foto.src });
+
+      if (resposta[0].link) {
+        despesa.fatura = resposta[0].link;
+      } else {
+        removerOverlay();
+        return popup({ mensagem: 'Falha no envio da Foto: tente novamente.' })
+      }
     }
+
+    // Arquivo da fatura (ex: pdf)
+    const input = document.querySelector('[name="fatura"]');
+    if (input?.files?.length === 1) {
+      const anexos = await importarAnexos({ input })
+      despesa.fatura = anexos[0].link
+    }
+
+    const atualizado = {
+      ...despesa,
+      fornecedor: obVal('fornecedor'),
+      obra: obVal('obra'),
+      material,
+      iva: Number(obVal('iva')),
+      valor: Number(obVal('valor')),
+      data: obVal('data')
+    }
+
+    if (!atualizado.fornecedor || !atualizado.valor || !atualizado.data)
+      return popup({ mensagem: 'Não deixe esses campos em branco: <br>Fornecedor, Valor e/ou Data.' })
+
+    await enviar(`dados_despesas/${idDespesa}`, atualizado)
+
+    removerPopup()
+
+  } catch (err) {
+    console.error(err)
+    popup({ mensagem: 'Falha ao salvar a despesa: Fale com o suporte.' })
   }
-
-  // Arquivo da fatura (ex: pdf)
-  const input = document.querySelector('[name="fatura"]');
-  if (input?.files?.length === 1) {
-    const anexos = await importarAnexos({ input })
-    despesa.fatura = anexos[0].link
-  }
-
-  const atualizado = {
-    ...despesa,
-    fornecedor: document.querySelector('[name="fornecedor"]')?.id,
-    obra: document.querySelector('[name="obra"]')?.id,
-    material,
-    iva: Number(obVal('iva')),
-    valor: Number(obVal('valor')),
-    data: obVal('data')
-  }
-
-  await enviar(`dados_despesas/${idDespesa}`, atualizado)
-
-  removerPopup()
 }
 
 async function buscarLocalidadeFornecedor() {

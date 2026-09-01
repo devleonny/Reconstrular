@@ -382,8 +382,6 @@ async function gerarPdfFolha(idColaborador) {
 
         await baixarFolha(req)
 
-        removerTodosPopups()
-
     } catch (err) {
         console.error(err)
         popup({ mensagem: `Falha ao baixar PDFs: Fale com o suporte.` })

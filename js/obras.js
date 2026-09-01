@@ -468,91 +468,15 @@ async function verAndamento(id, resetar) {
 }
 
 async function pdfObra(nome) {
+
     const htmlPdf = document.querySelector('#pdf')
 
-    const estilos = [
-        'estilo',
-        'obras'
-    ]
+    await pdf({ 
+        html: htmlPdf.outerHTML, 
+        estilos: ['estilo', 'obras'], 
+        nome    
+    })
 
-    const mapEstilos = estilos
-        .map(e => `<link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/${e}.css">`)
-        .join('')
-
-    const html = `
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                ${mapEstilos}
-                <style>
-                    @page {
-                        size: 440mm 210mm;
-                        margin: 5mm;
-                    }
-
-                    html, body {
-                        margin: 0;
-                        padding: 0;
-                        background: white;
-                        font-family: 'Poppins', sans-serif;
-                    }
-
-                    body {
-                        width: 430mm;
-                        overflow: hidden;
-                    }
-
-                    #pdf {
-                        display: block !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                    }
-
-                    #pdf > * {
-                        margin: 0 0 2mm 0 !important;
-                        padding: 0 !important;
-                    }
-
-                    #pdf table {
-                        width: 100% !important;
-                        border-collapse: collapse !important;
-                        margin: 0 0 2mm 0 !important;
-                        break-inside: auto !important;
-                        page-break-inside: auto !important;
-                    }
-
-                    #pdf thead {
-                        display: table-header-group;
-                    }
-
-                    #pdf tbody,
-                    #pdf table,
-                    #pdf tr,
-                    #pdf td,
-                    #pdf th {
-                        margin: 0 !important;
-                        padding-top: 0.8mm !important;
-                        padding-bottom: 0.8mm !important;
-                    }
-
-                    #pdf tr {
-                        break-inside: avoid !important;
-                        page-break-inside: avoid !important;
-                    }
-
-                    #pdf > :last-child,
-                    #pdf table:last-child {
-                        margin-bottom: 0 !important;
-                    }
-                </style>
-            </head>
-            <body>
-                ${htmlPdf.outerHTML}
-            </body>
-            </html>
-        `
-
-    await pdf(html, nome)
 }
 
 function filtrar() {
@@ -595,7 +519,7 @@ async function carregarLinhasAndamento(idObra) {
         const blocoOrc = document.createElement('div')
 
         blocoOrc.className = 'orcamento-bloco'
-        blocoOrc.innerHTML = `<h2>Orçamento: ${cliente.nome || idOrcamento} - ${dinheiro(orcamento?.total_geral)}</h2>`
+        blocoOrc.innerHTML = `<h2>Orçamento: ${orcamento?.contrato || ''} - ${dinheiro(orcamento?.total_geral)}</h2>`
 
         const grupos = {}
 

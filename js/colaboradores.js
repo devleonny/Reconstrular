@@ -134,10 +134,10 @@ async function criarLinhaColaboradores(colaborador) {
             </div>
         </td>
         <td>
-            <img src="imagens/relogio.png" onclick="mostrarFolha('${id}')">
+            <img data-acao="editavel" src="imagens/relogio.png" onclick="mostrarFolha('${id}')">
         </td>
         <td>
-            <div style="${vertical}; align-items: center;" onclick="formularioEPI('${id}')">
+            <div data-acao="editavel" style="${vertical}; align-items: center;" onclick="formularioEPI('${id}')">
                 <img src="imagens/colaborador.png">
                 ${qtdeEPIs ? `<div class="labelQuantidade">${qtdeEPIs}</div>` : ''}
             </div>

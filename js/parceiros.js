@@ -27,10 +27,10 @@ async function telaNiveis() {
 async function telaUsuarios() {
 
   try {
-    overlayAguarde();
+    overlayAguarde()
 
-    telaAtiva = 'parceiros';
-    titulo.textContent = 'Parceiros';
+    telaAtiva = 'parceiros'
+    titulo.textContent = 'Parceiros'
 
     const colunas = {
       'Usuario': { chave: 'usuario' },
@@ -43,7 +43,7 @@ async function telaUsuarios() {
       'Area': { chave: 'snapshots.cidade.area', tipoPesquisa: 'select' },
       'Filtros Aplicados': {},
       'Edição': {}
-    };
+    }
 
     const tabela = await modTab({
       colunas,
@@ -52,7 +52,7 @@ async function telaUsuarios() {
       base: 'dados_setores',
       criarLinha: 'criarLinhaUsuarios',
       body: 'bodyParceiros'
-    });
+    })
 
     tela.innerHTML = montarPagina({ tabela, titulo: 'Parceiros', imagem: 'niveis' })
 
@@ -133,6 +133,9 @@ async function editarParceiros(usuario) {
     const parceiro = usuario
       ? await recuperarDado('dados_setores', usuario) || {}
       : {}
+
+    if (usuario == acesso.usuario && acesso.funcao !== 'CEO')
+      return popup({ mensagem: 'Você não pode editar o seu usuário: Fale com o suporte.' })
 
     const {
       nome_completo,

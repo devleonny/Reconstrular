@@ -281,5 +281,5 @@ function remElementosEditaveis() {
     if (!bloqueados.includes(funcao))
         return
 
-    [...document.querySelectorAll('[data-acao="editavel"]')].forEach(e => e.style.display = 'none')
+    [...document.querySelectorAll('[data-acao="editavel"]')].forEach(e => e.remove())
 }
