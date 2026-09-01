@@ -1,4 +1,8 @@
 .contornoFolha {
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
     width: 100%;
     margin: 5px;
     border: solid 1px #222;

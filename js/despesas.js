@@ -68,35 +68,6 @@ async function verificarDespesas() {
 
 }
 
-async function gerarPdfDespesas() {
-
-  overlayAguarde()
-
-  const pdfhtml = document.querySelector('.pdf-despesas')
-  if (!pdfhtml) return
-
-  const html = `
-        <html>
-            <head>
-                <meta charset="UTF-8">
-                <link rel="stylesheet" href="https://devleonny.github.io/Reconstrular/css/despesas.css">
-                <style>
-                    @page {
-                        size: A4 landscape;
-                    }
-                    body { font-family: 'Poppins', sans-serif; }
-                </style>
-            </head>
-            <body>
-                ${pdfhtml.outerHTML}
-            </body>
-        </html>
-    `
-
-  await pdf(html)
-
-}
-
 async function criarLinhaDespesa(dados) {
 
   const { id, valor, iva, fatura, material, data } = dados || {}

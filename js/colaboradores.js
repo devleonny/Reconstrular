@@ -38,23 +38,23 @@ async function telaColaboradores() {
     const btnExtras = `
         <div style="display: flex; flex-wrap: wrap; gap: 3px;">
 
-            <button onclick="gerarTodosPDFs()">
-            <img src="imagens/pdf.png">
-            Folhas de Ponto
+            <button data-acao="editavel" onclick="gerarTodosPDFs()">
+                <img src="imagens/pdf.png">
+                Folhas de Ponto
             </button>
 
-            <button onclick="excelColaboradores()">
+            <button data-acao="editavel" onclick="excelColaboradores()">
                 <img src="imagens/planilha.png">
                 Baixar Planilha
-                </button>
-            <button onclick="adicionarColaborador()">Adicionar Colaborador</button>
+            </button>
+
+            <button data-acao="editavel" onclick="adicionarColaborador()">Adicionar Colaborador</button>
         </div>
     `
 
     const colunas = {
         'Nome Completo': { chave: 'nome' },
         'Telefone': { chave: 'telefone' },
-        'Obra Alocada': {},
         'Distrito': { chave: 'snapshots.cidade.distrito', tipoPesquisa: 'select' },
         'Cidade': { chave: 'snapshots.cidade.nome', tipoPesquisa: 'select' },
         'Status': { chave: 'status', tipoPesquisa: 'select' },
@@ -78,6 +78,8 @@ async function telaColaboradores() {
     await paginacao()
 
     removerOverlay()
+
+    remElementosEditaveis()
 
 }
 
@@ -121,7 +123,6 @@ async function criarLinhaColaboradores(colaborador) {
             </div>
         </td>
         <td>${colaborador?.telefone || ''}</td>
-        <td></td>
         <td>${cidade?.distrito || ''}</td>
         <td>${cidade?.nome || ''}</td>
         <td>
@@ -142,7 +143,7 @@ async function criarLinhaColaboradores(colaborador) {
             </div>
         </td>
         <td>
-            <img src="imagens/pesquisar.png" data-controle="editar" onclick="adicionarColaborador('${id}')">
+            <img src="imagens/pesquisar.png" data-acao="editavel" onclick="adicionarColaborador('${id}')">
         </td>
     `
 
@@ -367,7 +368,6 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
             'telefone',
             'numero_documento',
             'seguranca_social',
-            'obra',
             'numero_contribuinte'
         ]
 
@@ -511,7 +511,7 @@ async function formularioEPI(idColaborador) {
                         class="megaInput" 
                         value="${value}" 
                         name="camposEpi"
-                        ${equipamentos[value] ? 'checked' : ''}>
+                        ${equipamentos?.[value] ? 'checked' : ''}>
                     </td>
                     <td><select ${visibilidade} name="${value}_quantidade">${opcoes(1, 10, equipamento?.quantidade)}</select></td>
                     <td><select ${visibilidade} name="${value}_tamanho">${opcoes(37, 47, equipamento?.tamanho)}</select></td>

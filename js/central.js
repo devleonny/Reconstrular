@@ -93,10 +93,6 @@ const btn = (img, valor, funcao) => `
 
 telaLogin()
 
-setInterval(async function () {
-    await reprocessarOffline()
-}, 30 * 1000)
-
 function exibirSenha(img) {
 
     let inputSenha = img.previousElementSibling

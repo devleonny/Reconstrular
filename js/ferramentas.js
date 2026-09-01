@@ -271,3 +271,15 @@ function mostrarMenus() {
     tela.toggle('active')
 
 }
+
+function remElementosEditaveis() {
+
+    const { funcao } = acesso || {}
+
+    const bloqueados = ['Encarregado de Obra']
+
+    if (!bloqueados.includes(funcao))
+        return
+
+    [...document.querySelectorAll('[data-acao="editavel"]')].forEach(e => e.style.display = 'none')
+}
