@@ -474,7 +474,7 @@ async function pdfObra(nome) {
     await pdf({ 
         html: htmlPdf.outerHTML, 
         estilos: ['estilo', 'obras'], 
-        nome    
+        nome
     })
 
 }

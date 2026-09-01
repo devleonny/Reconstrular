@@ -133,7 +133,9 @@ async function formularioDespesa(idDespesa) {
       base: 'dados_obras',
       retornar: ['ordem'],
       colunas: {
-        'Número': { chave: 'ordem' }
+        'Número': { chave: 'ordem' },
+        'Cidade':{chave: 'snapshots.cidade.nome'},
+        'Distrito':{chave: 'snapshots.cidade.distrito'}
       }
     }
 

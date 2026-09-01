@@ -131,11 +131,14 @@ async function editarParceiros(usuario) {
     overlayAguarde()
 
     const parceiro = usuario
-      ? await recuperarDado('dados_setores', usuario) || {}
-      : {}
+      ? await recuperarDado('dados_setores', usuario) || null
+      : null
 
-    if (usuario == acesso.usuario && acesso.funcao !== 'CEO')
-      return popup({ mensagem: 'Você não pode editar o seu usuário: Fale com o suporte.' })
+    if (parceiro && !(acesso?.filtros?.funcao || []).includes(parceiro?.funcao))
+      return popup({
+        imagem: 'imagens/cadeado.png',
+        mensagem: 'Você não pode editar esse usuário'
+      })
 
     const {
       nome_completo,
@@ -159,7 +162,24 @@ async function editarParceiros(usuario) {
       }
     }
 
-    const { nome } = await recuperarDado('cidades', cidade) || {}
+    const [dadosCidade, dadosFuncoes] = await Promise.all([
+      recuperarDado('cidades', cidade) || {},
+      pesquisarDB({ base: 'funcoes' })
+    ])
+
+    const { nome } = dadosCidade || {}
+
+    const editarFuncoes = dadosFuncoes.resultados
+      .map(({ titulo }) => {
+
+        return `
+          <div style="${horizontal}; gap; 5px;">
+            <input ${(filtros?.funcao || []).includes(titulo) ? 'checked' : ''} name="pode_editar_funcao" data-funcao="${titulo}" type="checkbox">
+            <span>${titulo}</span>
+          </div>
+          `
+      })
+      .join('')
 
     const linhas = [
       {
@@ -193,6 +213,10 @@ async function editarParceiros(usuario) {
       },
       {
         elemento: `<div class="campo-funcoes"></div>`
+      },
+      {
+        texto: 'Pode editar',
+        elemento: `<div style="${vertical}">${editarFuncoes}</div>`
       }
     ]
 
@@ -532,6 +556,8 @@ async function salvarParceiro(usuario) {
     if (!usuario || !nome_completo || !email)
       return popup({ mensagem: 'Não deixe Usuário/Nome ou E-mail em branco' })
 
+    const funcoesEditaveis = [...document.querySelectorAll('[name="pode_editar_funcao"]:checked')].map(inp => inp.dataset.funcao)
+
     const user = {
       cidade,
       usuario,
@@ -541,6 +567,7 @@ async function salvarParceiro(usuario) {
       data_nascimento,
       funcao,
       filtros: {
+        funcao: funcoesEditaveis,
         zona,
         distrito,
         area,
