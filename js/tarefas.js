@@ -120,13 +120,26 @@ async function gerenciarTarefa(id) {
             })
             .join('')
 
+        let filtros = null
+
+        const { funcao } = acesso || {}
+
+        if (funcao == 'Diretor Operativo')
+            filtros = { op: '=', value: 'Coordenador Operativo' }
+        else if (funcao == 'Coordenador Operativo')
+            filtros = { op: '=', value: 'Encarregado de Obra' }
+        else 
+            filtros = { op: '!=', value: 'Trabalhador' }
+
+
         controlesCxOpcoes.destinatario = {
             base: 'dados_setores',
             retornar: ['usuario'],
+            filtros,
             colunas: {
                 'Usuário': { chave: 'usuario' },
                 'Nome': { chave: 'nome_completo' },
-                'Função': { chave: 'funcao' }
+                'Função': { chave: 'funcao', bloquearPesquisa: true }
             }
         }
 

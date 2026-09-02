@@ -134,7 +134,8 @@ async function editarParceiros(usuario) {
       ? await recuperarDado('dados_setores', usuario) || null
       : null
 
-    if (parceiro && !(acesso?.filtros?.funcao || []).includes(parceiro?.funcao))
+    const filtrosUsuario = acesso?.filtros?.funcao
+    if (parceiro && filtrosUsuario && !filtrosUsuario.includes(parceiro?.funcao))
       return popup({
         imagem: 'imagens/cadeado.png',
         mensagem: 'Você não pode editar esse usuário'
@@ -169,8 +170,8 @@ async function editarParceiros(usuario) {
 
     const { nome } = dadosCidade || {}
 
-    const editarFuncoes = dadosFuncoes.resultados
-      .map(({ titulo }) => {
+    const editarFuncoes = (filtrosUsuario || (dadosFuncoes.resultados.map(res => res.titulo)))
+      .map(titulo => {
 
         return `
           <div style="${horizontal}; gap; 5px;">
@@ -212,11 +213,19 @@ async function editarParceiros(usuario) {
         elemento: `<span name="cidade" ${cidade ? `id="${cidade}"` : ''} class="opcoes" onclick="cxOpcoes('cidade')">${nome || 'Selecionar'}</span>`
       },
       {
-        elemento: `<div class="campo-funcoes"></div>`
+        elemento: `
+          <div style="${vertical}">
+            <span>Pode editar</span>
+            ${editarFuncoes}
+          </div>`
       },
       {
-        texto: 'Pode editar',
-        elemento: `<div style="${vertical}">${editarFuncoes}</div>`
+        elemento: `
+          <div style="${vertical}; gap: 5px;">
+            <span>Função do Parceiro/Usuário</span>
+            <div class="campo-funcoes"></div>
+          </div>
+          `
       }
     ]
 
@@ -294,8 +303,9 @@ async function carregarTabelaFuncoes({ funcao = acesso?.funcao, filtros } = {}) 
 
   cidades = pesquisa.resultados
   esquema = funcoes.resultados
+  const filtrosUsuario = acesso?.filtros?.funcao || []
 
-  const opcoesHTML = (esquema.filter(e => e.titulo == funcao)?.[0].funcoes_editaveis || [])
+  const opcoesHTML = filtrosUsuario
     .map(titulo => {
       return `
         <div style="${horizontal}; justify-content: start; gap: 1rem;">

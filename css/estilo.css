@@ -732,19 +732,26 @@ input:focus {
 }
 
 button {
+    box-shadow: 0 0 2px #222;
     margin: 3px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    background: linear-gradient(45deg, #323639, #5b707f);
-    border: solid 1px #222;
+    background: linear-gradient(45deg, #5b707f, #ffffff4d);
+    border: none;
     padding: 10px 20px;
     color: white;
     cursor: pointer;
-    background-color: #5b707f;
     border-radius: 3px;
     white-space: nowrap;
+    transition: ease-in-out 0.1s;
+}
+
+button:hover {
+    background: linear-gradient(45deg, #7a95a8, #ffffff4d);
+    box-shadow: 0 0 8px #444;
+    transform: translateY(-1px);
 }
 
 .janela {
