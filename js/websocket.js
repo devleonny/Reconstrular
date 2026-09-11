@@ -2,14 +2,14 @@ let socket
 let reconnectInterval = 30000
 let reconnectTimeout = null
 let reconectando = false
-
 let priExe = true
 
 connectWebSocket()
 
 function connectWebSocket() {
+    if (reconectando)
+        return
 
-    if (reconectando) return
     reconectando = true
 
     if (socket) {
@@ -19,18 +19,28 @@ function connectWebSocket() {
             socket.onerror = null
             socket.onclose = null
             socket.close()
-        } catch { }
+        } catch {}
     }
 
     socket = new WebSocket(`${api}:8443`)
+
+    comunicacao()
 
     socket.onopen = async () => {
         reconectando = false
         clearTimeout(reconnectTimeout)
 
-        msgStatus('Online', 1)
-        await comunicacao()
-        await validarAcesso()
+        msgStatus('Conectado ao servidor...')
+
+        const valido = await validarAcesso()
+
+        if (!valido)
+            return
+
+        msg({
+            tipo: 'validar',
+            usuario: acesso.usuario
+        })
     }
 
     socket.onerror = () => {
@@ -39,6 +49,7 @@ function connectWebSocket() {
 
     socket.onclose = () => {
         reconectando = false
+
         msgStatus('Servidor offline', 3)
 
         clearTimeout(reconnectTimeout)
@@ -47,19 +58,18 @@ function connectWebSocket() {
 }
 
 async function validarAcesso() {
-
-    const acesso = JSON.parse(localStorage.getItem('acesso'))
-    const token = acesso?.token
+    const dadosAcesso = JSON.parse(localStorage.getItem('acesso')) || {}
+    const { token } = dadosAcesso
 
     msgStatus('Validando acesso...')
 
-    if (!token || !acesso) {
+    if (!token) {
         localStorage.removeItem('acesso')
-        return await telaLogin()
+        await telaLogin()
+        return false
     }
 
     try {
-
         const resp = await fetch(`${api}/validar-token`, {
             method: 'POST',
             headers: {
@@ -67,35 +77,32 @@ async function validarAcesso() {
             }
         })
 
-        if (resp.status === 401)
+        if (!resp.ok)
             throw new Error('Token inválido')
 
-        const dados = await resp.json()
+        return true
 
-        localStorage.setItem('acesso', JSON.stringify({
-            ...dados,
-            token
-        }))
-
-        msg({ tipo: 'validar', usuario: dados.usuario })
-
-    } catch {
+    } catch (err) {
+        console.error(err)
 
         localStorage.removeItem('acesso')
 
         await telaLogin()
-        popup({ mensagem: 'Sessão expirada, faça login novamente' })
+
+        popup({
+            mensagem: 'Sessão expirada, faça login novamente'
+        })
+
+        return false
     }
 }
 
 function msg(dados) {
-    if (socket && socket.readyState === WebSocket.OPEN) {
+    if (socket?.readyState === WebSocket.OPEN)
         socket.send(JSON.stringify(dados))
-    }
 }
 
 function msgStatus(msg, s = 2) {
-
     const simbolos = {
         1: '🟢🟢🟢',
         2: '🟠🟠🟠',
@@ -105,57 +112,79 @@ function msgStatus(msg, s = 2) {
     msg = `${simbolos[s]} ${msg} ${new Date().toLocaleString()}`
 
     const divMensagem = document.querySelector('.div-mensagem')
-    if (divMensagem) divMensagem.insertAdjacentHTML('beforeend', `<span>${msg}</span>`)
+
+    if (divMensagem)
+        divMensagem.insertAdjacentHTML('beforeend', `<span>${msg}</span>`)
+
     console.log(msg)
 }
 
-async function comunicacao() {
+function comunicacao() {
+    socket.onmessage = async event => {
+        let data
 
-    socket.onmessage = async (event) => {
+        try {
+            data = JSON.parse(event.data)
+        } catch {
+            return
+        }
 
-        const data = JSON.parse(event.data)
-        const { tabela, desconectar, validado, tipo, usuario, status } = data
+        const {
+            tabela,
+            desconectar,
+            validado,
+            tipo,
+            usuario,
+            status
+        } = data
 
         if (desconectar) {
             localStorage.removeItem('acesso')
+
             await telaLogin()
-            popup({ mensagem: 'Usuário desconectado' })
+
+            popup({
+                mensagem: 'Usuário desconectado'
+            })
+
             return
         }
 
         if (validado) {
+            if (validado === 'Sim') {
+                msgStatus('Acesso validado', 1)
 
-            if (validado == 'Sim') {
-
-                msgStatus('Acesso sem alterações')
                 if (priExe) {
                     priExe = false
                     await telaPrincipal()
                 }
 
             } else {
-
                 overlayAguarde()
+
                 msgStatus('Offline', 3)
                 msgStatus('Alteração no acesso recebida...')
 
                 await telaPrincipal()
 
-                msg({ tipo: 'confirmado', usuario: acesso.usuario })
-                msgStatus('Tudo certo', 1)
+                msg({
+                    tipo: 'confirmado',
+                    usuario: acesso.usuario
+                })
 
+                msgStatus('Tudo certo', 1)
             }
 
             await usuariosToolbar()
             removerOverlay()
         }
 
-        if (tipo == 'atualizacao') {
-
-            // Apenas as tabelas usadas;
+        if (tipo === 'atualizacao') {
             for (const [pag, dados] of Object.entries(controles)) {
-
-                if (dados.base == 'vw_objetivos' && tabela == 'cidades') {
+                if (
+                    dados.base === 'vw_objetivos' &&
+                    tabela === 'cidades'
+                ) {
                     await paginacao(pag)
                     continue
                 }
@@ -166,44 +195,20 @@ async function comunicacao() {
                 await paginacao(pag)
             }
 
-            if (tabela == 'mensagens')
+            if (tabela === 'mensagens')
                 await verificarMensagens()
-
         }
 
-        if (tipo == 'status') {
-
-            if (acesso.usuario == usuario)
-                acesso.status = status
-
+        if (tipo === 'status') {
             await usuariosToolbar()
             balaoUsuario(status, usuario)
-
         }
     }
 }
 
 async function verificarMensagens() {
 
-    if (!navigator.onLine)
-        return
 
-    const { usuario } = acesso || {}
-    const dados = await pesquisarDB({
-        base: 'mensagens',
-        filtros: {
-            'snapshots.destinatario': { op: '=', value: usuario }
-        }
-    })
-
-    const contador = document.getElementById('contadorMensagens')
-    if (!contador)
-        return
-
-    contador.style.display = dados.total > 0
-        ? 'flex'
-        : 'none'
-
-    contador.textContent = dados.total
-
+    
+    
 }

@@ -474,7 +474,7 @@ async function enviarRespostaChat(idMensagem, destinatario, remetente) {
 function balaoMensagem() {
 
     controlesCxOpcoes.destinatario = {
-        base: 'dados_setores',
+        base: 'dados_colaboradores',
         retornar: ['usuario'],
         filtros: regrasFiltros(),
         colunas: {

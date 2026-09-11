@@ -20,12 +20,15 @@ async function telaTarefas() {
 
         overlayAguarde()
 
+        const filtros = ''
+
         const tabela = await modTab({
             btnExtras: '<button onclick="gerenciarTarefa()">Adicionar Tarefa</button>',
             base: 'tarefas',
             body: 'tarefas',
             pag: 'tarefas',
             criarLinha: 'criarLinhaTarefa',
+            filtros,
             colunas: {
                 'Tarefa': { chave: 'tarefa' },
                 'Prioridade': { chave: 'prioridade', tipoPesquisa: 'select' },
@@ -103,6 +106,19 @@ async function gerenciarTarefa(id) {
 
         overlayAguarde()
 
+        let filtros = null
+
+        const { funcao } = acesso || {}
+
+        if (funcao == 'Encarregado de Obra')
+            return popup({ mensagem: 'Encarregado de Obra não cria tarefas' })
+        else if (funcao == 'Diretor Operativo')
+            filtros = { op: '=', value: 'Coordenador Operativo' }
+        else if (funcao == 'Coordenador Operativo')
+            filtros = { op: '=', value: 'Encarregado de Obra' }
+        else
+            filtros = { op: '!=', value: 'Trabalhador' }
+
         const {
             tarefa,
             prioridade,
@@ -120,25 +136,13 @@ async function gerenciarTarefa(id) {
             })
             .join('')
 
-        let filtros = null
-
-        const { funcao } = acesso || {}
-
-        if (funcao == 'Diretor Operativo')
-            filtros = { op: '=', value: 'Coordenador Operativo' }
-        else if (funcao == 'Coordenador Operativo')
-            filtros = { op: '=', value: 'Encarregado de Obra' }
-        else 
-            filtros = { op: '!=', value: 'Trabalhador' }
-
-
         controlesCxOpcoes.destinatario = {
-            base: 'dados_setores',
+            base: 'dados_colaboradores',
             retornar: ['usuario'],
             filtros,
             colunas: {
                 'Usuário': { chave: 'usuario' },
-                'Nome': { chave: 'nome_completo' },
+                'Nome': { chave: 'nome' },
                 'Função': { chave: 'funcao', bloquearPesquisa: true }
             }
         }

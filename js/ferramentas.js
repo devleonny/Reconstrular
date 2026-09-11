@@ -185,9 +185,9 @@ async function usuariosToolbar() {
 
     acesso = JSON.parse(localStorage.getItem('acesso')) || null
 
-    const uOnline = await contarPorCampo({ base: 'dados_setores', path: 'status' })
+    const uOnline = await contarPorCampo({ base: 'dados_colaboradores', path: 'status' })
 
-    const { status, funcao } = await recuperarDado('dados_setores', acesso.usuario) || {}
+    const { status } = await recuperarDado('dados_colaboradores', acesso.usuario) || {}
 
     const indicadorStatus = status || 'offline'
 
@@ -217,7 +217,7 @@ async function painelUsuarios() {
             'Função': { chave: 'funcao' }
         },
         body: 'bodyUsuariosOnline',
-        base: 'dados_setores',
+        base: 'dados_colaboradores',
         criarLinha: 'criarLinhaPainelUsuarios',
         ordenar: {
             path: 'status',

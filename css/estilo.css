@@ -738,7 +738,7 @@ button {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    background: linear-gradient(45deg, #5b707f, #ffffff4d);
+    background: linear-gradient(45deg, #5b707f, #323639);
     border: none;
     padding: 10px 20px;
     color: white;
@@ -749,7 +749,7 @@ button {
 }
 
 button:hover {
-    background: linear-gradient(45deg, #7a95a8, #ffffff4d);
+    background: linear-gradient(45deg, #7a95a8, #323639);
     box-shadow: 0 0 8px #444;
     transform: translateY(-1px);
 }
@@ -850,76 +850,6 @@ button:hover {
     height: 25px;
 }
 
-.toolbarPopup {
-    position: relative;
-    display: grid;
-    grid-template-columns: 1fr 40px;
-    /* área principal | botão (X) */
-    align-items: center;
-    width: 100%;
-    min-height: 35px;
-    color: white;
-    background: #3b444c;
-    border-top-left-radius: 5px;
-    border-top-right-radius: 5px;
-    border-bottom: 1px solid #d2d2d2;
-    overflow: hidden;
-}
-
-.toolbarPopup::after {
-    content: "";
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 40px;
-    background: #B12425;
-    border-top-right-radius: 5px;
-    z-index: 0;
-}
-
-.toolbarPopup>* {
-    position: relative;
-    z-index: 1;
-}
-
-.toolbarPopup .title {
-    padding: 0.5rem;
-    font-size: 1rem;
-    justify-self: center;
-}
-
-.toolbarPopup .close {
-    font-size: 1rem;
-    width: 40px;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    background: transparent;
-    border: none;
-}
-
-.botaoPopup {
-    background-color: #3b444c;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 10vw;
-    height: 5vh;
-    cursor: pointer;
-}
-
-.botaoPopup img {
-    width: 5vw;
-}
-
-.botaoPopup label {
-    cursor: pointer;
-    color: white;
-}
-
 .blocoTabela {
     width: 100%;
     display: flex;
@@ -956,11 +886,12 @@ button:hover {
 }
 
 .tabela th {
+    font-size: 11px;
     font-weight: lighter;
     text-align: center;
     background-color: #deeaf6;
     border: solid 1px #d2d2d2;
-    padding: 8px;
+    padding: 3px;
 }
 
 .tabela td {

@@ -120,15 +120,6 @@ const esquemaBotoes = {
             img: 'home'
         },
         {
-            nome: 'Níveis',
-            img: 'niveis',
-            bloqueio: ['Trabalhador'],
-            sub: [
-                { nome: 'Ver Parceiros', funcao: 'telaUsuarios', img: 'niveis' },
-                { nome: 'Adicionar Parceiro', funcao: 'editarParceiros', img: 'baixar' }
-            ]
-        },
-        {
             nome: 'Colaboradores',
             img: 'cracha',
             bloqueio: ['Trabalhador'],
@@ -200,7 +191,7 @@ const esquemaBotoes = {
         },
         {
             nome: 'Tarefas',
-            permitido: ['CEO'],
+            bloqueio: ['Trabalhador'],
             img: 'checklist',
             sub: [
                 { nome: 'Ver Tarefas', funcao: 'telaTarefas', img: 'checklist' },
