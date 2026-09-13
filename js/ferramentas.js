@@ -187,13 +187,9 @@ async function usuariosToolbar() {
 
     const uOnline = await contarPorCampo({ base: 'dados_colaboradores', path: 'status' })
 
-    const { status } = await recuperarDado('dados_colaboradores', acesso.usuario) || {}
-
-    const indicadorStatus = status || 'offline'
-
     const usuariosToolbarString = `
         <div class="botao-usuarios">
-            <img name="imgStatus" onclick="painelUsuarios()" src="imagens/${indicadorStatus}.png">
+            <img name="imgStatus" onclick="painelUsuarios()" src="imagens/${acesso?.status || 'alerta'}.png">
             <label style="font-size: 1.2rem;">${uOnline?.online || 0}</label>
         </div>`
 
@@ -253,12 +249,8 @@ function criarLinhaPainelUsuarios(dados) {
                 <label>${status || 'offline'}</label>
             </div>
         </td>
-        <td>
-            ${usuario}
-        </td>
-        <td>
-            ${funcao || ''}
-        </td>
+        <td>${usuario || ''}</td>
+        <td>${funcao || ''}</td>
     </tr>`
 }
 

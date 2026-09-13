@@ -502,18 +502,137 @@ async function tirarFoto() {
 
 }
 
-function verificarRegras() {
+async function validarUsuario() {
+
+    const usuario = obVal('usuario')
+
+    const statusUsuario = document.getElementById('status_usuario')
+
+    if (!statusUsuario)
+        return
+
+    let pesquisa = null
+
+    if (usuario.length > 5) {
+
+        pesquisa = await pesquisarDB({
+            base: 'dados_colaboradores',
+            filtros: {
+                usuario: { op: '=', value: usuario }
+            }
+        })
+
+    }
+
+    const modelo = (texto, img) => `
+        <div style="${horizontal}; gap: 0.5rem;">
+            <img src="imagens/${img}.png" style="width: 1.5rem;">
+            <span>${texto}</span>
+        </div>
+        `
+
+    // Validador;
+    statusUsuario.dataset.valido = (!pesquisa || pesquisa.resultados.length)
+        ? 'N'
+        : 'S'
+
+    statusUsuario.innerHTML = (!pesquisa || pesquisa.resultados.length)
+        ? modelo('Não disponível', 'cancel')
+        : modelo('Usuário válido', 'concluido')
+
+}
+
+async function verificarRegras() {
 
     const painel = document.querySelector('.painel-padrao')
     const input = (name) => painel.querySelector(`[name="${name}"]`)
     const campos = []
+    const funcao = [...painel.querySelectorAll('[name="funcao"]:checked')]?.[0]?.dataset?.valor
+    const ignorar = ['Diretor Programador', 'CEO'].includes(funcao)
+
+    // Documentos;
+    const funcoesExigemDocs = [
+        'Coordenador Operativo',
+        'Encarregado de Obra',
+        'Trabalhador'
+    ]
+
+    const docs = ['exame', 'contrato_obra']
+    for(const doc of docs) {
+
+        const inputExame = input(doc)
+        const existente = document.getElementById(`anexos_${doc}`).children.length
+
+        if (funcoesExigemDocs.includes(funcao)) {
+
+            if (!inputExame.files.length && existente == 0) {
+                campos.push(`Documento ${doc}`.replace('_', ' '))
+                inv(inputExame)
+            } else {
+                inv(inputExame, true)
+            }
+
+        } else {
+            inv(inputExame, true)
+        }
+
+    }
+
+    // Bloco correspondente a Pin & Senha;
+    const trabalhador = funcao == 'Trabalhador'
+    document.querySelector('.painel-senha').style.display = trabalhador ? 'none' : 'flex'
+    document.querySelector('.painel-pin').style.display = trabalhador ? 'flex' : 'none'
+
+    // Obrigatoriedade do Usuário;
+    const inpUsuario = input('usuario')
+
+    if (funcao && funcao == 'Trabalhador') {
+
+        const pin = input('pin')
+        const pinEspelho = input('pinEspelho')
+        const rodapeAlerta = painel.querySelector('.rodape-alerta')
+
+        // 4 Dígitos e apenas números;
+        pin.value = pin.value.slice(0, 4)
+        pin.value = pin.value.replace(/\D/g, '')
+
+        pinEspelho.value = pinEspelho.value.slice(0, 4)
+        pinEspelho.value = pinEspelho.value.replace(/\D/g, '')
+
+        const mensagem = (img, msg) => `
+            <div class="rodape-alerta">
+                <img src="imagens/${img}.png">
+                <span>${msg}</span>
+            </div>
+            `
+
+        if (pin.value !== pinEspelho.value || pin.value == '') {
+            rodapeAlerta.innerHTML = mensagem('cancel', 'Os Pins não são iguais')
+            inv(pin)
+            inv(pinEspelho)
+            campos.push('pins não são iguais')
+        } else {
+            inv(pin, true)
+            inv(pinEspelho, true)
+            rodapeAlerta.innerHTML = mensagem('concluido', 'Pins iguais')
+        }
+
+    } else if (funcao) {
+
+        if (inpUsuario.value) {
+            inv(inpUsuario, true)
+        } else {
+            campos.push('Usuário')
+            inv(inpUsuario)
+        }
+
+        await validarUsuario()
+    }
 
     const limites = {
         nome: { tipo: 'A' },
         numero_contribuinte: { limite: 9, tipo: 1 },
         seguranca_social: { limite: 11, tipo: 1 },
-        pin: { limite: 4, tipo: 1 },
-        pinEspelho: { limite: 4, tipo: 1 },
         telefone: { limite: 9, tipo: 1 }
     }
 
@@ -562,30 +681,7 @@ function verificarRegras() {
         }
     }
 
-    const pin = painel.querySelector('[name="pin"]')
-    if (pin) {
-
-        const pinEspelho = painel.querySelector('[name="pinEspelho"]')
-        const rodapeAlerta = painel.querySelector('.rodape-alerta')
-        const mensagem = (img, msg) => `
-        <div class="rodape-alerta">
-            <img src="imagens/${img}.png">
-            <span>${msg}</span>
-        </div>`
-
-        if (pin.value !== pinEspelho.value || pin.value == '') {
-            rodapeAlerta.innerHTML = mensagem('cancel', 'Os Pins não são iguais')
-            inv(pin)
-            inv(pinEspelho)
-            campos.push('pins não são iguais')
-        } else {
-            inv(pin, true)
-            inv(pinEspelho, true)
-            rodapeAlerta.innerHTML = mensagem('concluido', 'Pins iguais')
-        }
-    }
-
-    const cidade = el('cidade')
+    const cidade = painel.querySelector('[name="cidade"]')
     if (cidade) {
         if (!cidade?.id) {
             inv(cidade)
@@ -603,11 +699,11 @@ function verificarRegras() {
         if (!bloco)
             continue
 
-        if (!ativo) {
+        if (ignorar || ativo) {
+            inv(bloco, true)
+        } else {
             inv(bloco)
             campos.push(campo)
-        } else {
-            inv(bloco, true)
         }
     }
 
@@ -626,6 +722,7 @@ function verificarRegras() {
     }
 
     const numero_documento = input('numero_documento')
+
     if (numero_documento) {
         const docAtivo = painel.querySelector('input[name="documento"]:checked')
 
@@ -1179,7 +1276,7 @@ async function pdf({ id, html = null, estilos = [], nome = 'documento' }) {
 
     try {
         overlayAguarde()
-        
+
         if (!id && !html)
             return popup({ mensagem: 'ID do elemento ou html não localizado: Fale com o suporte.' })
 

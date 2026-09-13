@@ -6,6 +6,18 @@
     gap: 1rem;
 }
 
+.painel-pin {
+    display: none;
+    justify-content: center;
+    align-items: end;
+    flex-direction: column;
+    gap: 10px
+}
+
+.painel-senha {
+    display: none;
+}
+
 .caixa-filtros {
     padding: 5px;
     background-color: #d2d2d2;
@@ -34,4 +46,34 @@
     flex-shrink: 0;
     width: 1.5rem;
     height: 1.5rem;
+}
+
+.tag-especialidade {
+    display: inline-block;
+    padding: 3px 1vw;
+    border: solid 1px #d52000;
+    border-radius: 20px;
+    background-color: #ff4e2f8f;
+}
+
+.local-cidades {
+    max-width: 500px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
+.tag-cidade {
+    color: white;
+    background: linear-gradient(45deg, #7f6a5b, #393532);
+    padding: 3px 1rem;
+    border-radius: 20px;
+}
+
+@media (orientation: portrait) {
+
+    .campo-filtros {
+        flex-direction: column;
+    }
+
 }

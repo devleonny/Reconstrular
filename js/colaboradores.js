@@ -119,9 +119,8 @@ async function criarLinhaColaboradores(colaborador) {
     } = colaborador || {}
     const { distrito, nome: nomeCidade } = snapshots?.cidade || {}
 
-    const algoPendente = (!epi || !exame || !contrato_obra)
     const especialidades = (especialidade || [])
-        .map(op => `<span>• ${op}</span>`)
+        .map(op => `<span class="tag-especialidade">${op}</span>`)
         .join('')
 
     const estilo = labelStatus(status_disponivel)
@@ -140,10 +139,7 @@ async function criarLinhaColaboradores(colaborador) {
             ${funcao || ''}
         </td>
         <td>
-            <div class="camposTd">
-                <img src="imagens/${algoPendente ? 'exclamacao' : 'doublecheck'}.png">
-                <span>${nome || ''}</span>
-            </div>
+            ${nome}
         </td>
         <td>${telefone || ''}</td>
         <td>${distrito || ''}</td>
@@ -179,6 +175,7 @@ async function adicionarColaborador(id) {
         overlayAguarde()
 
         const colaborador = await recuperarDado('dados_colaboradores', id) || {}
+
         const {
             cidade,
             nome,
@@ -208,27 +205,29 @@ async function adicionarColaborador(id) {
 
         function retornarCaixas(name) {
 
-            let opcoesStatus = ''
             const espc = name == 'especialidade'
 
-            for (const op of listas[name]) {
-                let checked = false
+            const opcoesStatus = (listas?.[name] || [])
+                .map(op => {
 
-                const especialidades = especialidade || []
-                if ((espc && especialidades.includes(op)) || colaborador?.[name] == op) {
-                    checked = true
-                }
+                    let checked = false
 
-                opcoesStatus += `
-            <div class="opcaoStatus">
-                <input ${regras} value="${op}" 
-                type="${espc ? 'checkbox' : 'radio'}" 
-                name="${name}" 
-                ${checked ? 'checked' : ''}>
-                <span style="text-align: left;">${op}</span>
-            </div>
-            `
-            }
+                    const especialidades = especialidade || []
+                    if ((espc && especialidades.includes(op)) || colaborador?.[name] == op) {
+                        checked = true
+                    }
+
+                    return `
+                        <div class="opcaoStatus">
+                            <input ${regras} value="${op}" 
+                            type="${espc ? 'checkbox' : 'radio'}" 
+                            name="${name}" 
+                            ${checked ? 'checked' : ''}>
+                            <span style="text-align: left;">${op}</span>
+                        </div>
+                    `
+                })
+                .join('')
 
             return `
             <div name="${name}_bloco" class="opcoes-formulario">
@@ -238,7 +237,7 @@ async function adicionarColaborador(id) {
         }
 
         const regras = `oninput="verificarRegras()"`
-        const caixaStatus = retornarCaixas('status')
+        const caixaStatus = retornarCaixas('status_disponivel')
         const caixaEspecialidades = retornarCaixas('especialidade')
         const caixaDocumentos = `
         <div style="${vertical}; gap: 1rem;">
@@ -252,7 +251,7 @@ async function adicionarColaborador(id) {
             for (const [, anexo] of Object.entries(anexos)) {
                 anexoString += criarAnexoVisual(anexo)
             }
-            return `<div style="${vertical}">${anexoString}</div>`
+            return `<div id="anexos_${chave}" style="${vertical}">${anexoString}</div>`
         }
 
         controlesCxOpcoes.cidade = {
@@ -275,19 +274,21 @@ async function adicionarColaborador(id) {
             {
                 texto: 'Usuário',
                 elemento: `
-            <div style="${vertical}; gap: 5px;">
-                <input name="usuario" placeholder="Usuário" oninput="verificarDisponibilidade(this)" value="${usuario || ''}" ${usuario ? 'readOnly="true"' : ''}>
-                <div data-valido="${usuario ? 'S' : 'N'}" id="status_usuario"></div>
-            </div>
-            `
+                    <div style="${vertical}; gap: 5px;">
+                        <input name="usuario" placeholder="Usuário" ${regras} value="${usuario || ''}" ${usuario ? 'readOnly="true"' : ''}>
+                        ${usuario ? '' : `<div data-valido="N" id="status_usuario"></div>`}
+                    </div>
+                `
             },
             {
                 elemento: `
-          <div style="${vertical}; gap: 5px;">
-            <span>Função</span>
-            <div class="campo-funcoes"></div>
-          </div>
-          `
+                    <div style="${vertical}; gap: 5px;">
+                        <span>Função</span>
+                        <div class="campo-funcoes"></div>
+                        <span>Cidades</span>
+                        <div class="local-cidades"></div>
+                    </div>
+                `
             },
             {
                 texto: 'Data de Nascimento',
@@ -325,43 +326,62 @@ async function adicionarColaborador(id) {
             },
             { texto: 'Especialidade', elemento: caixaEspecialidades },
             { texto: 'Status', elemento: caixaStatus },
-            { texto: 'Contrato de Obra', elemento: `<input name="contrato_obra" type="file">` },
-            { texto: 'Anexos Contrato de Obra', elemento: divAnexos('contrato_obra') },
-            { texto: 'Exame médico', elemento: `<input name="exame" type="file">` },
-            { texto: 'Anexos Exame', elemento: divAnexos('exame') },
 
-            // foto
+            // EXAMES
+            {
+                texto: 'Contrato de Obra',
+                elemento: `
+                    <div style="${vertical}; gap: 2px;">
+                        <input ${regras} name="contrato_obra" type="file">
+                        ${divAnexos('contrato_obra')}
+                    </div>
+                `
+            },
+            {
+                texto: 'Exame médico',
+                elemento: `
+                    <div style="${vertical}; gap: 2px;">
+                        <input ${regras} name="exame" type="file">
+                        ${divAnexos('exame')}
+                    </div>
+                `
+            },
+
+            // FOTO
             {
                 texto: 'Foto do Colaborador',
                 elemento: `
-            <div style="${vertical}; gap: 5px;">
-                <img src="imagens/camera.png" class="cam" onclick="abrirCamera()">
-                <div class="cameraDiv">
-                    <button onclick="tirarFoto()">Tirar Foto</button>
-                    <video autoplay playsinline></video>
-                    <canvas style="display: none;"></canvas>
-                </div>
-                <img name="foto" ${foto
+                    <div style="${vertical}; gap: 5px;">
+                        <img src="imagens/camera.png" class="cam" onclick="abrirCamera()">
+                        <div class="cameraDiv">
+                            <button onclick="tirarFoto()">Tirar Foto</button>
+                            <video autoplay playsinline></video>
+                            <canvas style="display: none;"></canvas>
+                        </div>
+                        <img name="foto" ${foto
                         ? `src="${api}/uploads/RECONST/${foto}"`
                         : ''
                     } style="width: 7rem; border-radius: 3px;">
-            </div>
-            `
+                    </div>
+                `
             },
 
             // PIN
             {
-                texto: 'PIN de Acesso',
+                texto: 'Forma de Acesso [PIN / Senha]',
                 elemento: `
-            <div class="painel-pin">
-                <input ${regras} type="password" value="${pin || ''}" ${pin ? `data-existente="${pin}"` : ''} name="pin" placeholder="Máximo de 4 números">
-                <input ${regras} name="pinEspelho" value="${pin}" type="password" placeholder="Repita o PIN">
-                
-                <div class="rodape-alerta"></div>
-                <button onclick="resetarPin()">Novo Pin</button>
-            </div>
-            `
-            },
+                    <div class="painel-pin">
+                        <input ${regras} type="password" value="${pin || ''}" ${pin ? `data-existente="${pin}"` : ''} name="pin" placeholder="Máximo de 4 números">
+                        <input ${regras} name="pinEspelho" value="${pin}" type="password" placeholder="Repita o PIN">
+                        
+                        <div class="rodape-alerta"></div>
+                        <button onclick="resetarPin()">Novo Pin</button>
+                    </div>
+                    <div class="painel-senha">
+                        <input placeholder="Senha" name="senha">
+                    </div>
+                `
+            }
         ]
 
         const botoes = [
@@ -373,9 +393,9 @@ async function adicionarColaborador(id) {
 
         popup({ linhas, botoes, titulo: 'Cadastro de Colaborador' })
 
-        verificarRegras()
-
         await carregarTabelaFuncoes(funcao, filtros)
+
+        verificarRegras()
 
     } catch (err) {
         console.error(err)
@@ -405,7 +425,10 @@ async function excluirColaborador(id) {
 async function salvarColaborador(idColaborador = crypto.randomUUID()) {
 
     try {
-        const { campos } = verificarRegras()
+
+        overlayAguarde()
+
+        const { campos } = await verificarRegras()
 
         if (campos.length)
             return popup({
@@ -415,10 +438,8 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
                         <span>Verifique os campos inválidos:</span>
                         ${campos.map(c => `<span>• ${inicialMaiuscula(c)}</span>`).join('')}
                     </div>
-            `
+                `
             })
-
-        overlayAguarde()
 
         const colaborador = {}
 
@@ -448,22 +469,42 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
             colaborador.especialidade.push(especialidade.value)
         }
 
-        // Verificação do PIN;
-        const inputPin = document.querySelector('[name="pin"]')
-        const pinExistente = inputPin.dataset.existente
+        // Função;
+        colaborador.funcao = [...document.querySelectorAll('[name="funcao"]:checked')]?.[0]?.dataset?.valor
 
-        if (pinExistente && pinExistente !== inputPin.value) {
+        if (colaborador.funcao == 'Trabalhador') {
+            // Verificação do PIN;
+            const inputPin = document.querySelector('[name="pin"]')
+            const pinExistente = inputPin.dataset.existente
 
-            const resposta = await colaboradorPin(colaborador.pin, idColaborador)
+            if (pinExistente && pinExistente !== inputPin.value) {
 
-            if (resposta?.mensagem) {
-                inputPin.classList.add('invalido')
-                return popup({ mensagem: resposta?.mensagem })
+                const resposta = await colaboradorPin(colaborador.pin, idColaborador)
+
+                if (resposta?.mensagem) {
+                    inputPin.classList.add('invalido')
+                    return popup({ mensagem: resposta?.mensagem })
+                }
+
             }
 
-        }
+            colaborador.pin = inputPin.value
 
-        colaborador.pin = inputPin.value
+        } else {
+
+            const verificador = document.getElementById('status_usuario')
+
+            if (verificador && verificador.dataset.valido == 'N')
+                return popup({ mensagem: 'O campo Usuário não é válido, por favor verifique!' })
+
+            colaborador.usuario = obVal('usuario')
+
+            const possivelSenha = obVal('senha')
+
+            if (possivelSenha) // Se existir, salva;
+                colaborador.senha = possivelSenha
+
+        }
 
         const camposAnexos = ['contrato_obra', 'exame']
         for (const campo of camposAnexos) {
@@ -476,17 +517,17 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
                 colaborador[campo] = {}
 
             for (const anexo of anexos) {
-                let idAnexo;
+                let idAnexo
                 do {
                     idAnexo = crypto.randomUUID()
-                } while (colaborador[campo][idAnexo]) // evita IDs duplicados
+                } while (colaborador[campo][idAnexo])
 
                 colaborador[campo][idAnexo] = anexo
             }
         }
 
         // Cidade;
-        colaborador.cidade = el('cidade').id
+        colaborador.cidade = obVal('cidade')
 
         const foto = document.querySelector('[name="foto"]')
         if (foto.src && !foto.src.includes(api)) {
@@ -499,9 +540,6 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
             }
 
         }
-
-        // Função;
-        colaborador.funcao = [...document.querySelectorAll('[name="funcao"]:checked')]?.[0]?.dataset?.valor
 
         const coletarMarcados = (campo) => {
             return [...(document.querySelectorAll(`[name="${campo}"]:checked`) || [])]
@@ -698,49 +736,13 @@ async function salvarEpi(idColaborador) {
 
 }
 
-async function verificarDisponibilidade(input) {
-    const usuario = input.value.trim('')
-
-    const statusUsuario = document.getElementById('status_usuario')
-
-    let pesquisa = null
-
-    if (usuario.length > 5) {
-
-        pesquisa = await pesquisarDB({
-            base: 'dados_colaboradores',
-            filtros: {
-                usuario: { op: '=', value: usuario }
-            }
-        })
-
-    }
-
-    const modelo = (texto, img) => `
-    <div style="${horizontal}; gap: 0.5rem;">
-      <img src="imagens/${img}.png" style="width: 1.5rem;">
-      <span>${texto}</span>
-    </div>
-  `
-
-    // Validador;
-    statusUsuario.dataset.valido = (!pesquisa || pesquisa.resultados.length)
-        ? 'N'
-        : 'S'
-
-    statusUsuario.innerHTML = (!pesquisa || pesquisa.resultados.length)
-        ? modelo('Não disponível', 'cancel')
-        : modelo('Usuário válido', 'concluido')
-
-}
-
 async function carregarTabelaFuncoes(funcaoUsuario, filtros) {
 
     const campoFuncoes = document.querySelector('.campo-funcoes')
 
     campoFuncoes.innerHTML = '<img src="gifs/loading.gif" style="width: 5rem;">'
 
-    const [{ resultados: cidadesPesquisa }, { resultados: funcoesPesquisa }, { funcao }] = await Promise.all([
+    const [{ resultados: cidadesPesquisa }, { resultados: funcoesPesquisa }] = await Promise.all([
         cidades
             ? { resultados: cidades }
             : pesquisarDB({
@@ -751,9 +753,10 @@ async function carregarTabelaFuncoes(funcaoUsuario, filtros) {
             ? { resultados: esquema }
             : pesquisarDB({
                 base: 'funcoes'
-            }),
-        recuperarDado('dados_colaboradores', acesso.id) || {},
+            })
     ])
+
+    const { funcao } = acesso
 
     // Se existir pesquisa anterior, então usa a base que existe;
     cidades = cidadesPesquisa
@@ -806,7 +809,7 @@ function mostrarFiltros(titulo, filtros) {
 
                 return `
                     <div class="caixa-opcao">
-                        <input ${marcado ? 'checked' : ''} name="${campo}" data-valor="${o.valor}" onclick="filtrarCidades()" type="checkbox">
+                        <input ${marcado ? 'checked' : ''} name="${campo}" data-valor="${o.valor}" onclick="filtrarCidades({campo: '${campo}'})" type="checkbox">
                         <span>${o.rotulo}</span>
                     </div>
                 `
@@ -814,13 +817,13 @@ function mostrarFiltros(titulo, filtros) {
             .join('')
 
         return `
-      <div class="caixa-filtros">
-        <span style="font-size: 1.1rem;">${inicialMaiuscula(campo)}</span>
-        <div class="caixa-opcoes">
-          ${lista}
-        </div>
-      </div>
-    `
+            <div class="caixa-filtros">
+                <span style="font-size: 1.1rem;">${inicialMaiuscula(campo)}</span>
+                <div class="caixa-opcoes">
+                ${lista}
+                </div>
+            </div>
+        `
     }
 
     const esqFuncao = esquema
@@ -836,7 +839,7 @@ function mostrarFiltros(titulo, filtros) {
                 const todasOrdens = cidades
                     .map(c => c.obras || [])
                     .flat()
-                    .filter(o => o); // só valores não vazios
+                    .filter(o => o) // só valores não vazios
 
                 const valoresUnicos = [...new Set(todasOrdens)]
 
@@ -862,83 +865,88 @@ function mostrarFiltros(titulo, filtros) {
     campoFiltros.innerHTML = caixas || `
         <div style="${horizontal}; gap: 5px;">
             <img src="gifs/alerta.gif">
-            <span>Nenhum filtro disponível</span>
+            <span>Não se aplica</span>
         </div>
         `
 
-    filtrarCidades(filtros)
+    filtrarCidades({ filtros })
+    verificarRegras()
 }
 
-async function filtrarCidades(filtros = null) {
+async function filtrarCidades({ filtros = null, campo = null }) {
+
+    const funcao = document.querySelectorAll('[name="funcao"]:checked')?.[0]?.dataset?.valor
 
     // Zona
     if (filtros) {
 
         for (const input of [...document.querySelectorAll('[name="zona"]')]) {
-            const zona = Number(input.dataset.valor);
-            input.checked = (filtros?.zona || []).includes(zona);
+            const zona = Number(input.dataset.valor)
+            input.checked = (filtros?.zona || []).includes(zona)
         }
 
     }
 
     const zonasMarcadas = [...document.querySelectorAll('[name="zona"]:checked')]
-        .map(input => Number(input.dataset.valor));
+        .map(input => Number(input.dataset.valor))
 
     // Distritos
     const distritos = cidades
         .filter(c => zonasMarcadas.includes(c.zona))
-        .map(c => c.distrito);
+        .map(c => c.distrito)
 
     for (const input of [...document.querySelectorAll('[name="distrito"]')]) {
 
-        const div = input.parentElement;
+        const div = input.parentElement
 
-        const distrito = input.dataset.valor;
+        const distrito = input.dataset.valor
 
         if (distritos.includes(distrito)) {
 
             if (filtros)
-                input.checked = (filtros?.distrito || []).includes(distrito);
+                input.checked = (filtros?.distrito || []).includes(distrito)
 
-            div.style.display = 'flex';
+            div.style.display = 'flex'
         } else {
-            input.checked = false;
-            div.style.display = 'none';
+            input.checked = false
+            div.style.display = 'none'
         }
 
     }
 
     // Areas
     const distritosMarcados = [...document.querySelectorAll('[name="distrito"]:checked')]
-        .map(input => input.dataset.valor);
+        .map(input => input.dataset.valor)
 
     const areas = cidades
         .filter(c => distritosMarcados.includes(c.distrito))
-        .map(c => c.area);
+        .map(c => c.area)
 
     for (const input of [...document.querySelectorAll('[name="area"]')]) {
 
-        const div = input.parentElement;
+        const div = input.parentElement
 
-        const area = Number(input.dataset.valor);
+        const area = Number(input.dataset.valor)
 
         if (areas.includes(area)) {
 
-            if (filtros)
-                input.checked = (filtros?.area || []).includes(area);
+            if(filtros)
+                input.checked = (filtros?.area || []).includes(area)
+            else if(campo == 'distrito' && funcao == 'Encarregado de Obra')
+                input.checked = true
 
-            div.style.display = 'flex';
+            div.style.display = 'flex'
 
         } else {
-            input.checked = false;
-            div.style.display = 'none';
+            input.checked = false
+            div.style.display = 'none'
         }
 
     }
 
     // Obras: ordens de obra por área
     const areasMarcadas = [...document.querySelectorAll('[name="area"]:checked')]
-        .map(input => input.dataset.valor);
+        .map(input => input.dataset.valor)
 
     const ordensDisponiveis = new Set(
         cidades
@@ -946,26 +954,50 @@ async function filtrarCidades(filtros = null) {
             .map(c => c.obras || [])
             .flat()
             .map(o => String(o))
-    );
+    )
 
     for (const input of [...document.querySelectorAll('[name="obra"]')]) {
 
-        const div = input.parentElement;
+        const div = input.parentElement
 
-        const ordem = String(input.dataset.valor);
+        const ordem = String(input.dataset.valor)
 
         if (ordensDisponiveis.has(ordem)) {
 
             if (filtros)
-                input.checked = (filtros?.obra || []).map(String).includes(ordem);
+                input.checked = (filtros?.obra || []).map(String).includes(ordem)
+            else if(campo == 'area' && funcao == 'Trabalhador')
+                input.checked = true
 
-            div.style.display = 'flex';
+            div.style.display = 'flex'
 
         } else {
-            input.checked = false;
-            div.style.display = 'none';
+            input.checked = false
+            div.style.display = 'none'
         }
 
     }
+
+    exibirCidades()
+
+}
+
+function exibirCidades() {
+
+    const local = document.querySelector('.local-cidades')
+
+    const areas = [...document.querySelectorAll('[name="area"]:checked')].map(inp => Number(inp.dataset.valor))
+
+    const cidadesPorArea = cidades
+        .filter(c => areas.includes(c.area))
+        .map(c => `<span class="tag-cidade">${c.nome}</span>`)
+        .join('')
+
+    local.innerHTML = cidadesPorArea || `
+        <div style="${horizontal}; gap: 5px;">
+            <img src="gifs/alerta.gif">
+            <span>Não se aplica</span>
+        </div>
+    `
 
 }

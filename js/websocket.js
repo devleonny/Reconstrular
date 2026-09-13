@@ -175,6 +175,7 @@ function comunicacao() {
                 msgStatus('Tudo certo', 1)
             }
 
+            acesso.status = 'online'
             await usuariosToolbar()
             removerOverlay()
         }
