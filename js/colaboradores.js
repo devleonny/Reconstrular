@@ -110,7 +110,7 @@ async function criarLinhaColaboradores(colaborador) {
         qtdeEPIs += e.quantidade
     })
 
-    const formEpi = ['Encarregado de Obra', 'Trabalhador'].includes(funcao)
+    const formEpi = ['CEO', 'D'].includes(funcao)
         ? `
             <div data-acao="editavel" style="${vertical}; align-items: center;" onclick="formularioEPI('${id}')">
                 <img src="imagens/colaborador.png">
