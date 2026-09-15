@@ -731,7 +731,7 @@ button {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    background: linear-gradient(45deg, #7f6a5b, #393532);
+    background: #7f6a5b;
     border: none;
     padding: 10px 20px;
     color: white;
@@ -742,7 +742,7 @@ button {
 }
 
 button:hover {
-    background: linear-gradient(45deg, #a88d7a, #393532);
+    background: #a88d7a;
     box-shadow: 0 0 8px #444;
     transform: translateY(-1px);
 }
@@ -828,119 +828,6 @@ button:hover {
     border-radius: 3px;
     padding: 1vw;
     border: solid 1px #222;
-}
-
-.megaInput {
-    width: 25px;
-    height: 25px;
-}
-
-.blocoTabela {
-    width: 100%;
-    display: flex;
-    align-items: start;
-    justify-content: start;
-    flex-direction: column;
-}
-
-.recorteTabela {
-    border-left: 1px solid #797979;
-    border-right: 1px solid #797979;
-    height: max-content;
-    max-height: 70vh;
-    width: 100%;
-    overflow: auto;
-}
-
-.tabela {
-    min-width: 100%;
-    background-color: white;
-    border-collapse: collapse;
-}
-
-.tabela thead {
-    box-shadow: 0 1px 0 #ccc;
-    top: 0;
-    position: sticky;
-    background-color: #d2d2d2;
-    z-index: 10;
-}
-
-.tabela thead input {
-    width: 100%;
-}
-
-.tabela th {
-    font-size: 11px;
-    font-weight: lighter;
-    text-align: center;
-    background-color: #deeaf6;
-    border: solid 1px #d2d2d2;
-    padding: 3px;
-}
-
-.tabela td {
-    font-size: 12px;
-    text-align: center;
-    padding: 8px;
-    border: 1px solid #d2d2d2;
-}
-
-.tabela span {
-    text-align: left;
-}
-
-.div-tabela {
-    border-right: solid 1px #434343;
-    border-left: solid 1px #434343;
-    background-color: white;
-    height: max-content;
-    width: 100%;
-    max-height: 70vh;
-    overflow: auto;
-}
-
-.filtro-tabela {
-    border-radius: 3px;
-    background-color: #d2d2d2;
-    display: flex;
-    align-items: start;
-    justify-content: start;
-    flex-direction: column;
-    gap: 2px;
-    padding: 0.5rem;
-}
-
-.topo-tabela {
-    justify-content: space-between;
-    width: 100%;
-    background-color: #707070;
-    border: 1px solid #434343;
-    border-bottom: none;
-    min-height: 2vh;
-    display: flex;
-    align-items: center;
-    border-top-right-radius: 5px;
-    border-top-left-radius: 5px;
-    gap: 2px;
-    width: 100%;
-}
-
-.topo-tabela span {
-    padding: 5px;
-}
-
-.rodape-tabela {
-    display: flex;
-    align-items: start;
-    justify-content: start;
-    gap: 5px;
-    border: 1px solid #434343;
-    width: 100%;
-    min-height: 2vh;
-    border-bottom-left-radius: 5px;
-    border-bottom-right-radius: 5px;
-    background-color: #b1b1b1;
 }
 
 .btnLateral {

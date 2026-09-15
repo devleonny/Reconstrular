@@ -125,8 +125,8 @@ const esquemaBotoes = {
             bloqueio: ['Trabalhador'],
             sub: [
                 { nome: 'Ver Colaboradores', funcao: 'telaColaboradores', img: 'cracha' },
-                { nome: 'Adicionar Parceiro', bloqueio: ['Encarregado de Obra'], funcao: 'adicionarColaborador', img: 'baixar' },
-                { nome: 'Baixar em Excel', funcao: 'excelColaboradores', img: 'planilha' },
+                { nome: 'Adicionar Parceiro', funcao: 'adicionarColaborador', img: 'baixar' },
+                { nome: 'Baixar em Excel', bloqueio: ['Encarregado de Obra'], funcao: 'excelColaboradores', img: 'planilha' },
                 { nome: 'Baixar em PDF', bloqueio: ['Encarregado de Obra'], funcao: 'gerarTodosPDFs', img: 'pdf' }
             ]
         },

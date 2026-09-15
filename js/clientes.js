@@ -171,7 +171,7 @@ async function salvarCliente(idCliente) {
 
         overlayAguarde()
 
-        const { campos } = verificarRegras()
+        const { campos } = await verificarRegras()
 
         if (campos.length)
             return popup({

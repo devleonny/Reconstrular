@@ -168,6 +168,7 @@ async function carregarControles() {
 
 function atribuirVariaveis() {
 
+    acesso = JSON.parse(localStorage.getItem('acesso')) || null
     nomeUsuario = document.querySelector('.nomeUsuario')
     cUsuario = document.querySelector('.cabecalho-usuario')
     toolbar = document.querySelector('.toolbar-top')
@@ -183,13 +184,12 @@ async function usuariosToolbar() {
     if (!acesso)
         return
 
-    acesso = JSON.parse(localStorage.getItem('acesso')) || null
-
     const uOnline = await contarPorCampo({ base: 'dados_colaboradores', path: 'status' })
+    const { status } = await recuperarDado('dados_colaboradores', acesso.id) || {}
 
     const usuariosToolbarString = `
         <div class="botao-usuarios">
-            <img name="imgStatus" onclick="painelUsuarios()" src="imagens/${acesso?.status || 'alerta'}.png">
+            <img name="imgStatus" onclick="painelUsuarios()" src="imagens/${status || 'alerta'}.png">
             <label style="font-size: 1.2rem;">${uOnline?.online || 0}</label>
         </div>`
 
@@ -262,16 +262,4 @@ function mostrarMenus() {
     menu.toggle('active')
     tela.toggle('active')
 
-}
-
-function remElementosEditaveis() {
-
-    const { funcao } = acesso || {}
-
-    const bloqueados = ['Encarregado de Obra']
-
-    if (!bloqueados.includes(funcao))
-        return
-
-    [...document.querySelectorAll('[data-acao="editavel"]')].forEach(e => e.remove())
 }

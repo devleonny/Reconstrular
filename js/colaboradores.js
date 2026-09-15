@@ -38,23 +38,6 @@ async function telaColaboradores() {
     telaAtiva = 'colaboradores'
     titulo.textContent = 'Colaboradores'
 
-    const btnExtras = `
-        <div style="display: flex; flex-wrap: wrap; gap: 3px;">
-
-            <button data-acao="editavel" onclick="gerarTodosPDFs()">
-                <img src="imagens/pdf.png">
-                Folhas de Ponto
-            </button>
-
-            <button data-acao="editavel" onclick="excelColaboradores()">
-                <img src="imagens/planilha.png">
-                Baixar Planilha
-            </button>
-
-            <button data-acao="editavel" onclick="adicionarColaborador()">Adicionar Colaborador</button>
-        </div>
-    `
-
     const colunas = {
         'Usuário': { chave: 'usuario' },
         'Função': { chave: 'funcao', tipoPesquisa: 'select' },
@@ -72,7 +55,7 @@ async function telaColaboradores() {
     const tabela = await modTab({
         colunas,
         pag: 'colaboradores',
-        btnExtras,
+        btnExtras: '<button data-acao="editavel" onclick="adicionarColaborador()">Adicionar Colaborador</button>',
         base: 'dados_colaboradores',
         body: 'bodyColaboradores',
         criarLinha: 'criarLinhaColaboradores'
@@ -83,8 +66,6 @@ async function telaColaboradores() {
     await paginacao()
 
     removerOverlay()
-
-    remElementosEditaveis()
 
 }
 
@@ -108,8 +89,6 @@ async function criarLinhaColaboradores(colaborador) {
         id,
         epi,
         funcao,
-        contrato_obra,
-        exame,
         snapshots,
         usuario,
         telefone,
@@ -131,6 +110,15 @@ async function criarLinhaColaboradores(colaborador) {
         qtdeEPIs += e.quantidade
     })
 
+    const formEpi = ['Encarregado de Obra', 'Trabalhador'].includes(funcao)
+        ? `
+            <div data-acao="editavel" style="${vertical}; align-items: center;" onclick="formularioEPI('${id}')">
+                <img src="imagens/colaborador.png">
+                ${qtdeEPIs ? `<div class="labelQuantidade">${qtdeEPIs}</div>` : ''}
+            </div>
+        `
+        : 'Não se aplica'
+
     const tds = `
         <td>
             ${usuario ? `<span class="tag-usuario">${usuario}</td>` : ''}
@@ -148,18 +136,13 @@ async function criarLinhaColaboradores(colaborador) {
             <span class="${estilo}">${status_disponivel || ''}</span>
         </td>
         <td>
-            <div style="${vertical}; gap: 2px;">
-                ${especialidades}
-            </div>
+            ${especialidades ? `<div style="${vertical}; gap: 2px;">${especialidades}</div>` : 'Não se aplica'}
         </td>
         <td>
             <img data-acao="editavel" src="imagens/relogio.png" onclick="mostrarFolha('${id}')">
         </td>
         <td>
-            <div data-acao="editavel" style="${vertical}; align-items: center;" onclick="formularioEPI('${id}')">
-                <img src="imagens/colaborador.png">
-                ${qtdeEPIs ? `<div class="labelQuantidade">${qtdeEPIs}</div>` : ''}
-            </div>
+            ${formEpi}
         </td>
         <td>
             <img src="imagens/pesquisar.png" data-acao="editavel" onclick="adicionarColaborador('${id}')">
@@ -641,7 +624,7 @@ async function formularioEPI(idColaborador) {
                     <td>
                         <input onchange="visibilidade(this, '${value}')" 
                         type="checkbox" 
-                        class="megaInput" 
+                        class="input-colaboradores" 
                         value="${value}" 
                         name="camposEpi"
                         ${equipamentos?.[value] ? 'checked' : ''}>
@@ -807,10 +790,12 @@ function mostrarFiltros(titulo, filtros) {
 
                 const marcado = (filtros?.[campo] || []).includes(valorFiltro)
 
+
+
                 return `
                     <div class="caixa-opcao">
                         <input ${marcado ? 'checked' : ''} name="${campo}" data-valor="${o.valor}" onclick="filtrarCidades({campo: '${campo}'})" type="checkbox">
-                        <span>${o.rotulo}</span>
+                        <span ${campo == 'obra' ? `onmouseenter="tooltipObra(this, '${o.rotulo}')"` : ''}>${o.rotulo}</span>
                     </div>
                 `
             })
@@ -873,6 +858,55 @@ function mostrarFiltros(titulo, filtros) {
     verificarRegras()
 }
 
+async function tooltipObra(elemento, ordem) {
+    document.getElementById('tooltip')?.remove()
+
+    const tooltip = document.createElement('div')
+    tooltip.id = 'tooltip'
+    tooltip.className = 'tooltip-colaboradores'
+
+    Object.assign(tooltip.style, {
+        position: 'fixed',
+        transform: 'translate(-50%, -100%)',
+        zIndex: '99999',
+        pointerEvents: 'none',
+        visibility: 'hidden'
+    })
+
+    document.body.appendChild(tooltip)
+
+    elemento.addEventListener('mouseleave', () => tooltip.remove(), {
+        once: true
+    })
+
+    try {
+        const pesquisa = await pesquisarDB({
+            base: 'dados_obras',
+            filtros: {
+                op: '=',
+                value: ordem
+            }
+        })
+
+        if (!tooltip.isConnected) return
+
+        const { snapshots } = pesquisa.resultados?.[0] || {}
+
+        tooltip.textContent = snapshots?.morada_execucao || 'Sem informação'
+
+        const rect = elemento.getBoundingClientRect()
+
+        Object.assign(tooltip.style, {
+            left: `${rect.left + rect.width / 2}px`,
+            top: `${rect.top - 8}px`,
+            visibility: 'visible'
+        })
+    } catch (erro) {
+        tooltip.remove()
+        console.error(erro)
+    }
+}
+
 async function filtrarCidades({ filtros = null, campo = null }) {
 
     const funcao = document.querySelectorAll('[name="funcao"]:checked')?.[0]?.dataset?.valor
@@ -930,9 +964,9 @@ async function filtrarCidades({ filtros = null, campo = null }) {
 
         if (areas.includes(area)) {
 
-            if(filtros)
+            if (filtros)
                 input.checked = (filtros?.area || []).includes(area)
-            else if(campo == 'distrito' && funcao == 'Encarregado de Obra')
+            else if (campo == 'distrito' && funcao == 'Encarregado de Obra')
                 input.checked = true
 
             div.style.display = 'flex'
@@ -966,7 +1000,7 @@ async function filtrarCidades({ filtros = null, campo = null }) {
 
             if (filtros)
                 input.checked = (filtros?.obra || []).map(String).includes(ordem)
-            else if(campo == 'area' && funcao == 'Trabalhador')
+            else if (campo == 'area' && funcao == 'Trabalhador')
                 input.checked = true
 
             div.style.display = 'flex'
@@ -990,6 +1024,7 @@ function exibirCidades() {
 
     const cidadesPorArea = cidades
         .filter(c => areas.includes(c.area))
+        .sort((a, b) => a.nome.localeCompare(b.nome))
         .map(c => `<span class="tag-cidade">${c.nome}</span>`)
         .join('')
 

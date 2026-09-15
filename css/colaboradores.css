@@ -70,6 +70,19 @@
     border-radius: 20px;
 }
 
+.input-colaboradores {
+    width: 25px;
+    height: 25px;
+}
+
+.tooltip-colaboradores {
+    border: solid 1px #222;
+    background-color: #ffffffe6;
+    padding: 1rem;
+    border-radius: 5px;
+    text-align: left;
+}
+
 @media (orientation: portrait) {
 
     .campo-filtros {

@@ -558,9 +558,12 @@ async function verificarRegras() {
     ]
 
     const docs = ['exame', 'contrato_obra']
-    for(const doc of docs) {
+    for (const doc of docs) {
 
         const inputExame = input(doc)
+        if (!inputExame)
+            continue
+
         const existente = document.getElementById(`anexos_${doc}`).children.length
 
         if (funcoesExigemDocs.includes(funcao)) {
@@ -580,8 +583,13 @@ async function verificarRegras() {
 
     // Bloco correspondente a Pin & Senha;
     const trabalhador = funcao == 'Trabalhador'
-    document.querySelector('.painel-senha').style.display = trabalhador ? 'none' : 'flex'
-    document.querySelector('.painel-pin').style.display = trabalhador ? 'flex' : 'none'
+    const painelSenha = document.querySelector('.painel-senha')
+    const painelPin = document.querySelector('.painel-pin')
+    if (painelSenha)
+        painelSenha.style.display = trabalhador ? 'none' : 'flex'
+
+    if (painelPin)
+        painelPin.style.display = trabalhador ? 'flex' : 'none'
 
     // Obrigatoriedade do Usuário;
     const inpUsuario = input('usuario')
