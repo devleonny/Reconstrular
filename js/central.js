@@ -585,6 +585,10 @@ async function verificarRegras() {
     const trabalhador = funcao == 'Trabalhador'
     const painelSenha = document.querySelector('.painel-senha')
     const painelPin = document.querySelector('.painel-pin')
+
+    // Campo usuário;
+    input('usuario').closest('.linha-padrao').style.display = trabalhador ? 'none' : 'flex'
+
     if (painelSenha)
         painelSenha.style.display = trabalhador ? 'none' : 'flex'
 
@@ -646,12 +650,6 @@ async function verificarRegras() {
 
     function inv(el, remover) {
 
-        if (el.tagName == 'SPAN') {
-            el.style.color = remover
-                ? ''
-                : '#222'
-        }
-
         el.style.backgroundColor = remover
             ? ''
             : '#f7c5c5'
@@ -705,6 +703,10 @@ async function verificarRegras() {
         const bloco = painel.querySelector(`[name="${campo}_bloco"]`)
 
         if (!bloco)
+            continue
+
+        // Pode ignorar se Especialidade && funções;
+        if (campo == 'especialidade' && ['Diretor Operativo', 'Coordenador Operativo'].includes(funcao))
             continue
 
         if (ignorar || ativo) {

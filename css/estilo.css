@@ -89,6 +89,7 @@ html {
 }
 
 .tag-usuario {
+    display: inline-block;
     color: white;
     border-radius: 15px 3px;
     padding: 5px 10px;

@@ -195,11 +195,16 @@ async function adicionarColaborador(id) {
 
                     let checked = false
 
+                    const valor = colaborador?.[name]
                     const especialidades = especialidade || []
-                    if ((espc && especialidades.includes(op)) || colaborador?.[name] == op) {
+                    if ((espc && especialidades.includes(op)) || valor == op) {
                         checked = true
                     }
 
+                    // Se status, se valor null e op seja Ativo; Default marcado;
+                    if(name == 'status_disponivel' && !valor && op == 'Ativo')
+                        checked = true
+                    
                     return `
                         <div class="opcaoStatus">
                             <input ${regras} value="${op}" 
@@ -361,7 +366,7 @@ async function adicionarColaborador(id) {
                         <button onclick="resetarPin()">Novo Pin</button>
                     </div>
                     <div class="painel-senha">
-                        <input placeholder="Senha" name="senha">
+                        <input type="password" placeholder="Senha" name="senha">
                     </div>
                 `
             }
