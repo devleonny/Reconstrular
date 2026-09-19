@@ -21,9 +21,9 @@ async function telaObras() {
                     destino: 'nomeCliente'
                 },
                 {
-                    path: 'id',
-                    tabela: 'vw_obras_colaboradores',
-                    campoBusca: 'id_obra',
+                    path: 'ordem',
+                    tabela: 'vw_colaboradores_por_obra',
+                    campoBusca: 'ordem',
                     retorno: 'colaboradores',
                     destino: 'colaboradores'
                 }
@@ -83,6 +83,10 @@ async function criarLinhaObras(obra) {
             ? 'Em Andamento'
             : 'Finalizado'
 
+    const listaColabs = (colaboradores || [])
+        .map(({ nome }) => `<span class="tag-obra">${nome}</span>`)
+        .join('')
+
     tds = `
         <td>
             <span class="tag-usuario">${ordem}</span>
@@ -100,7 +104,7 @@ async function criarLinhaObras(obra) {
             </div>
         </td>
         <td>
-            <span></span>
+            <div style="${vertical}; gap: 2px;">${listaColabs}</div>
         </td>
         <td>${dinheiro(materialOrcado)}</td>
         <td>${dinheiro(materialReal)}</td>
@@ -221,7 +225,7 @@ async function adicionarObra(idObra) {
                 elemento: `<div id="orcs-vinculados" style="${vertical}; gap: 2px;"></div>`
             },
             {
-                elemento: idObra 
+                elemento: idObra
                     ? montarPagina({ tabela, titulo: 'Colaboradores', imagem: 'colaborador' })
                     : 'Salve primeiro a Obra, depois volte para selecionar Colaboradores.'
             }
@@ -387,15 +391,8 @@ async function salvarObra(idObra = crypto.randomUUID()) {
                 .filter(Boolean)
         )]
 
-        const colaboradores = [...new Set(
-            [...document.querySelectorAll('#colaboradores span')]
-                .map(span => span.id)
-                .filter(Boolean)
-        )]
-
         const obraAtualizada = {
             orcamentos_vinculados,
-            colaboradores,
             cliente: spanCliente.id
         }
 
@@ -584,11 +581,17 @@ async function carregarLinhasAndamento(idObra) {
         const blocoOrc = document.createElement('div')
 
         blocoOrc.className = 'orcamento-bloco'
-        blocoOrc.innerHTML = `<h2>Orçamento: ${orcamento?.contrato || ''} - ${dinheiro(orcamento?.total_geral)}</h2>`
+        blocoOrc.innerHTML = `
+            <div style="${horizontal}; gap: 5px;">
+                <h2> Orçamento: </h2>
+                <span class="tag-orcamento">${orcamento?.contrato}</span>  
+                <span>${dinheiro(orcamento?.snapshots?.total_geral)}</span>
+            </div>
+            `
 
         const grupos = {}
 
-        const camposMesclados = Object.values(orcamento?.zonas || {})
+        const camposMesclados = Object.values(orcamento?.ambientes || {})
             .flatMap(z =>
                 (z.campos || []).map(campo => ({
                     ...campo?.campo || {},

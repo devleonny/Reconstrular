@@ -1,4 +1,5 @@
 let filtroFinalizado = null
+let ambientes = null
 
 async function orcamentosEmAberto() {
     await orcamentos('N')
@@ -31,69 +32,6 @@ const statusOrcamento = {
     'Orçamento Aceite': 'orcamento_aceite',
     'Orçamento Adjudicado': 'orcamento_adjudicado',
     'Orçamento Recusado': 'orcamento_recusado'
-}
-
-const ambientes = {
-    'Quarto': [
-        '',
-        ...povoarLista(0, 5, 'Quarto Piso'),
-        ...povoarLista(1, 5, 'Quarto Piso')
-    ],
-    'Wc': [
-        '',
-        ...povoarLista(0, 5, 'Wc Social')
-    ],
-    'Wc Suite': [
-        '',
-        ...povoarLista(0, 5, 'Wc Suite - Quarto Piso'),
-        ...povoarLista(1, 5, 'Wc Suite - Quarto Piso')
-    ],
-    'Varanda': [
-        '',
-        'Varanda - Sala de Estar',
-        'Varanda - Sala de Refeições',
-        'Varanda - Cozinha',
-        ...povoarLista(1, 5, 'Varanda - Piso')
-    ],
-    'Cozinha': ['', 'Cozinha'],
-    'Dispensa': ['', 'Dispensa'],
-    'Corredor': [
-        '',
-        'Corredor Quartos - Piso 0',
-        'Corredor Quartos - Piso 1',
-    ],
-    'Hall de Entrada': [
-        '',
-        'Hall de Entrada - Piso 0',
-        'Hall de Entrada - Piso 1',
-    ],
-    'Lavandaria': ['', 'Lavandaria'],
-    'Terraço': ['', 'Terraço'],
-    'Arrecadação': ['', 'Arrecadação'],
-    'Anexo': ['', 'Anexo'],
-    'Casa das Máquinas': ['', 'Anexo'],
-    'Escritório': ['', 'Escritório'],
-    'Sótão': ['', 'Sótão'],
-    'Escada': ['', 'Escada'],
-    'Garagem': ['', 'Garagem'],
-    'Jardim': ['', 'Jardim'],
-    'Telhado': ['', 'Telhado'],
-    'Telheiro': ['', 'Telheiro'],
-    'Piscina Interior': ['', 'Piscina Interior'],
-    'Piscina Exterior': ['', 'Piscina Exterior'],
-    'Terreno': ['', 'Terreno'],
-    'Sala de Estar': ['', 'Sala de Estar'],
-    'Sala de Refeições': ['', 'Sala de Refeições'],
-}
-
-function povoarLista(ini, lim, texto) {
-    let lista = []
-
-    for (let i = 1; i <= lim; i++) {
-        lista.push(`${texto} ${ini} - ${i}`)
-    }
-
-    return lista
 }
 
 async function orcamentos(finalizado = filtroFinalizado) {
@@ -306,13 +244,13 @@ async function formularioOrcamento(idOrcamento) {
 
         const zonas = (lista, ambiente) => {
 
-            const zonaNoOrcamento = orcamento?.zonas?.[ambiente]?.zona || {}
+            const zonaNoOrcamento = orcamento?.ambientes?.[ambiente]?.zona || {}
 
-            const opcoes = lista
+            const opcoes = ['', ...lista]
                 .map(zona => `<option ${zonaNoOrcamento == zona ? 'selected' : ''}>${zona}</option>`)
                 .join('')
 
-            return `<select data-ambiente="${ambiente}" name="zonas">${opcoes}</select>`
+            return `<select data-ambiente="${ambiente}" name="ambientes">${opcoes}</select>`
 
         }
 
@@ -360,7 +298,19 @@ async function formularioOrcamento(idOrcamento) {
             }
         ]
 
-        for (const [ambiente, lista] of Object.entries(ambientes)) {
+        if (!ambientes) {
+            const { resultados } = await pesquisarDB({ base: 'ambientes', limite: 999 }) || []
+            ambientes = resultados
+        }
+
+        const ambientesUnicos = [...new Set(ambientes.map(({ ambiente }) => ambiente))]
+
+        for (const ambiente of ambientesUnicos) {
+
+            const lista = ambientes
+                .filter(({ ambiente: a }) => a == ambiente)
+                .map(({ zona }) => zona)
+
             linhas.push({
                 texto: ambiente,
                 elemento: zonas(lista, ambiente)
@@ -421,15 +371,15 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
 
     const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
 
-    const zonas = Object.fromEntries(
-        [...document.querySelectorAll('[name="zonas"]')]
+    const ambientes = Object.fromEntries(
+        [...document.querySelectorAll('[name="ambientes"]')]
             .filter(select => select.value)
             .map(select => {
                 const ambiente = select.dataset.ambiente
                 const zona = select.value
-                const zonaAtual = orcamento?.zonas?.[ambiente] || {}
+                const ambienteAtual = orcamento?.ambientes?.[ambiente] || {}
 
-                return [ambiente, { zona, ambiente, ...zonaAtual }]
+                return [ambiente, { zona, ambiente, ...ambienteAtual }]
             })
     )
 
@@ -439,7 +389,7 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
         finalizado: 'N',
         data_visita: document.querySelector('[name="data_visita"]').value,
         data_contato: document.querySelector('[name="data_contato"]').value,
-        zonas
+        ambientes
     }
 
     await enviar(`dados_orcamentos/${idOrcamento}`, orcamentoAtualizado)
@@ -470,15 +420,15 @@ async function execucoes(id, ambienteOuIndice = 0) {
     if (controles?.execucoes?.ambiente) {
 
         const campos = controles?.execucoes?.base || []
-        await enviar(`dados_orcamentos/${id}/zonas/${controles?.execucoes?.ambiente}/campos`, campos)
+        await enviar(`dados_orcamentos/${id}/ambientes/${controles?.execucoes?.ambiente}/campos`, campos)
     }
 
-    const { zonas = {} } = await recuperarDado('dados_orcamentos', id) || {}
+    const { ambientes } = await recuperarDado('dados_orcamentos', id) || {}
 
-    const listaZonas = Object.values(zonas)
+    const listaAmbientes = Object.values(ambientes)
 
-    if (!listaZonas.length) {
-        popup({ mensagem: 'Orçamento sem nenhuma zona disponível' })
+    if (!listaAmbientes.length) {
+        popup({ mensagem: 'Orçamento sem nenhum ambientes disponível' })
         return
     }
 
@@ -487,7 +437,7 @@ async function execucoes(id, ambienteOuIndice = 0) {
     if (typeof ambienteOuIndice === 'number') {
         indice = ambienteOuIndice
     } else if (typeof ambienteOuIndice === 'string') {
-        indice = listaZonas.findIndex(z => z.ambiente == ambienteOuIndice)
+        indice = listaAmbientes.findIndex(z => z.ambiente == ambienteOuIndice)
         if (indice === -1)
             indice = 0
     }
@@ -495,10 +445,10 @@ async function execucoes(id, ambienteOuIndice = 0) {
     if (indice < 0)
         indice = 0
 
-    if (indice >= listaZonas.length)
-        indice = listaZonas.length - 1
+    if (indice >= listaAmbientes.length)
+        indice = listaAmbientes.length - 1
 
-    const ambienteAtual = listaZonas[indice] || {}
+    const ambienteAtual = listaAmbientes[indice] || {}
 
     const campos = ambienteAtual.campos || []
 
@@ -517,7 +467,7 @@ async function execucoes(id, ambienteOuIndice = 0) {
         'Valor Total': {}
     }
 
-    const opcoesZonas = listaZonas
+    const opcoesZonas = listaAmbientes
         .map(ambiente => `
                 <option 
                     value="${ambiente.ambiente}" 
@@ -547,7 +497,7 @@ async function execucoes(id, ambienteOuIndice = 0) {
         `
         : ''
 
-    const proximo = indice < listaZonas.length - 1
+    const proximo = indice < listaAmbientes.length - 1
         ? `
             <button onclick="execucoes('${id}', ${indice + 1})">
                 Próxima Zona
@@ -627,15 +577,20 @@ async function alterarFinalizacao(id, status) {
 
     orcamento.finalizado = status
 
+    let total_geral = 0
+
     if (status == 'S') {
 
         // Povoar o custo deste item;
-        const camposMesclados = Object.values(orcamento?.zonas || {})
+        const camposMesclados = Object.values(orcamento?.ambientes || {})
             .flatMap(z =>
                 (z.campos || []).map(campo => ({ ...campo?.campo }))
             )
 
         for (const item of camposMesclados) {
+
+            total_geral += calcularQuantidadeTotal(item.dimensoes,)
+
             orcamento.custos.mao_obra += item?.total_mao_obra || 0
             orcamento.custos.ferramentas += item?.total_ferramentas || 0
             orcamento.custos.materiais += item?.total_materiais || 0
@@ -646,7 +601,7 @@ async function alterarFinalizacao(id, status) {
         const R = proximaRevisao(orcamento.revisoes)
 
         orcamento.revisoes[R] = {
-            zonas: orcamento.zonas,
+            zonas: orcamento.ambientes,
             idCliente: orcamento.idCliente,
             data_contato: orcamento.data_contato,
             data_visita: orcamento.data_visita,
@@ -667,7 +622,11 @@ async function alterarFinalizacao(id, status) {
 
 function adicionarLinha(dados) {
 
-    const { id, campo, dimensoes } = dados || {}
+    const { 
+        id, 
+        campo, 
+        dimensoes
+    } = dados || {}
 
     controlesCxOpcoes[id] = {
         base: 'campos',
@@ -708,9 +667,9 @@ function adicionarLinha(dados) {
             <span name="medida">${dados?.medida || ''}</span>
         </td>
         ${camposDimensoes}
-        <td style="white-space: nowrap;" name="quantidade">${dados?.quantidade || 0}</td>
-        <td style="white-space: nowrap;" name="unitario">${dinheiro(dados?.unitario)}</td>
-        <td style="white-space: nowrap;" name="total">${dinheiro(dados?.unitario * dados?.quantidade)}</td>
+        <td style="white-space: nowrap;" name="quantidade"></td>
+        <td style="white-space: nowrap;" name="unitario"></td>
+        <td style="white-space: nowrap;" name="total"></td>
     `
 
     return `<tr data-campos="S" id="${id}">${tds}</tr>`
@@ -805,10 +764,11 @@ async function atualizarMedidas() {
             input.readOnly = false
         }
 
-        const { quantidade, total } = calcularQuantidadeTotal(dimensoes, campoRef?.total || 0)
+        const unitario = campoRef?.snapshots?.totais?.total || 0
+        const { quantidade, total } = calcularQuantidadeTotal(dimensoes, unitario)
 
         tr.querySelector('[name="quantidade"]').textContent = quantidade
-        tr.querySelector('[name="unitario"]').textContent = dinheiro(campoRef?.total)
+        tr.querySelector('[name="unitario"]').textContent = dinheiro(unitario)
         tr.querySelector('[name="total"]').textContent = dinheiro(total)
 
         // Temporário;
@@ -818,6 +778,8 @@ async function atualizarMedidas() {
                 ...base[posicao],
                 campo: campoRef,
                 dimensoes,
+                unitario,
+                quantidade,
                 descricaoExtra
             }
         }
@@ -868,8 +830,8 @@ async function comparativoRevisoes(idOrcamento) {
             `
         }).join('')
 
-        const zonasAnt = revAnt.zonas || {}
-        const zonasAtu = revAtual.zonas || {}
+        const zonasAnt = revAnt.ambientes || {}
+        const zonasAtu = revAtual.ambientes || {}
 
         const todasZonas = new Set([
             ...Object.keys(zonasAnt),
@@ -990,7 +952,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
     overlayAguarde()
 
     const {
-        zonas,
+        ambientes,
         contrato,
         data_contato,
         data_visita,
@@ -1070,7 +1032,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
         .map(col => `<th>${col}</th>`)
         .join('')
 
-    const camposMesclados = Object.values(zonas)
+    const campos = Object.values(ambientes)
         .flatMap(z =>
             (z.campos || []).map(campo => ({
                 ...campo?.campo || {},
@@ -1078,18 +1040,27 @@ async function orcamentoFinal(idOrcamento, emJanela) {
                 idCampo: campo.id,
                 descricaoExtra: campo.descricaoExtra,
                 ambiente: z.ambiente,
-                zona: z.zona
+                zona: z.zona,
+                unitario: campo.unitario,
+                quantidade: campo.quantidade
             }))
         )
 
     const itens = []
 
-    for (const campo of camposMesclados) {
+    for (const campo of campos) {
 
-        const { zona, medida, dimensoes, descricaoExtra, especialidade, descricao } = campo || {}
+        const { 
+            zona, 
+            medida, 
+            descricaoExtra, 
+            especialidade, 
+            descricao,
+            quantidade,
+            unitario
+        } = campo || {}
 
-        const { quantidade, total } = calcularQuantidadeTotal(dimensoes, campo?.total || 0)
-        const totalLinha = total * quantidade
+        const totalLinha = unitario * quantidade
 
         totalGeral += totalLinha
 

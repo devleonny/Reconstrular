@@ -754,7 +754,7 @@ button {
 }
 
 button:hover {
-    background: #a88d7a;
+    background: #8d7666;
     box-shadow: 0 0 8px #444;
     transform: translateY(-1px);
 }

@@ -169,7 +169,24 @@ function marcarTodosMargem(tabela) {
 
 function criarLinhasCampos(dados) {
 
-    const { id } = dados || {}
+    const { 
+        id, 
+        descricao,
+        especialidade,
+        medida,
+        subtotal_mao_obra,
+        subtotal_ferramentas,
+        subtotal_materiais,
+        snapshots
+    } = dados || {}
+
+    const {
+        total_mao_obra,
+        total_ferramentas,
+        total_materiais,
+        subtotal,
+        total
+    } = snapshots?.totais || {}
 
     const modeloMargem = (chave) => `
         <td style="${bg(chave)}">
@@ -191,34 +208,34 @@ function criarLinhasCampos(dados) {
         <td>
             <input style="width: 1.5rem; height: 1.5rem;" data-codigo="${id}" name="desativar" type="checkbox">
         </td>
-        <td>${dados.especialidade}</td>
+        <td>${especialidade}</td>
         <td>
             <div style="${horizontal}; gap: 5px;">
                 <img data-controle="editar" onclick="edicaoItem('${id}')" src="imagens/lapis.png" style="width: 1.5rem;">
-                <span style="width: 200px; text-align: left;">${dados.descricao}</span>
+                <span style="width: 200px; text-align: left;">${descricao}</span>
             </div>
         </td>
-        <td>${dados.medida}</td>
+        <td>${medida}</td>
         <td>
             <div style="${horizontal};">
                 <img data-controle="editar" src="imagens/caixa.png" style="width: 1.5rem;" onclick="composicoes('${id}', true)">
             </div>
         </td>
 
-        <td style="${bg('materiais')}">${dinheiro(dados?.subtotal_materiais)}</td>
+        <td style="${bg('materiais')}">${dinheiro(subtotal_materiais)}</td>
         ${modeloMargem('materiais')}
-        <td style="${bg('materiais')}">${dinheiro(dados.total_materiais)}</td>
+        <td style="${bg('materiais')}">${dinheiro(total_materiais)}</td>
 
-        <td style="${bg('ferramentas')}">${dinheiro(dados?.subtotal_ferramentas)}</td>
+        <td style="${bg('ferramentas')}">${dinheiro(subtotal_ferramentas)}</td>
         ${modeloMargem('ferramentas')}
-        <td style="${bg('ferramentas')}">${dinheiro(dados.total_ferramentas)}</td>
+        <td style="${bg('ferramentas')}">${dinheiro(total_ferramentas)}</td>
 
-        <td style="${bg('mao_obra')}">${dinheiro(dados?.subtotal_mao_obra)}</td>
+        <td style="${bg('mao_obra')}">${dinheiro(subtotal_mao_obra)}</td>
         ${modeloMargem('mao_obra')}
-        <td style="${bg('mao_obra')}">${dinheiro(dados.total_mao_obra)}</td>
+        <td style="${bg('mao_obra')}">${dinheiro(total_mao_obra)}</td>
 
-        <td style="white-space: nowrap;">${dinheiro(dados.subtotal)}</td>
-        <td style="white-space: nowrap;">${dinheiro(dados.total)}</td>
+        <td style="white-space: nowrap;">${dinheiro(subtotal)}</td>
+        <td style="white-space: nowrap;">${dinheiro(total)}</td>
     `
     return `<tr>${tds}</tr>`
 
@@ -332,27 +349,16 @@ function calcularValorFinal(subtotal, input) {
 async function salvarMargem(tabela) {
 
     overlayAguarde()
+
     const margem = Number(document.getElementById('margem_unidade').value)
-    const cMargem = `margem_${tabela}`
-    const cTotal = `total_${tabela}`
-    const campo = await recuperarDado('campos', idCampo) || {}
-    const subtotal = campo[`subtotal_${tabela}`] || 0
-    const total = subtotal * (1 + (margem / 100))
-
-    campo[cMargem] = margem
-    campo[cTotal] = total
-
-    const subtotalGeral = (campo.subtotal_materiais || 0) + (campo.subtotal_ferramentas || 0) + (campo.subtotal_mao_obra || 0)
-    const totalGeral = (campo.total_materiais || 0) + (campo.total_ferramentas || 0) + (campo.total_mao_obra || 0)
-    campo.total = totalGeral
-    campo.subtotal = subtotalGeral
-
-    await enviar(`campos/${idCampo}`, campo)
+    await enviar(`campos/${idCampo}/margem_${tabela}`, margem)
 
     removerPopup()
 }
 
 async function composicoes(id) {
+
+    overlayAguarde()
 
     const campo = await recuperarDado('campos', id) || {}
 
@@ -385,7 +391,7 @@ async function composicoes(id) {
 
             <div style="${vertical}; gap: 3px;">
                 <span><b>Total Geral</b></span>
-                <span name="totalComposicao">${dinheiro(campo?.totalComposicao)}</span>
+                <span name="totalComposicao">${dinheiro(campo?.total_composicao)}</span>
             </div>
 
             <div class="toolbar-precos">

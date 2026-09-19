@@ -175,7 +175,7 @@ const esquemaBotoes = {
         },
         {
             nome: 'Composições',
-            permitido: ['CEO', 'Diretor Operativo'],
+            permitido: ['CEO', 'Diretor Operativo', 'Diretor Programador'],
             img: 'configuracoes',
             sub: [
                 { nome: 'Criar Composição', funcao: 'edicaoItem', img: 'baixar' },
