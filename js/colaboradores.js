@@ -110,14 +110,12 @@ async function criarLinhaColaboradores(colaborador) {
         qtdeEPIs += e.quantidade
     })
 
-    const formEpi = ['CEO', 'D'].includes(funcao)
-        ? `
-            <div data-acao="editavel" style="${vertical}; align-items: center;" onclick="formularioEPI('${id}')">
+    const formEpi = `
+            <div data-acao="editavel" style="${vertical}; align-items: center;" onclick="abrirEPI('${id}')">
                 <img src="imagens/colaborador.png">
                 ${qtdeEPIs ? `<div class="labelQuantidade">${qtdeEPIs}</div>` : ''}
             </div>
         `
-        : 'Não se aplica'
 
     const tds = `
         <td>
@@ -167,6 +165,7 @@ async function adicionarColaborador(id) {
             morada,
             pin,
             data_nascimento,
+            epi,
             usuario,
             email,
             especialidade,
@@ -178,6 +177,7 @@ async function adicionarColaborador(id) {
             snapshots
         } = colaborador
 
+        const { equipamentos } = epi || {}
         const campoCidade = snapshots?.cidade?.nome || 'Selecione'
 
         const listas = {
@@ -202,9 +202,9 @@ async function adicionarColaborador(id) {
                     }
 
                     // Se status, se valor null e op seja Ativo; Default marcado;
-                    if(name == 'status_disponivel' && !valor && op == 'Ativo')
+                    if (name == 'status_disponivel' && !valor && op == 'Ativo')
                         checked = true
-                    
+
                     return `
                         <div class="opcaoStatus">
                             <input ${regras} value="${op}" 
@@ -222,6 +222,34 @@ async function adicionarColaborador(id) {
                 ${opcoesStatus}
             </div>`
 
+        }
+
+        // Formulário de EPI;
+        const opcoes = (ini, fim, valorAtual) => {
+            let stringOpcoes = '<option></option>'
+            for (let i = ini; i <= fim; i++) stringOpcoes += `<option ${valorAtual == i ? 'selected' : ''}>${i}</option>`
+            return stringOpcoes
+        }
+
+        const tr = (texto, value) => {
+
+            const equipamento = equipamentos?.[value]
+            const visibilidade = `style="display: ${equipamento ? '' : 'none'}"`
+            return `
+                <tr>
+                    <td style="text-align: left;">${texto}</td>
+                    <td>
+                        <input onchange="visibilidade(this, '${value}')" 
+                        type="checkbox" 
+                        class="input-colaboradores" 
+                        value="${value}" 
+                        name="camposEpi"
+                        ${equipamentos?.[value] ? 'checked' : ''}>
+                    </td>
+                    <td><select ${visibilidade} name="${value}_quantidade">${opcoes(1, 10, equipamento?.quantidade)}</select></td>
+                    <td><select ${visibilidade} name="${value}_tamanho">${opcoes(37, 47, equipamento?.tamanho)}</select></td>
+                </tr>
+                `
         }
 
         const regras = `oninput="verificarRegras()"`
@@ -253,6 +281,10 @@ async function adicionarColaborador(id) {
             },
             retornar: ['nome']
         }
+
+        const cabEpi = ['Equipamento', '', 'Quantidade', 'Tamanho']
+            .map(op => `<th>${op}</th>`)
+            .join('')
 
         const linhas = [
             {
@@ -333,6 +365,25 @@ async function adicionarColaborador(id) {
                         ${divAnexos('exame')}
                     </div>
                 `
+            },
+            {
+                elemento: `
+                    <div class="bloco-form-epi">
+                        <span>Formulário de EPI</span>
+                        <table class="tabela">
+                            <thead style="position: static;">${cabEpi}</thead>
+                            <tbody>
+                                ${tr('Botas de segurança com biqueira reforçada', 'botas')}
+                                ${tr('Capacete de proteção', 'capacete')}
+                                ${tr('Colete fluorescente', 'colete')}
+                                ${tr('Luvas (par)', 'luvas')}
+                                ${tr('Mascara com filtro de particulas', 'mascara')}
+                                ${tr('Óculos de protecção', 'oculos')}
+                                ${tr('Proteção auditiva', 'protecaoAuditiva')}
+                            </tbory>
+                        </table>
+                    </div>
+            `
             },
 
             // FOTO
@@ -539,6 +590,23 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
                 .filter(Boolean)
         }
 
+        // EPI
+        const inputsAtivos = document.querySelectorAll('input[name="camposEpi"]:checked')
+        const equipamentos = {}
+
+        for (const input of inputsAtivos) {
+            const campo = input.value
+            equipamentos[campo] = {
+                quantidade: Number(document.querySelector(`[name="${campo}_quantidade"]`).value),
+                tamanho: Number(document.querySelector(`[name="${campo}_tamanho"]`).value)
+            }
+        }
+
+        colaborador.epi = {
+            data: Date.now(),
+            equipamentos
+        }
+
         if (!['CEO', 'Diretor Programador'].includes(colaborador.funcao)) {
 
             // Filtros;
@@ -590,137 +658,6 @@ async function excelColaboradores() {
         console.error(err)
         popup({ mensagem: 'Falha ao gerar o arquivo Excel: Fale com o suporte.' })
     }
-
-}
-
-async function formularioEPI(idColaborador) {
-
-
-    try {
-
-        overlayAguarde()
-
-        const { pin, epi } = await recuperarDado('dados_colaboradores', idColaborador) || {}
-        const { equipamentos } = epi || {}
-
-        const opcoes = (ini, fim, valorAtual) => {
-            let stringOpcoes = '<option></option>'
-            for (let i = ini; i <= fim; i++) stringOpcoes += `<option ${valorAtual == i ? 'selected' : ''}>${i}</option>`
-            return stringOpcoes
-        }
-
-        const senhas = (texto, limite) => `
-        <div style="${vertical}; gap: 5px;">
-            <label>${texto}</label>
-            <input type="password" ${limite
-                ? `maxlength="${limite}" id="pin" data-pin="${pin}" placeholder="Limite de ${limite} dígitos"`
-                : 'id="supervisor" placeholder="Senha de acesso ao App"'
-            }>
-        </div>
-    `
-
-        const tr = (texto, value) => {
-
-            const equipamento = equipamentos?.[value]
-            const visibilidade = `style="display: ${equipamento ? '' : 'none'}"`
-            return `
-                <tr>
-                    <td style="text-align: left;">${texto}</td>
-                    <td>
-                        <input onchange="visibilidade(this, '${value}')" 
-                        type="checkbox" 
-                        class="input-colaboradores" 
-                        value="${value}" 
-                        name="camposEpi"
-                        ${equipamentos?.[value] ? 'checked' : ''}>
-                    </td>
-                    <td><select ${visibilidade} name="${value}_quantidade">${opcoes(1, 10, equipamento?.quantidade)}</select></td>
-                    <td><select ${visibilidade} name="${value}_tamanho">${opcoes(37, 47, equipamento?.tamanho)}</select></td>
-                </tr>
-                `
-        }
-
-        const cab = ['Equipamento', '', 'Quantidade', 'Tamanho']
-            .map(op => `<th>${op}</th>`)
-            .join('')
-
-        const linhas = [
-            {
-                elemento: `
-            <table class="tabela">
-                <thead style="position: static;">${cab}</thead>
-                <tbody>
-                    ${tr('Botas de segurança com biqueira reforçada', 'botas')}
-                    ${tr('Capacete de proteção', 'capacete')}
-                    ${tr('Colete fluorescente', 'colete')}
-                    ${tr('Luvas (par)', 'luvas')}
-                    ${tr('Mascara com filtro de particulas', 'mascara')}
-                    ${tr('Óculos de protecção', 'oculos')}
-                    ${tr('Proteção auditiva', 'protecaoAuditiva')}
-                </tbory>
-            </table>
-            `
-            },
-            {
-                texto: 'Pin Colaborador',
-                elemento: senhas('Pin Colaborador', 4)
-            },
-            {
-                texto: 'Senha Supervisor',
-                elemento: senhas('Senha Supervisor')
-            }
-        ]
-
-        const botoes = [
-            { texto: 'Salvar', img: 'concluido', funcao: `salvarEpi('${idColaborador}')"`, fechar: true },
-            { texto: 'PDF', img: 'pdf', funcao: `abrirEPI('${idColaborador}')"` }
-        ]
-
-        popup({ linhas, botoes, titulo: 'Formulário de EPI', removerAnteriores: true })
-
-    } catch (err) {
-        console.error(err)
-        popup({ mensagem: 'Falha ao abrir Ficha de EPI: Fale com o suporte.' })
-    }
-}
-
-async function salvarEpi(idColaborador) {
-
-    overlayAguarde()
-
-    const pinInput = document.getElementById('pin')
-
-    if (pinInput.dataset.pin !== pinInput.value)
-        return popup({ mensagem: 'Pin do colaborador não confere' })
-
-    let colaborador = await recuperarDado('dados_colaboradores', idColaborador)
-    const inputsAtivos = document.querySelectorAll('input[name="camposEpi"]:checked')
-    let epi = {
-        data: new Date().getTime(),
-        equipamentos: {}
-    }
-
-    for (const input of inputsAtivos) {
-        const campo = input.value
-        epi.equipamentos[campo] = {
-            quantidade: Number(document.querySelector(`[name="${campo}_quantidade"]`).value),
-            tamanho: Number(document.querySelector(`[name="${campo}_tamanho"]`).value)
-        }
-    }
-
-    colaborador.epi = epi
-
-    // Verificar acesso do supervisor
-    const senhaSupervisor = document.getElementById('supervisor')
-    const acesso = JSON.parse(localStorage.getItem('acesso'))
-    const resposta = await verificarSupervisor(acesso.usuario, senhaSupervisor.value)
-
-    if (resposta !== 'Senha válida')
-        return popup({ mensagem: resposta })
-
-    await enviar(`dados_colaboradores/${idColaborador}/epi`, epi)
-
-    removerPopup()
 
 }
 

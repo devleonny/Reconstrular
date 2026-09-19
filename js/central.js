@@ -550,6 +550,16 @@ async function verificarRegras() {
     const funcao = [...painel.querySelectorAll('[name="funcao"]:checked')]?.[0]?.dataset?.valor
     const ignorar = ['Diretor Programador', 'CEO'].includes(funcao)
 
+    // EPI;
+    const formEPI = painel.querySelector('.bloco-form-epi')
+    if (formEPI) {
+        const linhaFormEPI = formEPI.closest('.linha-padrao')
+
+        linhaFormEPI.style.display = ['Diretor Operativo', 'CEO', 'Diretor Programador'].includes(funcao)
+            ? 'none'
+            : 'flex'
+    }
+
     // Documentos;
     const funcoesExigemDocs = [
         'Coordenador Operativo',

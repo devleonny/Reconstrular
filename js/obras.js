@@ -63,7 +63,8 @@ async function criarLinhaObras(obra) {
         id,
         ordem,
         snapshots,
-        colaboradores
+        colaboradores,
+        resultado
     } = obra || {}
 
     const {
@@ -74,12 +75,11 @@ async function criarLinhaObras(obra) {
         materialOrcado
     } = snapshots || {}
 
-    const resultado = obra?.resultado || {}
-    const porcentagem = Number(resultado?.porcentagem || 0)
+    const { porcentagem, excedente } = resultado || {}
 
-    const st = porcentagem == 0
+    const st = porcentagem == 0 || !porcentagem
         ? 'Por Iniciar'
-        : porcentagem > 0
+        : porcentagem < 100
             ? 'Em Andamento'
             : 'Finalizado'
 
@@ -93,12 +93,14 @@ async function criarLinhaObras(obra) {
         <td>
             ${divPorcentagem(porcentagem)}
         </td>
-        <td style="text-align: left;">
-            <span class="${st.replace(' ', '_')}">${st}</span>
-            ${resultado?.excedente ? '<span class="excedente">Excedente</span>' : ''}
+        <td>
+            <div style="${vertical}; gap: 2px;">
+                <span class="${st.replace(' ', '_')}">${st}</span>
+                ${excedente ? '<span class="excedente">Excedente</span>' : ''}
+            </div>
         </td>
         <td>
-            ${(colaboradores || []).map(({ nome }) => `<span class="tag-usuario">${nome}</span>`).join('')}
+            <span></span>
         </td>
         <td>${dinheiro(materialOrcado)}</td>
         <td>${dinheiro(materialReal)}</td>
@@ -167,8 +169,8 @@ async function adicionarObra(idObra) {
 
         const {
             snapshots,
+            ordem,
             cliente,
-            colaboradores,
             orcamentos_vinculados
         } = await recuperarDado('dados_obras', idObra) || {}
 
@@ -184,14 +186,29 @@ async function adicionarObra(idObra) {
             }
         }
 
+        const tabela = await modTab({
+            base: 'dados_colaboradores',
+            ordem, // Será usado depois;
+            colunas: {
+                'Presente': {},
+                'Nome': { chave: 'nome' },
+                'Cidade': { chave: 'snapshots.cidade.nome' },
+                'Distrito': { chave: 'snapshots.cidade.distrito' },
+                'Obras': { chave: 'filtros.obra.*' }
+            },
+            pag: 'colabs',
+            body: 'colabs',
+            criarLinha: 'linhaColabs'
+        })
+
         const linhas = [
             {
                 texto: 'Cliente',
                 elemento: `
-            <span ${cliente ? `id="${cliente}"` : ''} 
-                class="opcoes" 
-                name="cliente" 
-                onclick="cxOpcoes('cliente')">${snapshots?.cliente || 'Selecionar'}</span>
+                <span ${cliente ? `id="${cliente}"` : ''} 
+                    class="opcoes" 
+                    name="cliente" 
+                    onclick="cxOpcoes('cliente')">${snapshots?.cliente || 'Selecionar'}</span>
             `
             },
             {
@@ -204,13 +221,9 @@ async function adicionarObra(idObra) {
                 elemento: `<div id="orcs-vinculados" style="${vertical}; gap: 2px;"></div>`
             },
             {
-                texto: `
-                    <div style="${horizontal}; gap: 1rem;">
-                        <img src="imagens/baixar.png" onclick="maisCampo('colaboradores', 'dados_colaboradores')">
-                        <span>Colaboradores</span>
-                    </div>
-                `,
-                elemento: `<div id="colaboradores" style="${vertical}; gap: 2px;"></div>`
+                elemento: idObra 
+                    ? montarPagina({ tabela, titulo: 'Colaboradores', imagem: 'colaborador' })
+                    : 'Salve primeiro a Obra, depois volte para selecionar Colaboradores.'
             }
         ]
 
@@ -229,22 +242,75 @@ async function adicionarObra(idObra) {
 
         popup({ linhas, botoes, titulo: 'Formulário de Obra' })
 
-        await Promise.all([
+        paginacao('colabs')
+
+        await Promise.all(
             (orcamentos_vinculados || [])
                 .map(async (id) => {
                     await maisCampo('orcs-vinculados', 'dados_orcamentos', id)
-                }),
-            (colaboradores || [])
-                .map(async (id) => {
-                    await maisCampo('colaboradores', 'dados_colaboradores', id)
                 })
-        ])
-
-        removerOverlay()
+        )
 
     } catch (err) {
         console.error(err)
         popup({ mensagem: 'Falha ao abrir os detalhes da Obra: Fale com o suporte.' })
+    }
+
+}
+
+function linhaColabs(colabs) {
+
+    const {
+        id,
+        nome,
+        filtros,
+        snapshots
+    } = colabs || {}
+
+
+    const { ordem } = controles.colabs || {}
+    const { obra } = filtros || {}
+    const listagemObras = (obra || []).map(o => `<span class="tag-obra">${o}</span>`).join('')
+    const { nome: cidade, distrito } = snapshots?.cidade || {}
+
+    return `
+        <tr>
+            <td>
+                <input onclick="gerenciarObraColaborador(this, '${id}', '${ordem}')" ${(obra || []).includes(ordem) ? 'checked' : ''} type="checkbox" style="width: 2rem; height: 2rem;">
+            </td>
+            <td>${nome}</td>
+            <td>${cidade}</td>
+            <td>${distrito}</td>
+            <td>
+                <div style="display: flex; flex-wrap: wrap; gap: 2px;">${listagemObras || ''}</div>
+            </td>
+        </tr>
+    `
+}
+
+async function gerenciarObraColaborador(input, id, ordem) {
+
+    try {
+
+        const incluir = input.checked
+        const { filtros } = await recuperarDado('dados_colaboradores', id) || {}
+        const { obra } = filtros || {}
+        let novoObra = (obra || [])
+
+        if (incluir) {
+            if (!novoObra.includes(ordem))
+                novoObra.push(ordem)
+
+        } else {
+            novoObra = obra.filter(o => o !== ordem)
+
+        }
+
+        await enviar(`dados_colaboradores/${id}/filtros/obra`, novoObra)
+
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao selecionar a obra: Fale com o suporte.' })
     }
 
 }
@@ -471,9 +537,9 @@ async function pdfObra(nome) {
 
     const htmlPdf = document.querySelector('#pdf')
 
-    await pdf({ 
-        html: htmlPdf.outerHTML, 
-        estilos: ['estilo', 'obras'], 
+    await pdf({
+        html: htmlPdf.outerHTML,
+        estilos: ['estilo', 'obras'],
         nome
     })
 
@@ -515,7 +581,6 @@ async function carregarLinhasAndamento(idObra) {
         if (!orcamento)
             continue
 
-        const cliente = await recuperarDado('dados_clientes', orcamento?.cliente) || {}
         const blocoOrc = document.createElement('div')
 
         blocoOrc.className = 'orcamento-bloco'
@@ -849,7 +914,9 @@ async function atualizarToolbar({ nomeTarefa } = {}) {
     }
 
     const emPorcentagemConcluido = totais.porcentagemConcluido
-    const porcentagemAndamento = emPorcentagemConcluido == 0 ? 0 : (emPorcentagemConcluido / totais.tarefas).toFixed(0)
+    const porcentagemAndamento = emPorcentagemConcluido == 0
+        ? 0
+        : Number((emPorcentagemConcluido / totais.tarefas).toFixed(0))
 
     const idObraAtual = controles.andamento.idObraAtual
     const obra = await recuperarDado('dados_obras', idObraAtual)

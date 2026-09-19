@@ -63,6 +63,22 @@
     gap: 2px;
 }
 
+.tag-obra {
+    display: inline-block;
+    padding: 3px 1vw;
+    border: solid 1px #d52000;
+    border-radius: 20px;
+    background-color: #ff4e2f8f;
+}
+
+.bloco-form-epi {
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
 .tag-cidade {
     color: white;
     background: linear-gradient(45deg, #7f6a5b, #393532);

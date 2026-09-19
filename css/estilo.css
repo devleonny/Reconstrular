@@ -110,7 +110,7 @@ html {
     gap: 10px;
     padding-top: 5px;
     padding-bottom: 5px;
-    width: 100%;
+    width: stretch;
     background-color: #ffffff;
 }
 
@@ -578,6 +578,15 @@ img {
     border-radius: 20px;
     background-color: #f7c5c5;
 }
+
+.Finalizado {
+    display: inline-block;
+    padding: 3px 1vw;
+    border: solid 1px green;
+    border-radius: 20px;
+    background-color: #ade9ad;
+}
+
 
 .ativo {
     display: inline-block;
