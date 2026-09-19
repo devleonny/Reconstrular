@@ -550,6 +550,17 @@ async function verificarRegras() {
     const funcao = [...painel.querySelectorAll('[name="funcao"]:checked')]?.[0]?.dataset?.valor
     const ignorar = ['Diretor Programador', 'CEO'].includes(funcao)
 
+    // Função;
+    const localFuncao = painel.querySelector('.campo-funcoes')
+    if (localFuncao) {
+        if (!funcao) {
+            inv(localFuncao)
+            campos.push('Função')
+        } else {
+            inv(localFuncao, true)
+        }
+    }
+
     // EPI;
     const formEPI = painel.querySelector('.bloco-form-epi')
     if (formEPI) {

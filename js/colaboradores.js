@@ -292,21 +292,21 @@ async function adicionarColaborador(id) {
                 elemento: `<textarea ${regras} name="nome" placeholder="Nome Completo">${nome || ''}</textarea>`
             },
             {
-                texto: 'Usuário',
-                elemento: `
-                    <div style="${vertical}; gap: 5px;">
-                        <input name="usuario" placeholder="Usuário" ${regras} value="${usuario || ''}" ${usuario ? 'readOnly="true"' : ''}>
-                        ${usuario ? '' : `<div data-valido="N" id="status_usuario"></div>`}
-                    </div>
-                `
-            },
-            {
                 elemento: `
                     <div style="${vertical}; gap: 5px;">
                         <span>Função</span>
                         <div class="campo-funcoes"></div>
                         <span>Cidades</span>
                         <div class="local-cidades"></div>
+                    </div>
+                `
+            },
+            {
+                texto: 'Usuário',
+                elemento: `
+                    <div style="${vertical}; gap: 5px;">
+                        <input name="usuario" placeholder="Usuário" ${regras} value="${usuario || ''}" ${usuario ? 'readOnly="true"' : ''}>
+                        ${usuario ? '' : `<div data-valido="N" id="status_usuario"></div>`}
                     </div>
                 `
             },
