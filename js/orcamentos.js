@@ -601,7 +601,7 @@ async function alterarFinalizacao(id, status) {
         const R = proximaRevisao(orcamento.revisoes)
 
         orcamento.revisoes[R] = {
-            zonas: orcamento.ambientes,
+            ambientes: orcamento.ambientes,
             idCliente: orcamento.idCliente,
             data_contato: orcamento.data_contato,
             data_visita: orcamento.data_visita,

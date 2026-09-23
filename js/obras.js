@@ -42,7 +42,8 @@ async function telaObras() {
                 'Mão de Obra Orçamentado': {},
                 'Acompanhamento': {},
                 'Cronograma': {},
-                '': {}
+                'Histórico de Edições': {},
+                'Edição': {}
             }
         })
 
@@ -106,8 +107,12 @@ async function criarLinhaObras(obra) {
         <td>
             <div style="${vertical}; gap: 2px;">${listaColabs}</div>
         </td>
-        <td>${dinheiro(materialOrcado)}</td>
-        <td>${dinheiro(materialReal)}</td>
+        <td>
+            <span onclick="mostrarMateriaisOrcamento('${id}')" style="cursor: pointer;">${dinheiro(materialOrcado)}</span>
+        </td>
+        <td>
+            <span onclick="mostrarMateriaisReais('${ordem}')" style="cursor: pointer;">${dinheiro(materialReal)}</span>
+        </td>
         <td>
             ${porcentagemHtml(materialOrcado ? Number((materialReal / materialOrcado) * 100).toFixed(0) : 0)}
         </td>
@@ -116,13 +121,124 @@ async function criarLinhaObras(obra) {
             <img src="imagens/kanban.png" onclick="verAndamento('${id}')">
         </td>
         <td>
-            <img src="imagens/relogio.png" onclick="telaCronograma('${id}')">
+            <img src="imagens/doubleCheck.png" onclick="telaCronograma('${id}')">
         </td>
         <td>
-            <img src="imagens/pesquisar.png" data-controle="editar" onclick="adicionarObra('${id}')">
+            <img src="imagens/relogio.png" onclick="historicoObras('${ordem}')">
+        </td>
+        <td>
+            <img src="imagens/pesquisar.png" onclick="adicionarObra('${id}')">
         </td>
     `
     return `<tr>${tds}</tr>`
+
+}
+
+async function mostrarMateriaisOrcamento(id_obra) {
+
+    overlayAguarde()
+
+    const { orcamentos_vinculados } = await recuperarDado('dados_obras', id_obra) || {}
+
+    const pag = 'popup_materiais'
+
+    const tabela = await modTab({
+        pag,
+        base: 'vw_materiais_orcamentos',
+        body: pag,
+        criarLinha: 'criarLinhaMateriais',
+        colunas: {
+            'Orçamento': { chave: 'contrato' },
+            'Ambiente': { chave: 'ambiente' },
+            'Zona': { chave: 'zona' },
+            'Tipo': {chave: 'tipo'},
+            'Descrição': { chave: 'descricao' },
+            'Quantidade': {},
+            'Preço': {},
+            'Total': {}
+        },
+        filtros: {
+            'id_orcamento': {
+                modo: 'OR',
+                regras: (orcamentos_vinculados || []).map(o => ({ op: '=', value: o }))
+            }
+        }
+    })
+
+    popup({
+        titulo: 'Detalhamento de Materiais do Orçamento',
+        elemento: `<div style="padding: 0.5rem;">${tabela}</div>`
+    })
+
+    await paginacao(pag)
+
+}
+
+function criarLinhaMateriais(mat) {
+
+    const {
+        contrato,
+        ambiente,
+        zona,
+        tipo,
+        descricao,
+        qtde,
+        preco,
+        total
+    } = mat || {}
+
+    return `
+        <tr>
+            <td>${contrato || ''}</td>
+            <td>${ambiente}</td>
+            <td>${zona}</td>
+            <td>${inicialMaiuscula(tipo)}</td>
+            <td>${descricao}</td>
+            <td>${Number(qtde||0).toLocaleString()}</td>
+            <td>${dinheiro(preco)}</td>
+            <td>${dinheiro(total)}</td>
+        </tr>
+    `
+
+}
+
+async function mostrarMateriaisReais(ordem) {
+
+    overlayAguarde()
+
+    const pag = 'popup_despesas'
+
+    const tabela = await modTab({
+        pag,
+        base: 'dados_despesas',
+        body: 'popup_despesas',
+        criarLinha: 'criarLinhaDespesa',
+        colunas: {
+            'Fornecedor': { chave: 'snapshots.fornecedor.nome' },
+            'Distrito': { chave: 'snapshots.fornecedor.snapshots.cidade.distrito' },
+            'Cidade': { chave: 'snapshots.fornecedor.snapshots.cidade.nome' },
+            'Número do Contribuinte': { chave: 'snapshots.fornecedor.numero_contribuinte' },
+            'Valor': { chave: 'valor' },
+            'IVA': { chave: 'iva' },
+            'Ano': { chave: 'snapshots.ano', tipoPesquisa: 'select' },
+            'Mês': { chave: 'snapshots.mes', tipoPesquisa: 'select' },
+            'Data': { chave: 'data', tipoPesquisa: 'data' },
+            'Fatura': {},
+            'Tipo de Material': { chave: 'material.nome' },
+            'Obra': {},
+            'Detalhes': {},
+        },
+        filtros: {
+            'obra': { op: '=', value: ordem }
+        }
+    })
+
+    popup({
+        titulo: 'Detalhamento de Despesas',
+        elemento: `<div style="padding: 0.5rem;">${tabela}</div>`
+    })
+
+    await paginacao(pag)
 
 }
 
@@ -963,4 +1079,78 @@ function porcentagemHtml(percentual) {
         </div>
     </div>
   `
+}
+
+async function historicoObras(ordem) {
+
+    try {
+
+        overlayAguarde()
+
+        const pag = 'hisObras'
+        const tabela = await modTab({
+            base: 'vw_historico_obras',
+            pag,
+            body: 'hisObras',
+            filtros: {
+                'ordem_obra': { op: '=', value: ordem }
+            },
+            colunas: {
+                'Nome Colaborador': { chave: 'nome_colaborador' },
+                'Alterações': {},
+                'Tabela': {},
+                'Data': { chave: 'data', tipoPesquisa: 'data' },
+                'Alterado por': { chave: 'usuario' }
+            },
+            criarLinha: 'linhaHisObras'
+        })
+
+        popup({
+            elemento: `<div style="padding: 0.5rem;">${montarPagina({ tabela, titulo: 'Histórico de Edições', imagem: 'colaborador' })}</div>`
+        })
+
+        await paginacao(pag)
+
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao gerar o histórico: Fale com o suporte.' })
+    }
+
+
+}
+
+function linhaHisObras(his) {
+
+    const {
+        data,
+        usuario,
+        caminho,
+        nome_colaborador,
+        alteracoes
+    } = his || {}
+
+    const [tabela] = caminho.split('/')
+
+    const labelAlteracoes = (alteracoes || [])
+        .map(({ mensagem }) => {
+            return `<span class="tag-alteracao">${mensagem}</span>`
+        })
+        .join('')
+
+    const labelNomeColaborador = nome_colaborador
+        ? `<span class="tag-alteracao">${nome_colaborador}</span>`
+        : ''
+
+    return `
+        <tr>
+            <td>${labelNomeColaborador}</td>
+            <td>
+                <div class="janela-alteracoes">${labelAlteracoes || 'Sem informações'}</div>
+            </td>
+            <td>${inicialMaiuscula(tabela)}</td>
+            <td>${data}</td>
+            <td>${usuario}</td>
+        </tr>
+    `
+
 }

@@ -127,7 +127,8 @@ const esquemaBotoes = {
                 { nome: 'Ver Colaboradores', funcao: 'telaColaboradores', img: 'cracha' },
                 { nome: 'Adicionar Parceiro', funcao: 'adicionarColaborador', img: 'baixar' },
                 { nome: 'Baixar em Excel', bloqueio: ['Encarregado de Obra'], funcao: 'excelColaboradores', img: 'planilha' },
-                { nome: 'Baixar em PDF', bloqueio: ['Encarregado de Obra'], funcao: 'gerarTodosPDFs', img: 'pdf' }
+                { nome: 'Baixar em PDF', bloqueio: ['Encarregado de Obra'], funcao: 'gerarTodosPDFs', img: 'pdf' },
+                { nome: 'Histórico de Edições', bloqueio: ['Encarregado de Obra'], funcao: 'historicoColaborador', img: 'relogio' }
             ]
         },
         {
@@ -157,9 +158,7 @@ const esquemaBotoes = {
                 { nome: 'Baixar em Excel', permitido: ['CEO'], funcao: 'confirmarBaixarExcel', img: 'planilha' },
                 { nome: 'Adicionar Despesa', funcao: 'formularioDespesa', img: 'baixar' },
                 { nome: 'Fornecedores', funcao: 'telaFornecedores', img: 'fornecedor' },
-                { nome: 'Materiais', funcao: 'telaMateriais', img: 'caixa' },
-                { nome: 'Ferramentas', funcao: 'telaFerramentas', img: 'ferramentas' },
-                { nome: 'Mão de Obra', funcao: 'telaMaoObra', img: 'colaborador' },
+
             ]
         },
         {
@@ -181,6 +180,9 @@ const esquemaBotoes = {
                 { nome: 'Criar Composição', funcao: 'edicaoItem', img: 'baixar' },
                 { nome: 'Ativas', funcao: 'telaPrecos', img: 'preco' },
                 { nome: 'Desativadas', funcao: 'telaPrecosDesativada', img: 'preco_neg' },
+                { nome: 'Materiais', funcao: 'telaMateriais', img: 'caixa' },
+                { nome: 'Ferramentas', funcao: 'telaFerramentas', img: 'ferramentas' },
+                { nome: 'Mão de Obra', funcao: 'telaMaoObra', img: 'colaborador' },
             ]
         },
         {

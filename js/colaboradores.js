@@ -566,7 +566,7 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
         }
 
         // Cidade;
-        colaborador.cidade = obVal('cidade')
+        colaborador.cidade = Number(obVal('cidade'))
 
         const foto = document.querySelector('[name="foto"]')
         if (foto.src && !foto.src.includes(api)) {
@@ -975,6 +975,70 @@ function exibirCidades() {
             <img src="gifs/alerta.gif">
             <span>Não se aplica</span>
         </div>
+    `
+
+}
+
+async function historicoColaborador() {
+
+    try {
+
+        overlayAguarde()
+
+        const pag = 'his'
+        const tabela = await modTab({
+            base: 'vw_historico_colaboradores',
+            pag,
+            body: 'his',
+            colunas: {
+                'Colaborador': { chave: 'nome_colaborador' },
+                'Alterações': {},
+                'Data': { chave: 'data', tipoPesquisa: 'data' },
+                'Alterado por': { chave: 'usuario' }
+            },
+            criarLinha: 'linhaHis'
+        })
+
+        popup({
+            elemento: `<div style="padding: 0.5rem;">${montarPagina({ tabela, titulo: 'Histórico de Edições', imagem: 'colaborador' })}</div>`
+        })
+
+        await paginacao(pag)
+
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao gerar o histórico: Fale com o suporte.' })
+    }
+
+
+}
+
+function linhaHis(his) {
+
+    const {
+        nome_colaborador,
+        data,
+        usuario,
+        alteracoes
+    } = his || {}
+
+    const labelAlteracoes = (alteracoes || [])
+        .map(({mensagem}) => {
+            return `<span class="tag-alteracao">${mensagem}</span>`
+        })
+        .join('')
+
+    return `
+        <tr>
+            <td>
+                <span class="tag-alteracao">${nome_colaborador}</span>
+            </td>
+            <td>
+                <div class="janela-alteracoes">${labelAlteracoes || 'Sem informações'}</div>
+            </td>
+            <td>${data}</td>
+            <td>${usuario}</td>
+        </tr>
     `
 
 }

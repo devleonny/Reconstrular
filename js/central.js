@@ -607,8 +607,6 @@ async function verificarRegras() {
     const painelSenha = document.querySelector('.painel-senha')
     const painelPin = document.querySelector('.painel-pin')
 
-    // Campo usuário;
-    input('usuario').closest('.linha-padrao').style.display = trabalhador ? 'none' : 'flex'
 
     if (painelSenha)
         painelSenha.style.display = trabalhador ? 'none' : 'flex'
@@ -618,6 +616,9 @@ async function verificarRegras() {
 
     // Obrigatoriedade do Usuário;
     const inpUsuario = input('usuario')
+
+    if (inpUsuario)
+        input('usuario').closest('.linha-padrao').style.display = trabalhador ? 'none' : 'flex'
 
     if (funcao && funcao == 'Trabalhador') {
 
@@ -727,10 +728,9 @@ async function verificarRegras() {
             continue
 
         // Pode ignorar se Especialidade && funções;
-        if (campo == 'especialidade' && ['Diretor Operativo', 'Coordenador Operativo'].includes(funcao))
-            continue
+        const podeIgnorar = campo == 'especialidade' && ['Diretor Operativo', 'Coordenador Operativo'].includes(funcao)
 
-        if (ignorar || ativo) {
+        if (podeIgnorar || ignorar || ativo) {
             inv(bloco, true)
         } else {
             inv(bloco)

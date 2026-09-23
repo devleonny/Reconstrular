@@ -110,8 +110,16 @@ async function formularioDespesa(idDespesa) {
 
     overlayAguarde()
 
-    const { numero_contribuinte, material, data, iva, valor, despesa, fornecedor } = await recuperarDado('dados_despesas', idDespesa) || {}
-    const obra = await recuperarDado('dados_obras', despesa?.obra) || {}
+    const { 
+      numero_contribuinte, 
+      material, 
+      data, 
+      iva, 
+      valor, 
+      fornecedor,
+      obra
+    } = await recuperarDado('dados_despesas', idDespesa) || {}
+
     const dMaterial = material || {}
     const { nome, snapshots } = await recuperarDado('fornecedores', fornecedor) || {}
     const cidade = snapshots?.cidade || {}
@@ -183,7 +191,7 @@ async function formularioDespesa(idDespesa) {
       },
       {
         texto: 'Obra',
-        elemento: `<span name="obra" class="opcoes" onclick="cxOpcoes('obra')">${obra?.nome || 'Selecionar'}</span>`
+        elemento: `<span ${obra ? `id="${obra}"`: ''} name="obra" class="opcoes" onclick="cxOpcoes('obra')">${obra || 'Selecionar'}</span>`
       },
       {
         texto: 'Upload Fatura', elemento: `
@@ -281,7 +289,7 @@ async function salvarDespesa(idDespesa = crypto.randomUUID()) {
     const atualizado = {
       ...despesa,
       fornecedor: obVal('fornecedor'),
-      obra: obVal('obra'),
+      obra: document.querySelector('[name="obra"]').textContent.trim(),
       material,
       iva: Number(obVal('iva')),
       valor: Number(obVal('valor')),
@@ -431,7 +439,7 @@ async function salvarFornecedor(id) {
   try {
     overlayAguarde()
 
-    const { campos } = verificarRegras()
+    const { campos } = await verificarRegras()
 
     if (campos.length)
       return popup({
