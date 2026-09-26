@@ -3,11 +3,34 @@ let reconnectInterval = 30000
 let reconnectTimeout = null
 let reconectando = false
 let priExe = true
+let encerrandoAcesso = false
 
 connectWebSocket()
 
+async function encerrarAcesso(mensagem) {
+    clearTimeout(reconnectTimeout)
+
+    localStorage.removeItem('acesso')
+
+    if (acesso && typeof acesso === 'object') {
+        for (const chave of Object.keys(acesso))
+            delete acesso[chave]
+    }
+
+    if (socket?.readyState === WebSocket.OPEN)
+        socket.close()
+
+    await telaLogin()
+
+    const info = `<span id="bloqueio_acesso">${mensagem}</span>`
+    const existente = document.getElementById('bloqueio_acesso')
+    if (!existente)
+        popup({ mensagem: info })
+
+}
+
 function connectWebSocket() {
-    if (reconectando)
+    if (reconectando || !localStorage.getItem('acesso'))
         return
 
     reconectando = true
@@ -19,7 +42,7 @@ function connectWebSocket() {
             socket.onerror = null
             socket.onclose = null
             socket.close()
-        } catch {}
+        } catch { }
     }
 
     socket = new WebSocket(`${api}:8443`)
@@ -34,8 +57,10 @@ function connectWebSocket() {
 
         const valido = await validarAcesso()
 
-        if (!valido)
+        if (!valido) {
+            socket.close()
             return
+        }
 
         msg({
             tipo: 'validar',
@@ -49,6 +74,9 @@ function connectWebSocket() {
 
     socket.onclose = () => {
         reconectando = false
+
+        if (!localStorage.getItem('acesso'))
+            return
 
         msgStatus('Servidor offline', 3)
 
@@ -64,8 +92,7 @@ async function validarAcesso() {
     msgStatus('Validando acesso...')
 
     if (!token) {
-        localStorage.removeItem('acesso')
-        await telaLogin()
+        await encerrarAcesso('Sessão inválida')
         return false
     }
 
@@ -73,25 +100,31 @@ async function validarAcesso() {
         const resp = await fetch(`${api}/validar-token`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token}`
+                Authorization: `Bearer ${token}`
             }
         })
 
-        if (!resp.ok)
-            throw new Error('Token inválido')
+        if (!resp.ok) {
+            const dadosErro = await resp.json().catch(() => ({}))
+
+            await encerrarAcesso(
+                dadosErro.erro ||
+                dadosErro.mensagem ||
+                'Sessão expirada, faça login novamente'
+            )
+
+            return false
+        }
 
         return true
-
     } catch (err) {
         console.error(err)
 
-        localStorage.removeItem('acesso')
-
-        await telaLogin()
-
-        popup({
-            mensagem: 'Sessão expirada, faça login novamente'
-        })
+        await encerrarAcesso(
+            err.message === 'Acesso bloqueado'
+                ? 'Seu acesso foi bloqueado'
+                : 'Sessão expirada, faça login novamente'
+        )
 
         return false
     }
@@ -132,20 +165,20 @@ function comunicacao() {
         const {
             tabela,
             desconectar,
+            resetarAcesso,
+            erro,
             validado,
             tipo,
             usuario,
             status
         } = data
 
-        if (desconectar) {
-            localStorage.removeItem('acesso')
-
-            await telaLogin()
-
-            popup({
-                mensagem: 'Usuário desconectado'
-            })
+        if (desconectar || resetarAcesso) {
+            await encerrarAcesso(
+                erro === 'Acesso bloqueado'
+                    ? 'Seu acesso foi bloqueado'
+                    : erro || 'Usuário desconectado'
+            )
 
             return
         }
@@ -158,7 +191,6 @@ function comunicacao() {
                     priExe = false
                     await telaPrincipal()
                 }
-
             } else {
                 overlayAguarde()
 
@@ -181,20 +213,7 @@ function comunicacao() {
         }
 
         if (tipo === 'atualizacao') {
-            for (const [pag, dados] of Object.entries(controles)) {
-                if (
-                    dados.base === 'vw_objetivos' &&
-                    tabela === 'cidades'
-                ) {
-                    await paginacao(pag)
-                    continue
-                }
-
-                if (dados.base !== tabela)
-                    continue
-
-                await paginacao(pag)
-            }
+            await paginacao()
 
             if (tabela === 'mensagens')
                 await verificarMensagens()
@@ -209,7 +228,4 @@ function comunicacao() {
 
 async function verificarMensagens() {
 
-
-    
-    
 }

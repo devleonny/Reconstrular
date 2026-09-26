@@ -2,6 +2,7 @@ function toDateInputValue(data) {
     const ano = data.getFullYear()
     const mes = String(data.getMonth() + 1).padStart(2, '0')
     const dia = String(data.getDate()).padStart(2, '0')
+
     return `${ano}-${mes}-${dia}`
 }
 
@@ -9,86 +10,101 @@ function parseDateLocal(valor) {
     if (!valor)
         return new Date()
 
-    const [ano, mes, dia] = valor.split('-').map(Number)
+    if (valor instanceof Date)
+        return new Date(
+            valor.getFullYear(),
+            valor.getMonth(),
+            valor.getDate(),
+            12,
+            0,
+            0
+        )
+
+    const [ano, mes, dia] = String(valor).slice(0, 10).split('-').map(Number)
+
     return new Date(ano, mes - 1, dia, 12, 0, 0)
 }
 
 function cloneDate(data) {
-    return new Date(data.getFullYear(), data.getMonth(), data.getDate(), 12, 0, 0)
+    return new Date(
+        data.getFullYear(),
+        data.getMonth(),
+        data.getDate(),
+        12,
+        0,
+        0
+    )
 }
 
 function addDays(data, dias) {
     const d = cloneDate(data)
+
     d.setDate(d.getDate() + dias)
+
     return d
 }
 
 function isWeekend(data) {
     const dia = data.getDay()
+
     return dia === 0 || dia === 6
-}
-
-function nextBusinessDay(data) {
-    let d = cloneDate(data)
-
-    do {
-        d = addDays(d, 1)
-    } while (isWeekend(d))
-
-    return d
-}
-
-function advanceBusinessDays(data, qtd) {
-    let d = cloneDate(data)
-    let restantes = qtd
-
-    while (restantes > 0) {
-        d = addDays(d, 1)
-
-        if (!isWeekend(d))
-            restantes--
-    }
-
-    return d
 }
 
 function startOfWeekMonday(data) {
     const d = cloneDate(data)
-    const day = d.getDay()
-    const diff = day === 0 ? -6 : 1 - day
-    d.setDate(d.getDate() + diff)
+    const dia = d.getDay()
+    const diferenca = dia === 0 ? -6 : 1 - dia
+
+    d.setDate(d.getDate() + diferenca)
+
     return d
 }
 
 function getWeekDates(data) {
     const inicio = startOfWeekMonday(data)
-    return Array.from({ length: 7 }, (_, i) => addDays(inicio, i))
+
+    return Array.from(
+        { length: 7 },
+        (_, i) => addDays(inicio, i)
+    )
+}
+
+function listarSemanas(inicio, fim) {
+    const semanas = []
+    let cursor = startOfWeekMonday(inicio)
+    const limite = startOfWeekMonday(fim)
+
+    while (cursor <= limite) {
+        semanas.push(getWeekDates(cursor))
+        cursor = addDays(cursor, 7)
+    }
+
+    return semanas
 }
 
 function formatarDataBR(data) {
-    return data.toLocaleDateString('pt-BR')
+    return parseDateLocal(data).toLocaleDateString('pt-BR')
 }
 
 function formatarDiaMes(data) {
     const dia = String(data.getDate()).padStart(2, '0')
     const mes = String(data.getMonth() + 1).padStart(2, '0')
+
     return `${dia}/${mes}`
 }
 
 function nomeDiaSemana(data) {
-    const nomes = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+    const nomes = [
+        'Domingo',
+        'Segunda',
+        'Terça',
+        'Quarta',
+        'Quinta',
+        'Sexta',
+        'Sábado'
+    ]
+
     return nomes[data.getDay()]
-}
-
-function parseHHMM(texto = '00:00') {
-    const [hh = 0, mm = 0] = String(texto).split(':').map(Number)
-    return (hh * 60) + mm
-}
-
-function minutosParaHHMM(minutos = 0) {
-    const hh = Math.floor(minutos / 60)
-    const mm = minutos % 60
-    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
 }
 
 function escapeHtml(texto = '') {
@@ -114,61 +130,14 @@ function corAtividade(indice) {
     return cores[indice % cores.length]
 }
 
-function montarCronogramaAtividades(resultados, dataInicio) {
-    let cursor = cloneDate(dataInicio)
-
-    if (isWeekend(cursor))
-        cursor = nextBusinessDay(addDays(cursor, -1))
-
-    const atividades = []
-
-    for (const item of resultados) {
-        const quantidade = Number(calcularQuantidadeTotal(item.dimensoes)?.quantidade || 0)
-        const duracaoMin = parseHHMM(item.duracao || '00:00')
-        const tempoTotalMin = duracaoMin * quantidade
-
-        if (!tempoTotalMin)
-            continue
-
-        const diasNecessarios = Math.max(1, Math.ceil(tempoTotalMin / 480))
-        const inicio = cloneDate(cursor)
-        const fim = advanceBusinessDays(inicio, diasNecessarios - 1)
-
-        atividades.push({
-            ...item,
-            quantidade,
-            duracaoMin,
-            tempoTotalMin,
-            tempoTotalHHMM: minutosParaHHMM(tempoTotalMin),
-            diasNecessarios,
-            inicio,
-            fim
-        })
-
-        cursor = nextBusinessDay(fim)
-    }
-
-    return atividades
-}
-
-function listarSemanas(inicio, fim) {
-    const semanas = []
-    let cursor = startOfWeekMonday(inicio)
-    const limite = startOfWeekMonday(fim)
-
-    while (cursor <= limite) {
-        semanas.push(getWeekDates(cursor))
-        cursor = addDays(cursor, 7)
-    }
-
-    return semanas
-}
-
 function atividadeOcupaDia(atividade, data) {
     if (isWeekend(data))
         return false
 
-    return data >= atividade.inicio && data <= atividade.fim
+    const inicio = parseDateLocal(atividade.inicio)
+    const fim = parseDateLocal(atividade.fim)
+
+    return data >= inicio && data <= fim
 }
 
 function renderTabelaSemana(atividades, semana, indiceSemana) {
@@ -217,8 +186,8 @@ function renderTabelaSemana(atividades, semana, indiceSemana) {
                 <td>${escapeHtml(item.especialidade || '')}</td>
                 <td>${escapeHtml(item.descricao || '')}</td>
                 <td style="text-align:center;">${escapeHtml(item.medida || '')}</td>
-                <td style="text-align:center;">${item.quantidade}</td>
-                <td style="text-align:center;">${item.tempoTotalHHMM}</td>
+                <td style="text-align:center;">${item.quantidade || 0}</td>
+                <td style="text-align:center;">${item.tempoTotalHHMM || '00:00'}</td>
                 <td style="text-align:center;">${formatarDataBR(item.inicio)}</td>
                 <td style="text-align:center;">${formatarDataBR(item.fim)}</td>
                 ${dias}
@@ -254,54 +223,20 @@ function renderTabelaSemana(atividades, semana, indiceSemana) {
     `
 }
 
-async function renderCronogramaObra(idObra) {
-    const obra = await recuperarDado('dados_obras', idObra) || {}
-    const { morada_execucao, nome } = await recuperarDado('dados_clientes', obra?.cliente) || {}
+async function renderCronogramaObra(ordem, idObra) {
+    const cronograma = await recuperarDado(
+        'mvw_cronograma_obras',
+        ordem
+    ) || {}
 
-    const base = []
+    const atividades = cronograma.atividades || []
+    const dataInicio = parseDateLocal(cronograma.dt_inicio)
+    const dataFim = parseDateLocal(
+        cronograma.dt_fim_previsto || cronograma.dt_inicio
+    )
 
-    for (const idOrcamento of (obra?.orcamentos_vinculados || [])) {
-        const { zonas } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
-
-        if (!zonas)
-            continue
-
-        const camposMesclados = Object.values(zonas || {})
-            .flatMap(z =>
-                (z.campos || []).map(campo => ({
-                    ...campo?.campo || {},
-                    dimensoes: campo.dimensoes,
-                    idCampo: campo.id,
-                    descricaoExtra: campo.descricaoExtra,
-                    ambiente: z.ambiente,
-                    zona: z.zona
-                }))
-            )
-
-        base.push(...camposMesclados)
-    }
-
-    const pesquisa = await pesquisarDB({
-        base,
-        substituicoes: [
-            {
-                path: 'id',
-                tabela: 'campos',
-                campoBusca: 'id',
-                retorno: 'duracao',
-                destino: 'duracao'
-            }
-        ]
-    })
-
-    const resultados = pesquisa?.resultados || []
-    const dataInicio = obra?.dt_inicio ? parseDateLocal(obra.dt_inicio) : new Date()
-    const atividades = montarCronogramaAtividades(resultados, dataInicio)
-
-    const totalDiasUteis = atividades.reduce((acc, item) => acc + item.diasNecessarios, 0)
-    const dataFim = atividades.length ? atividades.at(-1).fim : dataInicio
     const semanas = atividades.length
-        ? listarSemanas(atividades[0].inicio, dataFim)
+        ? listarSemanas(dataInicio, dataFim)
         : [getWeekDates(dataInicio)]
 
     const tabInfos = `
@@ -313,12 +248,12 @@ async function renderCronogramaObra(idObra) {
                 </tr>
                 <tr>
                     <td style="background: #5b707f; color:#fff;">Cliente</td>
-                    <td style="background:#fff">${escapeHtml(nome || '')}</td>
-                    <td rowspan="4" class="dias-uteis">${totalDiasUteis}</td>
+                    <td style="background:#fff">${escapeHtml(cronograma.cliente || '')}</td>
+                    <td rowspan="4" class="dias-uteis">${cronograma.total_dias_uteis || 0}</td>
                 </tr>
                 <tr>
                     <td style="background: #5b707f; color: #fff;">Morada de Execução</td>
-                    <td>${escapeHtml(morada_execucao || '')}</td>
+                    <td>${escapeHtml(cronograma.morada_execucao || '')}</td>
                 </tr>
                 <tr>
                     <td style="background: #5b707f; color: #fff;">Data de Início</td>
@@ -326,13 +261,13 @@ async function renderCronogramaObra(idObra) {
                         <input
                             type="date"
                             id="dtInicio"
-                            value="${obra?.dt_inicio || toDateInputValue(new Date())}"
-                            onchange="salvarDtInicio(this, '${idObra}')">
+                            value="${String(cronograma.dt_inicio || '').slice(0, 10)}"
+                            onchange="salvarDtInicio(this, '${idObra}', '${ordem}')">
                     </td>
                 </tr>
                 <tr>
                     <td style="background: #5b707f; color: #fff;">Data de Fim Previsto</td>
-                    <td>${formatarDataBR(dataFim)}</td>
+                    <td>${formatarDataBR(cronograma.dt_fim_previsto)}</td>
                 </tr>
             </tbody>
         </table>
@@ -344,7 +279,6 @@ async function renderCronogramaObra(idObra) {
 
     tela.innerHTML = `
         <div class="acompanhamento">
-            
             <div class="botao-flutuante">
                 <img src="imagens/pdf2.png" onclick="pdfObra('Cronograma')">
             </div>
@@ -358,23 +292,25 @@ async function renderCronogramaObra(idObra) {
 }
 
 async function telaCronograma(idObra) {
-
     overlayAguarde()
+
     const obra = await recuperarDado('dados_obras', idObra) || {}
 
     titulo.textContent = 'Cronograma'
 
-    if (!obra?.dt_inicio) {
+    if (!obra.dt_inicio) {
         const hoje = toDateInputValue(new Date())
+
         await enviar(`dados_obras/${idObra}/dt_inicio`, hoje)
     }
 
-    await renderCronogramaObra(idObra)
+    await renderCronogramaObra(obra.ordem, idObra)
 
     removerOverlay()
 }
 
-async function salvarDtInicio(input, idObra) {
+async function salvarDtInicio(input, idObra, ordem) {
     await enviar(`dados_obras/${idObra}/dt_inicio`, input.value)
-    await renderCronogramaObra(idObra)
+
+    await renderCronogramaObra(ordem, idObra)
 }

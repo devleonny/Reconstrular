@@ -63,6 +63,48 @@
     gap: 2px;
 }
 
+.interruptor {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 13px
+}
+
+.interruptor input {
+    display: none
+}
+
+.trilho {
+    position: relative;
+    width: 38px;
+    height: 20px;
+    border-radius: 20px;
+    background: #b0b0b0;
+    transition: .2s
+}
+
+.trilho::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: white;
+    transition: .2s
+}
+
+.interruptor input:checked + .trilho {
+    background: #d32f2f
+}
+
+.interruptor input:checked + .trilho::after {
+    transform: translateX(18px)
+}
+
 .tag-obra {
     display: inline-block;
     padding: 3px 1vw;
@@ -72,6 +114,8 @@
 }
 
 .bloco-form-epi {
+    border-radius: 5px;
+    padding: 0.5rem;
     display: flex;
     align-items: start;
     justify-content: start;

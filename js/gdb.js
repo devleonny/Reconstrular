@@ -1,3 +1,26 @@
+async function fetchAutenticado(url, opcoes) {
+    const resposta = await fetch(url, opcoes)
+
+    if (![401, 403].includes(resposta.status))
+        return resposta
+
+    let dadosErro = {}
+
+    try {
+        dadosErro = await resposta.clone().json()
+    } catch {
+        dadosErro.erro = await resposta.clone().text()
+    }
+
+    await encerrarAcesso(
+        dadosErro.erro ||
+        dadosErro.mensagem ||
+        'Sua sessão foi encerrada'
+    )
+
+    return null
+}
+
 async function recuperarDado(base, chave) {
 
     if (chave === undefined || chave === null)
@@ -5,7 +28,7 @@ async function recuperarDado(base, chave) {
 
     const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
 
-    const resposta = await fetch(`${api}/recuperar-dado`, {
+    const resposta = await fetchAutenticado(`${api}/recuperar-dado`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -13,6 +36,9 @@ async function recuperarDado(base, chave) {
         },
         body: JSON.stringify({ base, chave })
     })
+
+    if (!resposta)
+        return null
 
     if (!resposta.ok) {
         const erro = await resposta.text()
@@ -26,7 +52,7 @@ async function pesquisarDB(params) {
 
     const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
 
-    const resposta = await fetch(`${api}/pesquisar-db`, {
+    const resposta = await fetchAutenticado(`${api}/pesquisar-db`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -40,6 +66,9 @@ async function pesquisarDB(params) {
         throw new Error(erro || 'Erro ao pesquisar')
     }
 
+    if (!resposta)
+        return null
+
     return await resposta.json()
 }
 
@@ -50,7 +79,7 @@ async function baixarRelatorioExcel(dados = null) {
 
     const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
 
-    const response = await fetch(`${api}/excel`, {
+    const response = await fetchAutenticado(`${api}/excel`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -58,6 +87,9 @@ async function baixarRelatorioExcel(dados = null) {
         },
         body: JSON.stringify(dados)
     })
+
+    if (!response)
+        return null
 
     if (!response.ok) {
         const erro = await response.json()
@@ -87,7 +119,7 @@ async function contarPorCampo({
 
     const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
 
-    const resposta = await fetch(`${api}/contar-por-campo`, {
+    const resposta = await fetchAutenticado(`${api}/contar-por-campo`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -100,6 +132,9 @@ async function contarPorCampo({
             explode
         })
     })
+
+    if (!resposta)
+        return null
 
     if (!resposta.ok) {
         const erro = await resposta.text()
@@ -121,7 +156,7 @@ async function deletar(caminho) {
     }
 
     try {
-        const response = await fetch(url, {
+        const response = await fetchAutenticado(url, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -129,6 +164,9 @@ async function deletar(caminho) {
             },
             body: JSON.stringify(objeto)
         })
+
+        if (!response)
+            return null
 
         if (!response.ok) {
             console.error(`Falha ao deletar: ${response.status} ${response.statusText}`)
@@ -161,7 +199,7 @@ async function enviar(caminho, info) {
     const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
 
     try {
-        const response = await fetch(url, {
+        const response = await fetchAutenticado(url, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -169,6 +207,9 @@ async function enviar(caminho, info) {
             },
             body: JSON.stringify(objeto)
         });
+
+        if (!response)
+            return null
 
         let data;
         try {
@@ -228,4 +269,46 @@ function toTimestamp(d, fimDoDia = false) {
 
     const t = Date.parse(str)
     return isNaN(t) ? null : t
+}
+
+async function bloquearUsuario(id_usuario, input) {
+    try {
+        const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
+        const status = input.checked
+
+        const resposta = await fetchAutenticado(`${api}/bloquear-usuario`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ id_usuario, status })
+        })
+
+        if (!resposta)
+            return null
+
+        if (!resposta.ok) {
+            const erro = await resposta.json().catch(() => ({}))
+
+            throw new Error(
+                erro.erro ||
+                erro.mensagem ||
+                'Erro na requisição'
+            )
+        }
+
+        return await resposta.json()
+    } catch (err) {
+        console.error(err)
+
+        popup({
+            mensagem: err.message || 'Falha ao bloquear o usuário: fale com o suporte.'
+        })
+
+        // O inverso;
+        input.checked = !input.checked
+
+        return null
+    }
 }

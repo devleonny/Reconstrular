@@ -13,7 +13,6 @@ const optionsSelect = (obj, chave) => {
 async function mostrarFolha(idColaborador) {
 
     titulo.textContent = 'Registo de Ponto'
-    telaAtiva = 'registro_de_ponto'
 
     const colaborador = await recuperarDado('dados_colaboradores', idColaborador)
 

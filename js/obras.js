@@ -2,32 +2,14 @@ async function telaObras() {
 
     try {
 
-        telaAtiva = 'obras'
-
         titulo.textContent = 'Obras'
 
         const tabela = await modTab({
             btnExtras: `<button onclick="adicionarObra()">Adicionar Obra</button>`,
             pag: 'obras',
             body: 'bodyObras',
-            base: 'dados_obras',
+            base: 'mvw_dados_obras',
             criarLinha: 'criarLinhaObras',
-            substituicoes: [
-                {
-                    path: 'cliente',
-                    tabela: 'dados_clientes',
-                    campoBusca: 'id',
-                    retorno: 'nome',
-                    destino: 'nomeCliente'
-                },
-                {
-                    path: 'ordem',
-                    tabela: 'vw_colaboradores_por_obra',
-                    campoBusca: 'ordem',
-                    retorno: 'colaboradores',
-                    destino: 'colaboradores'
-                }
-            ],
             colunas: {
                 'Ordem': { chave: 'ordem' },
                 'Cliente': { chave: 'snapshots.cliente' },
@@ -35,11 +17,11 @@ async function telaObras() {
                 'Cidade': { chave: 'snapshots.cidade.nome' },
                 'Porcentagem': {},
                 'Status': {},
-                'Colaboradores': {},
-                'Material Orçamentado': {},
-                'Material Real': {},
-                'Material Real vs Material Orçamentado': {},
-                'Mão de Obra Orçamentado': {},
+                'Ferramentas': {},
+                'Mão de Obra': {},
+                'Material': {},
+                'Material Extra': {},
+                '% Material Extra': {},
                 'Acompanhamento': {},
                 'Cronograma': {},
                 'Histórico de Edições': {},
@@ -58,23 +40,21 @@ async function telaObras() {
 
 }
 
-async function criarLinhaObras(obra) {
+function criarLinhaObras(obra) {
 
     const {
         id,
         ordem,
-        snapshots,
-        colaboradores,
-        resultado
-    } = obra || {}
-
-    const {
-        cliente,
+        nome_cliente,
         cidade,
-        materialReal,
-        maoObraOrcado,
-        materialOrcado
-    } = snapshots || {}
+        distrito,
+        total_materiais,
+        total_ferramentas,
+        total_mao_obra,
+        resultado,
+        total_extra,
+        porcentagem_extra
+    } = obra || {}
 
     const { porcentagem, excedente } = resultado || {}
 
@@ -84,17 +64,13 @@ async function criarLinhaObras(obra) {
             ? 'Em Andamento'
             : 'Finalizado'
 
-    const listaColabs = (colaboradores || [])
-        .map(({ nome }) => `<span class="tag-obra">${nome}</span>`)
-        .join('')
-
     tds = `
         <td>
             <span class="tag-usuario">${ordem}</span>
         </td>
-        <td>${cliente || ''}</td>
-        <td>${cidade?.distrito || ''}</td>
-        <td>${cidade?.nome || ''}</td>
+        <td>${nome_cliente || ''}</td>
+        <td>${cidade || ''}</td>
+        <td>${distrito || ''}</td>
         <td>
             ${divPorcentagem(porcentagem)}
         </td>
@@ -105,18 +81,20 @@ async function criarLinhaObras(obra) {
             </div>
         </td>
         <td>
-            <div style="${vertical}; gap: 2px;">${listaColabs}</div>
+            <span onclick="mostrarMateriaisOrcamento('${id}', 'ferramentas')" style="cursor: pointer;">${dinheiro(total_ferramentas)}</span>
         </td>
         <td>
-            <span onclick="mostrarMateriaisOrcamento('${id}')" style="cursor: pointer;">${dinheiro(materialOrcado)}</span>
+            <span onclick="mostrarMateriaisOrcamento('${id}', 'mao_obra')" style="cursor: pointer;">${dinheiro(total_mao_obra)}</span>
         </td>
         <td>
-            <span onclick="mostrarMateriaisReais('${ordem}')" style="cursor: pointer;">${dinheiro(materialReal)}</span>
+            <span onclick="mostrarMateriaisOrcamento('${id}', 'materiais')" style="cursor: pointer;">${dinheiro(total_materiais)}</span>
         </td>
         <td>
-            ${porcentagemHtml(materialOrcado ? Number((materialReal / materialOrcado) * 100).toFixed(0) : 0)}
+            <span onclick="mostrarMateriaisExtras('${ordem}')" style="cursor: pointer;">${dinheiro(total_extra)}</span>
         </td>
-        <td>${dinheiro(maoObraOrcado)}</td>
+        <td>
+            ${porcentagemHtml(porcentagem_extra || 0)}
+        </td>
         <td>
             <img src="imagens/kanban.png" onclick="verAndamento('${id}')">
         </td>
@@ -134,7 +112,7 @@ async function criarLinhaObras(obra) {
 
 }
 
-async function mostrarMateriaisOrcamento(id_obra) {
+async function mostrarMateriaisOrcamento(id_obra, tipo) {
 
     overlayAguarde()
 
@@ -151,13 +129,14 @@ async function mostrarMateriaisOrcamento(id_obra) {
             'Orçamento': { chave: 'contrato' },
             'Ambiente': { chave: 'ambiente' },
             'Zona': { chave: 'zona' },
-            'Tipo': {chave: 'tipo'},
+            'Tipo': { chave: 'tipo' },
             'Descrição': { chave: 'descricao' },
             'Quantidade': {},
             'Preço': {},
             'Total': {}
         },
         filtros: {
+            'tipo': { op: '=', value: tipo },
             'id_orcamento': {
                 modo: 'OR',
                 regras: (orcamentos_vinculados || []).map(o => ({ op: '=', value: o }))
@@ -166,7 +145,7 @@ async function mostrarMateriaisOrcamento(id_obra) {
     })
 
     popup({
-        titulo: 'Detalhamento de Materiais do Orçamento',
+        titulo: 'Detalhamento de Itens Orçamentados',
         elemento: `<div style="padding: 0.5rem;">${tabela}</div>`
     })
 
@@ -194,7 +173,7 @@ function criarLinhaMateriais(mat) {
             <td>${zona}</td>
             <td>${inicialMaiuscula(tipo)}</td>
             <td>${descricao}</td>
-            <td>${Number(qtde||0).toLocaleString()}</td>
+            <td>${Number(qtde || 0).toLocaleString()}</td>
             <td>${dinheiro(preco)}</td>
             <td>${dinheiro(total)}</td>
         </tr>
@@ -202,7 +181,7 @@ function criarLinhaMateriais(mat) {
 
 }
 
-async function mostrarMateriaisReais(ordem) {
+async function mostrarMateriaisExtras(ordem) {
 
     overlayAguarde()
 
@@ -210,23 +189,25 @@ async function mostrarMateriaisReais(ordem) {
 
     const tabela = await modTab({
         pag,
-        base: 'dados_despesas',
+        base: 'vw_despesas',
         body: 'popup_despesas',
         criarLinha: 'criarLinhaDespesa',
         colunas: {
-            'Fornecedor': { chave: 'snapshots.fornecedor.nome' },
-            'Distrito': { chave: 'snapshots.fornecedor.snapshots.cidade.distrito' },
-            'Cidade': { chave: 'snapshots.fornecedor.snapshots.cidade.nome' },
-            'Número do Contribuinte': { chave: 'snapshots.fornecedor.numero_contribuinte' },
+            'Fornecedor': { chave: 'nome_fornecedor' },
+            'Distrito': { chave: 'distrito' },
+            'Cidade': { chave: 'nome_cidade' },
+            'Número do Contribuinte': { chave: 'nif' },
             'Valor': { chave: 'valor' },
             'IVA': { chave: 'iva' },
             'Ano': { chave: 'snapshots.ano', tipoPesquisa: 'select' },
             'Mês': { chave: 'snapshots.mes', tipoPesquisa: 'select' },
             'Data': { chave: 'data', tipoPesquisa: 'data' },
             'Fatura': {},
-            'Tipo de Material': { chave: 'material.nome' },
+            'Quantidade': {},
+            'Especialidade': { chave: 'especialidade' },
+            'Material': { chave: 'material' },
             'Obra': {},
-            'Detalhes': {},
+            'Detalhes': {}
         },
         filtros: {
             'obra': { op: '=', value: ordem }
@@ -262,7 +243,6 @@ async function calcularTotaisOrcamentos(idObra, obra) {
     for (const despesa of (despesasVinculadas?.resultados || [])) {
         totais.materialReal += (despesa?.valor || 0)
     }
-
 
     for (const idOrcamento of (obra?.orcamentos_vinculados || [])) {
 
@@ -449,6 +429,7 @@ async function maisCampo(local, tabela, id = null) {
             base: tabela,
             retornar: ['snapshots.cliente'],
             colunas: {
+                'Número Orçamento': { chave: 'contrato' },
                 'Cliente': { chave: 'snapshots.cliente' },
                 'Data Contato': { chave: 'data_contato' },
                 'Data Visita': { chave: 'data_visita' }
@@ -491,9 +472,9 @@ async function maisCampo(local, tabela, id = null) {
 
 async function salvarObra(idObra = crypto.randomUUID()) {
 
-    overlayAguarde()
-
     try {
+
+        overlayAguarde()
 
         const painel = document.querySelector('.painel-padrao')
         const spanCliente = painel.querySelector('[name="cliente"]')
@@ -506,6 +487,30 @@ async function salvarObra(idObra = crypto.randomUUID()) {
                 .map(span => span.id)
                 .filter(Boolean)
         )]
+
+        console.log(orcamentos_vinculados);
+        
+        if (orcamentos_vinculados.length) {
+
+            const { resultados } = await pesquisarDB({
+                base: 'dados_obras',
+                filtros: {
+                    'orcamentos_vinculados': {
+                        modo: 'OR',
+                        regras: orcamentos_vinculados.map(o => ({ op: 'includes', value: o }))
+                    }
+                }
+            })
+
+            console.log(resultados);
+            
+
+            if (resultados.length) {
+                const obras = resultados.map(o => o.ordem).join(', ')
+                return popup({ mensagem: `Essa(s) obra(s) ${obras} já estão com algum destes orçamentos: Por favor verifique e remova.` })
+            }
+
+        }
 
         const obraAtualizada = {
             orcamentos_vinculados,

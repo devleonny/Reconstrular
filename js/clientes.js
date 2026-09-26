@@ -3,8 +3,6 @@ async function telaClientes() {
     try {
         overlayAguarde()
 
-        telaAtiva = 'clientes'
-
         const tabela = await modTab({
             btnExtras: '<button onclick="formularioCliente()">Adicionar Cliente</button>',
             base: 'dados_clientes',

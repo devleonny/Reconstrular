@@ -35,7 +35,6 @@ async function telaColaboradores() {
 
     overlayAguarde()
 
-    telaAtiva = 'colaboradores'
     titulo.textContent = 'Colaboradores'
 
     const colunas = {
@@ -49,6 +48,11 @@ async function telaColaboradores() {
         'Especialidade': { chave: 'especialidade' },
         'Folha de Ponto': {},
         'Ficha de EPI': {},
+        ...(
+            ['CEO', 'Diretor Programador'].includes(acesso.funcao)
+                ? { 'Bloquear acesso': {} }
+                : {}
+        ),
         'Editar': {}
     }
 
@@ -94,9 +98,21 @@ async function criarLinhaColaboradores(colaborador) {
         telefone,
         nome,
         status_disponivel,
-        especialidade
+        especialidade,
+        acesso_bloqueado
     } = colaborador || {}
     const { distrito, nome: nomeCidade } = snapshots?.cidade || {}
+
+    const tdBloqueio = ['CEO', 'Diretor Programador'].includes(acesso.funcao)
+        ? `
+            <td>
+                <label class="interruptor">
+                    <input onchange="bloquearUsuario('${id}', this)" type="checkbox" id="acesso-bloqueado" ${acesso_bloqueado ? 'checked' : ''}>
+                    <span class="trilho"></span>
+                </label>
+            </td>
+        `
+        : ''
 
     const especialidades = (especialidade || [])
         .map(op => `<span class="tag-especialidade">${op}</span>`)
@@ -142,6 +158,7 @@ async function criarLinhaColaboradores(colaborador) {
         <td>
             ${formEpi}
         </td>
+        ${tdBloqueio}
         <td>
             <img src="imagens/pesquisar.png" data-acao="editavel" onclick="adicionarColaborador('${id}')">
         </td>
@@ -239,7 +256,7 @@ async function adicionarColaborador(id) {
                 <tr>
                     <td style="text-align: left;">${texto}</td>
                     <td>
-                        <input onchange="visibilidade(this, '${value}')" 
+                        <input ${regras} onchange="visibilidade(this, '${value}')" 
                         type="checkbox" 
                         class="input-colaboradores" 
                         value="${value}" 
@@ -603,7 +620,6 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
         }
 
         colaborador.epi = {
-            data: Date.now(),
             equipamentos
         }
 
@@ -1023,7 +1039,7 @@ function linhaHis(his) {
     } = his || {}
 
     const labelAlteracoes = (alteracoes || [])
-        .map(({mensagem}) => {
+        .map(({ mensagem }) => {
             return `<span class="tag-alteracao">${mensagem}</span>`
         })
         .join('')

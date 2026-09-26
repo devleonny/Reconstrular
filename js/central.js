@@ -5,7 +5,6 @@ const servidor = 'RECONST'
 let stream;
 let emAtualizacao = false
 let acesso = {}
-let telaAtiva = null
 let tela = null
 let toolbar = null
 let titulo = null
@@ -145,8 +144,10 @@ async function acessoLogin() {
 
             } else {
                 localStorage.setItem('acesso', JSON.stringify(data))
-                await telaPrincipal()
+
                 await validarAcesso()
+                await telaPrincipal()
+
                 removerOverlay()
             }
 
@@ -156,40 +157,6 @@ async function acessoLogin() {
             popup({ mensagem: err.message || 'Falha no acesso' })
         }
 
-    }
-}
-
-async function verificarSupervisor(usuario, senha) {
-
-    const url = `${api}/acesso`
-    const requisicao = {
-        tipoAcesso: 'login',
-        servidor,
-        dados: { usuario, senha }
-    }
-
-    try {
-        const response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requisicao)
-        })
-
-        if (!response.ok) {
-            const err = await response.json()
-            throw err
-        }
-
-        const data = await response.json()
-
-        if (data.funcao) {
-            return 'Senha válida'
-        } else {
-            return 'Senha Supervisão inválida'
-        }
-    } catch (e) {
-        console.log(e);
-        return 'Não foi possível no momento'
     }
 }
 
@@ -566,9 +533,26 @@ async function verificarRegras() {
     if (formEPI) {
         const linhaFormEPI = formEPI.closest('.linha-padrao')
 
-        linhaFormEPI.style.display = ['Diretor Operativo', 'CEO', 'Diretor Programador'].includes(funcao)
-            ? 'none'
-            : 'flex'
+        if (['Diretor Operativo', 'CEO', 'Diretor Programador'].includes(funcao)) {
+
+            linhaFormEPI.style.display = 'none'
+            inv(formEPI, true)
+
+        } else {
+
+            linhaFormEPI.style.display = 'flex'
+
+            const marcadados = [...painel.querySelectorAll('[name="camposEpi"]:checked')]
+
+            if (!marcadados.length) {
+                campos.push('Preencha os itens de EPI')
+                inv(formEPI)
+            } else {
+                inv(formEPI, true)
+            }
+
+        }
+
     }
 
     // Documentos;
@@ -738,7 +722,17 @@ async function verificarRegras() {
         }
     }
 
-    const camposFlex = ['nome', 'nome_completo', 'data_nascimento', 'email', 'morada', 'numero_documento', 'apolice']
+    const camposFlex = [
+        'nome',
+        'nome_completo',
+        'data_nascimento',
+        'email', 'morada',
+        'morada_execucao',
+        'morada_fiscal',
+        'numero_documento',
+        'apolice'
+    ]
+    
     for (const campo of camposFlex) {
         const elCampo = input(campo)
         if (!elCampo)

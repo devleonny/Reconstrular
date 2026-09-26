@@ -23,28 +23,28 @@ async function verificarDespesas() {
 
     overlayAguarde()
 
-    telaAtiva = 'despesas'
-
     const tabela = await modTab({
       btnExtras: '<button onclick="formularioDespesa()">Adicionar Despesa</button>',
       pag: 'despesas',
-      base: 'dados_despesas',
+      base: 'vw_despesas',
       body: 'bodyDespesas',
       criarLinha: 'criarLinhaDespesa',
       colunas: {
-        'Fornecedor': { chave: 'snapshots.fornecedor.nome' },
-        'Distrito': { chave: 'snapshots.fornecedor.snapshots.cidade.distrito' },
-        'Cidade': { chave: 'snapshots.fornecedor.snapshots.cidade.nome' },
-        'Número do Contribuinte': { chave: 'snapshots.fornecedor.numero_contribuinte' },
+        'Fornecedor': { chave: 'nome_fornecedor' },
+        'Distrito': { chave: 'distrito' },
+        'Cidade': { chave: 'nome_cidade' },
+        'Número do Contribuinte': { chave: 'nif' },
         'Valor': { chave: 'valor' },
         'IVA': { chave: 'iva' },
         'Ano': { chave: 'snapshots.ano', tipoPesquisa: 'select' },
         'Mês': { chave: 'snapshots.mes', tipoPesquisa: 'select' },
         'Data': { chave: 'data', tipoPesquisa: 'data' },
         'Fatura': {},
-        'Tipo de Material': { chave: 'material.nome' },
+        'Quantidade': {},
+        'Especialidade': { chave: 'especialidade' },
+        'Material': { chave: 'material' },
         'Obra': {},
-        'Detalhes': {},
+        'Detalhes': {}
       }
     })
 
@@ -61,12 +61,29 @@ async function verificarDespesas() {
 
 }
 
-async function criarLinhaDespesa(dados) {
+function criarLinhaDespesa(dados) {
 
-  const { id, valor, iva, fatura, material, data } = dados || {}
+  const {
+    nome_fornecedor,
+    nome_cidade,
+    distrito,
+    nif,
+    id,
+    valor,
+    iva,
+    fatura,
+    material,
+    especialidade,
+    quantidade,
+    data,
+    mes,
+    ano,
+    obra
+  } = dados || {}
 
-  const fornecedor = await recuperarDado('fornecedores', dados?.fornecedor) || {}
-  const cidade = await recuperarDado('cidades', fornecedor?.cidade) || {}
+  const tagObra = obra
+    ? `<span class="tag-usuario">${obra}</span>`
+    : ''
 
   const ax = (link) => {
     if (!link) return ''
@@ -76,25 +93,21 @@ async function criarLinhaDespesa(dados) {
         `
   }
 
-  const [ano, mes, dia] = data
-    ? data.split('-')
-    : ''
-
   tds = `
-        <td>${fornecedor?.nome || ''}</td>
-        <td>${cidade?.distrito || ''}
-        <td>${cidade?.nome || ''}
-        <td>${fornecedor?.numero_contribuinte || ''}</td>
+        <td>${nome_fornecedor || ''}</td>
+        <td>${nome_cidade || ''}
+        <td>${distrito || ''}
+        <td>${nif || ''}</td>
         <td style="white-space: nowrap;">${dinheiro(valor)}</td>
         <td style="white-space: nowrap;">${dinheiro(iva)}</td>
         <td>${ano || ''}</td>
-        <td>${meses[mes] || ''}</td>
-        <td>
-            <span>${data ? `${dia}/${mes}/${ano}` : ''}</span>
-        </td>
+        <td>${mes || ''}</td>
+        <td>${data || ''}</td>
         <td>${ax(fatura)}</td>
-        <td>${material?.nome || ''}</td>
-        <td></td>
+        <td>${quantidade || ''}</td>
+        <td>${especialidade || ''}</td>
+        <td>${material || ''}</td>
+        <td>${tagObra}</td>
         <td>
             <img data-controle="editar" src="imagens/pesquisar.png" onclick="formularioDespesa('${id}')">
         </td>
@@ -110,20 +123,21 @@ async function formularioDespesa(idDespesa) {
 
     overlayAguarde()
 
-    const { 
-      numero_contribuinte, 
-      material, 
-      data, 
-      iva, 
-      valor, 
+    const {
+      numero_contribuinte,
+      data,
+      especialidade,
+      material,
+      iva,
+      valor,
       fornecedor,
+      quantidade,
       obra
     } = await recuperarDado('dados_despesas', idDespesa) || {}
 
-    const dMaterial = material || {}
+    const { resultados } = await pesquisarDB({ base: 'especialidades' }) || {}
     const { nome, snapshots } = await recuperarDado('fornecedores', fornecedor) || {}
     const cidade = snapshots?.cidade || {}
-
     const placeholder = `placeholder="Escolha o fornecedor"`
 
     controlesCxOpcoes.fornecedor = {
@@ -142,16 +156,8 @@ async function formularioDespesa(idDespesa) {
       retornar: ['ordem'],
       colunas: {
         'Número': { chave: 'ordem' },
-        'Cidade':{chave: 'snapshots.cidade.nome'},
-        'Distrito':{chave: 'snapshots.cidade.distrito'}
-      }
-    }
-
-    controlesCxOpcoes.material = {
-      base: 'materiais',
-      retornar: ['nome'],
-      colunas: {
-        'Nome': { chave: 'nome' }
+        'Cidade': { chave: 'snapshots.cidade.nome' },
+        'Distrito': { chave: 'snapshots.cidade.distrito' }
       }
     }
 
@@ -174,6 +180,10 @@ async function formularioDespesa(idDespesa) {
         elemento: `<input ${placeholder} value="${numero_contribuinte || ''}" name="numero_contribuinte" readOnly>`
       },
       {
+        texto: 'Quantidade',
+        elemento: `<input name="quantidade" placeholder="Quantidade" type="number" value="${quantidade || ''}">`
+      },
+      {
         texto: 'Valor',
         elemento: `<input name="valor" placeholder="Valor" type="number" value="${valor || ''}">`
       },
@@ -186,12 +196,20 @@ async function formularioDespesa(idDespesa) {
         elemento: `<input name="data" type="date" value="${data || ''}">`
       },
       {
-        texto: 'Tipo de Material',
-        elemento: `<span ${material ? `id="${material.id}"` : ''} name="material" class="opcoes" onclick="cxOpcoes('material')">${dMaterial?.nome || 'Selecionar'}</span>`
+        texto: 'Especialidade',
+        elemento: `
+          <select name="especialidade">
+            ${resultados.map(res => `<option ${especialidade == res.nome ? 'selected' : ''}>${res.nome}</option>`).join('')}
+          </select>
+          `
+      },
+      {
+        texto: 'Material',
+        elemento: `<textarea placeholder="Descrição do material" name="material">${material || ''}</textarea>`
       },
       {
         texto: 'Obra',
-        elemento: `<span ${obra ? `id="${obra}"`: ''} name="obra" class="opcoes" onclick="cxOpcoes('obra')">${obra || 'Selecionar'}</span>`
+        elemento: `<span ${obra ? `id="${obra}"` : ''} name="obra" class="opcoes" onclick="cxOpcoes('obra')">${obra || 'Selecionar'}</span>`
       },
       {
         texto: 'Upload Fatura', elemento: `
@@ -202,7 +220,8 @@ async function formularioDespesa(idDespesa) {
                 </select>
                 <div id="upload"></div>
             </div>
-            ` }
+            `
+      }
     ]
 
     const botoes = [
@@ -263,8 +282,6 @@ async function salvarDespesa(idDespesa = crypto.randomUUID()) {
     overlayAguarde()
 
     const despesa = await recuperarDado('dados_despesas', idDespesa) || {}
-    const idMaterial = document.querySelector('[name="material"]')?.id
-    const material = await recuperarDado('materiais', idMaterial) || {}
 
     // Foto da Fatura
     const foto = document.querySelector('[name="foto"]')
@@ -290,7 +307,9 @@ async function salvarDespesa(idDespesa = crypto.randomUUID()) {
       ...despesa,
       fornecedor: obVal('fornecedor'),
       obra: document.querySelector('[name="obra"]').textContent.trim(),
-      material,
+      especialidade: obVal('especialidade'),
+      material: obVal('material'),
+      quantidade: Number(obVal('quantidade') || 0),
       iva: Number(obVal('iva')),
       valor: Number(obVal('valor')),
       data: obVal('data')
@@ -336,11 +355,15 @@ async function telaFornecedores() {
       body: 'bodyFornecedores',
       criarLinha: 'criarLinhaFornecedores',
       colunas: {
+        'Data da Criação': {},
         'Nome': { chave: 'nome' },
-        'Número do Contribuinte': { chave: 'numero_contribuinte' },
-        'Distrito': { chave: 'snapshots.cidade.distrito' },
-        'Cidade': { chave: 'snapshots.cidade.nome' },
-        'Editar': {}
+        'Morada Fiscal': { chave: 'morada_fiscal' },
+        'Zona': { chave: 'snapshots.cidade.zona', tipoPesquisa: 'select' },
+        'Distrito': { chave: 'snapshots.cidade.distrito', tipoPesquisa: 'select' },
+        'Cidade': { chave: 'snapshots.cidade.nome', tipoPesquisa: 'select' },
+        'E-mail': { chave: 'email' },
+        'Telefone': { chave: 'telefone' },
+        'Detalhes': {}
       }
     })
 
@@ -357,21 +380,33 @@ async function telaFornecedores() {
 
 }
 
-async function criarLinhaFornecedores(fornecedor) {
+async function criarLinhaFornecedores(dados) {
 
-  const { id } = fornecedor || {}
+    const {
+        timestamp,
+        snapshots,
+        id,
+        email,
+        telefone,
+        nome,
+        morada_fiscal,
+    } = dados || {}
 
-  const cidade = await recuperarDado('cidades', fornecedor?.cidade) || {}
+  const cidade = snapshots?.cidade || {}
 
   const linha = `
       <tr>
-          <td style="text-align: left;">${fornecedor.nome || ''}</td>
-          <td>${fornecedor?.numero_contribuinte || ''}</td>
-          <td>${cidade?.distrito || ''}</td>
-          <td>${cidade?.nome || ''}</td>
-          <td>
-              <img onclick="adicionarFornecedor('${id}')" src="imagens/pesquisar.png">
-          </td>
+        <td>${new Date(timestamp).toLocaleString()}</td>
+        <td>${nome || ''}</td>
+        <td>${morada_fiscal || ''}</td>
+        <td>${cidade?.zona || ''}
+        <td>${cidade?.distrito || ''}
+        <td>${cidade?.nome || ''}
+        <td>${email || ''}</td>
+        <td>${telefone || ''}</td>
+        <td>
+            <img onclick="adicionarFornecedor('${id}')" src="imagens/pesquisar.png">
+        </td>
       </tr>
     `
 
@@ -385,8 +420,16 @@ async function adicionarFornecedor(idFornecedor = crypto.randomUUID()) {
 
     overlayAguarde()
 
-    const fornecedor = await recuperarDado('fornecedores', idFornecedor)
-    const { nome, distrito } = await recuperarDado('cidades', fornecedor?.cidade) || {}
+    const {
+      nome,
+      telefone,
+      cidade,
+      email,
+      morada_fiscal,
+      numero_contribuinte
+    } = await recuperarDado('fornecedores', idFornecedor) || {}
+
+    const { nome: nomeCidade } = await recuperarDado('cidades', cidade) || {}
 
     controlesCxOpcoes.cidade = {
       base: 'cidades',
@@ -400,22 +443,30 @@ async function adicionarFornecedor(idFornecedor = crypto.randomUUID()) {
       }
     }
 
-    const dCidade = [nome, distrito]
-      .filter(d => d)
-      .join('\n')
-
     const linhas = [
       {
         texto: 'Nome',
-        elemento: `<textarea oninput="verificarRegras()" placeholder="Nome do fornecedor" name="nome">${fornecedor?.nome || ''}</textarea>`
+        elemento: `<textarea oninput="verificarRegras()" placeholder="Nome do Cliente" name="nome">${nome || ''}</textarea>`
       },
       {
-        texto: 'Número do Contribuinte',
-        elemento: `<input oninput="verificarRegras()" name="numero_contribuinte" placeholder="Máximo de 9 dígitos" value="${fornecedor?.numero_contribuinte || ''}">`
+        texto: 'Morada Fiscal',
+        elemento: `<textarea placeholder="Morada Fiscal" name="morada_fiscal">${morada_fiscal || ''}</textarea>`
+      },
+      {
+        texto: 'Número de Contribuinte',
+        elemento: `<input oninput="verificarRegras()" placeholder="Limite 9 Dígitos" name="numero_contribuinte" value="${numero_contribuinte || ''}">`
+      },
+      {
+        texto: 'Telefone',
+        elemento: `<input oninput="verificarRegras()" placeholder="Limite 9 Dígitos" name="telefone" value="${telefone || ''}">`
+      },
+      {
+        texto: 'E-mail',
+        elemento: `<input oninput="verificarRegras()" placeholder="E-mail" name="email" value="${email || ''}">`
       },
       {
         texto: 'Cidade',
-        elemento: `<span name="cidade" class="opcoes" onclick="cxOpcoes('cidade')">${dCidade || 'Selecionar'}</span>`
+        elemento: `<span name="cidade" ${cidade ? `id="${cidade}"` : ''} class="opcoes" onclick="cxOpcoes('cidade')">${nomeCidade || 'Selecionar'}</span>`
       }
     ]
 
@@ -436,7 +487,9 @@ async function adicionarFornecedor(idFornecedor = crypto.randomUUID()) {
 
 async function salvarFornecedor(id) {
 
+
   try {
+
     overlayAguarde()
 
     const { campos } = await verificarRegras()
@@ -454,17 +507,20 @@ async function salvarFornecedor(id) {
 
     const fornecedor = {
       nome: obVal('nome'),
+      morada_fiscal: obVal('morada_fiscal'),
       numero_contribuinte: obVal('numero_contribuinte'),
+      telefone: obVal('telefone'),
+      email: obVal('email'),
       cidade: obVal('cidade')
     }
 
     await enviar(`fornecedores/${id}`, fornecedor)
 
-    removerPopup()
+    removerTodosPopups()
 
   } catch (err) {
     console.error(err)
-    popup({ mensagem: 'Falha ao salvar o fornecedor: Fale com o suporte.' })
+    popup({ mensagem: 'Falha ao salvar o cliente: Fale com o suporte.' })
   }
 
 }
@@ -474,8 +530,6 @@ async function telaGenerica(nomeBase, titulo) {
   try {
 
     overlayAguarde()
-
-    telaAtiva = nomeBase
 
     const tabela = await modTab({
       pag: 'generico',
@@ -512,19 +566,15 @@ async function criarLinhaGenerica(dados) {
 
   const { id, nome, preco, link } = dados || {}
 
-  const tdLink = telaAtiva !== 'mao_obra'
-    ? `<td>
-        <a href="${link || '#'}" target="_blank" rel="noopener">
-          ${link || ''}
-        </a>
-      </td>`
-    : ''
-
   const linha = `
     <tr>
       <td>${nome || ''}</td>
       <td>${dinheiro(preco) || ''}</td>
-      ${tdLink}
+      <td>
+        <a href="${link || '#'}" target="_blank" rel="noopener">
+          ${link || ''}
+        </a>
+      </td>
       <td>
         <img src="imagens/pesquisar.png" onclick="adicionarGenerico('${id}')">
       </td>

@@ -16,7 +16,6 @@ function podeExibirMenu(item, funcao) {
 }
 
 function criarMenus(chave) {
-    telaAtiva = chave
 
     const botoesMenu = document.querySelector('.botoesMenu')
     const { funcao } = JSON.parse(localStorage.getItem('acesso')) || {}

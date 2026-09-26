@@ -41,7 +41,7 @@ async function modTab(configuracoes) {
 
     const pesquisa = (await Promise.all(
         Object.entries(colunas).map(async ([th, query]) => {
-            if (!query.chave || query?.bloquearPesquisa)
+            if (!query.chave)
                 return `
                     <th style="background-color: white;">
                         <img src="imagens/alerta.png" onclick="campoBloq()" title="Campo não permite pesquisa!" style="width: 1.5rem;">
@@ -53,25 +53,8 @@ async function modTab(configuracoes) {
                     path: query.chave
                 })
 
-                const opcoesLista = Object.keys(dados || {})
-                    .filter(r => r !== 'todos' && r !== 'EM BRANCO')
-                    .flatMap(r => {
-                        try {
-                            const valor = JSON.parse(r)
-
-                            if (Array.isArray(valor)) {
-                                return valor
-                                    .map(item => String(item).trim())
-                                    .filter(Boolean)
-                            }
-
-                            return [String(valor).trim()].filter(Boolean)
-                        } catch {
-                            return [String(r).trim()].filter(Boolean)
-                        }
-                    })
-
-                const opcoes = [...new Set(opcoesLista)]
+                const opcoes = Object.keys(dados)
+                    .filter(r => r != 'todos' && r != 'EM BRANCO')
                     .sort((a, b) => a.localeCompare(b))
                     .map(r => `<option value="${String(r).toLowerCase()}">${r}</option>`)
                     .join('')
@@ -79,9 +62,9 @@ async function modTab(configuracoes) {
                 return `
                     <th style="background-color: white;">
                         <select
-                            data-chave="${query.chave}"
-                            data-op="${query.op || '='}"
-                            onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '${query.op || 'includes'}', elemento: this, pag: '${pag}'})">
+                        data-chave="${query.chave}"
+                        data-op="${query.op || '='}"
+                        onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '${query.op || '='}', elemento: this, pag: '${pag}'})">
                             <option></option>
                             ${opcoes}
                         </select>
@@ -91,9 +74,22 @@ async function modTab(configuracoes) {
             if (query.tipoPesquisa == 'data')
                 return `
                     <th style="background-color: white;">
-                        <div style="${horizontal}; gap: 2px;">
-                            <input data-chave="${query.chave}" data-op=">=d" type="date" onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '>=d', elemento: this, pag: '${pag}'})">
-                            <input data-chave="${query.chave}" data-op="<=d" type="date" onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '<=d', elemento: this, pag: '${pag}'})">
+                        <div style="display: flex; flex-direction: column; gap: 2px; align-items: center;">
+
+                            <input
+                            data-chave="${query.chave}"
+                            data-op=">=d"
+                            type="date"
+                            onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '>=d', elemento: this, pag: '${pag}'})"
+                            style="width: 7rem; font-size: 0.75rem; padding: 0; height: 1.3rem;">
+
+                            <input
+                            data-chave="${query.chave}"
+                            data-op="<=d"
+                            type="date"
+                            onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '<=d', elemento: this, pag: '${pag}'})"
+                            style="width: 7rem; font-size: 0.75rem; padding: 0; height: 1.3rem;">
+                            
                         </div>
                     </th>`
 
@@ -102,19 +98,22 @@ async function modTab(configuracoes) {
                 data-chave="${query.chave}"
                 data-op="${query.op || 'includes'}"
                 onkeydown="confirmarPesquisa({ event, chave: '${query.chave}', op: '${query.op || 'includes'}', elemento: this, pag: '${pag}'})"
+                onpaste="colarTextoPuro(event)"
                 contentEditable="true">
                 </th>
-                `
+            `
         })
     )).join('')
 
     const modelo = `
         <div style="${vertical}; width: 100%;">
-            <div class="topo-tabela${nude ? ' nude' : ''}" ${cor ? `style="background-color: ${cor};"` : ''}">
+            <div class="topo-tabela${nude ? ' nude' : ''}" ${cor ? `style="background: ${cor};"` : ''}">
                 <div id="paginacao_${pag}"></div>
                 ${btnExtras || ''}
             </div>
+
             <div style="${!scroll ? `max-height: max-content` : ''};" class="div-tabela${nude ? ' nude' : ''}">
+
                 <table class="tabela${nude ? ' nude' : ''}">
                     <thead>
                         <tr>${ths}</tr>
@@ -123,10 +122,29 @@ async function modTab(configuracoes) {
                     <tbody id="${body}"></tbody>
                 </table>
             </div>
+
             ${nude ? '' : '<div class="rodape-tabela"></div>'}
         </div>
     `
     return modelo
+}
+
+function colarTextoPuro(event) {
+    event.preventDefault()
+
+    const texto = event.clipboardData?.getData('text/plain') || ''
+
+    if (document.queryCommandSupported?.('insertText')) {
+        document.execCommand('insertText', false, texto)
+        return
+    }
+
+    const sel = window.getSelection()
+    if (!sel || !sel.rangeCount) return
+
+    sel.deleteFromDocument()
+    sel.getRangeAt(0).insertNode(document.createTextNode(texto))
+    sel.collapseToEnd()
 }
 
 function restaurarPesquisa(pag) {
@@ -393,6 +411,7 @@ async function paginacao(pag) {
             pagina,
             base,
             body,
+            limite,
             ocultarPaginacao,
             ocultarLegenda,
             substituicoes,
@@ -425,7 +444,6 @@ async function paginacao(pag) {
         })
 
         const mesmaConsulta = controles[pag].ultimaAssinaturaConsulta === assinaturaAtualConsulta
-
         const tabela = tbody.parentElement
         const cols = tabela.querySelectorAll('thead th').length
 
@@ -435,6 +453,7 @@ async function paginacao(pag) {
         }
 
         const dados = await pesquisarDB({
+            limite,
             base: baseResolvida,
             substituicoes,
             relacionados,
@@ -616,7 +635,7 @@ function criarDino(cols) {
 }
 
 function achou() {
-    return Math.random() < 0.01
+    return Math.random() < 0.1
 }
 
 function ordenarColuna({ pag, path }) {
@@ -691,4 +710,14 @@ function aplicarColunasOcultas(pag) {
             if (td) td.style.display = deveOcultar ? 'none' : ''
         })
     })
+}
+
+function moverPag(direcao) {
+
+    const pag = document.querySelector('.div-tabela')
+
+    pag.scrollLeft += direcao == 'esquerda'
+        ? (-100) 
+        : 100
+
 }
