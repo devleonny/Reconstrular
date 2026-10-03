@@ -166,6 +166,17 @@ const esquemaBotoes = {
             img: 'orcamentos',
             sub: [
                 { nome: 'Criar Orçamento', funcao: 'formularioOrcamento', img: 'baixar' },
+                {
+                    permitido: [
+                        'CEO',
+                        'Diretor Programador',
+                        'Diretor Operativo',
+                        'Coordenador Operativo'
+                    ],
+                    nome: 'Edição de Zonas',
+                    funcao: 'telaZonas',
+                    img: 'zona'
+                },
                 { nome: 'Em Aberto', funcao: 'orcamentosEmAberto', img: 'alerta' },
                 { nome: 'Finalizados', funcao: 'orcamentosFinalizados', img: 'doublecheck' },
                 { nome: 'Recusados', funcao: 'orcamentosRecusados', img: 'cancel' }

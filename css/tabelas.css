@@ -1,83 +1,103 @@
-.blocoTabela {
-    width: 100%;
+.tabela-sem-resultados {
+    padding: 1rem 0;
     display: flex;
-    align-items: start;
-    justify-content: start;
-    flex-direction: column;
-}
-
-.recorteTabela {
-    border-left: 1px solid #797979;
-    border-right: 1px solid #797979;
-    height: max-content;
-    max-height: 70vh;
     width: 100%;
-    overflow: auto;
+    align-items: center;
+    justify-content: center;
+    background-color: white;
+    border-radius: 3px;
 }
 
 .tabela {
-    min-width: 100%;
-    background-color: white;
+    width: 100%;
     border-collapse: collapse;
+    font-size: 11px;
+}
+
+.tabela.nude {
+    background-color: transparent;
+}
+
+.tabela thead input,
+.tabela thead select {
+    background-color: #f0f0f0;
+    border-radius: 3px;
+    padding: 5px;
+    border: solid 1px #d2d2d2;
+    width: max-content;
+}
+
+.tabela th {
+    background-color: #f3f3f3;
+    font-weight: 500;
+    border: 1px solid #dedede;
+    padding: 5px 4px;
+}
+
+.tabela td {
+    padding: 6px 5px;
+    border: 1px solid #e3e3e3;
+}
+
+.tabela tbody tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+.tabela tbody tr:hover {
+    background-color: #f1f5f9;
+}
+
+.tabela thead input,
+.tabela thead select {
+    background-color: #f8f8f8;
+    border: 1px solid #d8d8d8;
+    padding: 4px 5px;
+}
+
+.tabela thead {
+    box-shadow: 0 1px 0 #d6d6d6;
+}
+
+.tabela.nude td {
+    border: none;
 }
 
 .tabela thead {
     box-shadow: 0 1px 0 #ccc;
-    top: 0;
+    background-color: #d2d2d2;
     position: sticky;
-    background-color: #d2d2d2;
-    z-index: 10;
+    top: 0;
+    z-index: 2;
 }
 
-.tabela thead input {
-    width: 100%;
-}
-
-.tabela th {
-    font-size: 11px;
-    font-weight: lighter;
-    text-align: center;
-    background-color: #deeaf6;
-    border: solid 1px #d2d2d2;
-    padding: 3px;
-}
-
-.tabela td {
-    font-size: 12px;
-    text-align: center;
-    padding: 8px;
-    border: 1px solid #d2d2d2;
-}
-
-.tabela span {
-    text-align: left;
-}
-
-.div-tabela {
-    background-color: white;
-    height: max-content;
-    width: 100%;
-    max-height: 70vh;
-    overflow: auto;
-}
-
-.filtro-tabela {
-    border-radius: 3px;
-    background-color: #d2d2d2;
+.borda-tabela {
     display: flex;
     align-items: start;
     justify-content: start;
     flex-direction: column;
-    gap: 2px;
-    padding: 0.5rem;
+    width: 100%;
+    border-radius: 3px;
+}
+
+.div-tabela {
+    background-color: white;
+    max-height: 65vh;
+    width: 100%;
+    height: max-content;
+    overflow: auto;
+}
+
+.div-tabela.nude {
+    border: none;
+    overflow: hidden;
+    background-color: transparent;
 }
 
 .topo-tabela {
+    position: relative;
     justify-content: space-between;
     width: 100%;
     background: linear-gradient(45deg, #7f6a5b, #393532);
-    box-shadow: 0 0 2px #222;
-    border-bottom: none;
     min-height: 2vh;
     display: flex;
     align-items: center;
@@ -86,18 +106,21 @@
     width: 100%;
 }
 
-.topo-tabela span {
-    padding: 5px;
-}
-
 .rodape-tabela {
     display: flex;
     align-items: start;
     justify-content: start;
     gap: 5px;
-    box-shadow: 0 0 2px #222;
+    background: linear-gradient(45deg, #7f6a5b, #393532);
     width: 100%;
     min-height: 2vh;
     border-radius: 0 0 5px 5px;
-    background: linear-gradient(45deg, #7f6a5b, #393532);
+}
+
+.topo-tabela.nude {
+    border-radius: 5px;
+}
+
+.topo-tabela span {
+    padding: 5px;
 }

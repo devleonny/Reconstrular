@@ -76,8 +76,7 @@ function linCxOpcoes(dado) {
     }
 
     return `
-        <tr class="opcoes-v2" 
-            onclick="selecionar('${ativo}', '${cod}')">
+        <tr onclick="selecionar('${ativo}', '${cod}')">
             ${tds.join('')}
         </tr>`
 }

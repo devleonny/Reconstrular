@@ -560,7 +560,7 @@ img {
 .Por_Iniciar {
     display: inline-block;
     padding: 3px 1vw;
-    border: solid 1px #ff0000;
+    border: solid 1px #ff8181;
     border-radius: 20px;
     background-color: #ffcfcfe8;
 }
@@ -728,8 +728,15 @@ textarea {
     border: 1px solid #888;
 }
 
-textarea {
-    width: 100%;
+input[type="file"] {
+    width: 70%;
+}
+
+input[type="radio"], input[type="checkbox"] {
+    cursor: pointer;
+    width: 1.5rem;
+    height: 1.5rem;
+    flex: 0 0 2rem;
 }
 
 input:focus {
@@ -979,10 +986,6 @@ button:hover {
     gap: 5px;
 }
 
-input[type="file"] {
-    width: 70%;
-}
-
 .btnPadrao {
     width: 100%;
     background-color: #5b707f;
@@ -1015,14 +1018,21 @@ input[type="file"] {
     justify-content: center;
     margin-left: 2rem;
     border-radius: 1rem 1rem 0 0;
-    background-color: #d2d2d2;
+    background-color: #7f6a5b;
     padding: 5px 2rem;
     font-size: 1.5rem;
-    color: #212121;
+    color: white;
+}
+
+.titulo-tabelas span {
+    filter: drop-shadow(0 0 3px black);
 }
 
 .titulo-tabelas img {
-    filter: drop-shadow(0 0 0.2px black);
+    padding: 2px;
+    background-color: white;
+    border-radius: 50%;
+    box-shadow: 0 0 4px #454545;
 }
 
 @keyframes fade {
@@ -1163,6 +1173,19 @@ input[type="file"] {
     gap: 5px;
     padding: 3vw;
     width: 100%;
+}
+
+.etiquetas {
+    cursor: pointer;
+    margin-left: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    justify-content: center;
+    border: solid 1px #bababa;
+    background-color: #00000012;
+    border-radius: 20px;
+    padding: 5px 1rem;
 }
 
 .etiqueta-revisao {

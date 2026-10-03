@@ -516,6 +516,36 @@ async function verificarRegras() {
     const campos = []
     const funcao = [...painel.querySelectorAll('[name="funcao"]:checked')]?.[0]?.dataset?.valor
     const ignorar = ['Diretor Programador', 'CEO'].includes(funcao)
+    const limites = {
+        nome: { tipo: 'A' },
+        numero_contribuinte: { limite: 9, tipo: 1 },
+        seguranca_social: { limite: 11, tipo: 1 },
+        telefone: { limite: 9, tipo: 1 }
+    }
+    const camposFixos = ['documento', 'especialidade', 'status']
+    const camposFlex = [
+        'nome',
+        'nome_completo',
+        'data_nascimento',
+        'email',
+        'morada',
+        'morada_execucao',
+        'morada_fiscal',
+        'numero_documento',
+        'apolice'
+    ]
+
+    function inv(el, remover) {
+
+        el.style.backgroundColor = remover
+            ? ''
+            : '#f7c5c5'
+
+        el.style.border = remover
+            ? ''
+            : 'solid 1px red'
+
+    }
 
     // Função;
     const localFuncao = painel.querySelector('.campo-funcoes')
@@ -550,9 +580,7 @@ async function verificarRegras() {
             } else {
                 inv(formEPI, true)
             }
-
         }
-
     }
 
     // Documentos;
@@ -590,7 +618,6 @@ async function verificarRegras() {
     const trabalhador = funcao == 'Trabalhador'
     const painelSenha = document.querySelector('.painel-senha')
     const painelPin = document.querySelector('.painel-pin')
-
 
     if (painelSenha)
         painelSenha.style.display = trabalhador ? 'none' : 'flex'
@@ -647,25 +674,6 @@ async function verificarRegras() {
         await validarUsuario()
     }
 
-    const limites = {
-        nome: { tipo: 'A' },
-        numero_contribuinte: { limite: 9, tipo: 1 },
-        seguranca_social: { limite: 11, tipo: 1 },
-        telefone: { limite: 9, tipo: 1 }
-    }
-
-    function inv(el, remover) {
-
-        el.style.backgroundColor = remover
-            ? ''
-            : '#f7c5c5'
-
-        el.style.border = remover
-            ? ''
-            : 'solid 1px red'
-
-    }
-
     for (let [name, regra] of Object.entries(limites)) {
         const campo = input(name)
         if (!campo)
@@ -703,7 +711,7 @@ async function verificarRegras() {
         }
     }
 
-    const camposFixos = ['documento', 'especialidade', 'status']
+    //Campos Fixos;
     for (const campo of camposFixos) {
         const ativo = painel.querySelector(`input[name="${campo}"]:checked`)
         const bloco = painel.querySelector(`[name="${campo}_bloco"]`)
@@ -722,17 +730,7 @@ async function verificarRegras() {
         }
     }
 
-    const camposFlex = [
-        'nome',
-        'nome_completo',
-        'data_nascimento',
-        'email', 'morada',
-        'morada_execucao',
-        'morada_fiscal',
-        'numero_documento',
-        'apolice'
-    ]
-    
+    // Campos Flex;
     for (const campo of camposFlex) {
         const elCampo = input(campo)
         if (!elCampo)
@@ -767,7 +765,69 @@ async function verificarRegras() {
         }
     }
 
+    // Formulário de Despesas;
+
+    const paiTiposDespesas = painel.querySelector('.tipo-despesa')
+    const elTipoDespesa = [...painel.querySelectorAll('[name="tipo_despesa"]:checked')]
+    if (!elTipoDespesa.length) {
+        inv(paiTiposDespesas)
+        campos.push('Tipo de Despesa')
+    } else {
+        inv(paiTiposDespesas, true)
+    }
+
+    const camposDespesas = [
+        'foto',
+        'fatura',
+        'fornecedor',
+        'obra',
+        'quantidade',
+        'valor',
+        'iva',
+        'data',
+        'especialidade',
+        'material'
+    ]
+
+    for (const c of camposDespesas) {
+
+        let el = painel.querySelector(`[name="${c}"]`)
+
+        if (!el)
+            continue
+
+        let temValor
+        const tipo = el.tagName
+
+        if (tipo == 'SPAN') {
+            temValor = el?.id
+
+        } else if (tipo == 'IMG') {
+            temValor = el?.src
+            el = el.closest('#upload')
+
+        } else if (el.files) {
+            temValor = el.files.length
+            el = el.closest('#upload')
+
+        } else {
+            temValor = el?.value
+        }
+
+        if (temValor == undefined)
+            continue
+
+        if (!temValor) {
+            campos.push(inicialMaiuscula(c))
+            inv(el)
+        } else {
+            inv(el, true)
+        }
+
+    }
+
     return { campos }
+
 }
 
 function telaLogin() {

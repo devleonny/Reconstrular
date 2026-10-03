@@ -137,6 +137,35 @@
     background-color: white;
 }
 
+.caixa-todos {
+    gap: 1rem;
+    cursor: pointer;
+    margin-left: 5px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: start;
+    border: solid 1px #bababa;
+    background-color: #ffffffa2;
+    border-radius: 3px;
+    padding: 5px 1rem;
+    margin: 3px;
+}
+
+.etiquetas-zonas {
+    gap: 1rem;
+    cursor: pointer;
+    margin-left: 5px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: start;
+    border: solid 1px #bababa;
+    background-color: #00000012;
+    border-radius: 20px;
+    padding: 5px 1rem;
+}
+
 @media print {
     body * {
         visibility: hidden;

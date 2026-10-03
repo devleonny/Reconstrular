@@ -30,6 +30,8 @@ async function verificarDespesas() {
       body: 'bodyDespesas',
       criarLinha: 'criarLinhaDespesa',
       colunas: {
+        'Edição': {},
+        'Tipo da Despesa': { chave: 'tipo_despesa' },
         'Fornecedor': { chave: 'nome_fornecedor' },
         'Distrito': { chave: 'distrito' },
         'Cidade': { chave: 'nome_cidade' },
@@ -43,8 +45,7 @@ async function verificarDespesas() {
         'Quantidade': {},
         'Especialidade': { chave: 'especialidade' },
         'Material': { chave: 'material' },
-        'Obra': {},
-        'Detalhes': {}
+        'Obra': {}
       }
     })
 
@@ -64,6 +65,7 @@ async function verificarDespesas() {
 function criarLinhaDespesa(dados) {
 
   const {
+    tipo_despesa,
     nome_fornecedor,
     nome_cidade,
     distrito,
@@ -94,6 +96,10 @@ function criarLinhaDespesa(dados) {
   }
 
   tds = `
+        <td>
+            <img data-controle="editar" src="imagens/pesquisar.png" onclick="formularioDespesa('${id}')">
+        </td>
+        <td>${tipo_despesa}</td>
         <td>${nome_fornecedor || ''}</td>
         <td>${nome_cidade || ''}
         <td>${distrito || ''}
@@ -108,9 +114,6 @@ function criarLinhaDespesa(dados) {
         <td>${especialidade || ''}</td>
         <td>${material || ''}</td>
         <td>${tagObra}</td>
-        <td>
-            <img data-controle="editar" src="imagens/pesquisar.png" onclick="formularioDespesa('${id}')">
-        </td>
     `
 
   return `<tr>${tds}</td>`
@@ -123,8 +126,9 @@ async function formularioDespesa(idDespesa) {
 
     overlayAguarde()
 
+    const regras = `oninput="verificarRegras()"`
     const {
-      numero_contribuinte,
+      tipo_despesa,
       data,
       especialidade,
       material,
@@ -132,18 +136,18 @@ async function formularioDespesa(idDespesa) {
       valor,
       fornecedor,
       quantidade,
-      obra
+      obra,
+      fatura,
+      foto
     } = await recuperarDado('dados_despesas', idDespesa) || {}
 
     const { resultados } = await pesquisarDB({ base: 'especialidades' }) || {}
-    const { nome, snapshots } = await recuperarDado('fornecedores', fornecedor) || {}
-    const cidade = snapshots?.cidade || {}
-    const placeholder = `placeholder="Escolha o fornecedor"`
+    const { nome } = await recuperarDado('fornecedores', fornecedor) || {}
 
     controlesCxOpcoes.fornecedor = {
       base: 'fornecedores',
+      funcaoAdicional: ['verificarRegras'],
       retornar: ['nome'],
-      funcaoAdicional: ['buscarLocalidadeFornecedor'],
       colunas: {
         'Nome': { chave: 'nome' },
         'Cidade': { chave: 'snapshots.cidade.nome' },
@@ -153,6 +157,7 @@ async function formularioDespesa(idDespesa) {
 
     controlesCxOpcoes.obra = {
       base: 'dados_obras',
+      funcaoAdicional: ['verificarRegras'],
       retornar: ['ordem'],
       colunas: {
         'Número': { chave: 'ordem' },
@@ -161,66 +166,82 @@ async function formularioDespesa(idDespesa) {
       }
     }
 
-    const linhas = [
-      {
-        texto: 'Fornecedor',
-        elemento: `<span ${fornecedor ? `id="${fornecedor}"` : ''} name="fornecedor" class="opcoes" onclick="cxOpcoes('fornecedor')">${nome || 'Selecionar'}</span>`
-      },
-      {
-        texto: 'Distrito',
-        elemento: `<input ${placeholder} value="${cidade?.distrito || ''}" name="distrito" readOnly>`
-      },
-      {
-        texto: 'Cidade',
-        elemento: `<input ${placeholder} value="${cidade?.nome || ''}" name="cidade" readOnly>`
-      },
-      {
+    const opcoesTipos = ['Despesa', 'Nota de Crédito'].map(t => `
+        <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
+          <input ${regras} ${tipo_despesa == t ? 'checked' : ''} data-tipo="${t}" name="tipo_despesa" type="radio">
+          <span>${t}</span>
+        </div>
+      `).join('')
 
-        texto: 'Número do Contribuinte',
-        elemento: `<input ${placeholder} value="${numero_contribuinte || ''}" name="numero_contribuinte" readOnly>`
-      },
-      {
-        texto: 'Quantidade',
-        elemento: `<input name="quantidade" placeholder="Quantidade" type="number" value="${quantidade || ''}">`
-      },
-      {
-        texto: 'Valor',
-        elemento: `<input name="valor" placeholder="Valor" type="number" value="${valor || ''}">`
-      },
-      {
-        texto: 'IVA',
-        elemento: `<input name="iva" placeholder="IVA" type="number" value="${iva || ''}">`
-      },
-      {
-        texto: 'Data',
-        elemento: `<input name="data" type="date" value="${data || ''}">`
-      },
-      {
-        texto: 'Especialidade',
-        elemento: `
-          <select name="especialidade">
-            ${resultados.map(res => `<option ${especialidade == res.nome ? 'selected' : ''}>${res.nome}</option>`).join('')}
-          </select>
-          `
-      },
-      {
-        texto: 'Material',
-        elemento: `<textarea placeholder="Descrição do material" name="material">${material || ''}</textarea>`
-      },
-      {
-        texto: 'Obra',
-        elemento: `<span ${obra ? `id="${obra}"` : ''} name="obra" class="opcoes" onclick="cxOpcoes('obra')">${obra || 'Selecionar'}</span>`
-      },
-      {
+    const linhaAnexo = !foto && !fatura
+      ? {
         texto: 'Upload Fatura', elemento: `
             <div style="${horizontal}; gap: 1rem;">
-                <select id="modal" onchange="alterarModal()">
+                <select id="modal" onchange="alterarModal(); verificarRegras()">
                     <option>Upload</option>
                     <option>Foto</option>
                 </select>
                 <div id="upload"></div>
             </div>
             `
+      }
+      : {
+        elemento: `
+          <div style="${horizontal}; gap: 1rem;">
+            <img src="imagens/concluido.png">
+            <span>Fatura já anexada</span>
+          </div>
+        `
+
+      }
+
+    const linhas = [
+      linhaAnexo,
+      {
+        texto: 'Tipo de Despesa',
+        elemento: `<div class="tipo-despesa" ${regras}>${opcoesTipos}</div>`
+      },
+      {
+        texto: 'Fornecedor',
+        elemento: `
+          <span
+            ${fornecedor ? `id="${fornecedor}"` : ''} 
+            name="fornecedor" 
+            class="opcoes" 
+            onclick="cxOpcoes('fornecedor')">${nome || 'Selecionar'}</span>
+          `
+      },
+      {
+        texto: 'Quantidade',
+        elemento: `<input ${regras} name="quantidade" placeholder="Quantidade" type="number" value="${quantidade || ''}">`
+      },
+      {
+        texto: 'Valor',
+        elemento: `<input ${regras} name="valor" placeholder="Valor" type="number" value="${valor || ''}">`
+      },
+      {
+        texto: 'IVA',
+        elemento: `<input ${regras} name="iva" placeholder="IVA" type="number" value="${iva || ''}">`
+      },
+      {
+        texto: 'Data',
+        elemento: `<input ${regras} name="data" type="date" value="${data || ''}">`
+      },
+      {
+        texto: 'Especialidade',
+        elemento: `
+          <select ${regras} name="especialidade">
+            ${resultados.map(res => `<option ${especialidade == res.nome ? 'selected' : ''}>${res.nome}</option>`).join('')}
+          </select>
+          `
+      },
+      {
+        texto: 'Material',
+        elemento: `<textarea ${regras} placeholder="Descrição do material" name="material">${material || ''}</textarea>`
+      },
+      {
+        texto: 'Obra',
+        elemento: `<span ${obra ? `id="${obra}"` : ''} name="obra" class="opcoes" onclick="cxOpcoes('obra')">${obra || 'Selecionar'}</span>`
       }
     ]
 
@@ -235,6 +256,8 @@ async function formularioDespesa(idDespesa) {
 
     alterarModal()
 
+    verificarRegras()
+
   } catch (err) {
     console.error(err)
     popup({ mensagem: 'Falha ao abrir o formulário: Fale com o suporte.' })
@@ -244,7 +267,10 @@ async function formularioDespesa(idDespesa) {
 function alterarModal() {
 
   const modal = document.getElementById('modal')
-  const upload = `<input name="fatura" type="file">`
+  if (!modal)
+    return
+
+  const upload = `<input onchange="verificarRegras()" name="fatura" type="file">`
 
   const foto = `
         <div style="${vertical}; gap: 5px;">
@@ -254,7 +280,7 @@ function alterarModal() {
                 <video autoplay playsinline></video>
                 <canvas style="display: none;"></canvas>
             </div>
-            <img name="foto">
+            <img onchange="verificarRegras()" name="foto">
         </div>
     `
   document.getElementById('upload').innerHTML = modal.value == 'Foto' ? foto : upload
@@ -281,6 +307,19 @@ async function salvarDespesa(idDespesa = crypto.randomUUID()) {
 
     overlayAguarde()
 
+    const { campos } = await verificarRegras()
+
+    if (campos.length)
+      return popup({
+        imagem: 'gifs/interrogacao.gif',
+        mensagem: `
+              <div style="${vertical}; gap: 4px;">
+                  <span>Verifique os campos inválidos:</span>
+                  ${campos.map(c => `<span>• ${inicialMaiuscula(c)}</span>`).join('')}
+              </div>
+          `
+      })
+
     const despesa = await recuperarDado('dados_despesas', idDespesa) || {}
 
     // Foto da Fatura
@@ -291,7 +330,7 @@ async function salvarDespesa(idDespesa = crypto.randomUUID()) {
       if (resposta[0].link) {
         despesa.fatura = resposta[0].link;
       } else {
-        removerOverlay();
+        removerOverlay()
         return popup({ mensagem: 'Falha no envio da Foto: tente novamente.' })
       }
     }
@@ -303,8 +342,12 @@ async function salvarDespesa(idDespesa = crypto.randomUUID()) {
       despesa.fatura = anexos[0].link
     }
 
+    // Tipo despesa
+    const tipo_despesa = [...document.querySelectorAll('[name="tipo_despesa"]:checked')][0].dataset.tipo
+
     const atualizado = {
       ...despesa,
+      tipo_despesa,
       fornecedor: obVal('fornecedor'),
       obra: document.querySelector('[name="obra"]').textContent.trim(),
       especialidade: obVal('especialidade'),
@@ -315,9 +358,6 @@ async function salvarDespesa(idDespesa = crypto.randomUUID()) {
       data: obVal('data')
     }
 
-    if (!atualizado.fornecedor || !atualizado.valor || !atualizado.data)
-      return popup({ mensagem: 'Não deixe esses campos em branco: <br>Fornecedor, Valor e/ou Data.' })
-
     await enviar(`dados_despesas/${idDespesa}`, atualizado)
 
     removerPopup()
@@ -326,20 +366,6 @@ async function salvarDespesa(idDespesa = crypto.randomUUID()) {
     console.error(err)
     popup({ mensagem: 'Falha ao salvar a despesa: Fale com o suporte.' })
   }
-}
-
-async function buscarLocalidadeFornecedor() {
-
-  const idFornecedor = document.querySelector('[name="fornecedor"]')?.id
-  const fornecedor = await recuperarDado('fornecedores', idFornecedor)
-
-  const cidade = fornecedor?.snapshots?.cidade || {}
-
-  const painel = document.querySelector('.painel-padrao')
-  painel.querySelector('[name="numero_contribuinte"]').value = fornecedor?.numero_contribuinte || '--'
-  painel.querySelector('[name="cidade"]').value = cidade?.nome || '--'
-  painel.querySelector('[name="distrito"]').value = cidade?.distrito || '--'
-
 }
 
 async function telaFornecedores() {
@@ -382,21 +408,22 @@ async function telaFornecedores() {
 
 async function criarLinhaFornecedores(dados) {
 
-    const {
-        timestamp,
-        snapshots,
-        id,
-        email,
-        telefone,
-        nome,
-        morada_fiscal,
-    } = dados || {}
+  const {
+    timestamp,
+    snapshots,
+    id,
+    email,
+    telefone,
+    nome,
+    morada_fiscal,
+  } = dados || {}
 
   const cidade = snapshots?.cidade || {}
 
   const linha = `
       <tr>
         <td>${new Date(timestamp).toLocaleString()}</td>
+        <td>${tipo_despesa}</td>
         <td>${nome || ''}</td>
         <td>${morada_fiscal || ''}</td>
         <td>${cidade?.zona || ''}
@@ -450,7 +477,7 @@ async function adicionarFornecedor(idFornecedor = crypto.randomUUID()) {
       },
       {
         texto: 'Morada Fiscal',
-        elemento: `<textarea placeholder="Morada Fiscal" name="morada_fiscal">${morada_fiscal || ''}</textarea>`
+        elemento: `<textarea oninput="verificarRegras()" placeholder="Morada Fiscal" name="morada_fiscal">${morada_fiscal || ''}</textarea>`
       },
       {
         texto: 'Número de Contribuinte',

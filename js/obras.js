@@ -11,7 +11,12 @@ async function telaObras() {
             base: 'mvw_dados_obras',
             criarLinha: 'criarLinhaObras',
             colunas: {
+                'Checklist': {},
+                'Cronog.': {},
+                'H. Edições': {},
+                'Edição': {},
                 'Ordem': { chave: 'ordem' },
+                'Orçamentos': { chave: 'orcamentos_vinculados' },
                 'Cliente': { chave: 'snapshots.cliente' },
                 'Distrito': { chave: 'snapshots.cidade.distrito' },
                 'Cidade': { chave: 'snapshots.cidade.nome' },
@@ -21,11 +26,7 @@ async function telaObras() {
                 'Mão de Obra': {},
                 'Material': {},
                 'Material Extra': {},
-                '% Material Extra': {},
-                'Acompanhamento': {},
-                'Cronograma': {},
-                'Histórico de Edições': {},
-                'Edição': {}
+                '% Material Extra': {}
             }
         })
 
@@ -47,6 +48,7 @@ function criarLinhaObras(obra) {
         ordem,
         nome_cliente,
         cidade,
+        orcamentos_vinculados,
         distrito,
         total_materiais,
         total_ferramentas,
@@ -64,9 +66,28 @@ function criarLinhaObras(obra) {
             ? 'Em Andamento'
             : 'Finalizado'
 
+    const orcsVincs = (orcamentos_vinculados || [])
+        .map(o => `<span class="etiquetas">${o}</span>`)
+        .join('')
+
     tds = `
         <td>
-            <span class="tag-usuario">${ordem}</span>
+            <img src="imagens/kanban.png" onclick="verAndamento('${id}')">
+        </td>
+        <td>
+            <img src="imagens/doubleCheck.png" onclick="telaCronograma('${id}')">
+        </td>
+        <td>
+            <img src="imagens/relogio.png" onclick="historicoObras('${ordem}')">
+        </td>
+        <td>
+            <img src="imagens/pesquisar.png" onclick="adicionarObra('${id}')">
+        </td>
+        <td>
+            <span class="etiquetas">${ordem}</span>
+        </td>
+        <td>
+            <div style="display: flex; flex-wrap: wrap; gap: 2px;">${orcsVincs}</div>
         </td>
         <td>${nome_cliente || ''}</td>
         <td>${cidade || ''}</td>
@@ -94,18 +115,6 @@ function criarLinhaObras(obra) {
         </td>
         <td>
             ${porcentagemHtml(porcentagem_extra || 0)}
-        </td>
-        <td>
-            <img src="imagens/kanban.png" onclick="verAndamento('${id}')">
-        </td>
-        <td>
-            <img src="imagens/doubleCheck.png" onclick="telaCronograma('${id}')">
-        </td>
-        <td>
-            <img src="imagens/relogio.png" onclick="historicoObras('${ordem}')">
-        </td>
-        <td>
-            <img src="imagens/pesquisar.png" onclick="adicionarObra('${id}')">
         </td>
     `
     return `<tr>${tds}</tr>`
@@ -169,10 +178,10 @@ function criarLinhaMateriais(mat) {
     return `
         <tr>
             <td>${contrato || ''}</td>
-            <td>${ambiente}</td>
-            <td>${zona}</td>
+            <td>${ambiente || ''}</td>
+            <td>${zona || ''}</td>
             <td>${inicialMaiuscula(tipo)}</td>
-            <td>${descricao}</td>
+            <td>${descricao || ''}</td>
             <td>${Number(qtde || 0).toLocaleString()}</td>
             <td>${dinheiro(preco)}</td>
             <td>${dinheiro(total)}</td>
@@ -303,6 +312,14 @@ async function adicionarObra(idObra) {
 
         const linhas = [
             {
+                elemento: `
+                    <div style="${horizontal}; gap: 1rem;">
+                        <span>Obra de nº: </span>
+                        <span class="etiquetas">${ordem}</span>
+                    </div>
+                `
+            },
+            {
                 texto: 'Cliente',
                 elemento: `
                 <span ${cliente ? `id="${cliente}"` : ''} 
@@ -314,7 +331,7 @@ async function adicionarObra(idObra) {
             {
                 texto: `
                 <div style="${horizontal}; gap: 1rem;">
-                    <img src="imagens/baixar.png" onclick="maisCampo('orcs-vinculados', 'dados_orcamentos')">
+                    <img src="imagens/baixar.png" onclick="maisCampo()">
                     <span>Orçamentos</span>
                 </div>
             `,
@@ -347,7 +364,7 @@ async function adicionarObra(idObra) {
         await Promise.all(
             (orcamentos_vinculados || [])
                 .map(async (id) => {
-                    await maisCampo('orcs-vinculados', 'dados_orcamentos', id)
+                    await maisCampo(id)
                 })
         )
 
@@ -415,45 +432,25 @@ async function gerenciarObraColaborador(input, id, ordem) {
 
 }
 
-async function maisCampo(local, tabela, id = null) {
+async function maisCampo(id = null) {
 
-    let termo = 'Selecione'
     const idFinal = id || crypto.randomUUID()
+    const tabela = 'dados_orcamentos'
+    const { contrato } = id
+        ? await recuperarDado(tabela, id) || {}
+        : {}
 
-    if (tabela == 'dados_orcamentos') {
+    const termo = contrato || 'Selecione'
 
-        const { snapshots } = id ? await recuperarDado('dados_orcamentos', id) || {} : {}
-        termo = snapshots?.cliente || 'Selecione'
-
-        controlesCxOpcoes[idFinal] = {
-            base: tabela,
-            retornar: ['snapshots.cliente'],
-            colunas: {
-                'Número Orçamento': { chave: 'contrato' },
-                'Cliente': { chave: 'snapshots.cliente' },
-                'Data Contato': { chave: 'data_contato' },
-                'Data Visita': { chave: 'data_visita' }
-            }
+    controlesCxOpcoes[idFinal] = {
+        base: tabela,
+        retornar: ['contrato'],
+        colunas: {
+            'Número Orçamento': { chave: 'contrato' },
+            'Cliente': { chave: 'snapshots.cliente' },
+            'Data Contato': { chave: 'data_contato' },
+            'Data Visita': { chave: 'data_visita' }
         }
-
-    } else if (tabela == 'dados_colaboradores') {
-
-        const { nome } = id ? await recuperarDado('dados_colaboradores', id) || {} : {}
-        termo = nome || 'Selecione'
-
-        controlesCxOpcoes[idFinal] = {
-            base: tabela,
-            retornar: ['nome'],
-            colunas: {
-                'Nome': { chave: 'nome' },
-                'Status': { chave: 'status' },
-                'Especialidade': { chave: 'especialidade' },
-                'Cidade': { chave: 'snapshots.cidade.nome' },
-                'Distrito': { chave: 'snapshots.cidade.distrito' },
-                'Area': { chave: 'snapshots.cidade.area' }
-            }
-        }
-
     }
 
     const span = `
@@ -463,7 +460,7 @@ async function maisCampo(local, tabela, id = null) {
         </div>
         `
 
-    const elemento = document.getElementById(local)
+    const elemento = document.getElementById('orcs-vinculados')
 
     if (elemento)
         elemento.insertAdjacentHTML('beforeend', span)
@@ -476,44 +473,53 @@ async function salvarObra(idObra = crypto.randomUUID()) {
 
         overlayAguarde()
 
+        const { orcamentos_vinculados: vinculadosAtual } = await recuperarDado('dados_obras', idObra) || {}
         const painel = document.querySelector('.painel-padrao')
         const spanCliente = painel.querySelector('[name="cliente"]')
 
         if (!spanCliente.id)
             removerPopup()
 
-        const orcamentos_vinculados = [...new Set(
+        // Todos no form;
+        const todosVinculados = [...new Set(
             [...document.querySelectorAll('#orcs-vinculados span')]
                 .map(span => span.id)
                 .filter(Boolean)
         )]
 
-        console.log(orcamentos_vinculados);
-        
-        if (orcamentos_vinculados.length) {
+        // (Todos - originais) da obra; Evitar falso positivo;
+        const novosVinculados = todosVinculados
+            .filter(idOrcamento => idOrcamento && !vinculadosAtual.includes(idOrcamento))
+
+        if (novosVinculados.length) {
 
             const { resultados } = await pesquisarDB({
                 base: 'dados_obras',
                 filtros: {
                     'orcamentos_vinculados': {
                         modo: 'OR',
-                        regras: orcamentos_vinculados.map(o => ({ op: 'includes', value: o }))
+                        regras: novosVinculados.map(o => ({ op: 'includes', value: o }))
                     }
                 }
             })
 
-            console.log(resultados);
-            
-
             if (resultados.length) {
-                const obras = resultados.map(o => o.ordem).join(', ')
-                return popup({ mensagem: `Essa(s) obra(s) ${obras} já estão com algum destes orçamentos: Por favor verifique e remova.` })
+                const obras = resultados.map(o => `<span class="etiquetas">${o.ordem}</span>`).join(', ')
+                const mensagem = `
+                    <div style="${horizontal}; justify-content: start; gap: 1rem;">
+                        <div style="${vertical}; gap: 2px;">${obras}</div>
+                        <span>
+                            Essa obra já possui algum destes orçamentos: <b>Por favor verifique e remova</b>.
+                        </span>
+                    </div>
+                `
+                return popup({ mensagem })
             }
 
         }
 
         const obraAtualizada = {
-            orcamentos_vinculados,
+            orcamentos_vinculados: todosVinculados,
             cliente: spanCliente.id
         }
 

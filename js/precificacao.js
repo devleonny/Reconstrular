@@ -567,7 +567,6 @@ async function salvarComposicao(idCampo) {
     const campo = await recuperarDado('campos', idCampo) || {}
 
     let subtotalGeral = 0
-    let totalGeral = 0
 
     for (const tabela of tabelas) {
         const trs = document.querySelectorAll(`#body_${tabela} tr`)
@@ -596,23 +595,13 @@ async function salvarComposicao(idCampo) {
 
         }
 
-        const chaveMargem = `margem_${tabela}`
         const chaveSubtotal = `subtotal_${tabela}`
-        const chaveTotal = `total_${tabela}`
-        const margem = campo?.[chaveMargem] || 0
-        const total = subtotal * (1 + (margem / 100))
 
         campo[tabela] ??= {}
         campo[tabela] = dados
         campo[chaveSubtotal] = subtotal
-        campo[chaveTotal] = total
-
         subtotalGeral += subtotal
-        totalGeral += total
     }
-
-    campo.total = totalGeral
-    campo.subtotal = subtotalGeral
 
     await enviar(`campos/${idCampo}`, campo)
 

@@ -1,5 +1,4 @@
 let filtroFinalizado = null
-let ambientes = null
 
 async function orcamentosEmAberto() {
     await orcamentos('N')
@@ -13,9 +12,11 @@ async function orcamentosRecusados() {
     await orcamentos('R')
 }
 
-const dt = (data) => {
+const dt = data => {
     if (!data) return '-'
+
     const [ano, mes, dia] = data.split('-')
+
     return `${dia}/${mes}/${ano}`
 }
 
@@ -35,7 +36,6 @@ const statusOrcamento = {
 }
 
 async function orcamentos(finalizado = filtroFinalizado) {
-
     try {
         overlayAguarde()
 
@@ -55,30 +55,28 @@ async function orcamentos(finalizado = filtroFinalizado) {
                 : 'alerta'
 
         const tabela = await modTab({
-            base: 'dados_orcamentos',
+            base: 'vw_dados_orcamentos',
             pag: 'orcamentos',
             filtros: {
-                'finalizado': { op: '=', value: finalizado }
+                finalizado: { op: '=', value: finalizado }
             },
             body: 'bodyOrcamentos',
             criarLinha: 'criarLinhaOrcamento',
             colunas: {
-                'Número': { chave: 'contrato' },
-                'Cliente': { chave: 'snapshots.cliente' },
-                'Distrito': {},
-                'Cidade': {},
-                'Data de Contato': {},
-                'Data de Visita': {},
-                'Zonas': {},
                 'Editar': {},
+                'Ambientes': {},
                 'Orcamento': {},
-
+                'Status': { chave: 'status', tipoPesquisa: 'select' },
+                'Número': { chave: 'contrato' },
+                'Cliente': { chave: 'nome_cliente' },
+                'Distrito': { chave: 'distrito' },
+                'Cidade': { chave: 'cidade' },
+                'Data de Contato': { chave: 'data_contato', tipoPesquisa: 'data' },
+                'Data de Visita': { chave: 'data_visita', tipoPesquisa: 'data' },
                 '<span class="em_analise">Em Análise</span>': {},
                 '<span class="orcamento_aceite">Orçamento Aceite</span>': {},
                 '<span class="orcamento_adjudicado">Orçamento Adjudicado</span>': {},
-                '<span class="orcamento_recusado">Orçamento Recusado</span>': {},
-
-                'Status': { chave: 'status', tipoPesquisa: 'select' }
+                '<span class="orcamento_recusado">Orçamento Recusado</span>': {}
             }
         })
 
@@ -87,55 +85,51 @@ async function orcamentos(finalizado = filtroFinalizado) {
         await paginacao()
 
         removerOverlay()
-
     } catch (err) {
         console.log(err)
         popup({ mensagem: 'Falha ao abrir a tela de Orçamentos: Fale com o suporte.' })
     }
-
 }
 
 function montarPagina({ titulo, imagem, tabela }) {
-
     return `
-            <div style="${vertical}; width: 100%;">
-                <div class="titulo-tabelas">
-                    <img src="imagens/${imagem}.png">
-                    <span>${titulo}</span>
-                </div>
-                ${tabela}
+        <div style="${vertical}; width: 100%;">
+            <div class="titulo-tabelas">
+                <img src="imagens/${imagem}.png">
+                <span>${titulo}</span>
             </div>
-        `
+            ${tabela}
+        </div>
+    `
 }
 
 async function criarLinhaOrcamento(orcamento) {
-
     const {
         contrato,
         id: idOrcamento,
         status,
+        data_contato,
+        data_visita,
+        nome_cliente,
+        cidade,
+        distrito,
         documentos,
-        finalizado = 'N',
-        snapshots
+        finalizado = 'N'
     } = orcamento || {}
-
-    const { cidade, cliente } = snapshots || {}
 
     const tdsAnexos = tiposDocs
         .map(doc => {
-
             const idInput = `${doc}_${idOrcamento}`
-
-            const { link, nome } = documentos?.[doc] || {}
+            const { link } = documentos?.[doc] || {}
 
             if (link) {
                 return `
-                <td>
-                    <img
-                        src="imagens/pdf.png"
-                        onclick="window.open('${api}/uploads/${link}', '_blank')">
-                </td>
-            `
+                    <td>
+                        <img
+                            src="imagens/pdf.png"
+                            onclick="window.open('${api}/uploads/${link}', '_blank')">
+                    </td>
+                `
             }
 
             return `
@@ -145,49 +139,59 @@ async function criarLinhaOrcamento(orcamento) {
                         type="file"
                         style="display:none"
                         onchange="importarDocumentoOrcamento('${doc}', '${idOrcamento}')">
+
                     <label for="${idInput}" style="cursor:pointer;">
                         <img src="imagens/upload.png">
                     </label>
                 </td>
-        `
+            `
         })
         .join('')
 
     const tds = `
+
         <td>
-            <span class="tag-orcamento">${contrato}</span>
+            <img src="imagens/pesquisar.png" onclick="formularioOrcamento('${idOrcamento}')">
         </td>
-        <td>${cliente || ''}</td>
-        <td>${cidade?.distrito || ''}
-        <td>${cidade?.nome || ''}
-        <td>${dt(orcamento.data_contato)}</td>
-        <td>${dt(orcamento.data_visita)}</td>
 
         <td>
             <img src="imagens/planta.png" onclick="execucoes('${idOrcamento}', 0)">
         </td>
-        <td>
-            <img src="imagens/pesquisar.png" onclick="formularioOrcamento('${idOrcamento}')">
-        </td>
+
         <td>
             <img src="imagens/orcamentos.png" onclick="orcamentoFinal('${idOrcamento}')">
         </td>
-        
-        ${tdsAnexos}
-
         <td>
-            <select class="${statusOrcamento?.[status]}" onchange="alterarStatusOrcamento('${idOrcamento}', this.value, '${finalizado}')">
-                ${Object.keys(statusOrcamento).map(s => `<option ${s == status ? 'selected' : ''}>${s}</option>`).join('')}
+            <select
+                class="${statusOrcamento?.[status]}"
+                onchange="alterarStatusOrcamento('${idOrcamento}', this.value, '${finalizado}')">
+
+                ${Object.keys(statusOrcamento)
+            .map(s => `<option ${s == status ? 'selected' : ''}>${s}</option>`)
+            .join('')}
             </select>
         </td>
+
+        <td>
+            <span class="tag-orcamento">${contrato}</span>
+        </td>
+
+        <td>${nome_cliente || ''}</td>
+        <td>${distrito || ''}</td>
+        <td>${cidade || ''}</td>
+        <td>${dt(data_contato)}</td>
+        <td>${dt(data_visita)}</td>
+
+        ${tdsAnexos}
+
+
     `
+
     return `<tr>${tds}</tr>`
 }
 
 async function importarDocumentoOrcamento(doc, idOrcamento) {
-
     try {
-
         overlayAguarde()
 
         const input = document.getElementById(`${doc}_${idOrcamento}`)
@@ -195,30 +199,28 @@ async function importarDocumentoOrcamento(doc, idOrcamento) {
         if (!input)
             return
 
-        const anexo = await importarAnexos({ input }) // Lista com 1 objeto;
+        const anexo = await importarAnexos({ input })
 
         await enviar(`dados_orcamentos/${idOrcamento}/documentos/${doc}`, anexo[0])
 
-        popup({ imagem: 'imagens/concluido.png', mensagem: 'Documento anexado' })
-
+        popup({
+            imagem: 'imagens/concluido.png',
+            mensagem: 'Documento anexado'
+        })
     } catch (err) {
         popup({ mensagem: 'Falha ao processar o anexo, tente novamente' })
     }
-
-
 }
 
 async function alterarStatusOrcamento(idOrcamento, status, statusAtualFinalizado) {
-
     overlayAguarde()
+
     let finalizado = null
 
     if (status == 'Orçamento Recusado') {
         finalizado = 'R'
-
     } else if (status != 'Orçamento Recusado' && statusAtualFinalizado == 'R') {
         finalizado = 'N'
-
     } else {
         finalizado = statusAtualFinalizado
     }
@@ -229,28 +231,19 @@ async function alterarStatusOrcamento(idOrcamento, status, statusAtualFinalizado
     })
 
     removerOverlay()
-
 }
-
 async function formularioOrcamento(idOrcamento) {
-
     try {
         overlayAguarde()
 
-        const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
+        const orcamento =
+            await recuperarDado('dados_orcamentos', idOrcamento) || {}
+
         const cliente = orcamento?.snapshots?.cliente || 'Selecione'
-
-        const zonas = (lista, ambiente) => {
-
-            const zonaNoOrcamento = orcamento?.ambientes?.[ambiente]?.zona || {}
-
-            const opcoes = ['', ...lista]
-                .map(zona => `<option ${zonaNoOrcamento == zona ? 'selected' : ''}>${zona}</option>`)
-                .join('')
-
-            return `<select data-ambiente="${ambiente}" name="ambientes">${opcoes}</select>`
-
-        }
+        const ambientesSelecionados = new Set(
+            Object.values(orcamento?.campos || {})
+                .map(campo => String(campo.id_ambiente))
+        )
 
         const botoes = [
             {
@@ -262,86 +255,132 @@ async function formularioOrcamento(idOrcamento) {
             }
         ]
 
-        if (idOrcamento)
+        if (idOrcamento) {
             botoes.push({
                 texto: 'Excluir',
                 img: 'cancel',
                 funcao: `confirmarExcluirOrcamento('${idOrcamento}')`
             })
+        }
 
         controlesCxOpcoes.cliente = {
             retornar: ['nome'],
             base: 'dados_clientes',
             colunas: {
-                'Nome': { chave: 'nome' },
+                Nome: { chave: 'nome' },
                 'Morada Fiscal': { chave: 'morada_fiscal' },
-                'Distrito': { chave: 'snapshots.cidade.distrito' },
-                'Zona': { chave: 'snapshots.cidade.zona' },
-                'Cidade': { chave: 'snapshots.cidade.nome' }
+                Distrito: { chave: 'snapshots.cidade.distrito' },
+                Zona: { chave: 'snapshots.cidade.zona' },
+                Cidade: { chave: 'snapshots.cidade.nome' }
             }
         }
 
         const linhas = [
             {
                 texto: 'Cliente',
-                elemento: `<span ${orcamento?.cliente ? `id="${orcamento?.cliente}"` : ''} name="cliente" class="opcoes" onclick="cxOpcoes('cliente')">${cliente || 'Selecione'}</span>`
+                elemento: `
+                    <span
+                        ${orcamento?.cliente ? `id="${orcamento.cliente}"` : ''}
+                        name="cliente"
+                        class="opcoes"
+                        onclick="cxOpcoes('cliente')">
+
+                        ${cliente}
+                    </span>
+                `
             },
             {
                 texto: 'Data de contato',
-                elemento: `<input value="${orcamento?.data_contato || ''}" name="data_contato" type="date">`
+                elemento: `
+                    <input
+                        value="${orcamento?.data_contato || ''}"
+                        name="data_contato"
+                        type="date">
+                `
             },
             {
                 texto: 'Data de visita',
-                elemento: `<input value="${orcamento?.data_visita || ''}" name="data_visita" type="date">`
+                elemento: `
+                    <input
+                        value="${orcamento?.data_visita || ''}"
+                        name="data_visita"
+                        type="date">
+                `
+            },
+            {
+                elemento: '<h2>Ambientes</h2>'
             }
         ]
 
-        if (!ambientes) {
-            const { resultados } = await pesquisarDB({ base: 'ambientes', limite: 999 }) || []
-            ambientes = resultados
+        const { resultados } = await pesquisarDB({
+            base: 'zonas',
+            limite: 999
+        })
+
+        const porZonas = {}
+
+        for (const item of resultados) {
+
+            porZonas[item.zona] ??= []
+
+            porZonas[item.zona].push(`
+                    <option
+                        value="${item.id}"
+                        data-ambiente="${item.ambiente}"
+                        data-zona="${item.zona}"
+                        ${ambientesSelecionados.has(String(item.id))
+                    ? 'selected'
+                    : ''}>
+                        ${item.ambiente}
+                    </option>
+                `)
+
         }
 
-        const ambientesUnicos = [...new Set(ambientes.map(({ ambiente }) => ambiente))]
-
-        for (const ambiente of ambientesUnicos) {
-
-            const lista = ambientes
-                .filter(({ ambiente: a }) => a == ambiente)
-                .map(({ zona }) => zona)
-
-            linhas.push({
-                texto: ambiente,
-                elemento: zonas(lista, ambiente)
+        Object.entries(porZonas)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .forEach(([zona, opcoes]) => {
+                linhas.push({
+                    texto: zona,
+                    elemento: `
+                        <select name="ambientes">
+                            <option value="">Selecione</option>
+                            ${opcoes}
+                        </select>
+                    `
+                })
             })
-        }
 
-        popup({ linhas, botoes, titulo: 'Criar orçamento' })
+        popup({
+            linhas,
+            botoes,
+            titulo: idOrcamento
+                ? 'Editar orçamento'
+                : 'Criar orçamento'
+        })
 
     } catch (err) {
         console.error(err)
-        popup({ mensagem: 'Falha ao editar o orçamento: Fale com o suporte.' })
+        popup({
+            mensagem: 'Falha ao editar o orçamento: Fale com o suporte.'
+        })
     }
 }
 
 function confirmarExcluirOrcamento(idOrcamento) {
-
-    const botoes = [
-        {
-            texto: 'Confirmar',
-            img: 'concluido',
-            funcao: `excluirOrcamento('${idOrcamento}')`
-        }
-    ]
-
     popup({
-        mensagem: `Tem certeza que deseja excluir este orçamento?`,
-        botoes
+        mensagem: 'Tem certeza que deseja excluir este orçamento?',
+        botoes: [
+            {
+                texto: 'Confirmar',
+                img: 'concluido',
+                funcao: `excluirOrcamento('${idOrcamento}')`
+            }
+        ]
     })
-
 }
 
 async function excluirOrcamento(idOrcamento) {
-
     try {
         overlayAguarde()
 
@@ -350,211 +389,209 @@ async function excluirOrcamento(idOrcamento) {
         removerTodosPopups()
 
         popup({ mensagem: 'Exclusão realizada/enviada para aprovação!' })
-
     } catch (err) {
         popup({ mensagem: 'Falha ao excluir o orçamento: Fale com o suporte.' })
         console.error(err)
     }
-
 }
 
 async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
+    try {
+        overlayAguarde()
 
-    overlayAguarde()
+        const cliente = document.querySelector('[name="cliente"]')?.id
 
-    const cliente = document.querySelector('[name="cliente"]').id
+        if (!cliente) {
+            removerOverlay()
+            return popup({ mensagem: 'Campo Cliente obrigatório' })
+        }
 
-    if (!cliente)
-        return popup({ mensagem: 'Campo Cliente obrigatório' })
+        const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
+        const camposAtuais = orcamento.campos || {}
 
-    const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
-
-    const ambientes = Object.fromEntries(
-        [...document.querySelectorAll('[name="ambientes"]')]
+        const selects = [...document.querySelectorAll('[name="ambientes"]')]
             .filter(select => select.value)
-            .map(select => {
-                const ambiente = select.dataset.ambiente
-                const zona = select.value
-                const ambienteAtual = orcamento?.ambientes?.[ambiente] || {}
 
-                return [ambiente, { zona, ambiente, ...ambienteAtual }]
-            })
-    )
+        const campos = Object.fromEntries(
+            (
+                await Promise.all(
+                    selects.map(async select => {
+                        const selecionado = select.selectedOptions[0]
+                        const id_ambiente = select.value
+                        const zona = selecionado.dataset.zona
+                        const ambiente = selecionado.dataset.ambiente
 
-    const orcamentoAtualizado = {
-        ...orcamento || {},
-        cliente,
-        finalizado: 'N',
-        data_visita: document.querySelector('[name="data_visita"]').value,
-        data_contato: document.querySelector('[name="data_contato"]').value,
-        ambientes
+                        const camposDoAmbiente = Object.values(camposAtuais)
+                            .filter(campo => campo.id_ambiente == id_ambiente)
+                            .map(campo => [
+                                campo.id,
+                                {
+                                    ...campo,
+                                    id_ambiente,
+                                    zona,
+                                    ambiente
+                                }
+                            ])
+
+                        if (camposDoAmbiente.length)
+                            return camposDoAmbiente
+
+                        const { servicos } = await recuperarDado('zonas', id_ambiente) || {}
+
+                        return Promise.all(
+                            (servicos || []).map(async idCampo => {
+                                const {
+                                    id: id_campo,
+                                    descricao,
+                                    especialidade,
+                                    medida,
+                                    mao_obra,
+                                    ferramentas,
+                                    materiais,
+                                    snapshots
+                                } = await recuperarDado('campos', idCampo) || {}
+
+                                const id = crypto.randomUUID()
+
+                                return [
+                                    id,
+                                    {
+                                        id,
+                                        id_ambiente,
+                                        zona,
+                                        ambiente,
+                                        id_campo,
+                                        descricao,
+                                        medida,
+                                        ferramentas,
+                                        materiais,
+                                        mao_obra,
+                                        especialidade,
+                                        unitario: snapshots?.totais?.total
+                                    }
+                                ]
+                            })
+                        )
+                    })
+                )
+            ).flat()
+        )
+
+        const orcamentoAtualizado = {
+            ...orcamento,
+            cliente,
+            finalizado: 'N',
+            data_visita: obVal('data_visita'),
+            data_contato: obVal('data_contato'),
+            campos
+        }
+
+        await enviar(
+            `dados_orcamentos/${idOrcamento}`,
+            orcamentoAtualizado
+        )
+
+        removerPopup()
+
+        await execucoes(idOrcamento)
+    } catch (err) {
+        console.error(err)
+        popup({
+            mensagem: 'Falha ao salvar o orçamento: Fale com o suporte.'
+        })
+    } finally {
+        removerOverlay()
     }
-
-    await enviar(`dados_orcamentos/${idOrcamento}`, orcamentoAtualizado)
-
-    await execucoes(idOrcamento, 0)
-
-    removerPopup()
-
 }
 
-async function verOrcamento(id) {
+async function execucoes(idOrcamento) {
+    try {
+        overlayAguarde()
 
-    // Salvamento do anterior;
-    if (controles?.execucoes?.ambiente) {
-        const campos = controles?.execucoes?.base || []
-        await enviar(`dados_orcamentos/${id}/zonas/${controles?.execucoes?.ambiente}/campos`, campos)
-    }
+        const { campos } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
 
-    await orcamentoFinal(id)
+        const base = Object.values(campos)
 
-}
+        const opcoesZonas = [...new Set(base.map(i => i.zona))]
+            .sort((a, b) => a.localeCompare(b))
+            .map(zona => `<option>${zona}</option>`)
+            .join('')
 
-async function execucoes(id, ambienteOuIndice = 0) {
+        const tabela = await modTab({
+            btnExtras: `<select onchange="filtrarPorZona(this.value)" style="margin-right: 1rem;">${opcoesZonas}</select>`,
+            idOrcamento,
+            colunas: {
+                'Remover': {},
+                'Ambiente': {},
+                'Descrição do Serviço': { chave: 'descricao' },
+                'Descrição Extra <br>(facultativo)': {
+                    chave: 'descricaoExtra'
+                },
+                'Unidade de <br> Medida': { chave: 'medida' },
+                'Dimensões': {},
+                'Quantidade': {},
+                'Valor Unit': {},
+                'Valor Total': {}
+            },
+            pag: 'execucoes',
+            body: 'execucoes',
+            base,
+            criarLinha: 'criarLinhaExecucoes'
+        })
 
-    overlayAguarde()
+        tela.innerHTML = `
+            <div class="execucoes">
+                ${tabela}
 
-    // Salvamento do anterior;
-    if (controles?.execucoes?.ambiente) {
+                <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+                    <button onclick="incluirLinha()">
+                        <img src="imagens/baixar.png">
+                        Adicionar Linha
+                    </button>
 
-        const campos = controles?.execucoes?.base || []
-        await enviar(`dados_orcamentos/${id}/ambientes/${controles?.execucoes?.ambiente}/campos`, campos)
-    }
+                    <div id="botaoFinalizacao">
+                        <button onclick="orcamentoFinal('${idOrcamento}')">
+                            Ver Orçamento
+                            <img src="imagens/orcamentos.png">
+                        </button>
+                    </div>
 
-    const { ambientes } = await recuperarDado('dados_orcamentos', id) || {}
-
-    if(!ambientes)
-        return popup({mensagem: 'Nenhum ambiente encontrato: Edite o orçamento para incluir ambientes!'})
-
-    const listaAmbientes = Object.values(ambientes)
-
-    if (!listaAmbientes.length) {
-        popup({ mensagem: 'Orçamento sem nenhum ambientes disponível' })
-        return
-    }
-
-    let indice = 0
-
-    if (typeof ambienteOuIndice === 'number') {
-        indice = ambienteOuIndice
-    } else if (typeof ambienteOuIndice === 'string') {
-        indice = listaAmbientes.findIndex(z => z.ambiente == ambienteOuIndice)
-        if (indice === -1)
-            indice = 0
-    }
-
-    if (indice < 0)
-        indice = 0
-
-    if (indice >= listaAmbientes.length)
-        indice = listaAmbientes.length - 1
-
-    const ambienteAtual = listaAmbientes[indice] || {}
-
-    const campos = ambienteAtual.campos || []
-
-    const colunas = {
-        'Remover': {},
-        'Descrição do Serviço': { chave: 'campo.descricao' },
-        'Descrição Extra <br>(facultativo)': { chave: 'descricaoExtra' },
-        'Unidade de <br> Medida': { chave: 'campo.medida' },
-        'Unidades': {},
-        'Metro Linear<br>(m)': {},
-        'Comprimento<br>(m)': {},
-        'Largura<br>(m)': {},
-        'Altura<br>(m)': {},
-        'Quantidade': {},
-        'Valor Unit': {},
-        'Valor Total': {}
-    }
-
-    const opcoesZonas = listaAmbientes
-        .map(ambiente => `
-                <option 
-                    value="${ambiente.ambiente}" 
-                    ${ambienteAtual.ambiente == ambiente.ambiente ? 'selected' : ''}>
-                    ${ambiente.zona}
-                </option>
-            `)
-        .join('')
-
-    const pag = 'execucoes'
-    const tabela = await modTab({
-        btnExtras: `<select onchange="execucoes('${id}', this.value)" class="titulo-execucoes">${opcoesZonas}</select>`,
-        colunas,
-        funcaoAdicional: ['atualizarMedidas'],
-        pag,
-        base: campos,
-        criarLinha: 'adicionarLinha',
-        body: 'execucoes'
-    })
-
-    const anterior = indice > 0
-        ? `
-            <button onclick="execucoes('${id}', ${indice - 1})">
-                <img src="imagens/anterior.png">
-                Voltar a Zona
-            </button>
-        `
-        : ''
-
-    const proximo = indice < listaAmbientes.length - 1
-        ? `
-            <button onclick="execucoes('${id}', ${indice + 1})">
-                Próxima Zona
-                <img src="imagens/proximo.png">
-            </button>
-        `
-        : ''
-
-    const acumulado = `
-        <div class="execucoes">
-            ${tabela}
-            <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
-
-                <button onclick="incluirLinha()">
-                    <img src="imagens/baixar.png">
-                    Adicionar Linha
-                </button>
-
-                ${anterior}
-
-                ${proximo}
-
-                <div id="botaoFinalizacao">
-                    <button onclick="verOrcamento('${id}')">
-                        Ver Orçamento
-                        <img src="imagens/orcamentos.png">
+                    <button onclick="alterarFinalizacao('${idOrcamento}', 'S')">
+                        Concluir Orçamento
+                        <img src="imagens/concluido.png">
                     </button>
                 </div>
-
-                <button onclick="alterarFinalizacao('${id}', 'S');">
-                    Concluir Orçamento
-                    <img src="imagens/concluido.png">
-                </button>
-
             </div>
-        </div>
-    `
+        `
 
-    controles.execucoes.ambiente = ambienteAtual.ambiente
-    controles.execucoes.indice = indice
+        await paginacao('execucoes')
+    } catch (err) {
+        console.error(err)
+        popup({
+            mensagem: 'Falha ao abrir as execuções: Fale com o suporte.'
+        })
+    } finally {
+        removerOverlay()
+    }
+}
 
-    tela.innerHTML = acumulado
-    await paginacao(pag)
+async function filtrarPorZona(zona) {
 
-    removerOverlay()
+    controles.execucoes.filtros ??= {}
+    controles.execucoes.filtros.zona = { op: '=', value: zona }
+    await paginacao('execucoes')
+
 }
 
 async function incluirLinha() {
+    controles.execucoes.base.push({
+        id: crypto.randomUUID()
+    })
 
-    controles.execucoes.base.push({ id: crypto.randomUUID() })
     await paginacao()
-
 }
 
 async function alterarFinalizacao(id, status) {
-
     overlayAguarde()
 
     await enviar(`dados_orcamentos/${id}/finalizado`, status)
@@ -564,411 +601,501 @@ async function alterarFinalizacao(id, status) {
     removerOverlay()
 }
 
+function criarLinhaExecucoes(dados) {
 
-function adicionarLinha(dados) {
-
-    const { 
-        id, 
-        campo, 
-        dimensoes
+    const {
+        id,
+        ambiente,
+        descricao,
+        unitario,
+        quantidade,
+        medida,
+        descricaoExtra
     } = dados || {}
+
+    const total = (quantidade || 0) * unitario
 
     controlesCxOpcoes[id] = {
         base: 'campos',
         retornar: ['descricao'],
-        funcaoAdicional: ['atualizarMedidas'],
         colunas: {
-            'Especialidade': { chave: 'especialidade' },
-            'Descrição': { chave: 'descricao' },
-            'Medida': { chave: 'medida' }
+            Especialidade: { chave: 'especialidade' },
+            Descrição: { chave: 'descricao' },
+            Medida: { chave: 'medida' }
         }
     }
 
-    const camposDimensoes = ['unidades', 'metroLinear', 'comprimento', 'largura', 'altura']
-        .map(c => `
-            <td>
-                <input 
-                type="number"
-                name="${c}"
-                oninput="atualizarMedidas()"
-                value="${dimensoes?.[c] || ''}"
-                ${dimensoes?.[c] ? 'class="campo-on" contentEditable="true"' : 'class="campo-off" contentEditable="false"'}>
-            </td>
-            `)
-        .join('')
-
-
     const tds = `
         <td>
-            <img onclick="removerLinhaZona('${id}')" src="imagens/cancel.png" style="width: 2rem;">
+            <img
+                onclick="removerLinhaZona('${id}')"
+                src="imagens/fechar.png"
+                style="width: 2rem;">
         </td>
+        <td>
+            ${ambiente || ''}
+        </td>
+
         <td style="min-width: 250px;">
-            <span ${campo ? `id="${campo.id}"` : ''} name="${id}" class="opcoes" onclick="cxOpcoes('${id}')">${campo?.descricao || 'Selecione'}</span>
+            <span
+                ${id ? `id="${id}"` : ''}
+                name="${id}"
+                class="opcoes"
+                onclick="cxOpcoes('${id}')">
+
+                ${descricao || 'Selecione'}
+            </span>
         </td>
+
         <td>
-            <textarea name="descricaoExtra" style="min-width: 150px;" oninput="atualizarMedidas()">${dados?.descricaoExtra || ''}</textarea>
+            <textarea
+                name="descricaoExtra"
+                style="min-width: 150px;">${descricaoExtra || ''}</textarea>
         </td>
+
         <td>
-            <span name="medida">${dados?.medida || ''}</span>
+            <span name="medida">${medida || ''}</span>
         </td>
-        ${camposDimensoes}
-        <td style="white-space: nowrap;" name="quantidade"></td>
-        <td style="white-space: nowrap;" name="unitario"></td>
-        <td style="white-space: nowrap;" name="total"></td>
+
+        <td>
+            <div style="${horizontal}"><img onclick="editarDimensoes('${id}')" src="imagens/lapis.png"></div>
+        </td>
+
+        <td style="white-space: nowrap;" name="quantidade">${quantidade || 0}</td>
+        <td style="white-space: nowrap;" name="unitario">${dinheiro(unitario)}</td>
+        <td style="white-space: nowrap;" name="total">${dinheiro(total)}</td>
     `
 
     return `<tr data-campos="S" id="${id}">${tds}</tr>`
+}
+
+function editarDimensoes(idItem) {
+
+    const { descricao, medida, dimensoes } = (controles?.execucoes?.base || [])
+        .filter(i => i.id == idItem)[0]
+
+    const {
+        altura,
+        largura,
+        comprimento,
+        metroLinear,
+        unidades
+    } = dimensoes || {}
+
+    const regras = `oninput="calcularDimensoes('${idItem}')"`
+
+    const linhas = [
+        {
+            elemento: `<span>${medida} - ${descricao}</span>`
+        },
+        {
+            texto: 'unidades',
+            elemento: `<input ${regras} type="number" name="unidades" value="${unidades || ''}">`
+        },
+        {
+            texto: 'metroLinear',
+            elemento: `<input ${regras} type="number" name="metroLinear" value="${metroLinear || ''}">`
+        },
+        {
+            texto: 'comprimento',
+            elemento: `<input ${regras} type="number" name="comprimento" value="${comprimento || ''}">`
+        },
+        {
+            texto: 'largura',
+            elemento: `<input ${regras} type="number" name="largura" value="${largura || ''}">`
+        },
+        {
+            texto: 'altura',
+            elemento: `<input ${regras} type="number" name="altura" value="${altura || ''}">`
+        },
+        {
+            elemento: `
+                <div style="${horizontal}; gap: 1rem;">
+                    <span>Quantidade Final</span>
+                    <span class="etiquetas" id="totalQuantidade">0</span>
+                </div>
+                `
+        }
+    ]
+
+    popup({
+        linhas,
+        botoes: [
+            {
+                texto: 'Salvar',
+                img: 'concluido',
+                funcao: `salvarDimensoes('${idItem}')`
+            }
+        ]
+    })
+
+    calcularDimensoes(idItem)
 
 }
 
-async function removerLinhaZona(idItem) {
+async function salvarDimensoes(id) {
+    try {
+        overlayAguarde()
 
-    controles.execucoes.base = controles.execucoes.base
-        .filter(campo => campo.id !== idItem)
+        const { dimensoesCalculo: dimensoes, quantidade } =
+            calcularDimensoes(id)
 
-    await paginacao('execucoes')
+        const item = controles.execucoes.base.find(item => item.id == id)
+
+        if (!item)
+            return
+
+        item.dimensoes = dimensoes
+        item.quantidade = quantidade
+
+        await enviar(
+            `dados_orcamentos/${controles.execucoes.idOrcamento}/campos/${id}`,
+            item
+        )
+
+        await paginacao('execucoes')
+        removerTodosPopups()
+    } finally {
+        removerOverlay()
+    }
+}
+
+function calcularDimensoes(idItem) {
+
+    const { medida, unitario } = (controles?.execucoes?.base || [])
+        .filter(i => i.id == idItem)[0]
+
+    function inv(el, remover) {
+        el.style.backgroundColor = remover
+            ? ''
+            : '#f7c5c5'
+
+        el.style.border = remover
+            ? ''
+            : 'solid 1px red'
+    }
+
+    const painel = [...document.querySelectorAll('.painel-padrao')].at(-1)
+
+    const dimensoes = [
+        'unidades',
+        'metroLinear',
+        'comprimento',
+        'largura',
+        'altura'
+    ]
+
+    const esquema = {
+        '': [],
+        m2: ['comprimento', 'largura', 'altura'],
+        m3: ['comprimento', 'largura', 'altura'],
+        ml: ['metroLinear'],
+        und: ['unidades']
+    }
+
+    const permitidos = esquema[medida] || []
+
+    const valoresDimensoes = Object.fromEntries(
+        dimensoes.map(dim => {
+            const inp = painel.querySelector(`[name="${dim}"]`)
+
+            return [dim, inp.value.trim() == '' ? null : Number(inp.value)]
+        })
+    )
+
+    const dimensoesPreenchidas = Object.fromEntries(
+        permitidos.map(dim => [dim, valoresDimensoes[dim] !== null])
+    )
+
+    for (const dim of dimensoes) {
+        const inp = painel.querySelector(`[name="${dim}"]`)
+        const liberado = permitidos.includes(dim)
+
+        inp.readOnly = !liberado
+        inv(inp, liberado)
+    }
+
+    const dimensoesCalculo = Object.fromEntries(
+        permitidos.map(dim => [dim, valoresDimensoes[dim]])
+    )
+
+    const { quantidade } = calcularQuantidadeTotal(
+        dimensoesCalculo,
+        unitario
+    )
+
+    const localResultado = painel.querySelector('#totalQuantidade')
+    localResultado.textContent = quantidade
+
+    if (medida != 'm2')
+        return { dimensoesCalculo, quantidade }
+
+    const quantidadePreenchida = Object.values(dimensoesPreenchidas)
+        .filter(Boolean)
+        .length
+
+    if (quantidadePreenchida < 2)
+        return { dimensoesCalculo, quantidade }
+
+    for (const dim of permitidos) {
+        const inp = painel.querySelector(`[name="${dim}"]`)
+
+        if (!dimensoesPreenchidas[dim]) {
+            inp.readOnly = true
+            inv(inp)
+        }
+    }
+
+    return {
+        dimensoesCalculo,
+        quantidade
+    }
+
 }
 
 function calcularQuantidadeTotal(dimensoes, totalItem) {
+    const valores = Object.values(dimensoes || {})
+        .filter(valor => Number.isFinite(valor))
 
-    const quantidade = Object.values(dimensoes || {})
-        .reduce((acc, val) => acc * val, 1)
+    const quantidade = valores.length
+        ? valores.reduce((acumulado, valor) => acumulado * valor, 1)
+        : 0
 
-    const total = quantidade * totalItem
+    const total = quantidade * (Number(totalItem) || 0)
 
     return {
         quantidade,
         total
     }
-
 }
 
-async function atualizarMedidas() {
-    const nomesCampos = ['unidades', 'metroLinear', 'comprimento', 'largura', 'altura']
-    const esquema = {
-        '': [],
-        'm2': ['metroLinear', 'comprimento', 'largura'],
-        'm3': ['metroLinear', 'comprimento', 'largura'],
-        'ml': ['metroLinear'],
-        'und': ['unidades']
-    }
+async function removerLinhaZona(idItem) {
+    try {
+        overlayAguarde()
 
-    const base = controles?.execucoes?.base || []
-    const trs = document.querySelectorAll('tbody tr')
+        await deletar(
+            `dados_orcamentos/${controles.execucoes.idOrcamento}/campos/${idItem}`
+        )
 
-    for (const tr of trs) {
-        if (!tr.dataset.campos)
-            continue
+        controles.execucoes.base = controles.execucoes.base
+            .filter(campo => campo.id != idItem)
 
-        const id = tr.id
-        const spanCampo = tr.querySelector(`[name="${id}"]`)
-        const campo = spanCampo?.id
-
-        const {
-            descricao,
-            medida,
-            mao_obra,
-            ferramentas,
-            materiais,
-            snapshots
-        } = await recuperarDado('campos', campo) || {}
-
-        const descricaoExtra = tr.querySelector('[name="descricaoExtra"]')?.value || ''
-
-        spanCampo.textContent = descricao || 'Selecione'
-        tr.querySelector('[name="medida"]').textContent = medida
-
-        const dimensoes = {}
-        const permitidos = esquema[medida] || []
-        let preenchidos = 0
-
-        for (const nome of permitidos) {
-            const input = tr.querySelector(`[name="${nome}"]`)
-            if (input && input.value !== '') {
-                preenchidos++
-            }
-        }
-
-        for (const nome of nomesCampos) {
-            const input = tr.querySelector(`[name="${nome}"]`)
-            if (!input)
-                continue
-
-            const permitido = permitidos.includes(nome)
-            const preenchido = input.value !== ''
-
-            if (!permitido) {
-                input.classList = 'campo-off'
-                input.value = ''
-                input.readOnly = true
-                continue
-            }
-
-            if ((medida === 'm2' || medida === 'm3') && preenchidos >= 2 && !preenchido) {
-                input.classList = 'campo-off'
-                input.readOnly = true
-                continue
-            }
-
-            if (input.value !== '')
-                dimensoes[nome] = Number(input.value)
-
-            input.classList = 'campo-on'
-            input.readOnly = false
-        }
-
-        const unitario = snapshots?.totais?.total || 0
-        const { quantidade, total } = calcularQuantidadeTotal(dimensoes, unitario) || {}
-
-        tr.querySelector('[name="quantidade"]').textContent = quantidade
-        tr.querySelector('[name="unitario"]').textContent = dinheiro(unitario)
-        tr.querySelector('[name="total"]').textContent = dinheiro(total)
-
-        const posicao = base.findIndex(item => item.id == id)
-        if (posicao !== -1) {
-            base[posicao] = {
-                ...base[posicao],
-                id_campo: campo,
-                campo: {
-                    id: campo,
-                    medida,
-                    descricao,
-                    mao_obra,
-                    ferramentas,
-                    materiais
-                },
-                dimensoes,
-                unitario,
-                quantidade,
-                descricaoExtra
-            }
-        }
+        await paginacao('execucoes')
+    } finally {
+        removerOverlay()
     }
 }
 
 async function orcamentoFinal(idOrcamento, emJanela) {
-
     overlayAguarde()
 
-    const {
-        ambientes,
-        contrato,
-        data_contato,
-        data_visita,
-        cliente
-    } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
+    try {
 
-    const {
-        nome,
-        numero_contribuinte,
-        email, telefone,
-        morada_fiscal,
-        morada_execucao
-    } = await recuperarDado('dados_clientes', cliente) || {}
+        const {
+            campos = {},
+            contrato,
+            data_contato,
+            data_visita,
+            cliente
+        } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
 
-    let totalGeral = 0
+        const {
+            nome,
+            numero_contribuinte,
+            email,
+            telefone,
+            morada_fiscal,
+            morada_execucao
+        } = await recuperarDado('dados_clientes', cliente) || {}
 
-    const dt = (data) => {
-        if (!data) return '-'
-        const [ano, mes, dia] = data.split('-')
-        return `${dia}/${mes}/${ano}`
-    }
+        let totalGeral = 0
 
-    const dados = {
-        'Orçamento': 'TOTAL (s/iva)',
-        'Nome': nome || '',
-        'Morada Fiscal': morada_fiscal || '',
-        'Morada de Execução': morada_execucao || '',
-        'Nif': numero_contribuinte || '',
-        'E-mail': email || '',
-        'Contacto': telefone || '',
-        'Data contacto': dt(data_contato),
-        'Data de visita': dt(data_visita),
-        'Dias Úteis Estimados': ''
-    }
-
-    let linhas = ''
-    let i = 0
-    for (const [titulo, dado] of Object.entries(dados)) {
-
-        if (i == 0) {
-            linhas += `
-            <tr>
-                <td colspan="2" style="background-color: #5b707f;">
-
-                    <div style="${horizontal}; gap: 1rem;">
-                        <span class="tag-orcamento">${contrato}</span>
-                        <div class="titulo-orcamento">
-                            <span>${titulo}</span>
-                        </div>
-                    </div>
-
-                </td>
-                <td class="total-orcamento">${dado}</td>
-            </tr>
-            `
-
-        } else {
-
-            linhas += `
-            <tr>
-                <td style="background-color: #5b707f; color: white;">${titulo}</td>
-                <td style="background-color: #DCE6F5;">${dado}</td>
-                ${i == 1
-                    ? `
-                    <td rowspan="9" style="background-color: white;">
-                        <div class="total-valor"></div>
-                    </td>
-                    `
-                    : ''}
-            </tr>`
+        const dados = {
+            'Orçamento': 'TOTAL (s/iva)',
+            'Nome': nome || '',
+            'Morada Fiscal': morada_fiscal || '',
+            'Morada de Execução': morada_execucao || '',
+            'Nif': numero_contribuinte || '',
+            'E-mail': email || '',
+            'Contacto': telefone || '',
+            'Data contacto': dt(data_contato),
+            'Data de visita': dt(data_visita),
+            'Dias Úteis Estimados': ''
         }
 
-        i++
-    }
+        let linhas = ''
+        let indice = 0
 
-    const colunas = ['Zona', 'Especialidade', 'Descrição do Serviço', 'Descrição Extra <br>(facultativo)', 'Unidade de Medida', 'Qtd', 'Preço Final']
-        .map(col => `<th>${col}</th>`)
-        .join('')
+        for (const [titulo, dado] of Object.entries(dados)) {
+            if (indice == 0) {
+                linhas += `
+                    <tr>
+                        <td colspan="2" style="background-color: #5b707f;">
+                            <div style="${horizontal}; gap: 1rem;">
+                                <span class="tag-orcamento">${contrato}</span>
 
-    const campos = Object.values(ambientes)
-        .flatMap(z =>
-            (z.campos || []).map(campo => ({
-                ...campo?.campo || {},
-                dimensoes: campo.dimensoes,
-                idCampo: campo.id,
-                descricaoExtra: campo.descricaoExtra,
-                ambiente: z.ambiente,
-                zona: z.zona,
-                unitario: campo.unitario,
-                quantidade: campo.quantidade
-            }))
-        )
+                                <div class="titulo-orcamento">
+                                    <span>${titulo}</span>
+                                </div>
+                            </div>
+                        </td>
 
-    const itens = []
+                        <td class="total-orcamento">${dado}</td>
+                    </tr>
+                `
+            } else {
+                linhas += `
+                    <tr>
+                        <td style="background-color: #5b707f; color: white;">
+                            ${titulo}
+                        </td>
 
-    for (const campo of campos) {
+                        <td style="background-color: #DCE6F5;">
+                            ${dado}
+                        </td>
 
-        const { 
-            zona, 
-            medida, 
-            descricaoExtra, 
-            especialidade, 
-            descricao,
-            quantidade,
-            unitario
-        } = campo || {}
+                        ${indice == 1
+                        ? `
+                                <td rowspan="9" style="background-color: white;">
+                                    <div class="total-valor"></div>
+                                </td>
+                            `
+                        : ''}
+                    </tr>
+                `
+            }
 
-        const totalLinha = unitario * quantidade
+            indice++
+        }
 
-        totalGeral += totalLinha
+        const colunas = [
+            'Ambiente',
+            'Especialidade',
+            'Descrição do Serviço',
+            'Descrição Extra <br>(facultativo)',
+            'Unidade de Medida',
+            'Qtd',
+            'Preço Final'
+        ]
+            .map(coluna => `<th>${coluna}</th>`)
+            .join('')
 
-        itens.push(`
-            <tr>
-                <td>${zona}</td>
-                <td>${especialidade || ''}</td>
-                <td>${descricao || ''}</td>
-                <td>${descricaoExtra || ''}</td>
-                <td>${medida || ''}</td>
-                <td>${quantidade}</td>
-                <td>${dinheiro(totalLinha)}</td>
-            </tr>
-        `)
-    }
 
-    const elemento = `
-        <div class="tela-orcamento">
+        const itens = Object.values(campos).map(campo => {
+            const totalLinha =
+                Number(campo.unitario || 0) * Number(campo.quantidade || 0)
 
-            <div class="botao-flutuante">
-                <img src="imagens/pdf2.png" onclick="pdfOrcamento('${idOrcamento}')">
+            totalGeral += totalLinha
+
+            return `
+                <tr>
+                    <td>${campo.ambiente || ''}</td>
+                    <td>${campo.especialidade || ''}</td>
+                    <td>${campo.descricao || ''}</td>
+                    <td>${campo.descricaoExtra || ''}</td>
+                    <td>${campo.medida || ''}</td>
+                    <td>${campo.quantidade || ''}</td>
+                    <td>${dinheiro(totalLinha)}</td>
+                </tr>
+            `
+        })
+
+        const elemento = `
+            <div class="tela-orcamento">
+                <div class="botao-flutuante">
+                    <img
+                        src="imagens/pdf2.png"
+                        onclick="pdfOrcamento('${idOrcamento}')">
+                </div>
+
+                <div class="orcamento-documento">
+                    <table class="tabela-orcamento">
+                        <tbody>${linhas}</tbody>
+                    </table>
+
+                    <table class="tabela-orcamento-2">
+                        <thead>${colunas}</thead>
+                        <tbody>${itens.join('')}</tbody>
+                    </table>
+
+                    <span class="id-orcamento">${idOrcamento}</span>
+                </div>
             </div>
+        `
 
-            ${emJanela
-            ? ''
-            : `
-            <div style="width: 100%; ${horizontal}; justify-content: start; gap: 3px; padding: 0.5rem;">
+        if (emJanela)
+            popup({ elemento, titulo: 'Orçamento' })
+        else
+            tela.innerHTML = elemento
 
-                <button onclick="orcamentos()">Voltar para Orçamentos</button>
-                <button onclick="execucoes('${idOrcamento}')">Voltar para Zonas</button>
-
-            </div>`}
-            
-            <div class="orcamento-documento">
-                <table class="tabela-orcamento">
-                    <tbody>
-                        ${linhas}
-                    </tbody>
-                </table>
-
-                <br>
-
-                <table class="tabela-orcamento-2">
-                    <thead>${colunas}</thead>
-                    <tbody>${itens.join('')}</tbody>
-                </table>
-
-                <span class="id-orcamento">${idOrcamento}</span>
-            </div>
-
-        </div>
-    `
-
-    if (emJanela) {
-        popup({ elemento, titulo: 'Orçamento' })
-    } else {
-        tela.innerHTML = elemento
+        document.querySelector('.total-valor').textContent =
+            dinheiro(totalGeral)
+    } catch (err) {
+        console.error(err)
+        popup({
+            mensagem: 'Falha ao gerar o orçamento: Fale com o suporte.'
+        })
+    } finally {
+        removerOverlay()
     }
-
-    document.querySelector('.total-valor').textContent = dinheiro(totalGeral)
-
-    removerOverlay()
-
 }
 
 function copiarEstilos(origem, destino) {
-
     const origemEls = origem.querySelectorAll('*')
     const destinoEls = destino.querySelectorAll('*')
 
-    origemEls.forEach((el, i) => {
-        const estilo = getComputedStyle(el)
-        const destinoEl = destinoEls[i]
+    origemEls.forEach((elemento, indice) => {
+        const estilo = getComputedStyle(elemento)
+        const destinoEl = destinoEls[indice]
 
-        for (const prop of estilo) {
-            destinoEl.style[prop] = estilo.getPropertyValue(prop)
-        }
+        for (const propriedade of estilo)
+            destinoEl.style[propriedade] =
+                estilo.getPropertyValue(propriedade)
     })
 }
 
-
 async function pdfOrcamento(idOrcamento) {
-
     try {
         overlayAguarde()
 
-        const { contrato, snapshots } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
-        const nome = [contrato, snapshots?.cliente].filter(Boolean).join('-')
+        const { contrato, snapshots } =
+            await recuperarDado('dados_orcamentos', idOrcamento) || {}
+
+        const nome = [
+            contrato,
+            snapshots?.cliente
+        ]
+            .filter(Boolean)
+            .join('-')
 
         const html = document.querySelector('.orcamento-documento').outerHTML
 
-        await pdf({ html, estilos: ['orcamentos'], nome })
-
+        await pdf({
+            html,
+            estilos: ['orcamentos'],
+            nome
+        })
     } catch (err) {
         console.error(err)
         popup({ mensagem: 'Falha ao gerar o PDF: Fale com o suporte.' })
     }
-
 }
 
-async function salvarDescricao(idOrcamento, idCampo, zona) {
-
+async function salvarDescricao(idOrcamento, idCampo, idAmbiente) {
     overlayAguarde()
 
-    const descricaoExtra = document.getElementById('descricaoExtra')
+    try {
+        const descricaoExtra =
+            document.getElementById('descricaoExtra')?.value || ''
 
-    await enviar(`dados_orcamentos/${idOrcamento}/ambientes/${zona}/campos/${idCampo}/campo/descricaoExtra`, descricaoExtra.value)
+        await enviar(
+            `dados_orcamentos/${idOrcamento}/campos/${idCampo}/descricaoExtra`,
+            descricaoExtra
+        )
 
-    await orcamentoFinal(idOrcamento)
-
-    removerPopup()
+        await orcamentoFinal(idOrcamento)
+        removerPopup()
+    } finally {
+        removerOverlay()
+    }
 }

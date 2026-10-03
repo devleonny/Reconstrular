@@ -547,7 +547,7 @@ function criarLoading(cols) {
     const td = document.createElement('td')
     td.colSpan = cols
     td.innerHTML = `
-        <div style="${horizontal}; width: 100%; gap: 1rem; justify-content: center; padding: 1rem;">
+        <div style="${horizontal}; width: 100%; gap: 1rem; justify-content: center; padding: 1rem 0;">
             <img src="gifs/loading.gif" style="width: 5rem;">
         </div>
     `

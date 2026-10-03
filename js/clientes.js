@@ -114,11 +114,11 @@ async function formularioCliente(idCliente = crypto.randomUUID()) {
             },
             {
                 texto: 'Morada Fiscal',
-                elemento: `<textarea placeholder="Morada Fiscal" name="morada_fiscal">${morada_fiscal || ''}</textarea>`
+                elemento: `<textarea oninput="verificarRegras()" placeholder="Morada Fiscal" name="morada_fiscal">${morada_fiscal || ''}</textarea>`
             },
             {
                 texto: 'Morada de Execução',
-                elemento: `<textarea placeholder="Morada de Execução" name="morada_execucao">${morada_execucao || ''}</textarea>`
+                elemento: `<textarea oninput="verificarRegras()" placeholder="Morada de Execução" name="morada_execucao">${morada_execucao || ''}</textarea>`
             },
             {
                 texto: 'Número de Contribuinte',

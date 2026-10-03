@@ -86,3 +86,17 @@ th {
     justify-content: start;
     flex-direction: column;
 }
+
+#upload {
+    padding: 5px;
+    border-radius: 5px;
+}
+
+.tipo-despesa {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    border-radius: 5px;
+    padding: 5px;
+}
