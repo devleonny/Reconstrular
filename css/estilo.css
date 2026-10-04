@@ -724,6 +724,7 @@ select {
 
 input,
 textarea {
+    font-family: 'Poppins';
     border-radius: 5px;
     border: 1px solid #888;
 }
@@ -1176,6 +1177,7 @@ button:hover {
 }
 
 .etiquetas {
+    width: stretch;
     cursor: pointer;
     margin-left: 5px;
     display: flex;

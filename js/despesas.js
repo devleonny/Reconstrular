@@ -31,21 +31,21 @@ async function verificarDespesas() {
       criarLinha: 'criarLinhaDespesa',
       colunas: {
         'Edição': {},
-        'Tipo da Despesa': { chave: 'tipo_despesa' },
+        'Obra': {},
         'Fornecedor': { chave: 'nome_fornecedor' },
         'Distrito': { chave: 'distrito' },
         'Cidade': { chave: 'nome_cidade' },
         'Número do Contribuinte': { chave: 'nif' },
+        'Tipo da Despesa': { chave: 'tipo_despesa' },
+        'Quantidade': {},
         'Valor': { chave: 'valor' },
         'IVA': { chave: 'iva' },
         'Ano': { chave: 'snapshots.ano', tipoPesquisa: 'select' },
         'Mês': { chave: 'snapshots.mes', tipoPesquisa: 'select' },
         'Data': { chave: 'data', tipoPesquisa: 'data' },
         'Fatura': {},
-        'Quantidade': {},
         'Especialidade': { chave: 'especialidade' },
-        'Material': { chave: 'material' },
-        'Obra': {}
+        'Material': { chave: 'material' }
       }
     })
 
@@ -84,7 +84,7 @@ function criarLinhaDespesa(dados) {
   } = dados || {}
 
   const tagObra = obra
-    ? `<span class="tag-usuario">${obra}</span>`
+    ? `<span class="etiquetas">${obra}</span>`
     : ''
 
   const ax = (link) => {
@@ -95,25 +95,31 @@ function criarLinhaDespesa(dados) {
         `
   }
 
+  const etiquetaValor = tipo_despesa == 'Despesa'
+    ? 'despesa'
+    : 'credito'
+
   tds = `
         <td>
             <img data-controle="editar" src="imagens/pesquisar.png" onclick="formularioDespesa('${id}')">
         </td>
-        <td>${tipo_despesa}</td>
+        <td>${tagObra}</td>
         <td>${nome_fornecedor || ''}</td>
         <td>${nome_cidade || ''}
         <td>${distrito || ''}
         <td>${nif || ''}</td>
-        <td style="white-space: nowrap;">${dinheiro(valor)}</td>
+        <td>${quantidade || ''}</td>
+        <td>${tipo_despesa}</td>
+        <td style="white-space: nowrap;">
+            <span class="${etiquetaValor}">${dinheiro(valor)}</span>
+        </td>
         <td style="white-space: nowrap;">${dinheiro(iva)}</td>
         <td>${ano || ''}</td>
         <td>${mes || ''}</td>
         <td>${data || ''}</td>
         <td>${ax(fatura)}</td>
-        <td>${quantidade || ''}</td>
         <td>${especialidade || ''}</td>
         <td>${material || ''}</td>
-        <td>${tagObra}</td>
     `
 
   return `<tr>${tds}</td>`
@@ -415,7 +421,7 @@ async function criarLinhaFornecedores(dados) {
     email,
     telefone,
     nome,
-    morada_fiscal,
+    morada_fiscal
   } = dados || {}
 
   const cidade = snapshots?.cidade || {}
@@ -423,7 +429,6 @@ async function criarLinhaFornecedores(dados) {
   const linha = `
       <tr>
         <td>${new Date(timestamp).toLocaleString()}</td>
-        <td>${tipo_despesa}</td>
         <td>${nome || ''}</td>
         <td>${morada_fiscal || ''}</td>
         <td>${cidade?.zona || ''}

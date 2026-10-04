@@ -267,11 +267,11 @@ async function formularioOrcamento(idOrcamento) {
             retornar: ['nome'],
             base: 'dados_clientes',
             colunas: {
-                Nome: { chave: 'nome' },
+                'Nome': { chave: 'nome' },
                 'Morada Fiscal': { chave: 'morada_fiscal' },
-                Distrito: { chave: 'snapshots.cidade.distrito' },
-                Zona: { chave: 'snapshots.cidade.zona' },
-                Cidade: { chave: 'snapshots.cidade.nome' }
+                'Distrito': { chave: 'snapshots.cidade.distrito' },
+                'Zona': { chave: 'snapshots.cidade.zona' },
+                'Cidade': { chave: 'snapshots.cidade.nome' }
             }
         }
 
@@ -416,10 +416,8 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
             (
                 await Promise.all(
                     selects.map(async select => {
-                        const selecionado = select.selectedOptions[0]
+
                         const id_ambiente = select.value
-                        const zona = selecionado.dataset.zona
-                        const ambiente = selecionado.dataset.ambiente
 
                         const camposDoAmbiente = Object.values(camposAtuais)
                             .filter(campo => campo.id_ambiente == id_ambiente)
@@ -427,9 +425,7 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
                                 campo.id,
                                 {
                                     ...campo,
-                                    id_ambiente,
-                                    zona,
-                                    ambiente
+                                    id_ambiente
                                 }
                             ])
 
@@ -458,8 +454,6 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
                                     {
                                         id,
                                         id_ambiente,
-                                        zona,
-                                        ambiente,
                                         id_campo,
                                         descricao,
                                         medida,
@@ -467,6 +461,7 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
                                         materiais,
                                         mao_obra,
                                         especialidade,
+                                        timestamp: Date.now(),
                                         unitario: snapshots?.totais?.total
                                     }
                                 ]
@@ -508,27 +503,39 @@ async function execucoes(idOrcamento) {
     try {
         overlayAguarde()
 
-        const { campos } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
+        const { campos } = await recuperarDado('vw_dados_orcamentos', idOrcamento) || {}
 
         const base = Object.values(campos)
 
-        const opcoesZonas = [...new Set(base.map(i => i.zona))]
+        const opcoesZonas = [...new Set(base.map(i => i.nome_zona))]
+            .filter(Boolean)
             .sort((a, b) => a.localeCompare(b))
             .map(zona => `<option>${zona}</option>`)
             .join('')
 
         const tabela = await modTab({
-            btnExtras: `<select onchange="filtrarPorZona(this.value)" style="margin-right: 1rem;">${opcoesZonas}</select>`,
+            btnExtras: `
+                <div class="seletor-zona">
+                    <span>Zona atual</span>
+                    <select onchange="filtrarPorZona(this.value)">
+                        <option>Todas</option>
+                        ${opcoesZonas}
+                    </select>
+                </div>
+                `,
             idOrcamento,
+            ordenar: {
+                path: 'timestamp',
+                direcao: 'desc',
+            },
             colunas: {
-                'Remover': {},
-                'Ambiente': {},
+                'Editar': {},
+                'Ambiente': { chave: 'nome_ambiente' },
                 'Descrição do Serviço': { chave: 'descricao' },
                 'Descrição Extra <br>(facultativo)': {
                     chave: 'descricaoExtra'
                 },
                 'Unidade de <br> Medida': { chave: 'medida' },
-                'Dimensões': {},
                 'Quantidade': {},
                 'Valor Unit': {},
                 'Valor Total': {}
@@ -541,10 +548,10 @@ async function execucoes(idOrcamento) {
 
         tela.innerHTML = `
             <div class="execucoes">
-                ${tabela}
+                <div style="width: max-content;">${tabela}</div>
 
                 <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
-                    <button onclick="incluirLinha()">
+                    <button onclick="editarDimensoes()">
                         <img src="imagens/baixar.png">
                         Adicionar Linha
                     </button>
@@ -565,6 +572,7 @@ async function execucoes(idOrcamento) {
         `
 
         await paginacao('execucoes')
+
     } catch (err) {
         console.error(err)
         popup({
@@ -578,17 +586,12 @@ async function execucoes(idOrcamento) {
 async function filtrarPorZona(zona) {
 
     controles.execucoes.filtros ??= {}
-    controles.execucoes.filtros.zona = { op: '=', value: zona }
+    controles.execucoes.filtros.nome_zona = { op: '=', value: zona }
+    if (zona == 'Todas')
+        delete controles.execucoes.filtros.nome_zona
+
     await paginacao('execucoes')
 
-}
-
-async function incluirLinha() {
-    controles.execucoes.base.push({
-        id: crypto.randomUUID()
-    })
-
-    await paginacao()
 }
 
 async function alterarFinalizacao(id, status) {
@@ -605,7 +608,7 @@ function criarLinhaExecucoes(dados) {
 
     const {
         id,
-        ambiente,
+        nome_ambiente,
         descricao,
         unitario,
         quantidade,
@@ -615,50 +618,23 @@ function criarLinhaExecucoes(dados) {
 
     const total = (quantidade || 0) * unitario
 
-    controlesCxOpcoes[id] = {
-        base: 'campos',
-        retornar: ['descricao'],
-        colunas: {
-            Especialidade: { chave: 'especialidade' },
-            Descrição: { chave: 'descricao' },
-            Medida: { chave: 'medida' }
-        }
-    }
-
     const tds = `
         <td>
-            <img
-                onclick="removerLinhaZona('${id}')"
-                src="imagens/fechar.png"
-                style="width: 2rem;">
-        </td>
-        <td>
-            ${ambiente || ''}
-        </td>
-
-        <td style="min-width: 250px;">
-            <span
-                ${id ? `id="${id}"` : ''}
-                name="${id}"
-                class="opcoes"
-                onclick="cxOpcoes('${id}')">
-
-                ${descricao || 'Selecione'}
-            </span>
+            <div style="${horizontal}"><img onclick="editarDimensoes('${id}')" src="imagens/lapis.png"></div>
         </td>
 
         <td>
-            <textarea
-                name="descricaoExtra"
-                style="min-width: 150px;">${descricaoExtra || ''}</textarea>
+            ${nome_ambiente || ''}
+        </td>
+
+        <td>${descricao || ''}</td>
+
+        <td>
+            <span class="descricao-extra">${descricaoExtra || '...'}</span>
         </td>
 
         <td>
             <span name="medida">${medida || ''}</span>
-        </td>
-
-        <td>
-            <div style="${horizontal}"><img onclick="editarDimensoes('${id}')" src="imagens/lapis.png"></div>
         </td>
 
         <td style="white-space: nowrap;" name="quantidade">${quantidade || 0}</td>
@@ -669,10 +645,17 @@ function criarLinhaExecucoes(dados) {
     return `<tr data-campos="S" id="${id}">${tds}</tr>`
 }
 
-function editarDimensoes(idItem) {
+function editarDimensoes(idItem = crypto.randomUUID()) {
 
-    const { descricao, medida, dimensoes } = (controles?.execucoes?.base || [])
-        .filter(i => i.id == idItem)[0]
+    const base = (controles?.execucoes?.base || [])
+    const {
+        id_campo,
+        id_ambiente,
+        descricao,
+        dimensoes,
+        descricaoExtra
+    } = base
+        .filter(i => i.id == idItem)[0] || {}
 
     const {
         altura,
@@ -682,35 +665,81 @@ function editarDimensoes(idItem) {
         unidades
     } = dimensoes || {}
 
+    controlesCxOpcoes.servico = {
+        base: 'campos',
+        funcaoAdicional: [
+            ['incluirServicoNoObjeto', idItem]
+        ],
+        retornar: ['descricao'],
+        colunas: {
+            'Especialidade': { chave: 'especialidade' },
+            'Desccrição': { chave: 'descricao' }
+        }
+    }
+
+    const ambientes = [...new Map(
+        base
+            .filter(item => item.id_ambiente)
+            .map(item => [
+                item.id_ambiente,
+                item.nome_ambiente || item.id_ambiente
+            ])
+    ).entries()]
+        .map(([id, nome]) => `
+            <option value="${id}" ${id == id_ambiente ? 'selected' : ''}>
+                ${nome}
+            </option>
+    `)
+        .join('')
+
     const regras = `oninput="calcularDimensoes('${idItem}')"`
 
     const linhas = [
         {
-            elemento: `<span>${medida} - ${descricao}</span>`
+            texto: 'Serviço',
+            elemento: `<span 
+                ${id_campo ? `id="${id_campo}"` : ''} 
+                name="servico" 
+                onclick="cxOpcoes('servico')" 
+                class="opcoes">${descricao || 'Selecione'}</span>
+                `
         },
         {
-            texto: 'unidades',
+            texto: 'Ambiente',
+            elemento: `
+                <select name="id_ambiente">
+                    <option value="">Selecione</option>
+                    ${ambientes}
+                </select>
+            `
+        },
+        {
+            texto: 'Descrição Extra',
+            elemento: `<textarea name="descricao_extra" placeholder="Descrição opcional">${descricaoExtra || ''}</textarea>`
+        },
+        {
+            texto: 'Unidades',
             elemento: `<input ${regras} type="number" name="unidades" value="${unidades || ''}">`
         },
         {
-            texto: 'metroLinear',
+            texto: 'Metro Linear',
             elemento: `<input ${regras} type="number" name="metroLinear" value="${metroLinear || ''}">`
         },
         {
-            texto: 'comprimento',
+            texto: 'Comprimento',
             elemento: `<input ${regras} type="number" name="comprimento" value="${comprimento || ''}">`
         },
         {
-            texto: 'largura',
+            texto: 'Largura',
             elemento: `<input ${regras} type="number" name="largura" value="${largura || ''}">`
         },
         {
-            texto: 'altura',
+            texto: 'Altura',
             elemento: `<input ${regras} type="number" name="altura" value="${altura || ''}">`
         },
         {
             elemento: `
-                <div style="${horizontal}; gap: 1rem;">
+                <div style="${horizontal}; gap: 1rem; width: 100%;">
                     <span>Quantidade Final</span>
                     <span class="etiquetas" id="totalQuantidade">0</span>
                 </div>
@@ -718,24 +747,108 @@ function editarDimensoes(idItem) {
         }
     ]
 
+    const botoes = [
+        {
+            texto: 'Salvar',
+            img: 'concluido',
+            funcao: idItem
+                ? `salvarDimensoes('${idItem}')`
+                : `salvarDimensoes()`
+        }
+    ]
+
+    if (idItem)
+        botoes.push({
+            texto: 'Excluir',
+            img: 'cancel',
+            funcao: `removerLinhaZona('${idItem}')`
+        })
+
     popup({
+        titulo: 'Edição do Serviço',
         linhas,
-        botoes: [
-            {
-                texto: 'Salvar',
-                img: 'concluido',
-                funcao: `salvarDimensoes('${idItem}')`
-            }
-        ]
+        botoes
     })
 
     calcularDimensoes(idItem)
 
 }
 
-async function salvarDimensoes(id) {
+async function incluirServicoNoObjeto(idItem) {
     try {
         overlayAguarde()
+
+        const id_campo = obVal('servico')
+        const id_ambiente = obVal('id_ambiente')
+
+        if (!id_ambiente)
+            return popup({ mensagem: 'Selecione um ambiente' })
+
+        const itemAmbiente = controles.execucoes.base
+            .find(item => item.id_ambiente == id_ambiente)
+
+        const painel = [...document.querySelectorAll('.painel-padrao')].at(-1)
+        const selectAmbiente = painel?.querySelector('[name="id_ambiente"]')
+
+        const nome_ambiente =
+            itemAmbiente?.nome_ambiente ||
+            selectAmbiente?.selectedOptions[0]?.textContent.trim()
+
+        const nome_zona = itemAmbiente?.nome_zona
+
+        const {
+            mao_obra,
+            ferramentas,
+            materiais,
+            descricao,
+            medida,
+            especialidade,
+            snapshots
+        } = await recuperarDado('campos', id_campo) || {}
+
+        const indice = controles.execucoes.base
+            .findIndex(item => item.id == idItem)
+
+        const item = {
+            ...(indice >= 0 ? controles.execucoes.base[indice] : {}),
+            id: idItem,
+            id_ambiente,
+            nome_zona,
+            nome_ambiente,
+            id_campo,
+            mao_obra,
+            ferramentas,
+            materiais,
+            descricao,
+            medida,
+            especialidade,
+            unitario: snapshots?.totais?.total || 0
+        }
+
+        if (indice >= 0)
+            controles.execucoes.base[indice] = item
+        else
+            controles.execucoes.base.push(item)
+
+        calcularDimensoes(idItem)
+    } catch (err) {
+        console.error(err)
+        popup({ mensagem: 'Falha ao incluir o serviço: Fale com o suporte.' })
+    } finally {
+        removerOverlay()
+    }
+}
+
+async function salvarDimensoes(id) {
+    const id_ambiente = obVal('id_ambiente')
+
+    if (!id_ambiente)
+        return popup({ mensagem: 'Selecione um ambiente' })
+
+    try {
+        overlayAguarde()
+
+        await incluirServicoNoObjeto(id)
 
         const { dimensoesCalculo: dimensoes, quantidade } =
             calcularDimensoes(id)
@@ -745,12 +858,20 @@ async function salvarDimensoes(id) {
         if (!item)
             return
 
+        item.timestamp = Date.now()
+        item.descricaoExtra = obVal('descricao_extra')
         item.dimensoes = dimensoes
         item.quantidade = quantidade
 
+        const {
+            nome_zona,
+            nome_ambiente,
+            ...itemParaSalvar
+        } = item
+
         await enviar(
             `dados_orcamentos/${controles.execucoes.idOrcamento}/campos/${id}`,
-            item
+            itemParaSalvar
         )
 
         await paginacao('execucoes')
@@ -762,8 +883,8 @@ async function salvarDimensoes(id) {
 
 function calcularDimensoes(idItem) {
 
-    const { medida, unitario } = (controles?.execucoes?.base || [])
-        .filter(i => i.id == idItem)[0]
+    const { descricao, medida, unitario } = (controles?.execucoes?.base || [])
+        .filter(i => i.id == idItem)[0] || {}
 
     function inv(el, remover) {
         el.style.backgroundColor = remover
@@ -784,6 +905,16 @@ function calcularDimensoes(idItem) {
         'largura',
         'altura'
     ]
+
+    // Verificação de item novo;
+    dimensoes.map(dim => {
+        const el = painel.querySelector(`[name="${dim}"]`)
+        const linha = el.closest('.linha-padrao')
+
+        linha.style.display = descricao
+            ? 'flex'
+            : 'none'
+    })
 
     const esquema = {
         '': [],
@@ -873,16 +1004,15 @@ async function removerLinhaZona(idItem) {
     try {
         overlayAguarde()
 
-        await deletar(
-            `dados_orcamentos/${controles.execucoes.idOrcamento}/campos/${idItem}`
-        )
-
         controles.execucoes.base = controles.execucoes.base
             .filter(campo => campo.id != idItem)
 
         await paginacao('execucoes')
+
+        deletar(`dados_orcamentos/${controles.execucoes.idOrcamento}/campos/${idItem}`)
+
     } finally {
-        removerOverlay()
+        removerTodosPopups()
     }
 }
 
@@ -892,12 +1022,12 @@ async function orcamentoFinal(idOrcamento, emJanela) {
     try {
 
         const {
-            campos = {},
+            campos,
             contrato,
             data_contato,
             data_visita,
             cliente
-        } = await recuperarDado('dados_orcamentos', idOrcamento) || {}
+        } = await recuperarDado('vw_dados_orcamentos', idOrcamento) || {}
 
         const {
             nome,
@@ -969,6 +1099,7 @@ async function orcamentoFinal(idOrcamento, emJanela) {
         }
 
         const colunas = [
+            'Zona',
             'Ambiente',
             'Especialidade',
             'Descrição do Serviço',
@@ -981,20 +1112,30 @@ async function orcamentoFinal(idOrcamento, emJanela) {
             .join('')
 
 
-        const itens = Object.values(campos).map(campo => {
+        const itens = Object.values(campos || {}).map(campo => {
             const totalLinha =
                 Number(campo.unitario || 0) * Number(campo.quantidade || 0)
 
             totalGeral += totalLinha
+            const {
+                nome_zona,
+                nome_ambiente,
+                especialidade,
+                descricao,
+                descricaoExtra,
+                medida,
+                quantidade
+            } = campo || {}
 
             return `
                 <tr>
-                    <td>${campo.ambiente || ''}</td>
-                    <td>${campo.especialidade || ''}</td>
-                    <td>${campo.descricao || ''}</td>
-                    <td>${campo.descricaoExtra || ''}</td>
-                    <td>${campo.medida || ''}</td>
-                    <td>${campo.quantidade || ''}</td>
+                    <td>${nome_zona || ''}
+                    <td>${nome_ambiente || ''}</td>
+                    <td>${especialidade || ''}</td>
+                    <td>${descricao || ''}</td>
+                    <td>${descricaoExtra || ''}</td>
+                    <td>${medida || ''}</td>
+                    <td>${quantidade || ''}</td>
                     <td>${dinheiro(totalLinha)}</td>
                 </tr>
             `
@@ -1017,9 +1158,9 @@ async function orcamentoFinal(idOrcamento, emJanela) {
                         <thead>${colunas}</thead>
                         <tbody>${itens.join('')}</tbody>
                     </table>
-
-                    <span class="id-orcamento">${idOrcamento}</span>
                 </div>
+
+                <span class="id-orcamento">${idOrcamento}</span>
             </div>
         `
 

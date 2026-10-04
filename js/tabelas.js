@@ -81,14 +81,14 @@ async function modTab(configuracoes) {
                             data-op=">=d"
                             type="date"
                             onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '>=d', elemento: this, pag: '${pag}'})"
-                            style="width: 7rem; font-size: 0.75rem; padding: 0; height: 1.3rem;">
+                            style="width: 7rem; font-size: 0.75rem; padding: 2px 1rem; height: 1.3rem;">
 
                             <input
                             data-chave="${query.chave}"
                             data-op="<=d"
                             type="date"
                             onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '<=d', elemento: this, pag: '${pag}'})"
-                            style="width: 7rem; font-size: 0.75rem; padding: 0; height: 1.3rem;">
+                            style="width: 7rem; font-size: 0.75rem; padding: 2px 1rem; height: 1.3rem;">
                             
                         </div>
                     </th>`

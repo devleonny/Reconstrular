@@ -100,3 +100,25 @@ th {
     border-radius: 5px;
     padding: 5px;
 }
+
+.despesa {
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    width: stretch;
+    background-color: #ff000038;
+    border-radius: 20px;
+    padding: 3px 1rem;
+    border: solid 1px #ff000057;
+}
+
+.credito {
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    width: stretch;
+    background-color: #00800038;
+    border-radius: 20px;
+    padding: 3px 1rem;
+    border: solid 1px #00800057;
+}

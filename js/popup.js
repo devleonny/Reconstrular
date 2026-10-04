@@ -26,7 +26,7 @@ function popup({
         : 'border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;'
 
     const linhaFormulario = ({ texto, elemento, editor }) => {
-        if (texto) texto = `<span style="text-align: left;">${texto}</span>`
+        if (texto) texto = `<span style="text-align: left; margin-top: 8px;">${texto}</span>`
 
         if (editor !== undefined) {
             // O ID vira só interno para não conflitar caso existam dois editores,

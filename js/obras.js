@@ -202,21 +202,22 @@ async function mostrarMateriaisExtras(ordem) {
         body: 'popup_despesas',
         criarLinha: 'criarLinhaDespesa',
         colunas: {
+            'Edição': {},
+            'Obra': {},
             'Fornecedor': { chave: 'nome_fornecedor' },
             'Distrito': { chave: 'distrito' },
             'Cidade': { chave: 'nome_cidade' },
             'Número do Contribuinte': { chave: 'nif' },
+            'Tipo da Despesa': { chave: 'tipo_despesa' },
+            'Quantidade': {},
             'Valor': { chave: 'valor' },
             'IVA': { chave: 'iva' },
             'Ano': { chave: 'snapshots.ano', tipoPesquisa: 'select' },
             'Mês': { chave: 'snapshots.mes', tipoPesquisa: 'select' },
             'Data': { chave: 'data', tipoPesquisa: 'data' },
             'Fatura': {},
-            'Quantidade': {},
             'Especialidade': { chave: 'especialidade' },
-            'Material': { chave: 'material' },
-            'Obra': {},
-            'Detalhes': {}
+            'Material': { chave: 'material' }
         },
         filtros: {
             'obra': { op: '=', value: ordem }

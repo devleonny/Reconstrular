@@ -105,10 +105,20 @@
     background-color: #5f5f5f;
 }
 
+.seletor-zona {
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    gap: 3px;
+    margin-right: 1rem;
+    border-radius: 3px;
+    padding: 3px 1rem;
+    background-color: #ffffffb8;
+}
+
 .id-orcamento {
     font-size: 10px;
     color: #525252;
-    position: fixed;
     bottom: 10px;
     right: 10px;
 }
@@ -135,6 +145,14 @@
     gap: 1rem;
     padding: 1rem;
     background-color: white;
+}
+
+.descricao-extra {
+    padding: 5px 1rem;
+    display: flex;
+    border-radius: 5px;
+    border: dotted 1px #d2d2d2;
+    width: stretch;
 }
 
 .caixa-todos {
@@ -170,9 +188,12 @@
     body * {
         visibility: hidden;
     }
-    .orcamento-documento, .orcamento-documento * {
+
+    .orcamento-documento,
+    .orcamento-documento * {
         visibility: visible;
     }
+
     .orcamento-documento {
         position: absolute;
         left: 0;
@@ -220,4 +241,3 @@
     background-color: #de00009a;
     padding: 0.5rem;
 }
-
