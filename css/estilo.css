@@ -236,16 +236,6 @@ html {
     align-items: stretch;
 }
 
-.campo-funcoes {
-    padding: 0.5rem;
-    border-radius: 5px;
-    display: flex;
-    align-items: start;
-    justify-content: start;
-    flex-direction: column;
-    gap: 5px;
-}
-
 .extras-funcao {
     display: flex;
     align-items: start;
@@ -717,15 +707,19 @@ img {
     width: 2rem;
 }
 
+input,
 select {
-    padding: 5px;
-    border-radius: 3px;
+    font-family: 'Poppins';
+    padding: 5px 1rem;
+    border-radius: 20px;
+    border: 1px solid #888;
 }
 
-input,
 textarea {
+    width: stretch;
+    border-radius: 3px;
+    padding: 5px;
     font-family: 'Poppins';
-    border-radius: 5px;
     border: 1px solid #888;
 }
 
@@ -733,7 +727,8 @@ input[type="file"] {
     width: 70%;
 }
 
-input[type="radio"], input[type="checkbox"] {
+input[type="radio"],
+input[type="checkbox"] {
     cursor: pointer;
     width: 1.5rem;
     height: 1.5rem;

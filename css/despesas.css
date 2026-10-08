@@ -101,6 +101,30 @@ th {
     padding: 5px;
 }
 
+.campo-materiais {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: start;
+    justify-content: start;
+}
+
+.item-material {
+    color: #e9e9e9;
+    flex-direction: column;
+    padding: 5px;
+    gap: 2px;
+    align-items: start;
+    justify-content: start;
+    display: flex;
+    border-radius: 8px;
+    background: linear-gradient(305deg, #7f6a5b, #5b707f);
+}
+
+.item-material textarea {
+    width: stretch;
+}
+
 .despesa {
     align-items: center;
     justify-content: center;

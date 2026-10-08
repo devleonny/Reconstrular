@@ -1,3 +1,5 @@
+let especialidades = null
+
 
 async function telaFerramentas() {
 
@@ -39,7 +41,6 @@ async function verificarDespesas() {
         'Tipo da Despesa': { chave: 'tipo_despesa' },
         'Quantidade': {},
         'Valor': { chave: 'valor' },
-        'IVA': { chave: 'iva' },
         'Ano': { chave: 'snapshots.ano', tipoPesquisa: 'select' },
         'Mês': { chave: 'snapshots.mes', tipoPesquisa: 'select' },
         'Data': { chave: 'data', tipoPesquisa: 'data' },
@@ -72,7 +73,6 @@ function criarLinhaDespesa(dados) {
     nif,
     id,
     valor,
-    iva,
     fatura,
     material,
     especialidade,
@@ -113,7 +113,6 @@ function criarLinhaDespesa(dados) {
         <td style="white-space: nowrap;">
             <span class="${etiquetaValor}">${dinheiro(valor)}</span>
         </td>
-        <td style="white-space: nowrap;">${dinheiro(iva)}</td>
         <td>${ano || ''}</td>
         <td>${mes || ''}</td>
         <td>${data || ''}</td>
@@ -136,18 +135,13 @@ async function formularioDespesa(idDespesa) {
     const {
       tipo_despesa,
       data,
-      especialidade,
       material,
-      iva,
-      valor,
       fornecedor,
-      quantidade,
       obra,
       fatura,
       foto
     } = await recuperarDado('dados_despesas', idDespesa) || {}
 
-    const { resultados } = await pesquisarDB({ base: 'especialidades' }) || {}
     const { nome } = await recuperarDado('fornecedores', fornecedor) || {}
 
     controlesCxOpcoes.fornecedor = {
@@ -218,36 +212,21 @@ async function formularioDespesa(idDespesa) {
           `
       },
       {
-        texto: 'Quantidade',
-        elemento: `<input ${regras} name="quantidade" placeholder="Quantidade" type="number" value="${quantidade || ''}">`
-      },
-      {
-        texto: 'Valor',
-        elemento: `<input ${regras} name="valor" placeholder="Valor" type="number" value="${valor || ''}">`
-      },
-      {
-        texto: 'IVA',
-        elemento: `<input ${regras} name="iva" placeholder="IVA" type="number" value="${iva || ''}">`
-      },
-      {
         texto: 'Data',
         elemento: `<input ${regras} name="data" type="date" value="${data || ''}">`
       },
       {
-        texto: 'Especialidade',
-        elemento: `
-          <select ${regras} name="especialidade">
-            ${resultados.map(res => `<option ${especialidade == res.nome ? 'selected' : ''}>${res.nome}</option>`).join('')}
-          </select>
-          `
-      },
-      {
-        texto: 'Material',
-        elemento: `<textarea ${regras} placeholder="Descrição do material" name="material">${material || ''}</textarea>`
-      },
-      {
         texto: 'Obra',
         elemento: `<span ${obra ? `id="${obra}"` : ''} name="obra" class="opcoes" onclick="cxOpcoes('obra')">${obra || 'Selecionar'}</span>`
+      },
+      {
+        texto: `
+          <div style="${horizontal}; gap: 5px;">
+            <img onclick="adicionarMaterial()" src="imagens/baixar.png">
+            <span>Materiais</span>
+          </div>
+        `,
+        elemento: `<div class="campo-materiais"></div>`
       }
     ]
 
@@ -268,6 +247,55 @@ async function formularioDespesa(idDespesa) {
     console.error(err)
     popup({ mensagem: 'Falha ao abrir o formulário: Fale com o suporte.' })
   }
+}
+
+async function adicionarMaterial() {
+
+  if(!especialidades) {
+        const { resultados } = await pesquisarDB({ base: 'especialidades' }) || {}
+        especialidades = resultados
+  }
+
+  const painel = [...document.querySelectorAll('.painel-padrao')].at(-1)
+  const local = painel.querySelector('.campo-materiais')
+
+  const opcoes = especialidades
+    .sort((a, b) => a.nome.localeCompare(b.nome))
+    .map(res => {
+      return `<option>${res.nome}</option>`
+    })
+    .join('')
+
+  const mod = (titulo, elemento) => {
+
+    return `
+      <div style="${vertical}; gap: 2px; width: stretch;">
+        <span>${titulo}</span>
+        ${elemento}
+      </div>
+    `
+  }
+
+  const item = `
+      <div class="item-material">
+
+        <div style="${horizontal}; flex-direction: row; gap: 5px;">
+
+          ${mod('Quantidade', `<input placeholder="Quantidade">`)}
+          ${mod('Valor', `<input placeholder="Valor">`)}
+          ${mod('Especialidade', `
+            <select>
+              ${opcoes}
+            </select>
+          `)}
+
+        </div>
+
+        ${mod('Descrição do Material', `<textarea placeholder="Descrição do material"></textarea>`)}
+        
+      </div>
+    `
+    local.insertAdjacentHTML('beforeend', item)
 }
 
 function alterarModal() {
@@ -359,7 +387,6 @@ async function salvarDespesa(idDespesa = crypto.randomUUID()) {
       especialidade: obVal('especialidade'),
       material: obVal('material'),
       quantidade: Number(obVal('quantidade') || 0),
-      iva: Number(obVal('iva')),
       valor: Number(obVal('valor')),
       data: obVal('data')
     }

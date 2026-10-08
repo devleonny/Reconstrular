@@ -63,6 +63,17 @@
     gap: 2px;
 }
 
+.campo-funcoes {
+    width: stretch;
+    padding: 0.5rem;
+    border-radius: 10px;
+    display: flex;
+    align-items: start;
+    justify-content: start;
+    flex-direction: column;
+    gap: 5px;
+}
+
 .interruptor {
     display: inline-flex;
     align-items: center;
@@ -114,6 +125,7 @@
 }
 
 .bloco-form-epi {
+    width: stretch;
     border-radius: 5px;
     padding: 0.5rem;
     display: flex;

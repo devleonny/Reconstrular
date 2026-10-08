@@ -310,7 +310,7 @@ async function adicionarColaborador(id) {
             },
             {
                 elemento: `
-                    <div style="${vertical}; gap: 5px;">
+                    <div style="${vertical}; gap: 5px; width: stretch;">
                         <span>Função</span>
                         <div class="campo-funcoes"></div>
                         <span>Cidades</span>
@@ -387,7 +387,7 @@ async function adicionarColaborador(id) {
                 elemento: `
                     <div class="bloco-form-epi">
                         <span>Formulário de EPI</span>
-                        <table class="tabela">
+                        <table class="tabela" style="background-color: white;">
                             <thead style="position: static;">${cabEpi}</thead>
                             <tbody>
                                 ${tr('Botas de segurança com biqueira reforçada', 'botas')}

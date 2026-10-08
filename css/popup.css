@@ -249,11 +249,14 @@
 .painel-padrao input,
 .painel-padrao select,
 .painel-padrao textarea {
-    border-radius: 3px;
-    padding: 8px;
-    border: 1px solid #249f41;
+    border: 1px solid #5b707f;
     background-color: #f9f9f9;
     font-size: 14px;
+}
+
+.painel-padrao input[type="file"] {
+    border: none;
+    background-color: transparent;
 }
 
 .painel-padrao input:focus,

@@ -211,7 +211,6 @@ async function mostrarMateriaisExtras(ordem) {
             'Tipo da Despesa': { chave: 'tipo_despesa' },
             'Quantidade': {},
             'Valor': { chave: 'valor' },
-            'IVA': { chave: 'iva' },
             'Ano': { chave: 'snapshots.ano', tipoPesquisa: 'select' },
             'Mês': { chave: 'snapshots.mes', tipoPesquisa: 'select' },
             'Data': { chave: 'data', tipoPesquisa: 'data' },
@@ -316,7 +315,7 @@ async function adicionarObra(idObra) {
                 elemento: `
                     <div style="${horizontal}; gap: 1rem;">
                         <span>Obra de nº: </span>
-                        <span class="etiquetas">${ordem}</span>
+                        <span class="etiquetas">${ordem || '...'}</span>
                     </div>
                 `
             },

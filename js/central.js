@@ -783,7 +783,6 @@ async function verificarRegras() {
         'obra',
         'quantidade',
         'valor',
-        'iva',
         'data',
         'especialidade',
         'material'
