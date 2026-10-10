@@ -4,7 +4,7 @@ let controlesCxOpcoes = {}
 const emArquivoLocal = location.protocol === 'file:'
 
 if (!emArquivoLocal && 'serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register(new URL('sw.js', document.baseURI))
         .then(reg => console.log('SW registrado:', reg.scope))
         .catch(err => console.error('Erro ao registrar SW:', err))
 }
@@ -88,7 +88,7 @@ async function selecionar(name, cod) {
     if (cod == 'null')
         return popup({ mensagem: 'O objeto "base" em controlesCx precisa contem o próprio "id" / "codigo" / "etc"' })
 
-    const { funcaoAdicional, base, retornar } = controlesCxOpcoes[name]
+    const { funcaoAdicional, base, retornar, armazenarDataset = {} } = controlesCxOpcoes[name]
 
     if (!retornar)
         return popup({ mensagem: `campo retornar: ['exemplo'] → undefined` })
@@ -118,6 +118,8 @@ async function selecionar(name, cod) {
 
     elemento.innerHTML = termos.join('<br>')
     elemento.id = cod
+    for (const [atributo, caminho] of Object.entries(armazenarDataset))
+        elemento.dataset[atributo] = String(getByPath(dado, caminho) ?? '')
 
     removerPopup()
 
@@ -178,18 +180,46 @@ function atribuirVariaveis() {
     toolbar.style.display = 'flex'
 }
 
+let usuariosPresencaTimer = null
+let usuariosPresencaVersao = 0
+
+function renderUsuariosPresenca(pessoas) {
+    const corpo = document.querySelector('[data-usuarios-online]')
+    if (!corpo) return
+    corpo.innerHTML = pessoas.length ? pessoas.map(p => `<tr>
+        <td>${escaparAtributo(p.usuario)}</td>
+        <td>${escaparAtributo(p.nome_completo || '')}</td>
+        <td>${escaparAtributo(p.funcao || '')}</td>
+    </tr>`).join('') : '<tr><td colspan="3">Nenhum usuário online.</td></tr>'
+}
+
 async function usuariosToolbar() {
 
     if (!acesso)
         return
 
-    const uOnline = await contarPorCampo({ base: 'dados_colaboradores', path: 'status' })
-    const { status } = await recuperarDado('dados_colaboradores', acesso.id) || {}
+    clearTimeout(usuariosPresencaTimer)
+    const versao = ++usuariosPresencaVersao
+    const usuarioAtual = acesso.usuario
+    try {
+    const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
+    const resposta = await fetchAutenticado(`${api}/presenca/online`, {
+        method: 'POST', cache: 'no-store',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({})
+    })
+    if (!resposta) return
+    const dados = await resposta.json().catch(() => null)
+    if (!resposta.ok || dados?.success !== true || !Array.isArray(dados.resultados))
+        throw new Error(dados?.mensagem || 'Não foi possível consultar os usuários online.')
+    if (versao !== usuariosPresencaVersao || acesso?.usuario !== usuarioAtual) return
+    const pessoas = [...new Map(dados.resultados.filter(p => p.usuario).map(p => [p.usuario, p])).values()]
+    const status = pessoas.some(p => p.usuario === usuarioAtual) ? 'online' : 'offline'
 
     const usuariosToolbarString = `
         <div class="botao-usuarios">
             <img name="imgStatus" onclick="painelUsuarios()" src="imagens/${status || 'alerta'}.png">
-            <label style="font-size: 1.2rem;">${uOnline?.online || 0}</label>
+            <label style="font-size: 1.2rem;">${pessoas.length}</label>
         </div>`
 
     if (nomeUsuario)
@@ -198,42 +228,29 @@ async function usuariosToolbar() {
     const divUsuarios = document.getElementById('divUsuarios')
     if (divUsuarios)
         divUsuarios.innerHTML = usuariosToolbarString
+    renderUsuariosPresenca(pessoas)
+    } catch (erro) {
+        if (versao !== usuariosPresencaVersao || acesso?.usuario !== usuarioAtual) return
+        const divUsuarios = document.getElementById('divUsuarios')
+        if (divUsuarios) divUsuarios.innerHTML = '<button type="button" onclick="painelUsuarios()" title="Presença indisponível">Online: —</button>'
+        const corpo = document.querySelector('[data-usuarios-online]')
+        if (corpo) corpo.innerHTML = '<tr><td colspan="3">Presença indisponível. Tente atualizar.</td></tr>'
+        console.warn(erro.message)
+    } finally {
+        if (versao === usuariosPresencaVersao && acesso?.usuario === usuarioAtual)
+            usuariosPresencaTimer = setTimeout(usuariosToolbar, 30000)
+    }
 
 }
 
 async function painelUsuarios() {
-
-    const pag = 'usuariosOnline'
-    const tOnline = await modTab({
-        pag,
-        colunas: {
-            'Status': { chave: 'status' },
-            'Usuários': { chave: 'usuario' },
-            'Função': { chave: 'funcao' }
-        },
-        body: 'bodyUsuariosOnline',
-        base: 'dados_colaboradores',
-        criarLinha: 'criarLinhaPainelUsuarios',
-        ordenar: {
-            path: 'status',
-            direcao: 'desc'
-        }
-    })
-
-    const elemento = `
-        <div style="padding: 1rem;">
-
-            ${tOnline}
-
+    if (!document.querySelector('[data-usuarios-online]')) popup({
+        titulo: 'Usuários online', elemento: `<div class="painel-usuarios-online">
+            <table class="tabela"><thead><tr><th>Usuário</th><th>Nome</th><th>Função</th></tr></thead>
+            <tbody data-usuarios-online><tr><td colspan="3">Consultando presença…</td></tr></tbody></table>
         </div>`
-
-    const divOnline = document.querySelector('.divOnline')
-    if (divOnline)
-        return
-
-    popup({ elemento, titulo: 'Painel de Usuários' })
-
-    await paginacao(pag)
+    })
+    await usuariosToolbar()
 }
 
 function criarLinhaPainelUsuarios(dados) {

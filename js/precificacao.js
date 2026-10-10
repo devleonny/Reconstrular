@@ -51,11 +51,8 @@ async function telaPrecos(filtro = null) {
             }
         })
 
-        const imagem = filtro == 'S'
-            ? 'preco_neg'
-            : 'preco'
-
-        tela.innerHTML = montarPagina({ tabela, titulo: 'Composições', imagem })
+        titulo.textContent = 'Composições'
+        tela.innerHTML = tabela
 
         await paginacao(pag)
 
@@ -371,34 +368,35 @@ async function composicoes(id) {
         return `
             <div id="${tipoTabela}" class="blocoTabela" style="display: none;">
                 <div class="painelBotoes">
+                    <span>Subtotal</span>
                     <span class="total-composicao" id="total-${tipoTabela}">${dinheiro(campo?.[`subtotal_${tipoTabela}`])}</span>
                 </div>
                 <div class="recorteTabela">
                     <table class="tabela">
-                        <thead>${ths}</thead>
+                        <thead><tr>${ths}</tr></thead>
                         <tbody id="body_${tipoTabela}"></tbody>
                     </table>
                 </div>
                 <div class="rodapeTabela">
-                    <button onclick="adicionarLinhaComposicoes({tabela: '${tipoTabela}', idCampo: '${id}'})">Adicionar Linha</button>
-                    <button onclick="salvarComposicao('${id}')">Salvar</button>
+                    <button type="button" onclick="adicionarLinhaComposicoes({tabela: '${tipoTabela}', idCampo: '${id}'})">Adicionar Linha</button>
+                    <button type="button" class="composicao-salvar" onclick="salvarComposicao('${id}')">Salvar</button>
                 </div>
             </div>`
     }
 
     const elemento = `
-        <div style="${vertical}; min-width: 500px; padding: 1rem; background-color: #d2d2d2; overflow: auto;">
+        <div class="configuracao-tarefa">
 
-            <div style="${vertical}; gap: 3px;">
+            <div class="composicao-resumo">
                 <span><b>Total Geral</b></span>
                 <span name="totalComposicao">${dinheiro(campo?.total_composicao)}</span>
             </div>
 
-            <div class="toolbar-precos">
-                <span id="toolbar_materiais" onclick="toogleTabela('materiais')">Materiais</span>
-                <span id="toolbar_ferramentas" onclick="toogleTabela('ferramentas')">Ferramentas</span>
-                <span id="toolbar_mao_obra" onclick="toogleTabela('mao_obra')">Mão de Obra</span>
-                <span id="toolbar_duracao" onclick="toogleTabela('duracao')">Duração</span>
+            <div class="toolbar-precos" aria-label="Categorias da composição">
+                <button type="button" id="toolbar_materiais" aria-controls="materiais" onclick="toogleTabela('materiais')">Materiais</button>
+                <button type="button" id="toolbar_ferramentas" aria-controls="ferramentas" onclick="toogleTabela('ferramentas')">Ferramentas</button>
+                <button type="button" id="toolbar_mao_obra" aria-controls="mao_obra" onclick="toogleTabela('mao_obra')">Mão de Obra</button>
+                <button type="button" id="toolbar_duracao" aria-controls="duracao" onclick="toogleTabela('duracao')">Duração</button>
             </div>
 
             ${modeloTabela('materiais')}
@@ -406,7 +404,7 @@ async function composicoes(id) {
             ${modeloTabela('mao_obra')}
 
             <div id="duracao" class="edicao-duracao">
-                <div style="${vertical}; padding: 2rem;">
+                <div class="composicao-duracao-campo">
                     <span>Duração (Horas)</span>
                     <input type="time" oninput="salvarDuracao('${id}', this)" value="${campo?.duracao || ''}">
                 </div>
@@ -415,7 +413,8 @@ async function composicoes(id) {
         </div>
     `
 
-    popup({ elemento, titulo: 'Configuração da Tarefa' })
+    const idPopup = popup({ elemento, titulo: 'Configuração da Tarefa' })
+    document.getElementById(idPopup).classList.add('popup-composicoes')
 
     toogleTabela('materiais')
 
@@ -454,10 +453,12 @@ function toogleTabela(idAtual) {
         const toolbar = document.getElementById(`toolbar_${tabela}`)
         tabHtml.style.display = 'none'
         toolbar.style.opacity = 0.5
+        toolbar.setAttribute('aria-pressed', 'false')
     }
 
     document.getElementById(idAtual).style.display = 'flex'
     document.getElementById(`toolbar_${idAtual}`).style.opacity = 1
+    document.getElementById(`toolbar_${idAtual}`).setAttribute('aria-pressed', 'true')
 
 }
 

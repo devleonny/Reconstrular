@@ -64,7 +64,7 @@ function connectWebSocket() {
 
         msg({
             tipo: 'validar',
-            usuario: acesso.usuario
+            token: acesso.token
         })
     }
 
@@ -213,10 +213,12 @@ function comunicacao() {
         }
 
         if (tipo === 'atualizacao') {
+            if (['chat_conversas', 'chat_mensagens', 'chat_participantes'].includes(tabela)) {
+                await chatSincronizar()
+                await verificarMensagens()
+            }
             await paginacao()
 
-            if (tabela === 'mensagens')
-                await verificarMensagens()
         }
 
         if (tipo === 'status') {
@@ -227,5 +229,5 @@ function comunicacao() {
 }
 
 async function verificarMensagens() {
-
+    return chatAtualizarContador()
 }

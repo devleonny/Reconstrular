@@ -7,6 +7,7 @@ async function telaObras() {
         const tabela = await modTab({
             btnExtras: `<button onclick="adicionarObra()">Adicionar Obra</button>`,
             pag: 'obras',
+            detalhes: true,
             body: 'bodyObras',
             base: 'mvw_dados_obras',
             criarLinha: 'criarLinhaObras',
@@ -15,22 +16,16 @@ async function telaObras() {
                 'Cronog.': {},
                 'H. Edições': {},
                 'Edição': {},
+                'Status': {},
                 'Ordem': { chave: 'ordem' },
                 'Orçamentos': { chave: 'orcamentos_vinculados' },
                 'Cliente': { chave: 'snapshots.cliente' },
                 'Distrito': { chave: 'snapshots.cidade.distrito' },
-                'Cidade': { chave: 'snapshots.cidade.nome' },
-                'Porcentagem': {},
-                'Status': {},
-                'Ferramentas': {},
-                'Mão de Obra': {},
-                'Material': {},
-                'Material Extra': {},
-                '% Material Extra': {}
+                'Cidade': { chave: 'snapshots.cidade.nome' }
             }
         })
 
-        tela.innerHTML = montarPagina({ tabela, imagem: 'obras', titulo: 'Obras' })
+        tela.innerHTML = tabela
 
         await paginacao()
 
@@ -70,18 +65,21 @@ function criarLinhaObras(obra) {
         .map(o => `<span class="etiquetas">${o}</span>`)
         .join('')
 
-    tds = `
+    const tds = `
         <td>
-            <img src="imagens/kanban.png" onclick="verAndamento('${id}')">
+            <img src="imagens/checklist.svg" class="icone-tabela" alt="Checklist" title="Checklist" onclick="verAndamento('${id}')">
         </td>
         <td>
-            <img src="imagens/doubleCheck.png" onclick="telaCronograma('${id}')">
+            <img src="imagens/cronograma.svg" class="icone-tabela" alt="Cronograma" title="Cronograma" onclick="telaCronograma('${id}')">
         </td>
         <td>
-            <img src="imagens/relogio.png" onclick="historicoObras('${ordem}')">
+            <img src="imagens/historico.svg" class="icone-tabela" alt="Histórico de edições" title="Histórico de edições" onclick="historicoObras('${ordem}')">
         </td>
         <td>
-            <img src="imagens/pesquisar.png" onclick="adicionarObra('${id}')">
+            <img src="imagens/editar.svg" class="icone-editar" alt="Editar" title="Editar" onclick="adicionarObra('${id}')">
+        </td>
+        <td>
+            <span class="${st.replace(' ', '_')}">${st}</span>
         </td>
         <td>
             <span class="etiquetas">${ordem}</span>
@@ -92,32 +90,31 @@ function criarLinhaObras(obra) {
         <td>${nome_cliente || ''}</td>
         <td>${cidade || ''}</td>
         <td>${distrito || ''}</td>
-        <td>
+    `
+    const detalhes = `<div class="obra-detalhes-row">
+        <div class="obra-detalhe"><strong>Andamento</strong>
             ${divPorcentagem(porcentagem)}
-        </td>
-        <td>
             <div style="${vertical}; gap: 2px;">
-                <span class="${st.replace(' ', '_')}">${st}</span>
                 ${excedente ? '<span class="excedente">Excedente</span>' : ''}
             </div>
-        </td>
-        <td>
-            <span onclick="mostrarMateriaisOrcamento('${id}', 'ferramentas')" style="cursor: pointer;">${dinheiro(total_ferramentas)}</span>
-        </td>
-        <td>
-            <span onclick="mostrarMateriaisOrcamento('${id}', 'mao_obra')" style="cursor: pointer;">${dinheiro(total_mao_obra)}</span>
-        </td>
-        <td>
-            <span onclick="mostrarMateriaisOrcamento('${id}', 'materiais')" style="cursor: pointer;">${dinheiro(total_materiais)}</span>
-        </td>
-        <td>
-            <span onclick="mostrarMateriaisExtras('${ordem}')" style="cursor: pointer;">${dinheiro(total_extra)}</span>
-        </td>
-        <td>
+        </div>
+        <div class="obra-detalhe"><strong>Ferramentas</strong>
+            <span class="${Number(total_ferramentas) < 0 ? 'credito' : 'despesa'}" onclick="mostrarMateriaisOrcamento('${id}', 'ferramentas')" style="cursor: pointer;">${dinheiro(total_ferramentas)}</span>
+        </div>
+        <div class="obra-detalhe"><strong>Mão de Obra</strong>
+            <span class="${Number(total_mao_obra) < 0 ? 'credito' : 'despesa'}" onclick="mostrarMateriaisOrcamento('${id}', 'mao_obra')" style="cursor: pointer;">${dinheiro(total_mao_obra)}</span>
+        </div>
+        <div class="obra-detalhe"><strong>Material</strong>
+            <span class="${Number(total_materiais) < 0 ? 'credito' : 'despesa'}" onclick="mostrarMateriaisOrcamento('${id}', 'materiais')" style="cursor: pointer;">${dinheiro(total_materiais)}</span>
+        </div>
+        <div class="obra-detalhe"><strong>Material Extra</strong>
+            <span class="${Number(total_extra) < 0 ? 'credito' : 'despesa'}" onclick="mostrarMateriaisExtras('${ordem}')" style="cursor: pointer;">${dinheiro(total_extra)}</span>
+        </div>
+        <div class="obra-detalhe"><strong>% Material Extra</strong>
             ${porcentagemHtml(porcentagem_extra || 0)}
-        </td>
-    `
-    return `<tr>${tds}</tr>`
+        </div>
+    </div>`
+    return { linha: `<tr>${tds}</tr>`, detalhes }
 
 }
 
@@ -200,6 +197,7 @@ async function mostrarMateriaisExtras(ordem) {
         pag,
         base: 'vw_despesas',
         body: 'popup_despesas',
+        detalhes: true,
         criarLinha: 'criarLinhaDespesa',
         colunas: {
             'Edição': {},
@@ -209,14 +207,11 @@ async function mostrarMateriaisExtras(ordem) {
             'Cidade': { chave: 'nome_cidade' },
             'Número do Contribuinte': { chave: 'nif' },
             'Tipo da Despesa': { chave: 'tipo_despesa' },
-            'Quantidade': {},
             'Valor': { chave: 'valor' },
             'Ano': { chave: 'snapshots.ano', tipoPesquisa: 'select' },
             'Mês': { chave: 'snapshots.mes', tipoPesquisa: 'select' },
             'Data': { chave: 'data', tipoPesquisa: 'data' },
-            'Fatura': {},
-            'Especialidade': { chave: 'especialidade' },
-            'Material': { chave: 'material' }
+            'Fatura': {}
         },
         filtros: {
             'obra': { op: '=', value: ordem }
@@ -339,7 +334,7 @@ async function adicionarObra(idObra) {
             },
             {
                 elemento: idObra
-                    ? montarPagina({ tabela, titulo: 'Colaboradores', imagem: 'colaborador' })
+                    ? tabela
                     : 'Salve primeiro a Obra, depois volte para selecionar Colaboradores.'
             }
         ]
@@ -573,7 +568,7 @@ async function painelVincularOrcamentos(idObra) {
                 <td>${dtFormatada(orcamento?.data_contato)}</td>
                 <td>${dtFormatada(orcamento?.data_visita)}</td>
                 <td>${dinheiro(orcamento?.total_geral)}</td>
-                <td><img src="imagens/obras.png" onclick="orcamentoFinal('${idOrcamento}', true)"></td>
+                <td><img src="imagens/orcamento.svg" class="icone-tabela" alt="Ver orçamento" title="Ver orçamento" onclick="orcamentoFinal('${idOrcamento}', true)"></td>
             </tr>
         `
     }
@@ -798,7 +793,7 @@ async function carregarLinhasAndamento(idObra) {
                 const riscado = !!obra?.andamento?.[idOrcamento]?.[item.idDescricao]?.removido
                 const estilo = riscado ? 'style="text-decoration: line-through"' : ''
                 const fotos = !!obra?.andamento?.[idOrcamento]?.[item.idDescricao]?.fotos
-                const icoCam = fotos ? 'concluido' : 'cam'
+                const icoCam = fotos ? 'camera-fotos' : 'camera'
                 const concluido = !!obra?.andamento?.[idOrcamento]?.[item.idDescricao]?.concluido
 
                 const porcent = concluido
@@ -835,9 +830,9 @@ async function carregarLinhasAndamento(idObra) {
 
                     <td>
                         <div class="gerenciar">
-                            <img onclick="gerenciar(${params})" src="imagens/lapis.png">
-                            <img onclick="painelFotos(${params})" src="imagens/${icoCam}.png">
-                            <img onclick="riscarItem(${params})" src="imagens/fechar.png">
+                            <img onclick="gerenciar(${params})" src="imagens/editar.svg" class="icone-tabela" alt="Editar item" title="Editar item">
+                            <img onclick="painelFotos(${params})" src="imagens/${icoCam}.svg" class="icone-tabela" alt="${fotos ? 'Ver fotos anexadas' : 'Adicionar fotos'}" title="${fotos ? 'Ver fotos anexadas' : 'Adicionar fotos'}">
+                            <img onclick="riscarItem(${params})" src="imagens/riscar.svg" class="icone-tabela" alt="Riscar item" title="Riscar item">
                         </div>
                     </td>
                 `
@@ -1117,7 +1112,7 @@ async function historicoObras(ordem) {
         })
 
         popup({
-            elemento: `<div style="padding: 0.5rem;">${montarPagina({ tabela, titulo: 'Histórico de Edições', imagem: 'colaborador' })}</div>`
+            elemento: `<div style="padding: 0.5rem;">${tabela}</div>`
         })
 
         await paginacao(pag)

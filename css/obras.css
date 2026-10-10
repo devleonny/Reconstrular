@@ -1,3 +1,32 @@
+.obra-detalhes-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 12px;
+}
+
+.obra-detalhe {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 130px;
+    flex: 1 1 130px;
+}
+
+.obra-detalhe > strong {
+    color: #596773;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.obra-detalhe > .despesa,
+.obra-detalhe > .credito {
+    align-self: flex-start;
+    white-space: nowrap;
+}
+
 .tabela-obras {
     font-size: 12px;
     min-width: 100%;

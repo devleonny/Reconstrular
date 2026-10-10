@@ -145,8 +145,10 @@ async function acessoLogin() {
             } else {
                 localStorage.setItem('acesso', JSON.stringify(data))
 
-                await validarAcesso()
+                if (!await validarAcesso()) return
                 await telaPrincipal()
+                priExe = false
+                connectWebSocket()
 
                 removerOverlay()
             }

@@ -1,3 +1,15 @@
+.tarefa-destinatario {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    text-align: left;
+}
+
+.tarefa-destinatario > em {
+    font-style: italic;
+}
+
 .tarefas {
     border-radius: 20px;
     padding: 5px 10px;
@@ -47,3 +59,38 @@
     background-color: #3eff25;
     color: #084700;
 }
+
+.tarefa-texto { min-width: 180px; max-width: 360px; white-space: normal; overflow-wrap: anywhere; }
+.tarefa-texto p { margin: 0 0 6px; }
+.tarefa-particular { display: block; width: fit-content; margin-top: 6px; padding: 3px 7px; border-radius: 5px; background: #e7edf2; color: #596b7b; font-size: 10px; }
+.tabela .tarefa-dropdown { min-width: 110px; padding: 7px 9px; border: 1px solid #cdd6de; border-radius: 6px; background: var(--tarefa-fundo, #f5f7f9); color: var(--tarefa-cor, #465563); font: inherit; font-size: 11px; cursor: pointer; }
+.tabela .tarefa-dropdown:focus-visible { outline: 2px solid #8b9dab; outline-offset: 1px; }
+.tabela .tarefa-dropdown:disabled { opacity: 1; color: var(--tarefa-cor, #7c8791); cursor: default; }
+.tarefa-dropdown[data-valor="Alta"] { --tarefa-fundo: red; --tarefa-cor: #ffe5a0; }
+.tarefa-dropdown[data-valor="Média"] { --tarefa-fundo: #ffe5a0; --tarefa-cor: #973f00; }
+.tarefa-dropdown[data-valor="Baixa"] { --tarefa-fundo: green; --tarefa-cor: wheat; }
+.tarefa-dropdown[data-valor="Não iniciado"] { --tarefa-fundo: #00dade; --tarefa-cor: #004e50; }
+.tarefa-dropdown[data-valor="Em curso"] { --tarefa-fundo: #fffb19; --tarefa-cor: #5b5900; }
+.tarefa-dropdown[data-valor="Stand By"] { --tarefa-fundo: #ff8870; --tarefa-cor: #7e1500; }
+.tarefa-dropdown[data-valor="Dependente"] { --tarefa-fundo: #ff63cb; --tarefa-cor: #520037; }
+.tarefa-dropdown[data-valor="Finalizado"] { --tarefa-fundo: #0024b5; --tarefa-cor: #c7c7ff; }
+.tarefa-dropdown[data-valor="Concluído"] { --tarefa-fundo: #3eff25; --tarefa-cor: #084700; }
+.tarefa-dropdown option { background: #fff; color: #465563; }
+.tabela .tarefa-nota { margin: 0; padding: 7px 10px; border: 1px solid #cdd6de; border-radius: 6px; background: #edf1f4; color: #465563; box-shadow: none; transform: none; font: inherit; font-size: 11px; }
+.tabela .tarefa-nota:hover { background: #dde5ec; box-shadow: none; transform: none; }
+.tarefa-anexos { display: flex; flex-wrap: wrap; gap: 6px; }
+.tarefa-ajuda { margin: 0; font-size: 12px; color: #657582; line-height: 1.7; }
+.tarefa-historico h3 { margin: 0 0 12px; font-size: 12px; color: #4c5965; }
+.tarefa-historico p { color: #78838e; }
+.tarefa-historico-recorte { overflow-x: auto; border: 1px solid #dce1e6; border-radius: 7px; }
+.tarefa-historico-recorte .tabela > thead { position: static; }
+.tarefa-historico-recorte .tabela th, .tarefa-historico-recorte .tabela td { padding: 9px 12px; }
+.tarefa-historico-data { white-space: nowrap; }
+.tarefa-prazo { display: inline-block; padding: 4px 8px; border-radius: 6px; white-space: nowrap; font-size: 11px; background: #edf1f4; color: #657582; }
+.tarefa-prazo-atrasado { background: #fce5e5; color: #a33434; }
+.tarefa-prazo-no-prazo, .tarefa-prazo-concluido { background: #e6f1e9; color: #397149; }
+.tarefa-detalhes-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 16px; margin-bottom: 20px; }
+.tarefa-detalhes-resumo section { padding: 14px; border: 1px solid #dce1e6; border-radius: 8px; background: #fff; min-width: 0; }
+.tarefa-detalhes-resumo h3 { margin: 0 0 10px; font-size: 12px; color: #4c5965; }
+.tarefa-nota-conteudo { overflow-wrap: anywhere; }
+.tarefa-detalhes-resumo .foto-status { width: 120px; height: 90px; object-fit: cover; border-radius: 6px; cursor: pointer; }

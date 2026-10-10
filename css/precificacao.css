@@ -29,3 +29,186 @@
     border-bottom-left-radius: 8px;
     border-bottom-right-radius: 8px;
 }
+
+/* Estrutura exclusiva do modal de configuração dos serviços. */
+.popup.popup-composicoes .popup-janela-fora {
+    width: min(900px, 100%);
+    min-width: 0;
+}
+
+.popup.popup-composicoes .janela {
+    width: 100%;
+    min-height: 0;
+    max-height: 82vh;
+    max-height: 82dvh;
+    overflow: hidden;
+}
+
+.configuracao-tarefa {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    width: 100%;
+    height: min(80vh, 820px);
+    height: min(80dvh, 820px);
+    min-width: 0;
+    min-height: 0;
+    padding: 16px;
+    box-sizing: border-box;
+    background: linear-gradient(45deg, #323639, #5b707f);
+}
+
+.configuracao-tarefa .composicao-resumo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid #ffffff25;
+    border-radius: 8px;
+    color: #edf1f5;
+    background: #ffffff09;
+    flex-shrink: 0;
+}
+
+.configuracao-tarefa [name="totalComposicao"] {
+    font-weight: 600;
+    font-size: 1.1rem;
+    white-space: nowrap;
+}
+
+.configuracao-tarefa .toolbar-precos {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.configuracao-tarefa .toolbar-precos button {
+    flex: 1 1 auto;
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid #ffffff20;
+    border-radius: 7px;
+    background: #ffffff0b;
+    color: #fff;
+    font: inherit;
+    font-size: 12px;
+    box-shadow: none;
+    transform: none;
+    cursor: pointer;
+}
+
+.configuracao-tarefa .toolbar-precos button:hover {
+    background: #ffffff1a;
+}
+
+.configuracao-tarefa .toolbar-precos button[aria-pressed="true"] {
+    background: #ffffff20;
+    border-color: #ffffff50;
+}
+
+.configuracao-tarefa .blocoTabela {
+    flex: 1;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid #d0d6dc;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.configuracao-tarefa .painelBotoes {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    width: 100%;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    background: #eef1f3;
+    border-bottom: 1px solid #dce1e6;
+    color: #535e68;
+    font-size: 12px;
+}
+
+.configuracao-tarefa .total-composicao {
+    margin: 0;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+.configuracao-tarefa .recorteTabela {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.configuracao-tarefa .tabela { min-width: 540px; }
+.configuracao-tarefa .tabela th { padding: 10px 12px; text-align: left; }
+.configuracao-tarefa .tabela td { padding: 10px 12px; }
+.configuracao-tarefa .tabela td:first-child { width: 45%; }
+.configuracao-tarefa .tabela .opcoes { margin: 0; max-width: none; border-radius: 6px; background: #4c5761; }
+.configuracao-tarefa .tabela input { box-sizing: border-box; border-radius: 6px; padding: 8px; }
+
+.configuracao-tarefa .rodapeTabela {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    width: 100%;
+    gap: 8px;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    background: #eef1f3;
+    border-top: 1px solid #dce1e6;
+}
+
+.configuracao-tarefa .rodapeTabela button {
+    margin: 0;
+    padding: 10px 14px;
+    border: 1px solid #cdd3d9;
+    border-radius: 7px;
+    background: #fff;
+    color: #414b55;
+    box-shadow: none;
+    transform: none;
+    font: inherit;
+    font-size: 12px;
+}
+
+.configuracao-tarefa .rodapeTabela button:hover { background: #e1e6ea; }
+.configuracao-tarefa .rodapeTabela .composicao-salvar { background: #414b55; border-color: #414b55; color: #fff; }
+.configuracao-tarefa .rodapeTabela .composicao-salvar:hover { background: #55616d; }
+.configuracao-tarefa button:focus-visible { outline: 2px solid #9eafbf; outline-offset: 2px; }
+
+.configuracao-tarefa .edicao-duracao {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    box-sizing: border-box;
+    border: 1px solid #d0d6dc;
+    border-radius: 8px;
+    background: #f4f5f6;
+}
+
+.configuracao-tarefa .composicao-duracao-campo {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 20px;
+}
+
+@media (max-width: 600px) {
+    .configuracao-tarefa { padding: 10px; gap: 8px; }
+    .configuracao-tarefa .toolbar-precos button { flex: 1 1 calc(50% - 6px); }
+    .configuracao-tarefa .rodapeTabela button { flex: 1; justify-content: center; }
+}

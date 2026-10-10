@@ -45,7 +45,6 @@ async function telaColaboradores() {
         'Distrito': { chave: 'snapshots.cidade.distrito', tipoPesquisa: 'select' },
         'Cidade': { chave: 'snapshots.cidade.nome', tipoPesquisa: 'select' },
         'Status': { chave: 'status_disponivel', tipoPesquisa: 'select' },
-        'Especialidade': { chave: 'especialidade' },
         'Folha de Ponto': {},
         'Ficha de EPI': {},
         ...(
@@ -58,6 +57,7 @@ async function telaColaboradores() {
 
     const tabela = await modTab({
         colunas,
+        detalhes: true,
         pag: 'colaboradores',
         btnExtras: '<button data-acao="editavel" onclick="adicionarColaborador()">Adicionar Colaborador</button>',
         base: 'dados_colaboradores',
@@ -65,7 +65,7 @@ async function telaColaboradores() {
         criarLinha: 'criarLinhaColaboradores'
     })
 
-    tela.innerHTML = montarPagina({ titulo: 'Colaboradores', imagem: 'colaborador', tabela })
+    tela.innerHTML = tabela
 
     await paginacao()
 
@@ -115,7 +115,7 @@ async function criarLinhaColaboradores(colaborador) {
         : ''
 
     const especialidades = (especialidade || [])
-        .map(op => `<span class="tag-especialidade">${op}</span>`)
+        .map(op => `<span class="tag-especialidade">${escaparAtributo(op)}</span>`)
         .join('')
 
     const estilo = labelStatus(status_disponivel)
@@ -135,7 +135,7 @@ async function criarLinhaColaboradores(colaborador) {
 
     const tds = `
         <td>
-            ${usuario ? `<span class="tag-usuario">${usuario}</td>` : ''}
+            ${usuario ? `<span class="tag-usuario">${usuario}</span>` : ''}
         </td>
         <td>
             ${funcao || ''}
@@ -150,21 +150,21 @@ async function criarLinhaColaboradores(colaborador) {
             <span class="${estilo}">${status_disponivel || ''}</span>
         </td>
         <td>
-            ${especialidades ? `<div style="${vertical}; gap: 2px;">${especialidades}</div>` : 'Não se aplica'}
-        </td>
-        <td>
-            <img data-acao="editavel" src="imagens/relogio.png" onclick="mostrarFolha('${id}')">
+            <img data-acao="editavel" src="imagens/relogio.svg" class="icone-tabela" alt="Folha de ponto" title="Folha de ponto" onclick="mostrarFolha('${id}')">
         </td>
         <td>
             ${formEpi}
         </td>
         ${tdBloqueio}
         <td>
-            <img src="imagens/pesquisar.png" data-acao="editavel" onclick="adicionarColaborador('${id}')">
+            <img src="imagens/editar.svg" class="icone-editar" alt="Editar" title="Editar" data-acao="editavel" onclick="adicionarColaborador('${id}')">
         </td>
     `
 
-    return `<tr>${tds}</tr>`
+    return {
+        linha: `<tr>${tds}</tr>`,
+        detalhes: `<div><strong>Especialidades</strong><div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;">${especialidades || '<span>Não se aplica</span>'}</div></div>`
+    }
 }
 
 async function adicionarColaborador(id) {
@@ -1016,7 +1016,7 @@ async function historicoColaborador() {
         })
 
         popup({
-            elemento: `<div style="padding: 0.5rem;">${montarPagina({ tabela, titulo: 'Histórico de Edições', imagem: 'colaborador' })}</div>`
+            elemento: `<div style="padding: 0.5rem;">${tabela}</div>`
         })
 
         await paginacao(pag)

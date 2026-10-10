@@ -48,11 +48,7 @@ async function orcamentos(finalizado = filtroFinalizado) {
                 ? 'Orçamentos Recusados'
                 : 'Orçamentos Em Aberto'
 
-        const imagem = filtroFinalizado == 'S'
-            ? 'doublecheck'
-            : filtroFinalizado == 'R'
-                ? 'cancel'
-                : 'alerta'
+        document.querySelector('[name="titulo"]').textContent = titulo
 
         const tabela = await modTab({
             base: 'vw_dados_orcamentos',
@@ -80,7 +76,7 @@ async function orcamentos(finalizado = filtroFinalizado) {
             }
         })
 
-        tela.innerHTML = montarPagina({ titulo, imagem, tabela })
+        tela.innerHTML = tabela
 
         await paginacao()
 
@@ -89,18 +85,6 @@ async function orcamentos(finalizado = filtroFinalizado) {
         console.log(err)
         popup({ mensagem: 'Falha ao abrir a tela de Orçamentos: Fale com o suporte.' })
     }
-}
-
-function montarPagina({ titulo, imagem, tabela }) {
-    return `
-        <div style="${vertical}; width: 100%;">
-            <div class="titulo-tabelas">
-                <img src="imagens/${imagem}.png">
-                <span>${titulo}</span>
-            </div>
-            ${tabela}
-        </div>
-    `
 }
 
 async function criarLinhaOrcamento(orcamento) {
@@ -151,7 +135,7 @@ async function criarLinhaOrcamento(orcamento) {
     const tds = `
 
         <td>
-            <img src="imagens/pesquisar.png" onclick="formularioOrcamento('${idOrcamento}')">
+            <img src="imagens/editar.svg" class="icone-editar" alt="Editar" title="Editar" onclick="formularioOrcamento('${idOrcamento}')">
         </td>
 
         <td>

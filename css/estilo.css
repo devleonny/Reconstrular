@@ -1,3 +1,41 @@
+:root {
+    --scroll-trilho: #edf0f2;
+    --scroll-cor: #a0acb6;
+    --scroll-hover: #788995;
+    --scroll-ativo: #596d7c;
+}
+
+*::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+}
+
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
+    background: var(--scroll-trilho);
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--scroll-cor);
+    border: 2px solid var(--scroll-trilho);
+    border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--scroll-hover);
+}
+
+*::-webkit-scrollbar-thumb:active {
+    background: var(--scroll-ativo);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--scroll-cor) var(--scroll-trilho);
+    }
+}
+
 body,
 html {
     zoom: 1;
@@ -89,12 +127,21 @@ html {
 }
 
 .tag-usuario {
-    display: inline-block;
-    color: white;
-    border-radius: 15px 3px;
-    padding: 5px 10px;
-    border: solid 1px red;
-    background-color: #ff0000db;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 90px;
+    box-sizing: border-box;
+    padding: 4px 12px;
+    border: 1px solid #d2d9e0;
+    border-radius: 6px;
+    background: #edf1f4;
+    color: #465563;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    vertical-align: middle;
 }
 
 .botao-usuarios label {
@@ -208,12 +255,18 @@ html {
 
 .tela.login {
     flex-direction: column;
-    margin-top: 2rem;
+    margin-top: 0;
     justify-content: center;
     align-items: center;
     display: flex;
     width: 100%;
+    height: 100%;
+}
+
+.layout:has(> .tela.login) {
     height: 100vh;
+    height: 100dvh;
+    flex-shrink: 0;
 }
 
 .tela {
@@ -309,6 +362,195 @@ html {
     -ms-overflow-style: none;
     background-color: #222222ec;
     min-height: 0;
+}
+
+/* Navegação lateral */
+.side-menu {
+    background: linear-gradient(180deg, #303438, #222629);
+    border-right: 1px solid #ffffff0d;
+    box-shadow: 4px 0 16px #00000018;
+    color: #e5e8eb;
+    box-sizing: border-box;
+}
+
+.side-menu > * {
+    flex-shrink: 0;
+}
+
+.side-menu .menu-marca {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 20px 12px;
+}
+
+.side-menu .menu-marca img {
+    width: 90px;
+    max-width: 100%;
+    height: auto;
+}
+
+.side-menu .nomeUsuario {
+    width: auto;
+    margin: 0 12px 12px;
+}
+
+.side-menu .nomeUsuario span {
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    border: 1px solid #ffffff16;
+    border-radius: 8px;
+    background: #ffffff09;
+    color: #d5dbe0;
+    font-size: 11px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.side-menu .nomeUsuario b {
+    color: #c8d0d7;
+}
+
+.side-menu .botoesMenu {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 12px 8px 20px;
+    border-top: 1px solid #ffffff12;
+}
+
+.side-menu .menu-item {
+    gap: 3px;
+    min-width: 0;
+}
+
+.side-menu .menu-principal {
+    appearance: none;
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+    transform: none;
+    white-space: normal;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    color: #d5dbe0;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.side-menu .botao-lateral {
+    width: auto;
+    margin: 0;
+    min-height: 38px;
+    padding: 8px 10px;
+    box-sizing: border-box;
+    gap: 10px;
+    background: transparent;
+    font-size: 12px;
+    line-height: 1.45;
+    border-radius: inherit;
+}
+
+.side-menu .botao-lateral.nivel-0 {
+    font-weight: 600;
+}
+
+.side-menu .menu-icone {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+}
+
+.side-menu .menu-texto {
+    flex: 1;
+    min-width: 0;
+}
+
+.side-menu .menu-seta {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 13px;
+    color: #b8c1c9;
+    opacity: 0.55;
+    transition: transform 160ms ease;
+}
+
+.side-menu .menu-principal:hover {
+    background: #ffffff0d;
+    color: #fff;
+    box-shadow: none;
+    transform: none;
+}
+
+.side-menu .menu-principal:focus-visible {
+    outline: 2px solid #c8d0d7;
+    outline-offset: 2px;
+}
+
+.side-menu .menu-principal[aria-expanded="true"] {
+    background: #ffffff0c;
+    box-shadow: inset 3px 0 #9aa7b2;
+    color: #fff;
+}
+
+.side-menu .menu-principal[aria-expanded="true"] .menu-seta {
+    transform: rotate(90deg);
+    opacity: 1;
+}
+
+.side-menu .menu-principal.is-active {
+    background: #ffffff0c;
+    border-color: transparent;
+    box-shadow: inset 3px 0 #9aa7b2;
+    color: #fff;
+}
+
+.side-menu .menu-secundario {
+    margin: 0 0 5px 18px;
+    padding-left: 3px;
+    border-left: 1px solid #ffffff20;
+    gap: 2px;
+}
+
+.side-menu .menu-secundario .botao-lateral {
+    min-height: 34px;
+    padding: 8px 10px;
+    gap: 10px;
+    font-size: 11px;
+    margin-bottom: 0;
+    border-radius: inherit;
+}
+
+.side-menu .menu-secundario .menu-icone {
+    width: 18px;
+    height: 18px;
+    flex-basis: 18px;
+}
+
+.side-menu .botoesMenu > .menu-item:last-child {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #ffffff12;
+}
+
+.side-menu .botoesMenu > .menu-item:last-child .menu-principal {
+    color: #d5dbe0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .side-menu,
+    .side-menu .menu-principal,
+    .side-menu .menu-seta {
+        transition: none;
+    }
 }
 
 .side-menu::-webkit-scrollbar {
@@ -642,6 +884,7 @@ img {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
+
 .botaoSuperiorLogin {
     display: flex;
     align-items: center;
@@ -684,6 +927,32 @@ img {
 
 .baixoLogin input {
     padding: 0.5rem;
+}
+
+.loginBloco .baixoLogin input[type="text"],
+.loginBloco .baixoLogin input[type="password"] {
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 11px 13px;
+    border: 1px solid #c5ced5;
+    border-radius: 8px;
+    background-color: #f8fafb;
+    color: #3f505e;
+    font-size: 13px;
+    line-height: 1.4;
+    transition: border-color .15s, box-shadow .15s, background-color .15s;
+}
+
+.loginBloco .baixoLogin input::placeholder {
+    color: #84909a;
+}
+
+.loginBloco .baixoLogin input[type="text"]:focus,
+.loginBloco .baixoLogin input[type="password"]:focus {
+    outline: none;
+    border-color: #5b707f;
+    background-color: #fff;
+    box-shadow: 0 0 0 3px #5b707f20;
 }
 
 .cadeado {
@@ -760,6 +1029,17 @@ button:hover {
     background: #8d7666;
     box-shadow: 0 0 8px #444;
     transform: translateY(-1px);
+}
+
+.close {
+    cursor: pointer;
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
 }
 
 .janela {
@@ -1005,30 +1285,6 @@ button:hover {
 .aguarde img {
     width: 35vw;
     animation: fade 0.3s ease;
-}
-
-.titulo-tabelas {
-    gap: 1rem;
-    display: flex;
-    align-items: start;
-    justify-content: center;
-    margin-left: 2rem;
-    border-radius: 1rem 1rem 0 0;
-    background-color: #7f6a5b;
-    padding: 5px 2rem;
-    font-size: 1.5rem;
-    color: white;
-}
-
-.titulo-tabelas span {
-    filter: drop-shadow(0 0 3px black);
-}
-
-.titulo-tabelas img {
-    padding: 2px;
-    background-color: white;
-    border-radius: 50%;
-    box-shadow: 0 0 4px #454545;
 }
 
 @keyframes fade {
@@ -1411,7 +1667,8 @@ button:hover {
 
     .side-menu {
         position: fixed;
-        top: 0;
+        top: 6vh;
+        bottom: 0;
         left: -100%;
         width: 90%;
     }

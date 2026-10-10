@@ -28,6 +28,7 @@ async function verificarDespesas() {
     const tabela = await modTab({
       btnExtras: '<button onclick="formularioDespesa()">Adicionar Despesa</button>',
       pag: 'despesas',
+      detalhes: true,
       base: 'vw_despesas',
       body: 'bodyDespesas',
       criarLinha: 'criarLinhaDespesa',
@@ -39,18 +40,16 @@ async function verificarDespesas() {
         'Cidade': { chave: 'nome_cidade' },
         'Número do Contribuinte': { chave: 'nif' },
         'Tipo da Despesa': { chave: 'tipo_despesa' },
-        'Quantidade': {},
         'Valor': { chave: 'valor' },
         'Ano': { chave: 'snapshots.ano', tipoPesquisa: 'select' },
         'Mês': { chave: 'snapshots.mes', tipoPesquisa: 'select' },
         'Data': { chave: 'data', tipoPesquisa: 'data' },
-        'Fatura': {},
-        'Especialidade': { chave: 'especialidade' },
-        'Material': { chave: 'material' }
+        'Fatura': {}
       }
     })
 
-    tela.innerHTML = montarPagina({ titulo: 'Despesas', imagem: 'contas', tabela })
+    document.querySelector('[name="titulo"]').textContent = 'Despesas'
+    tela.innerHTML = tabela
 
     await paginacao()
 
@@ -75,8 +74,6 @@ function criarLinhaDespesa(dados) {
     valor,
     fatura,
     material,
-    especialidade,
-    quantidade,
     data,
     mes,
     ano,
@@ -99,16 +96,15 @@ function criarLinhaDespesa(dados) {
     ? 'despesa'
     : 'credito'
 
-  tds = `
+  const tds = `
         <td>
-            <img data-controle="editar" src="imagens/pesquisar.png" onclick="formularioDespesa('${id}')">
+            <img data-controle="editar" src="imagens/editar.svg" class="icone-editar" alt="Editar" title="Editar" onclick="formularioDespesa('${id}')">
         </td>
         <td>${tagObra}</td>
         <td>${nome_fornecedor || ''}</td>
-        <td>${nome_cidade || ''}
-        <td>${distrito || ''}
+        <td>${distrito || ''}</td>
+        <td>${nome_cidade || ''}</td>
         <td>${nif || ''}</td>
-        <td>${quantidade || ''}</td>
         <td>${tipo_despesa}</td>
         <td style="white-space: nowrap;">
             <span class="${etiquetaValor}">${dinheiro(valor)}</span>
@@ -117,11 +113,32 @@ function criarLinhaDespesa(dados) {
         <td>${mes || ''}</td>
         <td>${data || ''}</td>
         <td>${ax(fatura)}</td>
-        <td>${especialidade || ''}</td>
-        <td>${material || ''}</td>
     `
 
-  return `<tr>${tds}</td>`
+  const materiais = Array.isArray(material) ? material : Object.values(material || {})
+  const linhasMateriais = materiais.map(item => {
+    const quantidade = Number(item.quantidade) || 0
+    const valorUnitario = Number(item.valor) || 0
+    return `<tr>
+      <td>${escaparAtributo(item.descricao || 'Sem descrição')}</td>
+      <td>${escaparAtributo(item.especialidade || '—')}</td>
+      <td>${escaparAtributo(item.motivo || 'Não informado')}</td>
+      <td class="despesa-numero">${quantidade}</td>
+      <td class="despesa-numero">${dinheiro(valorUnitario)}</td>
+      <td class="despesa-numero">${dinheiro(quantidade * valorUnitario)}</td>
+    </tr>`
+  }).join('')
+  const totalMateriais = materiais.reduce((total, item) => total + (Number(item.quantidade) || 0) * (Number(item.valor) || 0), 0)
+  return {
+    linha: `<tr>${tds}</tr>`,
+    detalhes: `<section class="despesa-materiais-detalhes"><h3>Materiais da despesa</h3>
+      ${materiais.length ? `<div class="despesa-detalhes-recorte"><table class="tabela">
+        <thead><tr><th>Descrição</th><th>Especialidade</th><th>Motivo</th><th>Quantidade</th><th>Valor unitário</th><th>Total</th></tr></thead>
+        <tbody>${linhasMateriais}</tbody>
+        <tfoot><tr><td colspan="5">Total dos materiais</td><td class="despesa-numero">${dinheiro(totalMateriais)}</td></tr></tfoot>
+      </table></div>` : '<p>Nenhum material listado nesta despesa.</p>'}
+    </section>`
+  }
 
 }
 
@@ -136,6 +153,7 @@ async function formularioDespesa(idDespesa) {
       tipo_despesa,
       data,
       material,
+      valor,
       fornecedor,
       obra,
       fatura,
@@ -167,10 +185,10 @@ async function formularioDespesa(idDespesa) {
     }
 
     const opcoesTipos = ['Despesa', 'Nota de Crédito'].map(t => `
-        <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
+        <label class="despesa-radio">
           <input ${regras} ${tipo_despesa == t ? 'checked' : ''} data-tipo="${t}" name="tipo_despesa" type="radio">
           <span>${t}</span>
-        </div>
+        </label>
       `).join('')
 
     const linhaAnexo = !foto && !fatura
@@ -220,13 +238,15 @@ async function formularioDespesa(idDespesa) {
         elemento: `<span ${obra ? `id="${obra}"` : ''} name="obra" class="opcoes" onclick="cxOpcoes('obra')">${obra || 'Selecionar'}</span>`
       },
       {
-        texto: `
-          <div style="${horizontal}; gap: 5px;">
-            <img onclick="adicionarMaterial()" src="imagens/baixar.png">
-            <span>Materiais</span>
+        texto: 'Materiais',
+        elemento: `
+          <div class="despesa-materiais">
+            <div class="despesa-materiais-topo">
+              <button type="button" class="despesa-adicionar" onclick="adicionarMaterial()">+ Adicionar material</button>
+            </div>
+            <div class="campo-materiais"></div>
           </div>
-        `,
-        elemento: `<div class="campo-materiais"></div>`
+          `
       }
     ]
 
@@ -237,9 +257,19 @@ async function formularioDespesa(idDespesa) {
     if (idDespesa)
       botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExclusaoDespesa('${idDespesa}')` })
 
-    popup({ linhas, botoes, titulo: 'Gerenciar Despesa' })
+    const idPopup = popup({ linhas, botoes, titulo: 'Gerenciar Despesa' })
+    const modalDespesa = document.getElementById(idPopup)
+    modalDespesa.classList.add('popup-despesa')
+    modalDespesa.querySelector('.rodape-padrao').insertAdjacentHTML('afterbegin', `
+      <div class="despesa-total"><small>Total da despesa</small><span class="total-despesa">${dinheiro(valor)}</span></div>
+    `)
 
     alterarModal()
+
+    for (const item of Array.isArray(material) ? material : Object.values(material || {}))
+      await adicionarMaterial(item)
+
+    calcularTotalDespesa()
 
     verificarRegras()
 
@@ -249,53 +279,97 @@ async function formularioDespesa(idDespesa) {
   }
 }
 
-async function adicionarMaterial() {
+async function adicionarMaterial(dados = {}) {
 
-  if(!especialidades) {
-        const { resultados } = await pesquisarDB({ base: 'especialidades' }) || {}
-        especialidades = resultados
-  }
+  try {
 
-  const painel = [...document.querySelectorAll('.painel-padrao')].at(-1)
-  const local = painel.querySelector('.campo-materiais')
+    overlayAguarde()
 
-  const opcoes = especialidades
-    .sort((a, b) => a.nome.localeCompare(b.nome))
-    .map(res => {
-      return `<option>${res.nome}</option>`
-    })
-    .join('')
+    if (!especialidades) {
+      const { resultados } = await pesquisarDB({ base: 'especialidades' }) || {}
+      especialidades = resultados
+    }
 
-  const mod = (titulo, elemento) => {
+    const painel = [...document.querySelectorAll('.painel-padrao')].at(-1)
+    const local = painel.querySelector('.campo-materiais')
 
-    return `
-      <div style="${vertical}; gap: 2px; width: stretch;">
+    const opcoes = especialidades
+      .sort((a, b) => a.nome.localeCompare(b.nome))
+      .map(res => {
+        return `<option ${dados.especialidade === res.nome ? 'selected' : ''}>${escaparAtributo(res.nome)}</option>`
+      })
+      .join('')
+
+    const mod = (titulo, elemento) => {
+
+      return `
+      <div class="despesa-campo">
         <span>${titulo}</span>
         ${elemento}
       </div>
     `
-  }
+    }
 
-  const item = `
+    const nomeMotivo = `motivo_material_${crypto.randomUUID()}`
+    const opcoesMotivo = ['Má execução', 'Necessidade'].map(motivo => `
+      <label class="despesa-radio">
+        <input type="radio" name="${nomeMotivo}" data-campo="motivo" value="${motivo}" ${(dados.motivo || 'Necessidade') === motivo ? 'checked' : ''}>
+        <span>${motivo}</span>
+      </label>
+    `).join('')
+
+    const item = `
       <div class="item-material">
 
-        <div style="${horizontal}; flex-direction: row; gap: 5px;">
+        <div class="despesa-material-topo"><strong>Material</strong>
+          <button type="button" class="despesa-remover" aria-label="Remover material" onclick="this.closest('.item-material').remove(); calcularTotalDespesa();">&times;</button>
+        </div>
 
-          ${mod('Quantidade', `<input placeholder="Quantidade">`)}
-          ${mod('Valor', `<input placeholder="Valor">`)}
+        <div class="despesa-material-campos">
+
+          ${mod('Quantidade', `<input oninput="calcularTotalDespesa()" type="number" name="quantidade" placeholder="Quantidade" value="${escaparAtributo(dados.quantidade ?? '')}">`)}
+          ${mod('Valor', `<input oninput="calcularTotalDespesa()" type="number" name="valor" placeholder="Valor" value="${escaparAtributo(dados.valor ?? '')}">`)}
           ${mod('Especialidade', `
-            <select>
+            <select name="especialidade">
               ${opcoes}
             </select>
           `)}
 
         </div>
 
-        ${mod('Descrição do Material', `<textarea placeholder="Descrição do material"></textarea>`)}
+        ${mod('Descrição do Material', `<textarea name="descricao" placeholder="Descrição do material">${escaparAtributo(dados.descricao || '')}</textarea>`)}
+        ${mod('Motivo do material', `<div class="despesa-motivos">${opcoesMotivo}</div>`)}
         
       </div>
     `
     local.insertAdjacentHTML('beforeend', item)
+
+    removerOverlay()
+
+  } catch (err) {
+    console.error(err)
+    popup({ mensagem: 'Falha ao adicionar um campo: Fale com o suporte.' })
+  }
+
+}
+
+function calcularTotalDespesa() {
+
+  let total = 0
+
+  for (const item of [...document.querySelectorAll('.item-material')]) {
+
+    const quantidade = (item.querySelector('[name="quantidade"]').value || 0)
+    const valor = (item.querySelector('[name="valor"]').value || 0)
+
+    total += quantidade * valor
+
+  }
+
+  const local = document.querySelector('.total-despesa')
+  if (local)
+    local.textContent = dinheiro(total)
+
 }
 
 function alterarModal() {
@@ -307,15 +381,15 @@ function alterarModal() {
   const upload = `<input onchange="verificarRegras()" name="fatura" type="file">`
 
   const foto = `
-        <div style="${vertical}; gap: 5px;">
-            <img src="imagens/camera.png" class="cam" onclick="abrirCamera()">
-            <div class="cameraDiv">
-                <button onclick="tirarFoto()">Tirar Foto</button>
-                <video autoplay playsinline></video>
-                <canvas style="display: none;"></canvas>
-            </div>
-            <img onchange="verificarRegras()" name="foto">
-        </div>
+      <div style="${vertical}; gap: 5px;">
+          <img src="imagens/camera.png" class="cam" onclick="abrirCamera()">
+          <div class="cameraDiv">
+              <button onclick="tirarFoto()">Tirar Foto</button>
+              <video autoplay playsinline></video>
+              <canvas style="display: none;"></canvas>
+          </div>
+          <img onchange="verificarRegras()" name="foto">
+      </div>
     `
   document.getElementById('upload').innerHTML = modal.value == 'Foto' ? foto : upload
 
@@ -379,16 +453,28 @@ async function salvarDespesa(idDespesa = crypto.randomUUID()) {
     // Tipo despesa
     const tipo_despesa = [...document.querySelectorAll('[name="tipo_despesa"]:checked')][0].dataset.tipo
 
+    // Materiais
+    const material = [...document.querySelectorAll('.item-material')]
+      .map(div => {
+
+        return {
+          quantidade: Number(div.querySelector('[name="quantidade"]').value || 0),
+          especialidade: div.querySelector('[name="especialidade"]').value,
+          descricao: div.querySelector('[name="descricao"]').value,
+          valor: Number(div.querySelector('[name="valor"]').value || 0),
+          motivo: div.querySelector('[data-campo="motivo"]:checked')?.value || 'Necessidade'
+        }
+
+      })
+
     const atualizado = {
       ...despesa,
       tipo_despesa,
+      material,
       fornecedor: obVal('fornecedor'),
       obra: document.querySelector('[name="obra"]').textContent.trim(),
-      especialidade: obVal('especialidade'),
-      material: obVal('material'),
-      quantidade: Number(obVal('quantidade') || 0),
-      valor: Number(obVal('valor')),
-      data: obVal('data')
+      data: obVal('data'),
+      valor: conversor(document.querySelector('.total-despesa').textContent)
     }
 
     await enviar(`dados_despesas/${idDespesa}`, atualizado)
@@ -426,7 +512,8 @@ async function telaFornecedores() {
       }
     })
 
-    tela.innerHTML = montarPagina({ tabela, titulo: 'Fornecedores', imagem: 'fornecedor' })
+    document.querySelector('[name="titulo"]').textContent = 'Fornecedores'
+    tela.innerHTML = tabela
 
     await paginacao()
 
@@ -464,7 +551,7 @@ async function criarLinhaFornecedores(dados) {
         <td>${email || ''}</td>
         <td>${telefone || ''}</td>
         <td>
-            <img onclick="adicionarFornecedor('${id}')" src="imagens/pesquisar.png">
+            <img onclick="adicionarFornecedor('${id}')" src="imagens/editar.svg" class="icone-editar" alt="Editar" title="Editar">
         </td>
       </tr>
     `
@@ -608,7 +695,8 @@ async function telaGenerica(nomeBase, titulo) {
       }
     })
 
-    tela.innerHTML = montarPagina({ tabela, titulo, imagem: 'pasta' })
+    document.querySelector('[name="titulo"]').textContent = titulo
+    tela.innerHTML = tabela
 
     await paginacao()
     removerOverlay()
@@ -635,7 +723,7 @@ async function criarLinhaGenerica(dados) {
         </a>
       </td>
       <td>
-        <img src="imagens/pesquisar.png" onclick="adicionarGenerico('${id}')">
+        <img src="imagens/editar.svg" class="icone-editar" alt="Editar" title="Editar" onclick="adicionarGenerico('${id}')">
       </td>
     </tr>
   `

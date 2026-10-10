@@ -24,7 +24,8 @@ async function telaZonas() {
         }
     })
 
-    tela.innerHTML = montarPagina({ tabela, titulo: 'Zonas', imagem: 'zona' })
+    titulo.textContent = 'Zonas'
+    tela.innerHTML = tabela
 
     await paginacao(pag)
 
@@ -48,7 +49,7 @@ function criarLinhaZona(dados) {
     return `
         <tr>
             <td>
-                <img onclick="edicaoZona('${id}')" src="imagens/pesquisar.png">
+                <img onclick="edicaoZona('${id}')" src="imagens/editar.svg" class="icone-editar" alt="Editar" title="Editar">
             </td>
             <td>
                 <span class="etiquetas">${zona}</span>

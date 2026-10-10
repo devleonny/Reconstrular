@@ -32,7 +32,8 @@ async function telaObjetivos() {
             pag: 'objetivos'
         })
 
-        tela.innerHTML = montarPagina({ titulo: 'Objetivos', tabela, imagem: 'objetivo' })
+        titulo.textContent = 'Objetivos'
+        tela.innerHTML = tabela
 
         await paginacao()
 

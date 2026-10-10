@@ -102,6 +102,7 @@ th {
 }
 
 .campo-materiais {
+    margin-bottom: 5rem;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -109,7 +110,22 @@ th {
     justify-content: start;
 }
 
+.total-despesa {
+    padding: 5px 2rem;
+    border-radius: 50px;
+    box-shadow: 0 0 2px #222;
+    border: solid 1px #5b707f;
+    background: linear-gradient(45deg, #5b707f, #7f6a5b);
+    filter: drop-shadow(0 0 0.2px black);
+    color: white;
+    font-size: 1.5rem;
+    position: absolute;
+    bottom: 5rem;
+    right: 3rem;
+}
+
 .item-material {
+    position: relative;
     color: #e9e9e9;
     flex-direction: column;
     padding: 5px;
@@ -145,4 +161,53 @@ th {
     border-radius: 20px;
     padding: 3px 1rem;
     border: solid 1px #00800057;
+}
+
+.despesa-materiais-detalhes h3 { margin: 0 0 12px; color: #4c5965; font-size: 12px; }
+.despesa-materiais-detalhes p { color: #78838e; font-size: 12px; }
+.despesa-detalhes-recorte { overflow-x: auto; border: 1px solid #dce1e6; border-radius: 8px; background: #fff; }
+.despesa-detalhes-recorte .tabela { min-width: 600px; }
+.despesa-detalhes-recorte .tabela > thead { position: static; }
+.despesa-detalhes-recorte .tabela th, .despesa-detalhes-recorte .tabela td { padding: 9px 12px; }
+.despesa-detalhes-recorte .tabela .despesa-numero { text-align: right; white-space: nowrap; }
+.despesa-detalhes-recorte tfoot { background: #e8edf1; color: #465563; font-weight: 600; }
+
+/* Formulário de despesa: campos alinhados e materiais em cartões claros. */
+.popup.popup-despesa .popup-janela-fora { width: min(780px, 100%); min-width: 0; }
+.popup-despesa .painel-padrao { max-width: none; }
+.popup-despesa .linha-padrao { align-items: center; }
+.popup-despesa .linha-padrao > span:first-child { flex: 0 0 130px; }
+.popup-despesa .linha-padrao > .opcoes { max-width: none; overflow-wrap: anywhere; }
+.popup-despesa .linha-padrao:last-child { flex-direction: column; align-items: stretch; gap: 12px; }
+.popup-despesa .linha-padrao:last-child > span:first-child { flex-basis: auto; }
+.popup-despesa .tipo-despesa { flex-wrap: wrap; justify-content: flex-start; gap: 8px; padding: 0; }
+.popup-despesa .despesa-radio { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid #d5dce2; border-radius: 7px; background: #fff; color: #59636d; font-size: 12px; cursor: pointer; }
+.popup-despesa .despesa-radio:has(input:checked) { border-color: #8b9caa; background: #e7edf2; color: #3e505f; }
+.popup-despesa .despesa-radio input { width: 16px; height: 16px; flex: 0 0 16px; margin: 0; accent-color: #596d7d; }
+.popup-despesa .despesa-materiais { width: 100%; min-width: 0; }
+.popup-despesa .despesa-materiais-topo { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.popup-despesa .despesa-total { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; margin-right: auto; }
+.popup-despesa .despesa-total small { font-size: 10px; color: #7a8691; }
+.popup-despesa .total-despesa { position: static; padding: 0; border: 0; border-radius: 0; background: transparent; color: #3f505e; box-shadow: none; filter: none; font-size: 20px; font-weight: 600; }
+.popup-despesa .campo-materiais { width: 100%; margin-bottom: 0; gap: 12px; align-items: stretch; }
+.popup-despesa .campo-materiais:empty::before { content: 'Adicione os materiais para calcular o total da despesa.'; display: block; padding: 20px; border: 1px dashed #cdd6de; border-radius: 8px; color: #788591; font-size: 12px; text-align: center; }
+.popup-despesa .item-material { width: 100%; box-sizing: border-box; padding: 14px; gap: 14px; align-items: stretch; background: #edf1f4; border: 1px solid #d7dfe6; color: #4a5864; }
+.popup-despesa .despesa-material-topo { display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+.popup-despesa .despesa-material-campos { display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 12px; }
+.popup-despesa .despesa-campo { display: flex; flex-direction: column; gap: 7px; min-width: 0; font-size: 11px; }
+.popup-despesa .despesa-campo > span { font-weight: 600; }
+.popup-despesa .despesa-campo input:not([type="radio"]), .popup-despesa .despesa-campo select, .popup-despesa .despesa-campo textarea { width: 100%; min-width: 0; }
+.popup-despesa .despesa-motivos { display: flex; flex-wrap: wrap; gap: 8px; }
+.popup-despesa .despesa-adicionar, .popup-despesa .despesa-remover { margin: 0; border-radius: 7px; box-shadow: none; transform: none; font: inherit; font-size: 12px; cursor: pointer; }
+.popup-despesa .despesa-adicionar { padding: 10px 14px; background: #495a68; color: #fff; }
+.popup-despesa .despesa-adicionar:hover { background: #607383; }
+.popup-despesa .despesa-remover { width: 28px; height: 28px; padding: 0; background: transparent; color: #778591; font-size: 21px; }
+.popup-despesa .despesa-remover:hover { background: #dbe2e8; color: #414e59; }
+.popup-despesa .despesa-adicionar:focus-visible, .popup-despesa .despesa-remover:focus-visible { outline: 2px solid #8b9caa; outline-offset: 2px; }
+@media (max-width: 600px) {
+    .popup-despesa .despesa-total { flex: 1 0 100%; padding-bottom: 8px; border-bottom: 1px solid #cdd6de; }
+    .popup-despesa .linha-padrao { align-items: stretch; }
+    .popup-despesa .linha-padrao > span:first-child { flex-basis: auto; }
+    .popup-despesa .despesa-material-campos { grid-template-columns: 1fr 1fr; }
+    .popup-despesa .despesa-material-campos > :last-child { grid-column: 1 / -1; }
 }

@@ -24,7 +24,8 @@ async function telaClientes() {
 
         })
 
-        tela.innerHTML = montarPagina({ tabela, titulo: 'Clientes', imagem: 'pessoas' })
+        titulo.textContent = 'Clientes'
+        tela.innerHTML = tabela
 
         await paginacao()
 
@@ -63,7 +64,7 @@ function criarLinhaClientes(dados) {
         <td>${email || ''}</td>
         <td>${telefone || ''}</td>
         <td>
-            <img onclick="formularioCliente('${id}')" src="imagens/pesquisar.png">
+            <img onclick="formularioCliente('${id}')" src="imagens/editar.svg" class="icone-editar" alt="Editar" title="Editar">
         </td>
     `
     return `<tr>${tds}</tr>`

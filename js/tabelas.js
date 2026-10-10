@@ -5,10 +5,13 @@ function campoBloq() {
 }
 
 async function modTab(configuracoes) {
+
     const {
         btnExtras = null,
         ocultarPesquisa = false,
+        detalhes = false,
         scroll = true,
+        alturaMinima = '0px',
         cor = null,
         nude = null,
         criarLinha,
@@ -27,6 +30,8 @@ async function modTab(configuracoes) {
         ...controles[pag],
         ...configuracoes
     }
+    controles[pag].detalhes = detalhes === true
+    controles[pag].estadoDetalhes ??= new Map()
 
     const ths = Object.entries(colunas)
         .map(([th, query]) => `
@@ -43,8 +48,8 @@ async function modTab(configuracoes) {
         Object.entries(colunas).map(async ([th, query]) => {
             if (!query.chave)
                 return `
-                    <th style="background-color: white;">
-                        <img src="imagens/alerta.png" onclick="campoBloq()" title="Campo não permite pesquisa!" style="width: 1.5rem;">
+                    <th class="tabela-pesquisa-inativa" title="Esta coluna não tem filtro">
+                        <span aria-hidden="true">—</span>
                     </th>`
 
             if (query.tipoPesquisa == 'select') {
@@ -60,12 +65,13 @@ async function modTab(configuracoes) {
                     .join('')
 
                 return `
-                    <th style="background-color: white;">
+                    <th>
                         <select
+                        aria-label="Filtrar ${escaparAtributo(th.replace(/<[^>]*>/g, ''))}"
                         data-chave="${query.chave}"
                         data-op="${query.op || '='}"
                         onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '${query.op || '='}', elemento: this, pag: '${pag}'})">
-                            <option></option>
+                            <option value="">Todos</option>
                             ${opcoes}
                         </select>
                     </th>`
@@ -73,54 +79,60 @@ async function modTab(configuracoes) {
 
             if (query.tipoPesquisa == 'data')
                 return `
-                    <th style="background-color: white;">
-                        <div style="display: flex; flex-direction: column; gap: 2px; align-items: center;">
+                    <th>
+                        <div class="tabela-pesquisa-datas">
 
                             <input
                             data-chave="${query.chave}"
                             data-op=">=d"
                             type="date"
+                            aria-label="Data inicial do filtro"
                             onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '>=d', elemento: this, pag: '${pag}'})"
-                            style="width: 7rem; font-size: 0.75rem; padding: 2px 1rem; height: 1.3rem;">
+                            >
 
                             <input
                             data-chave="${query.chave}"
                             data-op="<=d"
                             type="date"
+                            aria-label="Data final do filtro"
                             onchange="confirmarPesquisa({ event, chave: '${query.chave}', op: '<=d', elemento: this, pag: '${pag}'})"
-                            style="width: 7rem; font-size: 0.75rem; padding: 2px 1rem; height: 1.3rem;">
+                            >
                             
                         </div>
                     </th>`
 
             return `
-                <th style="background-color: white; text-align: left;"
+                <th class="tabela-pesquisa-texto" role="textbox" aria-label="Filtrar ${escaparAtributo(th.replace(/<[^>]*>/g, ''))}" data-placeholder="Pesquisar…" title="Digite e pressione Enter para pesquisar"
                 data-chave="${query.chave}"
                 data-op="${query.op || 'includes'}"
                 onkeydown="confirmarPesquisa({ event, chave: '${query.chave}', op: '${query.op || 'includes'}', elemento: this, pag: '${pag}'})"
                 onpaste="colarTextoPuro(event)"
-                contentEditable="true">
-                </th>
+                contentEditable="true"></th>
             `
         })
     )).join('')
 
     const modelo = `
         <div style="${vertical}; width: 100%;">
+
             <div class="topo-tabela${nude ? ' nude' : ''}" ${cor ? `style="background: ${cor};"` : ''}">
+                ${detalhes === true ? `<button type="button" class="tabela-expandir" data-expandir-todos data-body="${escaparAtributo(body)}" aria-expanded="false" aria-label="Expandir todos os detalhes" title="Expandir todos os detalhes" onclick="alternarTodosDetalhes(this)">+</button>` : ''}
                 <div id="paginacao_${pag}"></div>
-                ${btnExtras || ''}
+                <div style="padding: 0 1rem;">
+                    ${btnExtras || ''}
+                </div>
             </div>
 
-            <div style="${!scroll ? `max-height: max-content` : ''};" class="div-tabela${nude ? ' nude' : ''}">
+            <div data-altura-adaptavel="${scroll && !nude}" style="--altura-minima-tabela: ${escaparAtributo(typeof alturaMinima === 'number' ? `${alturaMinima}px` : alturaMinima)}; ${!scroll ? `max-height: max-content` : ''};" class="div-tabela${nude ? ' nude' : ''}">
 
                 <table class="tabela${nude ? ' nude' : ''}">
                     <thead>
-                        <tr>${ths}</tr>
-                        ${ocultarPesquisa ? '' : `<tr>${pesquisa}</tr>`}
+                        <tr>${detalhes === true ? '<th class="tabela-coluna-detalhes" aria-label="Detalhes"></th>' : ''}${ths}</tr>
+                        ${ocultarPesquisa ? '' : `<tr class="tabela-linha-pesquisa">${detalhes === true ? '<th class="tabela-coluna-detalhes"></th>' : ''}${pesquisa}</tr>`}
                     </thead>
-                    <tbody id="${body}"></tbody>
+                    <tbody id="${body}" data-detalhes="${detalhes === true}"></tbody>
                 </table>
+
             </div>
 
             ${nude ? '' : '<div class="rodape-tabela"></div>'}
@@ -445,7 +457,7 @@ async function paginacao(pag) {
 
         const mesmaConsulta = controles[pag].ultimaAssinaturaConsulta === assinaturaAtualConsulta
         const tabela = tbody.parentElement
-        const cols = tabela.querySelectorAll('thead th').length
+        const cols = tabela.querySelector('thead tr')?.children.length || 1
 
         if (!mesmaConsulta || !tbody.children.length) {
             tbody.innerHTML = ''
@@ -484,16 +496,19 @@ async function paginacao(pag) {
 
         if (!paginaAtual) {
             divPaginacao.innerHTML = `
-                <div style="${alinPag}; align-items: center; padding: 2px; color: white;">
-                    <div style="display: ${ocultarPaginacao ? 'none' : 'flex'}; align-items: center; justify-content: center;" gap: 5px;">
+                <div style="${alinPag}; align-items: center; padding: 2px; color: white; gap: 5px;">
+
+                    <div style="display: ${ocultarPaginacao ? 'none' : 'flex'}; align-items: center; justify-content: center; gap: 5px;">
                         <img src="imagens/esq.png" style="width: 2rem;" onclick="mudarPagina(-1, '${pag}')">
                         <span id="paginaAtual_${pag}">${pagina}</span> de
                         <span id="totalPaginas_${pag}">${dados.paginas}</span> 
                         <img src="imagens/dir.png" style="width: 2rem;" onclick="mudarPagina(1, '${pag}')">
                     </div>
-                    <span style="display: ${ocultarLegenda ? 'none' : 'flex'}; align-items: center; justify-content: center; white-space: nowrap;">
-                        <span style="font-size: 1rem;" id="resultados_${pag}">${dados.total}</span> ${dados.total !== 1 ? 'Itens' : 'Item'}
+                    <span style="display: ${ocultarLegenda ? 'none' : 'flex'}; align-items: center; justify-content: center; white-space: nowrap; gap: 5px;">
+                        <span style="font-size: 1rem;" id="resultados_${pag}">${dados.total}</span>
+                        <span>${dados.total !== 1 ? 'Itens' : 'Item'}</span>
                     </span>
+
                 </div>
             `
         } else {
@@ -522,7 +537,7 @@ async function paginacao(pag) {
         }
 
         const reconstruirTudo = !mesmaConsulta
-        await atualizarTabela(tbody, dados.resultados, criarLinha, baseResolvida, reconstruirTudo)
+        await atualizarTabela(tbody, dados.resultados, criarLinha, baseResolvida, reconstruirTudo, controles[pag].estadoDetalhes)
 
         controles[pag].ultimaAssinaturaPagina = assinaturaAtualPagina
 
@@ -547,7 +562,7 @@ function criarLoading(cols) {
     const td = document.createElement('td')
     td.colSpan = cols
     td.innerHTML = `
-        <div style="${horizontal}; width: 100%; gap: 1rem; justify-content: center; padding: 1rem 0;">
+        <div style="${horizontal}; width: 100%; gap: 1rem; justify-content: center; padding: 1rem;">
             <img src="gifs/loading.gif" style="width: 5rem;">
         </div>
     `
@@ -556,17 +571,93 @@ function criarLoading(cols) {
     return tr
 }
 
-async function criarElementoLinha(dado, criarLinha, base, indice = 0) {
+async function criarElementoLinha(dado, criarLinha, base, indice = 0, habilitarDetalhes = false, estadoDetalhes = new Map()) {
     const htmlBruto = await window[criarLinha]({ ...dado, base })
-    const html = injetarMetaTr(htmlBruto, dado, indice)
+    // Retorno tradicional: '<tr>...</tr>'. Com detalhes: { linha, detalhes }.
+    // detalhes recebe HTML de conteúdo, sem <tr>/<td> externos.
+    const html = injetarMetaTr(typeof htmlBruto === 'string' ? htmlBruto : htmlBruto?.linha, dado, indice)
 
     const temp = document.createElement('tbody')
     temp.innerHTML = html.trim()
 
-    return temp.firstElementChild
+    const linha = temp.firstElementChild
+    if (!linha || !habilitarDetalhes)
+        return linha
+
+    const celula = document.createElement('td')
+    celula.className = 'tabela-coluna-detalhes'
+    linha.prepend(celula)
+    if (!htmlBruto?.detalhes || typeof htmlBruto === 'string') return linha
+
+    const detalhes = document.createElement('tr')
+    detalhes.className = 'tabela-linha-detalhes'
+    detalhes.hidden = true
+    const conteudo = document.createElement('td')
+    conteudo.colSpan = [...linha.children].reduce((total, td) => total + td.colSpan, 0)
+    conteudo.innerHTML = `<div class="tabela-detalhes-conteudo">${htmlBruto.detalhes}</div>`
+    detalhes.appendChild(conteudo)
+
+    const botao = document.createElement('button')
+    botao.type = 'button'
+    botao.className = 'tabela-expandir'
+    botao.textContent = '+'
+    botao.setAttribute('aria-expanded', 'false')
+    botao.setAttribute('aria-label', 'Expandir detalhes')
+    botao.addEventListener('click', event => {
+        event.stopPropagation()
+        definirDetalhesExpandidos(linha, detalhes.hidden)
+        atualizarBotaoTodosDetalhes(linha.parentElement)
+    })
+    celula.prepend(botao)
+    linha.detalhesTabela = detalhes
+    linha.botaoDetalhesTabela = botao
+    linha.estadoDetalhesTabela = estadoDetalhes
+    definirDetalhesExpandidos(linha, estadoDetalhes.get(linha.dataset.id) === true)
+
+    return linha
 }
 
-async function atualizarTabela(tbody, dados, criarLinha, base, reconstruirTudo = false) {
+function definirDetalhesExpandidos(linha, expandir) {
+    if (!linha?.detalhesTabela) return
+    linha.estadoDetalhesTabela?.set(linha.dataset.id, !!expandir)
+    linha.detalhesTabela.hidden = !expandir
+    linha.botaoDetalhesTabela.textContent = expandir ? '−' : '+'
+    linha.botaoDetalhesTabela.setAttribute('aria-expanded', String(expandir))
+    linha.botaoDetalhesTabela.setAttribute('aria-label', expandir ? 'Recolher detalhes' : 'Expandir detalhes')
+}
+
+function adicionarLinhaTabela(fragment, linha) {
+    if (!linha) return
+    fragment.appendChild(linha)
+    if (linha.detalhesTabela)
+        fragment.appendChild(linha.detalhesTabela)
+}
+
+function atualizarBotaoTodosDetalhes(tbody) {
+    if (!tbody) return
+    const botao = tbody.closest('.div-tabela')?.previousElementSibling?.querySelector('[data-expandir-todos]')
+    if (!botao) return
+    const linhas = [...tbody.children].filter(linha => linha.detalhesTabela)
+    const todosAbertos = linhas.length > 0 && linhas.every(linha => !linha.detalhesTabela.hidden)
+    botao.textContent = todosAbertos ? '−' : '+'
+    const descricao = todosAbertos ? 'Recolher todos os detalhes' : 'Expandir todos os detalhes'
+    botao.title = descricao
+    botao.setAttribute('aria-label', descricao)
+    botao.setAttribute('aria-expanded', String(todosAbertos))
+    botao.disabled = linhas.length === 0
+}
+
+function alternarTodosDetalhes(botao) {
+    const tbody = document.getElementById(botao.dataset.body)
+    if (!tbody) return
+    const linhas = [...tbody.children].filter(linha => linha.detalhesTabela)
+    const expandir = linhas.some(linha => linha.detalhesTabela.hidden)
+    linhas.forEach(linha => definirDetalhesExpandidos(linha, expandir))
+    atualizarBotaoTodosDetalhes(tbody)
+}
+
+async function atualizarTabela(tbody, dados, criarLinha, base, reconstruirTudo = false, estadoDetalhes = new Map()) {
+    const habilitarDetalhes = tbody.dataset.detalhes === 'true'
     const loading = tbody.querySelector('#loading-tabela')
     if (loading)
         loading.remove()
@@ -577,18 +668,17 @@ async function atualizarTabela(tbody, dados, criarLinha, base, reconstruirTudo =
 
     if (reconstruirTudo || !tbody.querySelector('tr[data-id]')) {
         const linhas = await Promise.all(
-            dados.map(async (d, indice) => {
-                const html = await Promise.resolve(window[criarLinha]({ ...d, base }))
-                return injetarMetaTr(html, d, indice)
-            })
+            dados.map((d, indice) => criarElementoLinha(d, criarLinha, base, indice, habilitarDetalhes, estadoDetalhes))
         )
 
-        tbody.innerHTML = linhas.join('')
+        const fragment = document.createDocumentFragment()
+        linhas.forEach(linha => adicionarLinhaTabela(fragment, linha))
+        tbody.replaceChildren(fragment)
         return
     }
 
     const atuais = new Map(
-        [...tbody.querySelectorAll('tr[data-id]')]
+        [...tbody.children].filter(tr => tr.hasAttribute('data-id'))
             .map(tr => [String(tr.dataset.id), tr])
     )
 
@@ -603,14 +693,13 @@ async function atualizarTabela(tbody, dados, criarLinha, base, reconstruirTudo =
         const atual = atuais.get(id)
 
         if (atual && atual.dataset.ts === ts && atual.dataset.hash === hash) {
-            fragment.appendChild(atual)
+            adicionarLinhaTabela(fragment, atual)
             continue
         }
 
-        const novaLinha = await criarElementoLinha(dado, criarLinha, base, indice)
+        const novaLinha = await criarElementoLinha(dado, criarLinha, base, indice, habilitarDetalhes, estadoDetalhes)
 
-        if (novaLinha)
-            fragment.appendChild(novaLinha)
+        adicionarLinhaTabela(fragment, novaLinha)
     }
 
     tbody.innerHTML = ''
@@ -694,7 +783,7 @@ function aplicarColunasOcultas(pag) {
 
     thsTitulo.forEach((th, index) => {
         const nomeColuna = th.querySelector('span')?.textContent?.trim()
-        const deveOcultar = colunasOcultar.includes(nomeColuna)
+        const deveOcultar = !th.classList.contains('tabela-coluna-detalhes') && colunasOcultar.includes(nomeColuna)
 
         th.style.display = deveOcultar ? 'none' : ''
 
@@ -702,14 +791,24 @@ function aplicarColunasOcultas(pag) {
             thsPesquisa[index].style.display = deveOcultar ? 'none' : ''
         }
 
-        const linhas = tabela.querySelectorAll('tbody tr')
+        const linhas = [...document.getElementById(ctrl.body).children]
         linhas.forEach(linha => {
             if (linha.id === 'dinossauro' || linha.id === 'loading-tabela') return
+            if (linha.classList.contains('tabela-linha-detalhes')) return
 
             const td = linha.children[index]
             if (td) td.style.display = deveOcultar ? 'none' : ''
         })
     })
+
+    const colunasVisiveis = [...thsTitulo].filter(th => th.style.display !== 'none').length
+    for (const linha of document.getElementById(ctrl.body).children) {
+        if (linha.classList.contains('tabela-linha-detalhes')) {
+            linha.firstElementChild.colSpan = Math.max(1, colunasVisiveis)
+            continue
+        }
+    }
+    atualizarBotaoTodosDetalhes(document.getElementById(ctrl.body))
 }
 
 function moverPag(direcao) {
@@ -721,3 +820,107 @@ function moverPag(direcao) {
         : 100
 
 }
+
+// O limite depende da posição da tabela, e não de uma fração fixa da tela.
+function calcularAlturaDisponivelTabela(div) {
+    let limite = window.visualViewport
+        ? window.visualViewport.offsetTop + window.visualViewport.height
+        : window.innerHeight
+    let reserva = 0
+    let limiteInterno = Infinity
+    let topo = div.getBoundingClientRect().top
+
+    for (let elemento = div; elemento.parentElement; elemento = elemento.parentElement) {
+        const pai = elemento.parentElement
+        const estilo = getComputedStyle(pai)
+        reserva += parseFloat(estilo.paddingBottom) || 0
+
+        const layoutHorizontal = ['flex', 'inline-flex'].includes(estilo.display)
+            && ['row', 'row-reverse'].includes(estilo.flexDirection)
+        for (let irmao = layoutHorizontal ? null : elemento.nextElementSibling; irmao; irmao = irmao.nextElementSibling) {
+            const css = getComputedStyle(irmao)
+            if (css.display === 'none' || ['absolute', 'fixed'].includes(css.position)) continue
+            reserva += irmao.getBoundingClientRect().height
+                + (parseFloat(css.marginTop) || 0) + (parseFloat(css.marginBottom) || 0)
+            reserva += parseFloat(estilo.rowGap) || 0
+        }
+
+        const janelaPopup = pai.classList.contains('janela') && pai.closest('.popup-janela-fora')
+        if (janelaPopup) {
+            // Usa o limite da janela, não sua altura atual, que depende da tabela.
+            const maximo = parseFloat(getComputedStyle(janelaPopup).maxHeight)
+            const popup = janelaPopup.closest('.popup')
+            const cssPopup = getComputedStyle(popup)
+            const alturaViewport = window.visualViewport?.height || window.innerHeight
+            limite = Math.min(Number.isFinite(maximo) ? maximo : alturaViewport,
+                alturaViewport - (parseFloat(cssPopup.paddingTop) || 0) - (parseFloat(cssPopup.paddingBottom) || 0))
+            topo = div.getBoundingClientRect().top - pai.getBoundingClientRect().top + pai.scrollTop
+            for (const parte of janelaPopup.children) {
+                if (parte === pai) continue
+                reserva += parte.getBoundingClientRect().height
+            }
+            break
+        }
+
+        if (/(auto|scroll|hidden|clip)/.test(estilo.overflowY)) {
+            if (pai.closest('.popup-janela-fora')) {
+                // Contêineres internos de pop-ups também têm altura definida pelo conteúdo.
+                // Respeita seu max-height, mas não usa a altura atual como limite.
+                const maximo = parseFloat(estilo.maxHeight)
+                if (Number.isFinite(maximo)) {
+                    const deslocamento = div.getBoundingClientRect().top - pai.getBoundingClientRect().top + pai.scrollTop
+                    limiteInterno = Math.min(limiteInterno, maximo - deslocamento - reserva)
+                }
+                continue
+            }
+            const rect = pai.getBoundingClientRect()
+            limite = Math.min(limite, rect.top + pai.clientTop + pai.clientHeight)
+            // Rolar o contêiner externo não deve aumentar a altura da tabela.
+            topo += pai.scrollTop
+            break
+        }
+    }
+
+    return Math.max(0, Math.floor(Math.min(limite - topo - reserva, limiteInterno)))
+}
+
+let ajusteAlturaTabelaPendente = false
+const elementosAlturaTabela = new Set()
+const observadorAlturaTabela = new ResizeObserver(agendarAlturaTabelas)
+
+function agendarAlturaTabelas() {
+    if (ajusteAlturaTabelaPendente) return
+    ajusteAlturaTabelaPendente = true
+    requestAnimationFrame(() => {
+        ajusteAlturaTabelaPendente = false
+        for (const elemento of elementosAlturaTabela) {
+            if (elemento.isConnected) continue
+            observadorAlturaTabela.unobserve(elemento)
+            elementosAlturaTabela.delete(elemento)
+        }
+        const tabelas = [...document.querySelectorAll('.div-tabela:not(.nude)')]
+            .filter(div => div.dataset.alturaAdaptavel !== 'false' && div.getClientRects().length)
+        const alturas = tabelas.map(div => calcularAlturaDisponivelTabela(div))
+        tabelas.forEach((div, indice) => {
+            const altura = `${alturas[indice]}px`
+            if (div.style.getPropertyValue('--altura-disponivel-tabela') !== altura)
+                div.style.setProperty('--altura-disponivel-tabela', altura)
+            // Observa também cabeçalhos e contêineres que mudam sem recriar o DOM.
+            for (let elemento = div.parentElement; elemento; elemento = elemento.parentElement) {
+                for (const alvo of [elemento, ...elemento.children]) {
+                    if (alvo === div || elementosAlturaTabela.has(alvo)) continue
+                    elementosAlturaTabela.add(alvo)
+                    observadorAlturaTabela.observe(alvo)
+                }
+                if (elemento.classList.contains('tela')) break
+            }
+        })
+    })
+}
+
+new MutationObserver(agendarAlturaTabelas).observe(document.documentElement, {
+    childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'class']
+})
+window.addEventListener('resize', agendarAlturaTabelas)
+window.visualViewport?.addEventListener('resize', agendarAlturaTabelas)
+agendarAlturaTabelas()

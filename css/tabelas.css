@@ -8,6 +8,25 @@
     border-radius: 3px;
 }
 
+img.icone-editar, img.icone-tabela {
+    display: block;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    max-width: none;
+    margin: auto;
+    padding: 0;
+    object-fit: contain;
+    flex: 0 0 22px;
+    align-self: center;
+    cursor: pointer;
+}
+
+td:has(> .icone-editar), td:has(> .icone-tabela) {
+    text-align: center;
+    vertical-align: middle;
+}
+
 .tabela {
     width: 100%;
     border-collapse: collapse;
@@ -16,6 +35,31 @@
 
 .tabela.nude {
     background-color: transparent;
+}
+
+/* Bordas separadas acompanham o cabeçalho sticky sem frestas entre suas linhas. */
+.tabela:not(.nude) {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.tabela:not(.nude) > thead > tr > th,
+.tabela:not(.nude) > tbody > tr > td {
+    border-width: 0 1px 1px 0;
+}
+
+.tabela:not(.nude) > thead > tr:first-child > th {
+    border-top-width: 1px;
+}
+
+.tabela:not(.nude) > thead > tr > th:first-child,
+.tabela:not(.nude) > tbody > tr > td:first-child {
+    border-left-width: 1px;
+}
+
+.tabela:not(.nude) > thead,
+.tabela:not(.nude) > thead > tr {
+    background-color: #f3f3f3;
 }
 
 .tabela thead input,
@@ -39,12 +83,16 @@
     border: 1px solid #e3e3e3;
 }
 
-.tabela tbody tr:nth-child(even) {
-    background-color: #fafafa;
+.popup .tabela td {
+    color: #596773;
 }
 
-.tabela tbody tr:hover {
-    background-color: #f1f5f9;
+.tabela:not(.nude) > tbody > tr:not(.tabela-linha-detalhes) {
+    background-color: #fff;
+}
+
+.tabela:not(.nude) > tbody > tr:not(.tabela-linha-detalhes):hover {
+    background-color: #e7edf2;
 }
 
 .tabela thead input,
@@ -61,6 +109,51 @@
 .tabela.nude td {
     border: none;
 }
+
+.tabela > thead > .tabela-linha-pesquisa > th {
+    padding: 2px 4px;
+    background: #fafafa;
+    color: #495966;
+    vertical-align: middle;
+    font-weight: 400;
+}
+
+.tabela .tabela-linha-pesquisa input,
+.tabela .tabela-linha-pesquisa select {
+    width: 100%;
+    min-width: 80px;
+    min-height: 22px;
+    height: 22px;
+    box-sizing: border-box;
+    padding: 1px 4px;
+    border: 1px solid #dedede;
+    border-radius: 3px;
+    background: #fff;
+    color: #495966;
+    font: inherit;
+    font-size: 11px;
+}
+
+.tabela .tabela-linha-pesquisa .tabela-pesquisa-texto {
+    height: 22px;
+    text-align: left;
+    cursor: text;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    background: #fafafa;
+    padding: 2px 4px;
+}
+
+.tabela .tabela-linha-pesquisa input:focus,
+.tabela .tabela-linha-pesquisa select:focus,
+.tabela .tabela-pesquisa-texto:focus {
+    outline: 1px solid #a1adb7;
+    outline-offset: -1px;
+    background: #fff;
+}
+
+.tabela-pesquisa-datas { display: flex; flex-direction: column; gap: 4px; min-width: 110px; }
+.tabela .tabela-linha-pesquisa .tabela-pesquisa-inativa { text-align: center; color: #a2adb6; }
 
 .tabela thead {
     box-shadow: 0 1px 0 #ccc;
@@ -81,7 +174,11 @@
 
 .div-tabela {
     background-color: white;
-    max-height: 65vh;
+    max-height: max(min(var(--altura-minima-tabela, 0px), 60vh), var(--altura-disponivel-tabela, 65vh));
+    max-height: max(min(var(--altura-minima-tabela, 0px), 60dvh), var(--altura-disponivel-tabela, 65dvh));
+    min-height: 0;
+    flex-shrink: 0;
+    box-sizing: border-box;
     width: 100%;
     height: max-content;
     overflow: auto;
@@ -90,14 +187,115 @@
 .div-tabela.nude {
     border: none;
     overflow: hidden;
+    max-height: max-content;
     background-color: transparent;
 }
+
+/* Nos modais, reservamos espaço para as linhas mesmo com cabeçalhos altos.
+   O conteúdo restante continua acessível pela rolagem da janela do popup. */
+.popup .div-tabela[data-altura-adaptavel="true"] {
+    min-height: min(240px, 35vh);
+    min-height: min(240px, 35dvh);
+    max-height: max(min(320px, 50vh), min(var(--altura-minima-tabela, 0px), 60vh), var(--altura-disponivel-tabela, 70vh));
+    max-height: max(min(320px, 50dvh), min(var(--altura-minima-tabela, 0px), 60dvh), var(--altura-disponivel-tabela, 70dvh));
+}
+
+.tabela .tabela-coluna-detalhes {
+    width: 32px;
+    text-align: center;
+}
+
+.topo-tabela .tabela-expandir,
+.tabela .tabela-expandir {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+    margin: 4px;
+    padding: 0;
+    border: 1px solid #cdd3d9;
+    border-radius: 6px;
+    background: #f0f2f4;
+    color: #4c5965;
+    font-size: 17px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: none;
+    transform: none;
+}
+
+.tabela-coluna-detalhes .tabela-expandir { margin: 0; }
+
+.topo-tabela .tabela-expandir,
+.tabela .tabela-expandir {
+    position: relative;
+    align-self: center;
+    box-sizing: border-box;
+    font-size: 0;
+    vertical-align: middle;
+    color: #697985;
+}
+
+.topo-tabela .tabela-expandir { margin: 6px 8px; }
+.tabela .tabela-coluna-detalhes { vertical-align: middle; }
+
+.topo-tabela .tabela-expandir::before,
+.topo-tabela .tabela-expandir::after,
+.tabela .tabela-expandir::before,
+.tabela .tabela-expandir::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 1px;
+    border-radius: 1px;
+    background: currentColor;
+    transform: translate(-50%, -50%);
+}
+
+.topo-tabela .tabela-expandir::after,
+.tabela .tabela-expandir::after {
+    width: 1px;
+    height: 10px;
+}
+
+.topo-tabela .tabela-expandir[aria-expanded="true"]::after,
+.tabela .tabela-expandir[aria-expanded="true"]::after {
+    display: none;
+}
+
+.topo-tabela .tabela-expandir:hover,
+.tabela .tabela-expandir:hover,
+.tabela-expandir[aria-expanded="true"] {
+    background: #dce3e9;
+    border-color: #9aa9b7;
+}
+
+.tabela-expandir:focus-visible {
+    outline: 2px solid #7b8c9b;
+    outline-offset: 2px;
+}
+
+.tabela-linha-detalhes[hidden] { display: none; }
+.tabela .tabela-linha-detalhes > td { background: #f2f4f6; border-left: 3px solid #9aa9b7; }
+.tabela-detalhes-conteudo { padding: 16px; line-height: 1.6; white-space: normal; overflow-wrap: anywhere; }
+.tabela-detalhes-conteudo .detalhes-composicao { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 16px; }
+.detalhes-composicao section { min-width: 0; border: 1px solid #dce1e6; border-radius: 8px; background: #fff; overflow: hidden; }
+.detalhes-composicao h3 { margin: 0; padding: 10px 12px; background: #e8edf1; color: #4c5965; font-size: 12px; }
+.detalhes-composicao p { margin: 12px; color: #78838e; }
+.detalhes-composicao .detalhes-itens { overflow-x: auto; }
+.detalhes-composicao table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.detalhes-composicao table td, .detalhes-composicao table th { padding: 8px 10px; text-align: left; }
+.topo-tabela { flex-wrap: wrap; }
 
 .topo-tabela {
     position: relative;
     justify-content: space-between;
     width: 100%;
-    background: linear-gradient(45deg, #7f6a5b, #393532);
+    background: linear-gradient(135deg, #79685c, #68594f);
     min-height: 2vh;
     display: flex;
     align-items: center;
@@ -111,7 +309,7 @@
     align-items: start;
     justify-content: start;
     gap: 5px;
-    background: linear-gradient(45deg, #7f6a5b, #393532);
+    background: linear-gradient(135deg, #79685c, #68594f);
     width: 100%;
     min-height: 2vh;
     border-radius: 0 0 5px 5px;
