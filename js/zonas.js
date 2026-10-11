@@ -12,6 +12,7 @@ async function telaZonas() {
     const pag = 'zonas'
     const tabela = await modTab({
         pag,
+        detalhes: true,
         btnExtras: `<button onclick="edicaoZona()">AdicionarZona</button>`,
         base: 'vw_zonas',
         criarLinha: 'criarLinhaZona',
@@ -19,13 +20,12 @@ async function telaZonas() {
         colunas: {
             'Edição': {},
             'Zona': { chave: 'zona' },
-            'ambiente': { chave: 'ambiente' },
-            'Serviços': { chave: 'servicos.*.descricao' }
+            'ambiente': { chave: 'ambiente' }
         }
     })
 
     titulo.textContent = 'Zonas'
-    tela.innerHTML = tabela
+    tela.innerHTML = `<div class="zonas-tabela-container">${tabela}</div>`
 
     await paginacao(pag)
 
@@ -46,7 +46,7 @@ function criarLinhaZona(dados) {
         .map(servico => modeloServico(servico))
         .join('')
 
-    return `
+    const linha = `
         <tr>
             <td>
                 <img onclick="edicaoZona('${id}')" src="imagens/editar.svg" class="icone-editar" alt="Editar" title="Editar">
@@ -57,13 +57,15 @@ function criarLinhaZona(dados) {
             <td>
                 <span class="etiquetas">${ambiente}</span>
             </td>
-            <td>
-                <div style="${vertical}; gap: 2px;">
-                    ${itens}
-                </div>
-            </td>
         </tr>
     `
+    return {
+        linha,
+        detalhes: `<section style="padding: 10px 12px;">
+            <h3 style="margin: 0 0 10px; font-size: 12px; color: #52616e;">Serviços da zona</h3>
+            <div style="${vertical}; gap: 5px;">${itens || '<p>Nenhum serviço cadastrado.</p>'}</div>
+        </section>`
+    }
 }
 
 async function edicaoZona(id) {

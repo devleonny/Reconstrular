@@ -5,6 +5,40 @@
     --scroll-ativo: #596d7c;
 }
 
+.tela button.pdf-exportar-fixo {
+    position: fixed;
+    right: max(18px, env(safe-area-inset-right));
+    bottom: max(18px, env(safe-area-inset-bottom));
+    z-index: 100;
+    margin: 0;
+    opacity: .55;
+    transition: opacity 180ms ease;
+    width: 64px;
+    height: 76px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: url('../imagens/pdf-botao.svg') center / contain no-repeat;
+    box-shadow: none;
+    filter: drop-shadow(0 4px 6px #00000025);
+    align-items: flex-start;
+}
+.tela button.pdf-exportar-fixo:hover,
+.tela button.pdf-exportar-fixo:focus-visible { opacity: 1; transform: none; }
+@media print { .tela button.pdf-exportar-fixo { display: none; } }
+.tela button.pdf-exportar-fixo > span {
+    margin-top: 47px;
+    font-size: 14px;
+    line-height: 22px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: #fff;
+}
+.tela button.pdf-exportar-fixo:focus-visible {
+    outline: 2px solid #8b9cab;
+    outline-offset: 4px;
+}
+
 *::-webkit-scrollbar {
     width: 9px;
     height: 9px;
@@ -357,7 +391,7 @@ html {
     width: 0;
     min-width: 0;
     overflow-y: auto;
-    transition: flex-basis 0.3s ease, width 0.3s ease;
+    transition: flex-basis 280ms ease, width 280ms ease, transform 280ms ease;
     scrollbar-width: none;
     -ms-overflow-style: none;
     background-color: #222222ec;
@@ -375,6 +409,8 @@ html {
 
 .side-menu > * {
     flex-shrink: 0;
+    width: 250px;
+    box-sizing: border-box;
 }
 
 .side-menu .menu-marca {
@@ -560,7 +596,7 @@ html {
 .side-menu.active {
     flex-basis: 250px;
     width: 250px;
-    min-width: 250px;
+    min-width: 0;
 }
 
 hr {
@@ -1669,19 +1705,30 @@ button:hover {
         position: fixed;
         top: 6vh;
         bottom: 0;
-        left: -100%;
-        width: 90%;
+        left: 0;
+        width: min(300px, 90vw);
+        transform: translateX(-100%);
+        visibility: hidden;
+        transition: transform 280ms ease, visibility 280ms;
     }
 
     .side-menu.active {
-        left: 0;
+        width: min(300px, 90vw);
+        transform: translateX(0);
+        visibility: visible;
     }
+
+    .side-menu > * { width: 100%; }
 
     .side-menu.active+.tela {
         margin-left: 0;
     }
 
     .tela.active {
-        width: 0;
+        width: 100%;
     }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .side-menu { transition: none; }
 }

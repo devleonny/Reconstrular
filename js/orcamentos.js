@@ -1,17 +1,3 @@
-let filtroFinalizado = null
-
-async function orcamentosEmAberto() {
-    await orcamentos('N')
-}
-
-async function orcamentosFinalizados() {
-    await orcamentos('S')
-}
-
-async function orcamentosRecusados() {
-    await orcamentos('R')
-}
-
 const dt = data => {
     if (!data) return '-'
 
@@ -35,27 +21,17 @@ const statusOrcamento = {
     'Orçamento Recusado': 'orcamento_recusado'
 }
 
-async function orcamentos(finalizado = filtroFinalizado) {
+async function orcamentos() {
     try {
         overlayAguarde()
 
-        if (finalizado)
-            filtroFinalizado = finalizado
-
-        const titulo = filtroFinalizado == 'S'
-            ? 'Orçamentos Finalizados'
-            : filtroFinalizado == 'R'
-                ? 'Orçamentos Recusados'
-                : 'Orçamentos Em Aberto'
-
-        document.querySelector('[name="titulo"]').textContent = titulo
+        document.querySelector('[name="titulo"]').textContent = 'Orçamentos'
 
         const tabela = await modTab({
             base: 'vw_dados_orcamentos',
             pag: 'orcamentos',
-            filtros: {
-                finalizado: { op: '=', value: finalizado }
-            },
+            detalhes: true,
+            filtros: {},
             body: 'bodyOrcamentos',
             criarLinha: 'criarLinhaOrcamento',
             colunas: {
@@ -68,11 +44,7 @@ async function orcamentos(finalizado = filtroFinalizado) {
                 'Distrito': { chave: 'distrito' },
                 'Cidade': { chave: 'cidade' },
                 'Data de Contato': { chave: 'data_contato', tipoPesquisa: 'data' },
-                'Data de Visita': { chave: 'data_visita', tipoPesquisa: 'data' },
-                '<span class="em_analise">Em Análise</span>': {},
-                '<span class="orcamento_aceite">Orçamento Aceite</span>': {},
-                '<span class="orcamento_adjudicado">Orçamento Adjudicado</span>': {},
-                '<span class="orcamento_recusado">Orçamento Recusado</span>': {}
+                'Data de Visita': { chave: 'data_visita', tipoPesquisa: 'data' }
             }
         })
 
@@ -110,7 +82,7 @@ async function criarLinhaOrcamento(orcamento) {
                 return `
                     <td>
                         <img
-                            src="imagens/pdf.png"
+                            src="imagens/documento.svg" class="icone-tabela" alt="Abrir documento" title="Abrir documento"
                             onclick="window.open('${api}/uploads/${link}', '_blank')">
                     </td>
                 `
@@ -125,7 +97,7 @@ async function criarLinhaOrcamento(orcamento) {
                         onchange="importarDocumentoOrcamento('${doc}', '${idOrcamento}')">
 
                     <label for="${idInput}" style="cursor:pointer;">
-                        <img src="imagens/upload.png">
+                        <img src="imagens/upload.svg" class="icone-tabela" alt="Anexar documento" title="Anexar documento">
                     </label>
                 </td>
             `
@@ -139,16 +111,17 @@ async function criarLinhaOrcamento(orcamento) {
         </td>
 
         <td>
-            <img src="imagens/planta.png" onclick="execucoes('${idOrcamento}', 0)">
+            <img src="imagens/ambientes.svg" class="icone-tabela" alt="Ambientes e zonas" title="Ambientes e zonas" onclick="execucoes('${idOrcamento}', 0)">
         </td>
 
         <td>
-            <img src="imagens/orcamentos.png" onclick="orcamentoFinal('${idOrcamento}')">
+            <img src="imagens/orcamento.svg" class="icone-tabela" alt="Ver orçamento" title="Ver orçamento" onclick="orcamentoFinal('${idOrcamento}')">
         </td>
         <td>
             <select
-                class="${statusOrcamento?.[status]}"
-                onchange="alterarStatusOrcamento('${idOrcamento}', this.value, '${finalizado}')">
+                class="orcamento-status ${statusOrcamento?.[status] || ''}"
+                data-status="${escaparAtributo(status || '')}" data-finalizado="${finalizado}"
+                onchange="alterarStatusOrcamento('${idOrcamento}', this.value, this.dataset.finalizado, this)">
 
                 ${Object.keys(statusOrcamento)
             .map(s => `<option ${s == status ? 'selected' : ''}>${s}</option>`)
@@ -166,12 +139,25 @@ async function criarLinhaOrcamento(orcamento) {
         <td>${dt(data_contato)}</td>
         <td>${dt(data_visita)}</td>
 
-        ${tdsAnexos}
 
 
     `
 
-    return `<tr>${tds}</tr>`
+    return {
+        linha: `<tr>${tds}</tr>`,
+        detalhes: `<section class="orcamento-documentos-detalhes">
+            <h3>Documentos do orçamento</h3>
+            <div class="orcamento-documentos-recorte"><table class="tabela">
+                <thead><tr>
+                    <th><span class="em_analise">Em Análise</span></th>
+                    <th><span class="orcamento_aceite">Orçamento Aceite</span></th>
+                    <th><span class="orcamento_adjudicado">Orçamento Adjudicado</span></th>
+                    <th><span class="orcamento_recusado">Orçamento Recusado</span></th>
+                </tr></thead>
+                <tbody><tr>${tdsAnexos}</tr></tbody>
+            </table></div>
+        </section>`
+    }
 }
 
 async function importarDocumentoOrcamento(doc, idOrcamento) {
@@ -196,7 +182,12 @@ async function importarDocumentoOrcamento(doc, idOrcamento) {
     }
 }
 
-async function alterarStatusOrcamento(idOrcamento, status, statusAtualFinalizado) {
+async function alterarStatusOrcamento(idOrcamento, status, statusAtualFinalizado, select = null) {
+    const statusAnterior = select?.dataset.status || ''
+    if (select) {
+        select.className = `orcamento-status ${statusOrcamento[status] || ''}`
+        select.disabled = true
+    }
     overlayAguarde()
 
     let finalizado = null
@@ -209,12 +200,20 @@ async function alterarStatusOrcamento(idOrcamento, status, statusAtualFinalizado
         finalizado = statusAtualFinalizado
     }
 
-    await enviar(`dados_orcamentos/${idOrcamento}`, {
+    try {
+    const resposta = await enviar(`dados_orcamentos/${idOrcamento}`, {
         status,
         finalizado
     })
-
-    removerOverlay()
+    if (!resposta || resposta.success === false || resposta.erro) throw new Error('Não foi possível salvar o status do orçamento.')
+    if (select) { select.dataset.status = status; select.dataset.finalizado = finalizado }
+    } catch (erro) {
+        if (select) {
+            select.value = statusAnterior
+            select.className = `orcamento-status ${statusOrcamento[statusAnterior] || ''}`
+        }
+        popup({ mensagem: escaparAtributo(erro.message) })
+    } finally { if (select) select.disabled = false; removerOverlay() }
 }
 async function formularioOrcamento(idOrcamento) {
     try {

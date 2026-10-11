@@ -1,3 +1,10 @@
+.orcamento-documentos-detalhes { padding: 10px 12px; }
+.orcamento-documentos-detalhes h3 { margin: 0 0 10px; font-size: 12px; color: #52616e; }
+.orcamento-documentos-recorte { overflow-x: auto; }
+.orcamento-documentos-recorte .tabela { min-width: 480px; }
+.orcamento-documentos-recorte th, .orcamento-documentos-recorte td { text-align: center; }
+.orcamento-documentos-recorte img { display: block; margin: auto; }
+
 .tabela-orcamento {
     font-size: 12px;
     width: 100%;
@@ -130,11 +137,21 @@
 }
 
 .tag-orcamento {
-    color: white;
-    border-radius: 15px 3px;
-    padding: 5px 10px;
-    border: solid 1px red;
-    background-color: #ff0000db;
+    display: inline-block;
+    color: #52616e;
+    border-radius: 3px;
+    padding: 4px 8px;
+    border: 1px solid #cdd6de;
+    background-color: #eaf0f4;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+select.orcamento-status {
+    border-radius: 0;
+    width: 100%;
+    width: stretch;
+    box-sizing: border-box;
 }
 
 .orcamento-documento {

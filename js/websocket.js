@@ -9,6 +9,7 @@ connectWebSocket()
 
 async function encerrarAcesso(mensagem) {
     clearTimeout(reconnectTimeout)
+    await chatPushEncerrar()
 
     localStorage.removeItem('acesso')
 
@@ -218,6 +219,11 @@ function comunicacao() {
                 await verificarMensagens()
             }
             await paginacao()
+            if (document.querySelector('.objetivos-painel')
+                && ['cidades', 'vw_objetivos', 'dados_orcamentos', 'despesas'].includes(tabela)) {
+                try { await atualizarDadosObjetivos() }
+                catch (erro) { console.warn('Não foi possível atualizar os objetivos:', erro.message) }
+            }
 
         }
 

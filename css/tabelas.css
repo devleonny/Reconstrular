@@ -8,6 +8,18 @@
     border-radius: 3px;
 }
 
+.zonas-tabela-container {
+    width: max-content;
+    max-width: 100%;
+    min-width: 0;
+    align-self: flex-start;
+}
+
+.zonas-tabela-container .tabela {
+    width: auto;
+    min-width: 100%;
+}
+
 img.icone-editar, img.icone-tabela {
     display: block;
     width: 22px;

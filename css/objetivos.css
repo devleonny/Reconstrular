@@ -1,0 +1,23 @@
+.objetivos-painel { display: flex; flex-direction: column; gap: 16px; min-height: 0; color: #52616e; }
+.objetivos-controles { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 16px; background: #f3f5f6; border-radius: 8px; }
+.objetivos-controles h2 { margin: 0; font-size: 17px; }
+.objetivos-controles p { margin: 5px 0 0; font-size: 12px; }
+.objetivos-controles label { margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 12px; }
+.objetivos-grupos { display: flex; flex-direction: column; gap: 12px; }
+.objetivos-distrito { background: #fff; border-radius: 8px; overflow: hidden; }
+.objetivos-distrito h3 { display: flex; align-items: center; gap: 12px; margin: 0; padding: 7px 12px; background: #526877; color: #fff; font-size: 13px; }
+.objetivos-distrito h3 small { font-size: 11px; font-weight: 400; }
+.objetivos-recorte { overflow-x: auto; }
+.objetivos-tabela { min-width: 800px; }
+.objetivos-grupos .objetivo-total { background: #eaf0f3; text-align: center; white-space: nowrap; }
+.objetivos-grupos .objetivo-distrito-nome { background: #d9e8de; color: #356347; font-weight: 600; }
+.objetivos-tabela td, .objetivos-tabela th { text-align: center; padding: 4px 7px; line-height: 1.35; }
+.objetivos-tabela td { white-space: nowrap; }
+.objetivos-grupos .tabela td:not(.objetivo-distrito-nome) { color: #3f4d58; }
+.objetivos-tabela .objetivo-editar { color: #2f5058; }
+.objetivos-tabela .objetivo-total { vertical-align: middle; background: #eaf0f3; font-weight: 600; }
+.objetivos-tabela .objetivo-distrito-nome { background: #d9e8de; color: #356347; }
+.objetivos-tabela .objetivo-cidade { text-align: left; background: #f6f1de; border-left: 2px solid #9baab5; }
+.objetivos-tabela .objetivo-editar { display: inline-flex; margin: 0; padding: 2px 6px; border-radius: 4px; background: #def1f1; color: #2f5058; font: inherit; box-shadow: none; }
+.objetivos-tabela .objetivo-editar:hover { background: #c7e6e6; transform: none; }
+@media (max-width: 680px) { .objetivos-controles label { margin-left: 0; } }

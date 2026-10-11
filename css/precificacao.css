@@ -1,3 +1,9 @@
+.composicao-margem-cabecalho { display: flex; align-items: center; justify-content: center; gap: 7px; }
+.composicao-margem-cabecalho input { width: 16px; height: 16px; flex: 0 0 16px; margin: 0; padding: 0; accent-color: #526877; cursor: pointer; }
+.composicao-margem-cabecalho .composicao-margem-editar { display: inline-flex; width: 26px; height: 26px; padding: 4px; margin: 0; border-radius: 4px; background: transparent; box-shadow: none; }
+.composicao-margem-cabecalho .composicao-margem-editar img { width: 18px; height: 18px; }
+.composicao-margem-cabecalho .composicao-margem-editar:hover { background: #dce5ec; transform: none; }
+
 .toolbar-precos {
     width: 100%;
     display: flex;

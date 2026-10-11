@@ -174,11 +174,12 @@ async function formularioDespesa(idDespesa) {
     }
 
     controlesCxOpcoes.obra = {
-      base: 'dados_obras',
+      base: 'vw_dados_orcamentos',
+      filtros: { em_obra: { op: '=', value: true } },
       funcaoAdicional: ['verificarRegras'],
-      retornar: ['ordem'],
+      retornar: ['contrato'],
       colunas: {
-        'Número': { chave: 'ordem' },
+        'Número': { chave: 'contrato' },
         'Cidade': { chave: 'snapshots.cidade.nome' },
         'Distrito': { chave: 'snapshots.cidade.distrito' }
       }

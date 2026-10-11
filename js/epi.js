@@ -44,10 +44,7 @@ async function abrirEPI(idColaborador) {
 
         const acumulado = `
 
-        <div class="painelFiltros">
-            <img onclick="baixarFichaEPI('${nome}')" src="imagens/pdf.png">
-            <button onclick="telaColaboradores()">Voltar</button>
-        </div>
+        <button type="button" class="epi-pdf-fixo pdf-exportar-fixo" onclick="baixarFichaEPI(${escaparAtributo(JSON.stringify(nome || 'EPI'))})" title="Exportar ficha de EPI em PDF" aria-label="Exportar ficha de EPI em PDF"><span>PDF</span></button>
 
         <div id="pdf" class="contornoFolha">
             <div class="folha-epi">

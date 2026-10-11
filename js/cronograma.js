@@ -279,9 +279,7 @@ async function renderCronogramaObra(ordem, idObra) {
 
     tela.innerHTML = `
         <div class="acompanhamento">
-            <div class="botao-flutuante">
-                <img src="imagens/pdf2.png" onclick="pdfObra('Cronograma')">
-            </div>
+                <button type="button" class="cronograma-pdf-fixo pdf-exportar-fixo" onclick="pdfObra('Cronograma')" title="Exportar cronograma em PDF" aria-label="Exportar cronograma em PDF"><span>PDF</span></button>
 
             <div id="pdf" style="${vertical}; width: 100%;">
                 ${tabInfos}
@@ -294,23 +292,23 @@ async function renderCronogramaObra(ordem, idObra) {
 async function telaCronograma(idObra) {
     overlayAguarde()
 
-    const obra = await recuperarDado('dados_obras', idObra) || {}
+    const obra = await recuperarDado('dados_orcamentos', idObra) || {}
 
     titulo.textContent = 'Cronograma'
 
     if (!obra.dt_inicio) {
         const hoje = toDateInputValue(new Date())
 
-        await enviar(`dados_obras/${idObra}/dt_inicio`, hoje)
+        await enviar(`dados_orcamentos/${idObra}/dt_inicio`, hoje)
     }
 
-    await renderCronogramaObra(obra.ordem, idObra)
+    await renderCronogramaObra(obra.contrato, idObra)
 
     removerOverlay()
 }
 
 async function salvarDtInicio(input, idObra, ordem) {
-    await enviar(`dados_obras/${idObra}/dt_inicio`, input.value)
+    await enviar(`dados_orcamentos/${idObra}/dt_inicio`, input.value)
 
     await renderCronogramaObra(ordem, idObra)
 }

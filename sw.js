@@ -1,6 +1,52 @@
 const CACHE_PREFIX = `reconstrular-${self.registration.scope}-`
-const CACHE = `${CACHE_PREFIX}v1.72`
+const CACHE = `${CACHE_PREFIX}v1.73`
 const localUrl = path => new URL(path, self.registration.scope).href
+const PUSH_CACHE = `reconstrular-push:${self.registration.scope}`
+
+self.addEventListener('message', event => {
+  if (event.data?.tipo !== 'chat-push-usuario') return
+  event.waitUntil((async () => {
+    const cache = await caches.open(PUSH_CACHE)
+    await cache.put(localUrl('push-usuario'), new Response(JSON.stringify({ usuario: event.data.usuario || null })))
+    if (!event.data.usuario) {
+      const notificacoes = await self.registration.getNotifications()
+      notificacoes.forEach(n => n.close())
+    }
+  })())
+})
+
+self.addEventListener('push', event => {
+  event.waitUntil((async () => {
+    let dados
+    try { dados = event.data?.json() } catch { return }
+    if (dados?.tipo !== 'chat_mensagem' || !dados.conversa_id || !dados.usuario) return
+    const cache = await caches.open(PUSH_CACHE)
+    const resposta = await cache.match(localUrl('push-usuario'))
+    const vinculo = resposta ? await resposta.json() : null
+    if (vinculo?.usuario !== dados.usuario) return
+    await self.registration.showNotification('Reconstrular — Nova mensagem', {
+      body: 'Você recebeu uma nova mensagem no chat.',
+      icon: localUrl('imagens/pwa/icone-192-v3.png'),
+      tag: `chat-${String(dados.conversa_id).slice(0, 150)}`,
+      data: { conversa_id: String(dados.conversa_id), usuario: dados.usuario }
+    })
+  })())
+})
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close()
+  event.waitUntil((async () => {
+    const destino = new URL(self.registration.scope)
+    destino.searchParams.set('chat_conversa', event.notification.data.conversa_id)
+    destino.searchParams.set('chat_usuario', event.notification.data.usuario)
+    const janelas = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    const existente = janelas.find(c => c.url.startsWith(self.registration.scope))
+    if (existente) {
+      const navegada = await existente.navigate(destino.href)
+      if (navegada) await navegada.focus()
+    } else await self.clients.openWindow(destino.href)
+  })())
+})
 
 // Prepara a interface local. APIs e bibliotecas externas continuam online.
 self.addEventListener('install', event => {

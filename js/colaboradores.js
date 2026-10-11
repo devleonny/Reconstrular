@@ -1,3 +1,19 @@
+let obrasFiltrosColaboradores = []
+
+async function carregarObrasFiltrosColaboradores() {
+    const obras = new Map()
+    let pagina = 1, paginas = 1
+    do {
+        const resposta = await pesquisarDB({ base: 'vw_dados_orcamentos', pagina, limite: 100,
+            filtros: { em_obra: { op: '=', value: true } } })
+        if (!Array.isArray(resposta?.resultados)) throw new Error('Não foi possível carregar as obras.')
+        for (const obra of resposta.resultados) obras.set(obra.id, obra)
+        paginas = resposta.paginas || 1
+        pagina++
+    } while (pagina <= paginas)
+    obrasFiltrosColaboradores = [...obras.values()]
+}
+
 const meses = {
     '01': 'Janeiro',
     '02': 'Fevereiro',
@@ -702,6 +718,7 @@ async function carregarTabelaFuncoes(funcaoUsuario, filtros) {
     // Se existir pesquisa anterior, então usa a base que existe;
     cidades = cidadesPesquisa
     esquema = funcoesPesquisa
+    await carregarObrasFiltrosColaboradores()
 
     const filtrosUsuario = esquema.filter(f => f.titulo == funcao) // Funções que o usuário pode definir;
 
@@ -779,10 +796,7 @@ function mostrarFiltros(titulo, filtros) {
 
             if (campo === 'obra') {
                 // cidades.obras: array de ordens ["O_1", "O_2", ...]
-                const todasOrdens = cidades
-                    .map(c => c.obras || [])
-                    .flat()
-                    .filter(o => o) // só valores não vazios
+                const todasOrdens = obrasFiltrosColaboradores.map(o => o.contrato).filter(Boolean)
 
                 const valoresUnicos = [...new Set(todasOrdens)]
 
@@ -839,10 +853,10 @@ async function tooltipObra(elemento, ordem) {
 
     try {
         const pesquisa = await pesquisarDB({
-            base: 'dados_obras',
+            base: 'vw_dados_orcamentos',
             filtros: {
-                op: '=',
-                value: ordem
+                contrato: { op: '=', value: ordem },
+                em_obra: { op: '=', value: true }
             }
         })
 
@@ -940,13 +954,7 @@ async function filtrarCidades({ filtros = null, campo = null }) {
     const areasMarcadas = [...document.querySelectorAll('[name="area"]:checked')]
         .map(input => input.dataset.valor)
 
-    const ordensDisponiveis = new Set(
-        cidades
-            .filter(c => areasMarcadas.includes(String(c.area)))
-            .map(c => c.obras || [])
-            .flat()
-            .map(o => String(o))
-    )
+    const ordensDisponiveis = new Set(obrasFiltrosColaboradores.map(o => String(o.contrato)))
 
     for (const input of [...document.querySelectorAll('[name="obra"]')]) {
 

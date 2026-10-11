@@ -207,6 +207,7 @@ const esquemaBotoes = {
             bloqueio: ['Trabalhador'],
             img: 'orcamentos',
             sub: [
+                { nome: 'Ver Orçamentos', funcao: 'orcamentos', img: 'orcamentos' },
                 { nome: 'Criar Orçamento', funcao: 'formularioOrcamento', img: 'baixar' },
                 {
                     permitido: [
@@ -219,9 +220,6 @@ const esquemaBotoes = {
                     funcao: 'telaZonas',
                     img: 'zona'
                 },
-                { nome: 'Em Aberto', funcao: 'orcamentosEmAberto', img: 'alerta' },
-                { nome: 'Finalizados', funcao: 'orcamentosFinalizados', img: 'doublecheck' },
-                { nome: 'Recusados', funcao: 'orcamentosRecusados', img: 'cancel' }
             ]
         },
         {

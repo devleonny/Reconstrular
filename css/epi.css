@@ -1,3 +1,20 @@
+.epi-pdf-fixo {
+    position: fixed;
+    right: max(18px, env(safe-area-inset-right));
+    bottom: max(18px, env(safe-area-inset-bottom));
+    z-index: 100;
+    margin: 0;
+    padding: 12px 18px;
+    border-radius: 8px;
+    background: #526877;
+    color: #fff;
+    opacity: .55;
+    transition: opacity 180ms ease;
+}
+.epi-pdf-fixo:hover,
+.epi-pdf-fixo:focus-visible { opacity: 1; transform: none; }
+@media print { .epi-pdf-fixo { display: none; } }
+
 .cabecalho-epi {
     border: solid 1px #222;
     display: flex;

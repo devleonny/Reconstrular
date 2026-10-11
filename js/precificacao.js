@@ -4,9 +4,9 @@ async function telaPrecos(filtro = null) {
     try {
         overlayAguarde()
         const tMargem = (tabela) => `
-        <div style="${horizontal}; gap: 5px;">
-            <img onclick="editarMargemEmMassa('${tabela}')" src="imagens/lapis.png" style="width: 1.5rem;">
-            <input name="m_master_${tabela}" type="checkbox" onclick="marcarTodosMargem('${tabela}')">
+        <div class="composicao-margem-cabecalho" onclick="event.stopPropagation()">
+            <button type="button" class="composicao-margem-editar" title="Editar margem dos itens selecionados" onclick="editarMargemEmMassa('${tabela}')"><img src="imagens/editar.svg" alt="Editar margem"></button>
+            <input name="m_master_${tabela}" type="checkbox" aria-label="Selecionar todas as margens desta página" onchange="marcarTodosMargem('${tabela}')">
         </div>
     `
 
@@ -109,6 +109,8 @@ function marcarTodosDesativar(inpMaster) {
 }
 
 function editarMargemEmMassa(tabela) {
+    const codigos = [...document.querySelectorAll(`#campos [name="margem_${tabela}"]:checked`)].map(input => input.dataset.codigo)
+    if (!codigos.length) return popup({ mensagem: 'Selecione ao menos uma composição nesta categoria.' })
 
     const linhas = [
         {
@@ -126,7 +128,8 @@ function editarMargemEmMassa(tabela) {
         { texto: 'Salvar', img: 'concluido', funcao: `aplicarEmMassa('${tabela}')` }
     ]
 
-    popup({ botoes, linhas, titulo: 'Aplicar margem em massa' })
+    const idModal = popup({ botoes, linhas, titulo: `Aplicar margem em ${codigos.length} composições` })
+    document.getElementById(idModal).dataset.codigosMargem = JSON.stringify(codigos)
 
 }
 
@@ -134,34 +137,70 @@ async function aplicarEmMassa(tabela) {
 
     overlayAguarde()
 
+    try {
     const margemMassa = document.querySelector(`[name="margemMassa_${tabela}"]`)
     if (!margemMassa)
-        return removerPopup()
+        throw new Error('O formulário de margem não está aberto.')
 
     const margemNum = Number(margemMassa.value)
+    if (!margemMassa.value.trim() || !Number.isFinite(margemNum) || margemNum < 0) throw new Error('Informe uma margem válida, positiva ou zero.')
 
     const chave = `margem_${tabela}`
-    const codigos = [...document.querySelectorAll(`[name="${chave}"]:checked`)]
-        .map(input => input.dataset.codigo)
+    const modal = margemMassa.closest('.popup')
+    const codigos = JSON.parse(modal.dataset.codigosMargem || '[]')
+    if (!codigos.length) throw new Error('Nenhuma composição selecionada.')
 
     const resposta = await enviarMargens({ codigos, margem: margemNum, tabela })
 
-    if (resposta.mensagem)
-        return popup({ mensagem: resposta.mensagem })
+    if (!resposta || resposta.success === false || resposta.erro || (resposta.mensagem && resposta.success !== true))
+        throw new Error(resposta?.mensagem || resposta?.erro || 'Não foi possível aplicar as margens.')
 
-    removerPopup()
+    removerPopup(modal.id)
+    await paginacao('campos')
+    const master = document.querySelector(`[name="m_master_${tabela}"]`)
+    if (master) { master.checked = false; master.indeterminate = false }
+    } catch (erro) { popup({ mensagem: escaparAtributo(erro.message) }) }
+    finally { removerOverlay() }
 
 }
 
 function marcarTodosMargem(tabela) {
 
     const master = document.querySelector(`[name="m_master_${tabela}"]`)
-    const inputs = document.querySelectorAll(`[name="margem_${tabela}"]`)
+    if (!master) return
+    const inputs = document.querySelectorAll(`#campos [name="margem_${tabela}"]`)
     for (const input of inputs) {
         const tr = input.closest('tr')
-        if (tr.style.display !== 'none') input.checked = master.checked
+        if (tr && !tr.hidden && tr.style.display !== 'none') input.checked = master.checked
     }
 
+}
+
+function sincronizarMasterMargem(tabela) {
+    const master = document.querySelector(`[name="m_master_${tabela}"]`)
+    if (!master) return
+    const inputs = [...document.querySelectorAll(`#campos [name="margem_${tabela}"]`)]
+        .filter(input => { const tr = input.closest('tr'); return tr && !tr.hidden && tr.style.display !== 'none' })
+    const marcados = inputs.filter(input => input.checked).length
+    master.checked = inputs.length > 0 && marcados === inputs.length
+    master.indeterminate = marcados > 0 && marcados < inputs.length
+}
+
+function totaisCampo(campo) {
+    const totais = { subtotal: 0, total: 0 }
+    for (const tipo of ['materiais', 'ferramentas', 'mao_obra']) {
+        const componentes = campo[tipo]
+        const subtotal = componentes && typeof componentes === 'object'
+            ? Object.values(componentes).reduce((soma, c) => soma + (Number(c?.qtde) || 0) * (Number(c?.preco) || 0), 0)
+            : Number(campo[`subtotal_${tipo}`] ?? campo.snapshots?.totais?.[`subtotal_${tipo}`] ?? 0)
+        const margem = Number(campo[`margem_${tipo}`]) || 0
+        const total = subtotal * (1 + margem / 100)
+        totais[`subtotal_${tipo}`] = subtotal
+        totais[`total_${tipo}`] = total
+        totais.subtotal += subtotal
+        totais.total += total
+    }
+    return totais
 }
 
 function criarLinhasCampos(dados) {
@@ -170,27 +209,26 @@ function criarLinhasCampos(dados) {
         id, 
         descricao,
         especialidade,
-        medida,
-        subtotal_mao_obra,
-        subtotal_ferramentas,
-        subtotal_materiais,
-        snapshots
+        medida
     } = dados || {}
 
     const {
         total_mao_obra,
         total_ferramentas,
         total_materiais,
+        subtotal_mao_obra,
+        subtotal_ferramentas,
+        subtotal_materiais,
         subtotal,
         total
-    } = snapshots?.totais || {}
+    } = totaisCampo(dados || {})
 
     const modeloMargem = (chave) => `
         <td style="${bg(chave)}">
             <div style="${horizontal}; gap: 0.5rem;">
                 <img src="imagens/lapis.png" style="width: 1.5rem;" onclick="painelMargem('${id}', '${chave}')">
                 <span style="white-space: nowrap;">${dados?.[`margem_${chave}`] || 0} %</span>
-                <input data-codigo="${id}" type="checkbox" name="margem_${chave}">
+                <input data-codigo="${id}" type="checkbox" name="margem_${chave}" onchange="sincronizarMasterMargem('${chave}')">
             </div>
         </td>
     `
@@ -282,23 +320,33 @@ async function edicaoItem(idCampo) {
         ? 'Editar Campo'
         : 'Criar Composição'
 
-    popup({ linhas, botoes, titulo })
+    const idPopup = popup({ linhas, botoes, titulo })
+    document.getElementById(idPopup).dataset.campoId = idCampo || ''
 
 }
 
 async function salvarCampo(idCampo = crypto.randomUUID()) {
-
-    let campo = {}
+    const painel = [...document.querySelectorAll('.popup')].reverse().find(p => p.querySelector('[name="descricao"]') && p.querySelector('[name="medida"]'))
+    if (!painel) return
+    overlayAguarde()
+    try {
+    const campo = painel.dataset.campoId ? await recuperarDado('campos', idCampo) : { id: idCampo, desativado: '' }
+    if (!campo) throw new Error('Não foi possível recuperar a composição para editar.')
     const cmps = ['descricao', 'medida', 'especialidade']
 
     for (const cmp of cmps) {
-        const el = document.querySelector(`[name="${cmp}"]`)
-        if (el) campo[cmp] = el.value
+        const el = painel.querySelector(`[name="${cmp}"]`)
+        if (!el?.value.trim()) throw new Error('Preencha descrição, medida e especialidade.')
+        campo[cmp] = el.value.trim()
     }
 
-    await enviar(`campos/${idCampo}`, campo)
-
-    removerPopup()
+    const resposta = await enviar(`campos/${idCampo}`, campo)
+    if (!resposta || resposta.success === false || resposta.erro)
+        throw new Error(resposta?.mensagem || resposta?.erro || 'O servidor não confirmou o salvamento da composição.')
+    removerPopup(painel.id)
+    await paginacao('campos')
+    } catch (erro) { popup({ mensagem: escaparAtributo(erro.message) }) }
+    finally { removerOverlay() }
 
 }
 
@@ -307,17 +355,21 @@ async function painelMargem(id, tabela) {
     const campo = await recuperarDado('campos', id) || {}
 
     const chave = `subtotal_${tabela}`
+    const totais = totaisCampo(campo)
+    const margemAtual = Number(campo[`margem_${tabela}`]) || 0
 
     const linhas = [
         {
             texto: `Defina uma margem (%):`,
-            elemento: `<input id="margem_unidade" oninput="calcularValorFinal(${campo[chave] || 0}, this)" type="number" placeholder="0">`
+            elemento: `<input id="margem_unidade" oninput="calcularValorFinal(${totais[chave]}, this)" type="number" min="0" step="any" value="${margemAtual}">`
         },
         {
             elemento: `
             <div style="${vertical}; gap: 2px;">
-                <span>Sub total do Item: <b>${dinheiro(campo[chave])}</b></span>
-                <span>Preço Final será: <b><span id="novoTotal"></span></b></span>
+                <span>Subtotal da categoria: <b>${dinheiro(totais[chave])}</b></span>
+                <span>Preço final da categoria: <b><span id="novoTotal">${dinheiro(totais[`total_${tabela}`])}</span></b></span>
+                <span>Subtotal da composição: <b>${dinheiro(totais.subtotal)}</b></span>
+                <span>Total da composição: <b><span class="margem-total-composicao">${dinheiro(totais.total)}</span></b></span>
             </div>
             `
         }
@@ -325,32 +377,42 @@ async function painelMargem(id, tabela) {
     ]
 
     const botoes = [
-        { texto: 'Salvar', img: 'concluido', funcao: `salvarMargem('${tabela}')` }
+        { texto: 'Salvar', img: 'concluido', funcao: `salvarMargem('${tabela}', '${id}')` }
     ]
 
-    popup({ linhas, botoes, titulo: 'Gerenciar Margem' })
+    const idPopup = popup({ linhas, botoes, titulo: 'Gerenciar Margem' })
+    document.getElementById(idPopup).dataset.totalOutrasCategorias = totais.total - totais[`total_${tabela}`]
 
 }
 
 function calcularValorFinal(subtotal, input) {
 
-    subtotal = conversor(subtotal)
+    subtotal = typeof subtotal === 'number' ? subtotal : conversor(subtotal)
 
     const novoTotal = document.getElementById('novoTotal')
-    margem = Number(input.value)
+    const margem = Number(input.value)
     const calculo = Number((subtotal * (1 + (margem / 100))).toFixed(2))
     novoTotal.textContent = dinheiro(calculo)
+    const modal = input.closest('.popup')
+    const totalComposicao = modal?.querySelector('.margem-total-composicao')
+    if (totalComposicao) totalComposicao.textContent = dinheiro(calculo + Number(modal.dataset.totalOutrasCategorias || 0))
 
 }
 
-async function salvarMargem(tabela) {
+async function salvarMargem(tabela, idCampo) {
 
     overlayAguarde()
 
-    const margem = Number(document.getElementById('margem_unidade').value)
-    await enviar(`campos/${idCampo}/margem_${tabela}`, margem)
-
-    removerPopup()
+    const input = document.getElementById('margem_unidade')
+    try {
+        const margem = Number(input?.value)
+        if (!idCampo || !Number.isFinite(margem) || margem < 0) throw new Error('Informe uma margem válida, positiva ou zero.')
+        const resposta = await enviar(`campos/${idCampo}/margem_${tabela}`, margem)
+        if (!resposta || resposta.success === false || resposta.erro) throw new Error(resposta?.mensagem || 'Não foi possível salvar a margem.')
+        removerPopup(input.closest('.popup').id)
+        await paginacao('campos')
+    } catch (erro) { popup({ mensagem: escaparAtributo(erro.message) }) }
+    finally { removerOverlay() }
 }
 
 async function composicoes(id) {
@@ -563,6 +625,7 @@ function calcularTotais() {
 async function salvarComposicao(idCampo) {
 
     overlayAguarde()
+    try {
 
     const tabelas = ['materiais', 'ferramentas', 'mao_obra']
     const campo = await recuperarDado('campos', idCampo) || {}
@@ -580,7 +643,7 @@ async function salvarComposicao(idCampo) {
 
             const tds = tr.querySelectorAll('td')
             const item = tr.querySelector('.opcoes')
-            if (!item.id)
+            if (!item?.id)
                 continue
 
             const qtde = Number(tr.querySelector('[name="qtde"]').value || 0)
@@ -604,9 +667,14 @@ async function salvarComposicao(idCampo) {
         subtotalGeral += subtotal
     }
 
-    await enviar(`campos/${idCampo}`, campo)
+    const resposta = await enviar(`campos/${idCampo}`, campo)
+    if (!resposta || resposta.success === false || resposta.erro)
+        throw new Error(resposta?.mensagem || 'O servidor não confirmou o salvamento da composição.')
 
     removerPopup()
+    await paginacao('campos')
+    } catch (erro) { popup({ mensagem: escaparAtributo(erro.message || 'Não foi possível salvar a composição.') }) }
+    finally { removerOverlay() }
 }
 
 

@@ -156,6 +156,7 @@ async function carregarControles() {
     const barraStatus = `
             <div id="divUsuarios"></div>
             ${modelo('chat', 'painelChat()', 'contadorMensagens')}
+            <button type="button" class="chat-push-controle" onclick="chatPushConfigurar()" title="Ativar ou desativar notificações de mensagens">Notificações</button>
             ${permitidosAprovacoes.includes(acesso.permissao) ? modelo('construcao', 'configs()', '') : ''}
         `
     const cabecalhoUsuario = document.querySelector('.cabecalho-usuario')
@@ -164,6 +165,8 @@ async function carregarControles() {
 
     await usuariosToolbar()
     await verificarMensagens()
+    chatPushSincronizar().catch(erro => console.warn('Notificações do chat:', erro.message))
+    await chatPushAbrirDestino()
 
 }
 

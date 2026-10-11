@@ -419,6 +419,7 @@ async function paginacao(pag) {
         await ativarPaginacao(pag)
 
     async function ativarPaginacao(pag) {
+        if (controles[pag]?.atualizacaoManual) return
         const {
             pagina,
             base,
@@ -728,6 +729,7 @@ function achou() {
 }
 
 function ordenarColuna({ pag, path }) {
+    if (!path) return
     const ctrl = controles[pag]
 
     if (!ctrl) return

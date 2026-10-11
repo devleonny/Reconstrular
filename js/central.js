@@ -335,6 +335,7 @@ function telaInicial() {
 }
 
 async function removerAcesso() {
+    await chatPushEncerrar()
     acesso = null
     localStorage.removeItem('acesso')
     await telaLogin()
@@ -397,7 +398,8 @@ function confirmarSaida() {
     popup({ mensagem: 'Tem certeza?', botoes, titulo: 'Sair', removerAnteriores: true })
 }
 
-function deslogar() {
+async function deslogar() {
+    await chatPushEncerrar()
     localStorage.removeItem('acesso')
     telaLogin()
 }
@@ -514,6 +516,7 @@ async function validarUsuario() {
 async function verificarRegras() {
 
     const painel = document.querySelector('.painel-padrao')
+    if (!painel) return { campos: ['Formulário indisponível'] }
     const input = (name) => painel.querySelector(`[name="${name}"]`)
     const campos = []
     const funcao = [...painel.querySelectorAll('[name="funcao"]:checked')]?.[0]?.dataset?.valor
@@ -538,6 +541,7 @@ async function verificarRegras() {
     ]
 
     function inv(el, remover) {
+        if (!el) return
 
         el.style.backgroundColor = remover
             ? ''
@@ -771,10 +775,10 @@ async function verificarRegras() {
 
     const paiTiposDespesas = painel.querySelector('.tipo-despesa')
     const elTipoDespesa = [...painel.querySelectorAll('[name="tipo_despesa"]:checked')]
-    if (!elTipoDespesa.length) {
+    if (paiTiposDespesas && !elTipoDespesa.length) {
         inv(paiTiposDespesas)
         campos.push('Tipo de Despesa')
-    } else {
+    } else if (paiTiposDespesas) {
         inv(paiTiposDespesas, true)
     }
 
