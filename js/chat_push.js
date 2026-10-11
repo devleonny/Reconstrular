@@ -20,9 +20,32 @@ function chatPushChave(valor) {
 }
 
 async function chatPushRegistro() {
-    const registro = await navigator.serviceWorker.getRegistration(new URL('./', document.baseURI).href)
-    if (!registro?.active) throw new Error('O app ainda está preparando as notificações. Feche e abra novamente para tentar.')
-    return registro
+    const registro = await navigator.serviceWorker.register(new URL('sw.js', document.baseURI))
+    if (registro.waiting) registro.waiting.postMessage({ tipo: 'chat-push-ativar' })
+    if (registro.active && !registro.installing && !registro.waiting) return registro
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+            limpar()
+            reject(new Error('O service worker não conseguiu ativar. Verifique no Console se algum arquivo do app falhou ao carregar.'))
+        }, 20000)
+        const worker = registro.installing || registro.waiting
+        function limpar() {
+            clearTimeout(timer)
+            worker?.removeEventListener('statechange', verificar)
+        }
+        function verificar() {
+            if (worker?.state === 'installed') worker.postMessage({ tipo: 'chat-push-ativar' })
+            if (worker?.state === 'redundant') {
+                limpar()
+                reject(new Error('A instalação do service worker falhou. Confira os erros de carregamento no Console.'))
+            } else if (worker?.state === 'activated' || (!worker && registro.active)) {
+                limpar()
+                resolve(registro)
+            }
+        }
+        worker?.addEventListener('statechange', verificar)
+        verificar()
+    })
 }
 
 async function chatPushSincronizar() {
@@ -61,7 +84,7 @@ async function chatPushConfigurar() {
             applicationServerKey: chatPushChave(configuracao.publicKey) })
         try { await chatPushSincronizar() }
         catch (erro) { await inscricao.unsubscribe(); throw erro }
-        popup({ mensagem: 'Notificações de mensagens ativadas neste dispositivo.' })
+        popup({ imagem: 'imagens/concluido.png', mensagem: 'Notificações de mensagens ativadas neste dispositivo.' })
     } catch (erro) { popup({ mensagem: chatHtml(erro.message) }) }
 }
 

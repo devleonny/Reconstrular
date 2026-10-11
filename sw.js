@@ -4,6 +4,10 @@ const localUrl = path => new URL(path, self.registration.scope).href
 const PUSH_CACHE = `reconstrular-push:${self.registration.scope}`
 
 self.addEventListener('message', event => {
+  if (event.data?.tipo === 'chat-push-ativar') {
+    event.waitUntil(self.skipWaiting())
+    return
+  }
   if (event.data?.tipo !== 'chat-push-usuario') return
   event.waitUntil((async () => {
     const cache = await caches.open(PUSH_CACHE)
@@ -61,7 +65,11 @@ self.addEventListener('install', event => {
       const url = new URL(atributo[1], self.registration.scope)
       if (url.href.startsWith(self.registration.scope)) arquivos.add(url.href)
     }
-    await cache.addAll([...arquivos].map(localUrl))
+    // Um recurso opcional ausente não deve bloquear a ativação do app inteiro.
+    const resultados = await Promise.allSettled([...arquivos].map(path => cache.add(localUrl(path))))
+    resultados.forEach((resultado, i) => {
+      if (resultado.status === 'rejected') console.warn('Recurso não armazenado no cache:', [...arquivos][i])
+    })
     await cache.put(localUrl('index.html'), resposta)
   })())
 })
