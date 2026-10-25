@@ -3,6 +3,11 @@ async function telaPrecos(filtro = null) {
 
     try {
         overlayAguarde()
+        const especialidades = await contarPorCampo({ base: 'campos', path: 'especialidade' })
+        const opcoesEspecialidade = Object.keys(especialidades || {})
+            .filter(nome => !['todos', 'EM BRANCO'].includes(nome) && nome.trim())
+            .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+            .map(nome => `<option value="${escaparAtributo(nome)}">${escaparAtributo(nome)}</option>`).join('')
         const tMargem = (tabela) => `
         <div class="composicao-margem-cabecalho" onclick="event.stopPropagation()">
             <button type="button" class="composicao-margem-editar" title="Editar margem dos itens selecionados" onclick="editarMargemEmMassa('${tabela}')"><img src="imagens/editar.svg" alt="Editar margem"></button>
@@ -12,12 +17,12 @@ async function telaPrecos(filtro = null) {
 
         const btnExtras = `
         <div style="display: flex; flex-wrap: wrap; gap: 3px;">
+            <label class="composicoes-filtro">
+                <select aria-label="Filtrar composições por especialidade" onchange="confirmarPesquisa({event, chave: 'especialidade', op: '=', elemento: this, pag: 'campos'})">
+                    <option value="">Todas as especialidades</option>${opcoesEspecialidade}
+                </select>
+            </label>
             <button onclick="edicaoItem()">Criar Composição</button>
-            <button onclick="confirmarDesativacao()">${filtro ? 'Ativar' : 'Desativar'} Itens</button>
-            <div style="${horizontal}; gap: 5px;">
-                <input type="checkbox" onclick="marcarTodosDesativar(this)">
-                <span style="color: white;">Marcar todos</span>
-            </div>
         </div>
     `
 
@@ -32,22 +37,14 @@ async function telaPrecos(filtro = null) {
             },
             criarLinha: 'criarLinhasCampos',
             colunas: {
-                'Marcar': {},
-                'Especialidade': { chave: 'especialidade' },
+                [`<span class="composicao-marcar-acoes" onclick="event.stopPropagation()"><label class="composicao-marcar-todos"><span>Marcar</span><input type="checkbox" aria-label="Marcar todos os itens desta página" title="Marcar todos" onchange="marcarTodosDesativar(this)"></label><button type="button" class="composicao-desativar" onclick="confirmarDesativacao()">${filtro ? 'Ativar' : 'Desativar'} itens</button></span>`]: {},
+                'Especialidade': {},
                 'Descrição': { chave: 'descricao' },
                 'Unidade de Medida': { chave: 'medida' },
-                'Composição': {},
-                'Subtotal Materiais': {},
-                [tMargem('materiais')]: {},
-                'Total Materiais': {},
-                'Subtotal Ferramentas': {},
-                [tMargem('ferramentas')]: {},
-                'Total Ferramentas': {},
-                'Subtotal Mão Obra': {},
-                [tMargem('mao_obra')]: {},
-                'Total Mão Obra': {},
-                'Sub-total': {},
-                'Total': {}
+                [`Materiais${tMargem('materiais')}`]: {},
+                [`Ferramentas${tMargem('ferramentas')}`]: {},
+                [`Mão de obra${tMargem('mao_obra')}`]: {},
+                'Total geral': {}
             }
         })
 
@@ -223,54 +220,53 @@ function criarLinhasCampos(dados) {
         total
     } = totaisCampo(dados || {})
 
-    const modeloMargem = (chave) => `
-        <td style="${bg(chave)}">
-            <div style="${horizontal}; gap: 0.5rem;">
-                <img src="imagens/lapis.png" style="width: 1.5rem;" onclick="painelMargem('${id}', '${chave}')">
-                <span style="white-space: nowrap;">${dados?.[`margem_${chave}`] || 0} %</span>
-                <input data-codigo="${id}" type="checkbox" name="margem_${chave}" onchange="sincronizarMasterMargem('${chave}')">
+    const modeloSubtotal = (chave, valor, valorTotal) => `
+        <td class="composicao-celula-subtotal" style="${bg(chave)}">
+            <div class="composicao-subtotal">
+                <div class="composicao-valor"><small>Subtotal</small><span>${dinheiro(valor)}</span></div>
+                <div class="composicao-margem-controle">
+                    <button type="button" class="composicao-margem-badge" title="Editar margem" aria-label="Editar margem de ${chave.replaceAll('_', ' ')}" onclick="painelMargem('${id}', '${chave}')">${escaparAtributo(dados?.[`margem_${chave}`] || 0)} % <span aria-hidden="true">✎</span></button>
+                    <input data-codigo="${id}" type="checkbox" name="margem_${chave}" aria-label="Selecionar margem de ${chave.replaceAll('_', ' ')} para edição em lote" onchange="sincronizarMasterMargem('${chave}')">
+                </div>
+                <div class="composicao-valor composicao-valor-final"><small>Total</small><strong>${dinheiro(valorTotal)}</strong></div>
             </div>
         </td>
     `
 
+    const modeloTotal = (valorSubtotal, valorTotal) => `
+        <td class="composicao-celula-total">
+            <div class="composicao-valor-total"><div class="composicao-valor"><small>Subtotal</small><span>${dinheiro(valorSubtotal)}</span></div><div class="composicao-valor composicao-valor-final"><small>Total</small><strong>${dinheiro(valorTotal)}</strong></div></div>
+        </td>`
+
     const bg = (c) => `white-space: nowrap; background-color: ${c == 'materiais'
-        ? '#ffe9e9'
+        ? '#fcf3ef'
         : c == 'ferramentas'
-            ? '#c7deff' : '#ceffc7'
+            ? '#eff4fb' : '#eef6f0'
         };`
 
     const tds = `
         <td>
             <input style="width: 1.5rem; height: 1.5rem;" data-codigo="${id}" name="desativar" type="checkbox">
         </td>
-        <td>${especialidade}</td>
+        <td class="composicao-especialidade">${escaparAtributo(especialidade || '')}</td>
         <td>
-            <div style="${horizontal}; gap: 5px;">
-                <img data-controle="editar" onclick="edicaoItem('${id}')" src="imagens/lapis.png" style="width: 1.5rem;">
-                <span style="width: 200px; text-align: left;">${descricao}</span>
+            <div class="composicao-descricao-linha">
+                <div class="composicao-acoes" role="group" aria-label="Ações da composição">
+                    <button type="button" data-controle="editar" onclick="edicaoItem('${id}')" title="Editar" aria-label="Editar composição"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6ZM13 6l5 5M3 21l5-1-4-4"/></svg></button>
+                    <button type="button" data-controle="editar" onclick="composicoes('${id}', true)" title="Abrir composição" aria-label="Abrir itens da composição"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5v9l-9 5-9-5V8ZM3 8l9 5 9-5M12 13v9M7.5 5.5l9 5"/></svg></button>
+                </div>
+                <div class="composicao-descricao"><span>${escaparAtributo(descricao || '')}</span></div>
             </div>
         </td>
         <td>${medida}</td>
-        <td>
-            <div style="${horizontal};">
-                <img data-controle="editar" src="imagens/caixa.png" style="width: 1.5rem;" onclick="composicoes('${id}', true)">
-            </div>
-        </td>
 
-        <td style="${bg('materiais')}">${dinheiro(subtotal_materiais)}</td>
-        ${modeloMargem('materiais')}
-        <td style="${bg('materiais')}">${dinheiro(total_materiais)}</td>
+        ${modeloSubtotal('materiais', subtotal_materiais, total_materiais)}
 
-        <td style="${bg('ferramentas')}">${dinheiro(subtotal_ferramentas)}</td>
-        ${modeloMargem('ferramentas')}
-        <td style="${bg('ferramentas')}">${dinheiro(total_ferramentas)}</td>
+        ${modeloSubtotal('ferramentas', subtotal_ferramentas, total_ferramentas)}
 
-        <td style="${bg('mao_obra')}">${dinheiro(subtotal_mao_obra)}</td>
-        ${modeloMargem('mao_obra')}
-        <td style="${bg('mao_obra')}">${dinheiro(total_mao_obra)}</td>
+        ${modeloSubtotal('mao_obra', subtotal_mao_obra, total_mao_obra)}
 
-        <td style="white-space: nowrap;">${dinheiro(subtotal)}</td>
-        <td style="white-space: nowrap;">${dinheiro(total)}</td>
+        ${modeloTotal(subtotal, total)}
     `
     return `<tr>${tds}</tr>`
 

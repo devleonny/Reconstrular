@@ -203,11 +203,10 @@ td:has(> .icone-editar), td:has(> .icone-tabela) {
     background-color: transparent;
 }
 
-/* Nos modais, reservamos espaço para as linhas mesmo com cabeçalhos altos.
-   O conteúdo restante continua acessível pela rolagem da janela do popup. */
+/* Nos modais, listas curtas acompanham o conteúdo; listas longas mantêm rolagem. */
 .popup .div-tabela[data-altura-adaptavel="true"] {
-    min-height: min(240px, 35vh);
-    min-height: min(240px, 35dvh);
+    min-height: 0;
+    height: max-content;
     max-height: max(min(320px, 50vh), min(var(--altura-minima-tabela, 0px), 60vh), var(--altura-disponivel-tabela, 70vh));
     max-height: max(min(320px, 50dvh), min(var(--altura-minima-tabela, 0px), 60dvh), var(--altura-disponivel-tabela, 70dvh));
 }

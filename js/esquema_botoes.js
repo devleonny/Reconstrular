@@ -158,6 +158,7 @@ const esquemaBotoes = {
         {
             nome: 'Início',
             funcao: 'telaInicial',
+            bloqueio: ['Trabalhador'],
             img: 'home'
         },
         {
@@ -166,6 +167,7 @@ const esquemaBotoes = {
             bloqueio: ['Trabalhador'],
             sub: [
                 { nome: 'Ver Colaboradores', funcao: 'telaColaboradores', img: 'cracha' },
+                { nome: 'Organizador Hierárquico', funcao: 'telaMapaDelegacao', img: 'zona' },
                 { nome: 'Adicionar Parceiro', funcao: 'adicionarColaborador', img: 'baixar' },
                 { nome: 'Baixar em Excel', bloqueio: ['Encarregado de Obra'], funcao: 'excelColaboradores', img: 'planilha' },
                 { nome: 'Baixar em PDF', bloqueio: ['Encarregado de Obra'], funcao: 'gerarTodosPDFs', img: 'pdf' },
@@ -244,6 +246,7 @@ const esquemaBotoes = {
         {
             nome: 'Tarefas',
             img: 'checklist',
+            bloqueio: ['Trabalhador'],
             sub: [
                 { nome: 'Ver Tarefas', funcao: 'telaTarefas', img: 'checklist' },
                 { nome: 'Histórico', funcao: 'historicoTarefas', img: 'relogio' },
@@ -258,6 +261,13 @@ const esquemaBotoes = {
                 { nome: 'Ver Chats', funcao: 'painelChat', img: 'chat' },
                 { nome: 'Enviar Mensagem', funcao: 'balaoMensagem', img: 'carta' }
             ]
+        },
+        {
+            nome: 'E-mails',
+            funcao: 'telaEmails',
+            bloqueio: ['Trabalhador'],
+            img: 'carta'
+            
         },
         {
             nome: 'Desconectar',

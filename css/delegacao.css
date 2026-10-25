@@ -1,0 +1,96 @@
+/* Organizador Hierárquico: paleta suave concentrada aqui. */
+.delegacao-painel,.delegacao-confirmacao,.delegacao-escolher {
+    --dg-fundo:#f5f7f9; --dg-superficie:#fff; --dg-barra:#eaeef2; --dg-coluna:#eef3f7; --dg-coluna-2:#f8fafb;
+    --dg-borda:#e2e7eb; --dg-borda-forte:#d3dbe1; --dg-texto:#3f4d58; --dg-texto-suave:#7b8995;
+    --dg-cabecalho:#64757f; --dg-realce:#edf2f6; --dg-acao:#5b6d7a; --dg-acao-hover:#4b5b67;
+    --dg-ok-fundo:#d9f0e1; --dg-ok-borda:#9fd1b0; --dg-ok-texto:#1f5e37; --dg-ok-hover:#c8e8d3;
+    --dg-vago-fundo:#fbe3df; --dg-vago-borda:#e6aaa1; --dg-vago-texto:#9a3f33; --dg-vago-hover:#f7d3cd;
+    --dg-sombra:0 1px 2px rgba(31,45,61,.05),0 1px 6px rgba(31,45,61,.04);
+    --dg-sombra-hover:0 2px 8px rgba(31,45,61,.09);
+    --dg-raio:8px; --dg-transicao:background-color 150ms ease,border-color 150ms ease,box-shadow 150ms ease,color 150ms ease;
+}
+
+/* Seleção no cadastro de colaborador */
+.delegacao-escolher { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.delegacao-escolher button { background:var(--dg-acao); color:#fff; margin:0; box-shadow:none; transform:none; border-radius:var(--dg-raio); padding:10px 14px; transition:var(--dg-transicao); }
+.delegacao-escolher button:hover { background:var(--dg-acao-hover); }
+.delegacao-selecao { color:inherit; font-size:12px; }
+.delegacao-manual { width:100%; }
+.delegacao-manual > summary { padding:10px 0; cursor:pointer; font-size:12px; }
+.campo-funcoes > [hidden] { display:none !important; }
+
+/* Janela */
+.popup-delegacao .popup-janela-fora { width:96vw; max-width:1500px; }
+.popup-delegacao .janela { width:100%; max-height:80dvh; padding:0; }
+.delegacao-painel { background:var(--dg-fundo); color:var(--dg-texto); min-width:700px; }
+
+/* Barra superior */
+.delegacao-toolbar { position:sticky; top:0; z-index:2; display:flex; align-items:flex-start; align-content:flex-start; flex-wrap:wrap; gap:14px; padding:14px; background:var(--dg-barra); border-bottom:1px solid var(--dg-borda); box-shadow:0 1px 4px rgba(31,45,61,.04); }
+.delegacao-nacional { display:flex; flex-wrap:wrap; gap:8px; align-items:flex-start; align-content:flex-start; }
+.delegacao-toolbar input { flex:1; min-width:220px; padding:10px 12px; border:1px solid var(--dg-borda-forte); border-radius:var(--dg-raio); background:var(--dg-superficie); color:var(--dg-texto); transition:var(--dg-transicao); }
+.delegacao-toolbar input:focus { outline:none; border-color:#9fb2c0; box-shadow:0 0 0 3px rgba(91,109,122,.15); }
+.delegacao-toolbar [data-tipologia][aria-pressed="true"] { background:var(--dg-acao); border-color:var(--dg-acao); color:#fff; }
+
+/* Botões em geral */
+.delegacao-painel button,.delegacao-confirmacao button { font:inherit; margin:0; padding:8px 10px; border:1px solid var(--dg-borda-forte); border-radius:calc(var(--dg-raio) - 2px); box-shadow:none; transform:none; background:var(--dg-superficie); color:#46606f; transition:var(--dg-transicao); cursor:pointer; }
+.delegacao-painel button:hover,.delegacao-confirmacao button:hover { transform:none; background:var(--dg-realce); box-shadow:var(--dg-sombra-hover); }
+.delegacao-painel button:focus-visible,.delegacao-confirmacao button:focus-visible { outline:2px solid #8aa0ae; outline-offset:2px; }
+/* Depois do font:inherit acima: a barra usa o mesmo corpo de texto em todos os botões. */
+.delegacao-painel .delegacao-toolbar button { font-size:13px; }
+.delegacao-painel button:disabled { cursor:default; }
+.delegacao-painel button:disabled:hover { box-shadow:none; }
+.delegacao-instrucao { font-size:12px; margin:0; padding:10px 14px; color:var(--dg-texto-suave); }
+
+/* Tabela */
+.delegacao-tabela table { border-collapse:collapse; width:100%; font-size:12px; table-layout:fixed; }
+.delegacao-tabela th,.delegacao-tabela td { border:1px solid var(--dg-borda); padding:12px; vertical-align:top; text-align:left; }
+.delegacao-tabela thead th { background:var(--dg-cabecalho); color:#fff; font-weight:500; letter-spacing:.02em; border-color:var(--dg-cabecalho); }
+.delegacao-tabela th:first-child { width:170px; }
+.delegacao-tabela thead th:nth-child(2) { width:125px; }
+.delegacao-tabela tbody th { background:var(--dg-coluna-2); font-weight:600; }
+.delegacao-tabela small { display:block; margin-top:6px; font-size:10px; color:var(--dg-texto-suave); font-weight:400; }
+.delegacao-coordenacao { background:var(--dg-coluna); }
+.delegacao-coordenacao button { width:100%; max-width:100%; min-width:0; box-sizing:border-box; white-space:normal; overflow-wrap:anywhere; text-align:left; justify-content:flex-start; font-weight:400; line-height:1.5; }
+.delegacao-coordenacao strong { font-weight:700; }
+
+/* Grupos e cidades */
+.delegacao-grupos { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-start; align-content:flex-start; }
+.delegacao-grupo { flex:1 1 170px; min-width:150px; max-width:280px; background:var(--dg-superficie); border:1px solid var(--dg-borda); border-radius:calc(var(--dg-raio) + 2px); padding:8px; box-shadow:var(--dg-sombra); }
+.delegacao-grupo .delegacao-grupo-titulo { width:100%; font-weight:600; font-size:12px; }
+.delegacao-cidades { display:flex; flex-wrap:wrap; gap:5px; margin-top:10px; align-items:flex-start; align-content:flex-start; }
+.delegacao-cidades button,.delegacao-cidades > span { display:inline-block; font-size:11px; padding:5px 7px; border-radius:calc(var(--dg-raio) - 2px); background:#f3f6f8; color:#4b616f; }
+.delegacao-cidades button { text-align:left; max-width:100%; }
+
+/* Posições e ocupantes */
+.delegacao-posicao { display:inline-flex; flex-direction:column; align-items:flex-start; justify-content:flex-start; align-self:flex-start; vertical-align:top; gap:2px; }
+.delegacao-coordenacao > .delegacao-posicao,.delegacao-grupo > .delegacao-posicao { display:flex; width:100%; }
+.delegacao-painel button[data-posicao] { display:inline-flex; flex-direction:column; align-items:flex-start; justify-content:flex-start; padding:4px 7px; line-height:1.2; }
+.delegacao-painel .delegacao-coordenacao button[data-posicao] { align-items:center; text-align:center; }
+.delegacao-painel .delegacao-ocupantes { display:block; margin:0; padding:0 2px; color:var(--dg-ok-texto); font-size:11px; font-weight:600; line-height:1.3; white-space:nowrap; overflow-wrap:normal; }
+
+/* Estado da posição: ocupada (verde suave) ou vaga (tom quente discreto, borda tracejada) */
+.delegacao-painel button.delegacao-preenchido { border:1px solid var(--dg-ok-borda); background:var(--dg-ok-fundo); color:var(--dg-ok-texto); }
+.delegacao-painel button.delegacao-preenchido:hover { background:var(--dg-ok-hover); }
+.delegacao-painel button.delegacao-vazio { border:1px dashed var(--dg-vago-borda); background:var(--dg-vago-fundo); color:var(--dg-vago-texto); }
+.delegacao-painel button.delegacao-vazio:hover { background:var(--dg-vago-hover); }
+
+/* Busca */
+.delegacao-tabela tbody tr { transition:opacity 150ms ease; }
+.delegacao-sem-destaque { opacity:.3; }
+.delegacao-sem-destaque:focus-within { opacity:1; }
+
+/* Legenda e cores APU / AMU / APR (tons pastel, mantendo verde / laranja / amarelo) */
+.delegacao-legenda { display:flex; flex-wrap:wrap; gap:8px; padding:12px 14px; align-items:flex-start; align-content:flex-start; border-bottom:1px solid var(--dg-borda); background:var(--dg-coluna-2); }
+.delegacao-legenda[hidden] { display:none; }
+.delegacao-legenda-item { padding:6px 10px; border:1px solid transparent; border-radius:calc(var(--dg-raio) - 2px); font-size:12px; }
+.delegacao-legenda small { width:100%; font-size:11px; }
+.delegacao-legenda-item.delegacao-tipo-apu,.delegacao-mostrar-tipos .delegacao-cidades button.delegacao-tipo-apu { background:#c3e0b4; border-color:#9cc987; color:#263a1d; }
+.delegacao-legenda-item.delegacao-tipo-amu,.delegacao-mostrar-tipos .delegacao-cidades button.delegacao-tipo-amu { background:#f9c584; border-color:#eba95a; color:#5c3300; }
+.delegacao-legenda-item.delegacao-tipo-apr,.delegacao-mostrar-tipos .delegacao-cidades button.delegacao-tipo-apr { background:#f3e47a; border-color:#dbc94f; color:#4d4505; }
+
+/* Confirmação ao clicar numa posição */
+.delegacao-confirmacao { padding:20px; color:var(--dg-texto); max-width:650px; text-align:left; }
+.delegacao-confirmacao p { font-size:12px; }
+.delegacao-confirmacao .delegacao-aplicar { margin-top:18px; background:var(--dg-acao); border-color:var(--dg-acao); color:#fff; }
+.delegacao-confirmacao .delegacao-aplicar:hover { background:var(--dg-acao-hover); color:#fff; }
+.delegacao-erro { padding:12px; background:#fbefec; color:#955041; border-radius:var(--dg-raio); }

@@ -384,7 +384,7 @@ async function gerarPdfFolha(idColaborador) {
     } catch (err) {
         console.error(err)
         popup({ mensagem: `Falha ao baixar PDFs: Fale com o suporte.` })
-    }
+    } finally { removerOverlay() }
 }
 
 async function baixarFolha(req = null) {

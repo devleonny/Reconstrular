@@ -25,19 +25,15 @@ function envolvidosTarefa(tarefa) {
     return [...new Set([...(Array.isArray(tarefa.envolvidos) ? tarefa.envolvidos : []), tarefa.criador || tarefa.usuario, tarefa.destinatario].filter(Boolean))]
 }
 
-function acessoGlobalTarefas() { return ['CEO', 'Diretor Programador'].includes(acesso?.funcao) }
+function acessoGlobalTarefas() { return acesso?.funcao === 'Diretor Programador' }
 
 function podeVerTarefa(tarefa) {
-    const { usuario, funcao } = acesso || {}
-    if (!usuario) return false
-    if (tarefaParticular(tarefa)) return (tarefa.criador || tarefa.usuario || tarefa.destinatario) === usuario
-    return acessoGlobalTarefas() || envolvidosTarefa(tarefa).includes(usuario)
+    // A API autoriza cada registro, inclusive quando recuperado diretamente pelo ID.
+    return !!acesso?.usuario && !!tarefa
 }
 
 function podeEditarTarefa(tarefa) {
     if (!podeVerTarefa(tarefa)) return false
-    if (tarefaParticular(tarefa)) return true
-    if (tarefa.destinatario === acesso.usuario) return false
     return (tarefa.criador || tarefa.usuario) === acesso.usuario || acessoGlobalTarefas()
 }
 
@@ -59,13 +55,11 @@ function htmlSeguroTarefa(html) {
 }
 
 async function destinatariosTarefas() {
-    const cargos = cargosSubordinadosTarefa()
     const usuarios = new Set([acesso.usuario])
-    if (!cargos.length || acesso.funcao === 'CEO') return usuarios
     let pagina = 1, paginas = 1
     do {
         const resposta = await pesquisarDB({ base: 'dados_colaboradores', pagina, limite: 100,
-            filtros: { funcao: { modo: 'OR', regras: cargos.map(value => ({ op: '=', value })) } } })
+            filtros: {} })
         for (const pessoa of resposta?.resultados || []) if (pessoa.usuario) usuarios.add(pessoa.usuario)
         paginas = resposta?.paginas || 1
         pagina++
@@ -73,29 +67,31 @@ async function destinatariosTarefas() {
     return usuarios
 }
 
+function filtrosListagemTarefas(historico = false) {
+    return { estado: { op: historico ? '=' : '!=', value: 'Concluído' } }
+}
+
+let contadorTarefasConsulta = 0
+async function atualizarContadorTarefas() {
+    const contador = document.getElementById('contadorTarefas')
+    if (!contador || !acesso?.usuario) return
+    const consulta = ++contadorTarefasConsulta, usuario = acesso.usuario
+    try {
+        const resposta = await pesquisarDB({base:'tarefas', pagina:1, limite:1, filtros:filtrosListagemTarefas()})
+        if (consulta !== contadorTarefasConsulta || usuario !== acesso?.usuario || !contador.isConnected) return
+        const total = Number(resposta?.total)
+        if (!Number.isFinite(total) || total < 0) throw new Error('Contagem inválida.')
+        contador.textContent = String(total)
+        contador.hidden = total === 0
+        contador.parentElement.setAttribute('aria-label', `${total} tarefas pendentes. Abrir tarefas`)
+        contador.parentElement.title = `${total} tarefas pendentes`
+    } catch (erro) { console.warn('Não foi possível atualizar o contador de tarefas:', erro.message) }
+}
+
 async function telaTarefas(historico = false) {
     try {
         overlayAguarde()
-        const usuario = acesso.usuario
-        const publicas = { modo: 'AND', regras: [
-            { path: 'particular', op: '!=', value: true },
-            ...(acessoGlobalTarefas() ? [] : [{ modo: 'OR', regras: [
-                { path: 'envolvidos', op: 'includes', value: usuario },
-                { path: 'criador', op: '=', value: usuario },
-                { path: 'usuario', op: '=', value: usuario },
-                { path: 'destinatario', op: '=', value: usuario }
-            ] }])
-        ] }
-        const filtros = { estado: { op: historico ? '=' : '!=', value: 'Concluído' }, modo: 'AND', regras: [
-            { path: 'estado', op: historico ? '=' : '!=', value: 'Concluído' },
-            { modo: 'OR', regras: [publicas, { modo: 'AND', regras: [
-                { path: 'particular', op: '=', value: true },
-                { modo: 'OR', regras: [
-                    { path: 'criador', op: '=', value: usuario },
-                    { path: 'usuario', op: '=', value: usuario }
-                ] }
-            ] }] }
-        ] }
+        const filtros = filtrosListagemTarefas(historico)
         const pag = historico ? 'tarefas_historico' : 'tarefas'
         const tabela = await modTab({
             btnExtras: '<button type="button" onclick="gerenciarTarefa()">Adicionar tarefa</button>',
@@ -115,7 +111,9 @@ async function telaTarefas(historico = false) {
         })
         titulo.textContent = historico ? 'Histórico de tarefas' : 'Tarefas'
         tela.innerHTML = tabela
+        tela.querySelector('table').classList.add('tarefas-listagem')
         await paginacao(pag)
+        await atualizarContadorTarefas()
     } catch (erro) {
         console.error(erro)
         popup({ mensagem: 'Não foi possível carregar as tarefas.' })
@@ -131,8 +129,12 @@ function opcoesTarefa(opcoes, selecionada) {
 function prazoTarefa(dataFim, estado, hoje = new Date()) {
     if (estado === 'Concluído') return { texto: 'Concluído', classe: 'concluido' }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dataFim || '')) return { texto: 'Sem prazo', classe: 'sem-prazo' }
-    const dataHoje = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
-    return dataFim < dataHoje ? { texto: 'Atrasado', classe: 'atrasado' } : { texto: 'No prazo', classe: 'no-prazo' }
+    const partesHoje = Object.fromEntries(new Intl.DateTimeFormat('en-US', {timeZone:'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit'}).formatToParts(hoje).map(parte => [parte.type, parte.value]))
+    const dataHoje = `${partesHoje.year}-${partesHoje.month}-${partesHoje.day}`
+    const fim = Date.parse(`${dataFim}T00:00:00Z`)
+    if (!Number.isFinite(fim) || new Date(fim).toISOString().slice(0,10) !== dataFim) return { texto:'Sem prazo', classe:'sem-prazo' }
+    const dias = Math.max(0, Math.round((Date.parse(`${dataHoje}T00:00:00Z`) - fim) / 86400000))
+    return dias ? { texto: `${dias} ${dias === 1 ? 'dia' : 'dias'} em atraso`, classe: 'atrasado', dias } : { texto: 'No prazo', classe: 'no-prazo', dias:0 }
 }
 
 function criarLinhaTarefa(dados) {

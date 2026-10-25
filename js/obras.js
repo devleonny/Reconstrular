@@ -126,44 +126,28 @@ function criarLinhaObras(obra) {
 }
 
 async function mostrarMateriaisOrcamento(id_obra, tipo) {
-
+    const categorias = { materiais:'Materiais', ferramentas:'Ferramentas', mao_obra:'Mão de obra' }
+    if (!categorias[tipo]) return
     overlayAguarde()
+    try {
+        const itens = await carregarItensExecucoes(id_obra)
+        const linhas = listarComponentesObra(itens, tipo)
+        const total = linhas.reduce((soma, item) => soma + item.total, 0)
+        const html = `<div class="obra-itens-orcamento"><div class="obra-itens-resumo"><span>${linhas.length} itens · Quantidades do orçamento</span><strong>Custo total: ${dinheiro(total)}</strong></div><div class="obra-itens-recorte"><table class="tabela"><thead><tr><th>Ambiente</th><th>Zona</th><th>Serviço</th><th>Item</th><th>Quantidade total</th><th>Custo unitário</th><th>Custo total</th></tr></thead><tbody>${linhas.map(item => `<tr><td>${escaparAtributo(item.ambiente)}</td><td>${escaparAtributo(item.zona)}</td><td>${escaparAtributo(item.servico)}</td><td>${escaparAtributo(item.descricao)}</td><td>${item.quantidade.toLocaleString('pt-BR', {maximumFractionDigits:6})}</td><td>${dinheiro(item.preco)}</td><td>${item.total === 0 ? `<span class="obra-total-zerado" title="Valor total zerado">${dinheiro(item.total)}</span>` : dinheiro(item.total)}</td></tr>`).join('') || '<tr><td colspan="7">Nenhum item desta categoria registrado no orçamento.</td></tr>'}</tbody></table></div></div>`
+        const idPopup = popup({titulo:`${categorias[tipo]} do orçamento`, elemento:html})
+        document.getElementById(idPopup).classList.add('popup-itens-obra')
+    } catch (erro) {
+        console.error(erro)
+        popup({mensagem:'Não foi possível carregar os itens do orçamento. Tente novamente.'})
+    } finally { removerOverlay() }
+}
 
-    const orcamentos_vinculados = [id_obra]
-
-    const pag = 'popup_materiais'
-
-    const tabela = await modTab({
-        pag,
-        base: 'vw_materiais_orcamentos',
-        body: pag,
-        criarLinha: 'criarLinhaMateriais',
-        colunas: {
-            'Orçamento': { chave: 'contrato' },
-            'Ambiente': { chave: 'ambiente' },
-            'Zona': { chave: 'zona' },
-            'Tipo': { chave: 'tipo' },
-            'Descrição': { chave: 'descricao' },
-            'Quantidade': {},
-            'Preço': {},
-            'Total': {}
-        },
-        filtros: {
-            'tipo': { op: '=', value: tipo },
-            'id_orcamento': {
-                modo: 'OR',
-                regras: (orcamentos_vinculados || []).map(o => ({ op: '=', value: o }))
-            }
-        }
-    })
-
-    popup({
-        titulo: 'Detalhamento de Itens Orçamentados',
-        elemento: `<div style="padding: 0.5rem;">${tabela}</div>`
-    })
-
-    await paginacao(pag)
-
+function listarComponentesObra(servicos, tipo) {
+    return servicos.flatMap(servico => Object.values(servico[tipo] || {}).filter(item => item && typeof item === 'object').map(item => {
+        const quantidade = (Number(item.qtde) || 0) * (Number(servico.quantidade) || 0)
+        const preco = Number(item.preco) || 0
+        return {ambiente:servico.nome_ambiente || '', zona:servico.nome_zona || '', servico:servico.descricao || '', descricao:item.descricao || item.nome || item.id || 'Item sem descrição', quantidade, preco, total:quantidade * preco}
+    }))
 }
 
 function criarLinhaMateriais(mat) {
@@ -900,7 +884,6 @@ async function historicoObras(ordem) {
                 'ordem_obra': { op: '=', value: ordem }
             },
             colunas: {
-                'Nome Colaborador': { chave: 'nome_colaborador' },
                 'Alterações': {},
                 'Tabela': {},
                 'Data': { chave: 'data', tipoPesquisa: 'data' },
@@ -909,9 +892,10 @@ async function historicoObras(ordem) {
             criarLinha: 'linhaHisObras'
         })
 
-        popup({
+        const idPopup = popup({
             elemento: `<div style="padding: 0.5rem;">${tabela}</div>`
         })
+        document.getElementById(idPopup).classList.add('popup-historico')
 
         await paginacao(pag)
 
@@ -928,32 +912,23 @@ function linhaHisObras(his) {
     const {
         data,
         usuario,
-        caminho,
-        nome_colaborador,
-        alteracoes
+        nome_colaborador
     } = his || {}
 
-    const [tabela] = caminho.split('/')
-
-    const labelAlteracoes = (alteracoes || [])
-        .map(({ mensagem }) => {
-            return `<span class="tag-alteracao">${mensagem}</span>`
-        })
-        .join('')
-
-    const labelNomeColaborador = nome_colaborador
-        ? `<span class="tag-alteracao">${nome_colaborador}</span>`
-        : ''
+    // Alterações em colaboradores (ex.: acesso a esta obra) mostram de quem se trata.
+    const entidade = escaparAtributo(nomeEntidadeHistorico(his, 'dados_orcamentos'))
+    const labelEntidade = nome_colaborador
+        ? `${entidade} · <span class="historico-pessoa">${escaparAtributo(nome_colaborador)}</span>`
+        : entidade
 
     return `
         <tr>
-            <td>${labelNomeColaborador}</td>
             <td>
-                <div class="janela-alteracoes">${labelAlteracoes || 'Sem informações'}</div>
+                <div class="janela-alteracoes">${linhasAlteracoesHistorico(his, 'dados_orcamentos')}</div>
             </td>
-            <td>${inicialMaiuscula(tabela)}</td>
-            <td>${data}</td>
-            <td>${usuario}</td>
+            <td>${labelEntidade}</td>
+            <td>${escaparAtributo(data)}</td>
+            <td>${escaparAtributo(usuario)}</td>
         </tr>
     `
 

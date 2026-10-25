@@ -93,4 +93,29 @@
 .tarefa-detalhes-resumo section { padding: 14px; border: 1px solid #dce1e6; border-radius: 8px; background: #fff; min-width: 0; }
 .tarefa-detalhes-resumo h3 { margin: 0 0 10px; font-size: 12px; color: #4c5965; }
 .tarefa-nota-conteudo { overflow-wrap: anywhere; }
+.tarefa-nota-conteudo > strong:first-child { display: block; margin-bottom: 6px; }
+.tarefa-nota-conteudo + .tarefa-nota-conteudo { margin-top: 12px; }
 .tarefa-detalhes-resumo .foto-status { width: 120px; height: 90px; object-fit: cover; border-radius: 6px; cursor: pointer; }
+.tarefas-listagem { table-layout: fixed; width: 100%; }
+.tarefas-listagem > thead > tr > th,.tarefas-listagem > tbody > tr:not(.tabela-linha-detalhes) > td { padding: 6px 4px; overflow-wrap: anywhere; }
+.tarefas-listagem > thead > tr > th > div { gap: 3px !important; }
+.tarefas-listagem > thead > tr > th:nth-child(1) { width: 3%; }
+.tarefas-listagem > thead > tr > th:nth-child(2) { width: 17%; }
+.tarefas-listagem > thead > tr > th:nth-child(3) { width: 11%; }
+.tarefas-listagem > thead > tr > th:nth-child(4) { width: 20%; }
+.tarefas-listagem > thead > tr > th:nth-child(5) { width: 8%; }
+.tarefas-listagem > thead > tr > th:nth-child(6) { width: 10%; }
+.tarefas-listagem > thead > tr > th:nth-child(7) { width: 10%; }
+.tarefas-listagem > thead > tr > th:nth-child(8),.tarefas-listagem > thead > tr > th:nth-child(9) { width: 8%; }
+.tarefas-listagem > thead > tr > th:nth-child(10) { width: 5%; }
+.tarefas-listagem .tarefa-texto { min-width: 0; max-width: none; }
+.tarefas-listagem .tarefa-dropdown { min-width: 0; width: 100%; max-width: 100%; padding: 6px 3px; font-size: 10px; text-overflow: ellipsis; }
+.tarefas-listagem .tarefa-prazo { white-space: normal; padding: 4px 5px; font-size: 10px; }
+.tarefas-listagem .tarefa-nota { padding: 6px 4px; font-size: 10px; }
+.tarefas-listagem > thead > .tabela-linha-pesquisa input { min-width: 0; width: 100%; max-width: 100%; box-sizing: border-box; padding: 3px 1px; font-size: 10px; }
+.tarefas-listagem > thead .tabela-pesquisa-datas { min-width: 0; }
+.cabecalho-usuario .tarefas-contador-controle { display: inline-flex; align-items: center; gap: 5px; padding: 5px; margin: 0; border: 0; border-radius: 5px; background: transparent; color: inherit; box-shadow: none; transform: none; }
+.cabecalho-usuario .tarefas-contador-controle:hover { background: #ffffff18; box-shadow: none; transform: none; }
+.tarefas-contador-controle svg { width: 24px; height: 24px; color: #fff; }
+.tarefas-contador-controle img { width: 26px; height: 26px; object-fit: contain; display: block; }
+.tarefas-contador-controle [hidden] { display: none; }

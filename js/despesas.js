@@ -561,12 +561,14 @@ async function criarLinhaFornecedores(dados) {
 
 }
 
-async function adicionarFornecedor(idFornecedor = crypto.randomUUID()) {
+async function adicionarFornecedor(idFornecedor) {
 
   try {
 
     overlayAguarde()
 
+    const dadosFornecedor = idFornecedor ? await recuperarDado('fornecedores', idFornecedor) : {}
+    idFornecedor ||= crypto.randomUUID()
     const {
       nome,
       telefone,
@@ -574,7 +576,7 @@ async function adicionarFornecedor(idFornecedor = crypto.randomUUID()) {
       email,
       morada_fiscal,
       numero_contribuinte
-    } = await recuperarDado('fornecedores', idFornecedor) || {}
+    } = dadosFornecedor || {}
 
     const { nome: nomeCidade } = await recuperarDado('cidades', cidade) || {}
 
@@ -661,7 +663,9 @@ async function salvarFornecedor(id) {
       cidade: obVal('cidade')
     }
 
-    await enviar(`fornecedores/${id}`, fornecedor)
+    // Se o servidor recusar, enviar() já mostra o motivo e o formulário continua aberto.
+    if (!await enviar(`fornecedores/${id}`, fornecedor))
+      return
 
     removerTodosPopups()
 
@@ -814,10 +818,8 @@ async function excluirGenerico(id) {
 
 async function confirmarBaixarExcel() {
 
-  controles.filtros
-
   popup({
-    mensagem: 'Verifique os filtros antes de baixar o Excel, <br>do contrário será baixadado todos os <b>meses</b> e <b>anos</b> no arquivo, <br>continuar?',
+    mensagem: 'O Excel incluirá todos os registros permitidos pela sua hierarquia que correspondem aos filtros atuais, em todas as páginas. Continuar?',
     botoes: [
       {
         texto: 'Baixar',
@@ -835,8 +837,6 @@ async function baixarExcelDespesas() {
 
   try {
 
-    const ano = controles?.despesas?.filtros?.['snapshots.ano']?.value
-    const mes = controles?.despesas?.filtros?.['snapshots.mes']?.value
     const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
 
     const response = await fetch(`${api}/exportar-despesas`, {
@@ -846,7 +846,7 @@ async function baixarExcelDespesas() {
         'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ mes, ano })
+      body: JSON.stringify({ filtros: controles.despesas?.filtros || {}, ordenar: controles.despesas?.ordenar || null })
     })
 
     if (!response.ok) {
@@ -880,9 +880,8 @@ async function baixarExcelDespesas() {
   } catch (error) {
 
     console.error(error)
-    popup({ mensagem: `Falha ao gerar o Excel: ${error}` })
+    popup({ mensagem: escaparAtributo(`Falha ao gerar o Excel: ${error.message}`) })
 
-  }
-
+  } finally { removerOverlay() }
 
 }

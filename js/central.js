@@ -156,7 +156,8 @@ async function acessoLogin() {
             divAcesso.style.display = 'flex'
 
         } catch (err) {
-            popup({ mensagem: err.message || 'Falha no acesso' })
+            divAcesso.style.display = 'flex'
+            popup({ mensagem: err.mensagem || err.message || 'Falha no acesso' })
         }
 
     }
@@ -473,45 +474,8 @@ async function tirarFoto() {
 
 }
 
-async function validarUsuario() {
-
-    const usuario = obVal('usuario')
-
-    const statusUsuario = document.getElementById('status_usuario')
-
-    if (!statusUsuario)
-        return
-
-    let pesquisa = null
-
-    if (usuario.length > 5) {
-
-        pesquisa = await pesquisarDB({
-            base: 'dados_colaboradores',
-            filtros: {
-                usuario: { op: '=', value: usuario }
-            }
-        })
-
-    }
-
-    const modelo = (texto, img) => `
-        <div style="${horizontal}; gap: 0.5rem;">
-            <img src="imagens/${img}.png" style="width: 1.5rem;">
-            <span>${texto}</span>
-        </div>
-        `
-
-    // Validador;
-    statusUsuario.dataset.valido = (!pesquisa || pesquisa.resultados.length)
-        ? 'N'
-        : 'S'
-
-    statusUsuario.innerHTML = (!pesquisa || pesquisa.resultados.length)
-        ? modelo('Não disponível', 'cancel')
-        : modelo('Usuário válido', 'concluido')
-
-}
+// Mesma regra de SCRIPTS/salvar_registro.js (servidor) e dos destinatários do e-mail.
+const emailValido = valor => /^[^\s<>@,;"']+@[^\s<>@,;"']+\.[^\s<>@,;"']+$/.test(String(valor ?? '').trim())
 
 async function verificarRegras() {
 
@@ -668,16 +632,20 @@ async function verificarRegras() {
             rodapeAlerta.innerHTML = mensagem('concluido', 'Pins iguais')
         }
 
-    } else if (funcao) {
+    } else if (inpUsuario) {
+        // O usuário é gerado pelo servidor ao salvar: não é campo obrigatório.
+        inv(inpUsuario, true)
+    }
 
-        if (inpUsuario.value) {
-            inv(inpUsuario, true)
+    // Senha é opcional na edição, mas se preenchida segue o mínimo do servidor (validarNovaSenha).
+    const senha = input('senha')
+    if (senha && !trabalhador) {
+        if (senha.value && senha.value.length < 8) {
+            inv(senha)
+            campos.push('senha (mínimo de 8 caracteres)')
         } else {
-            campos.push('Usuário')
-            inv(inpUsuario)
+            inv(senha, true)
         }
-
-        await validarUsuario()
     }
 
     for (let [name, regra] of Object.entries(limites)) {
@@ -750,6 +718,18 @@ async function verificarRegras() {
         }
     }
 
+    // E-mail: um único endereço completo (nome@dominio.ext); o servidor repete a regra.
+    const email = input('email')
+    if (email && email.value) {
+        email.value = email.value.trim()
+        if (emailValido(email.value)) {
+            inv(email, true)
+        } else {
+            inv(email)
+            campos.push('e-mail inválido (use nome@dominio.pt)')
+        }
+    }
+
     const numero_documento = input('numero_documento')
 
     if (numero_documento) {
@@ -800,6 +780,12 @@ async function verificarRegras() {
 
         if (!el)
             continue
+
+        // No cadastro de colaborador, a foto (reconhecimento do ponto) só é exigida do Trabalhador.
+        if (c === 'foto' && el.closest('.colaborador-foto') && funcao !== 'Trabalhador') {
+            inv(el.closest('.colaborador-foto'), true)
+            continue
+        }
 
         let temValor
         const tipo = el.tagName
@@ -1078,6 +1064,7 @@ async function importarAnexos({ input, foto }) {
     try {
         const response = await fetch(`${api}/upload`, {
             method: 'POST',
+            headers: { Authorization: `Bearer ${acesso?.token}` },
             body: formData
         });
         return await response.json();
@@ -1271,7 +1258,8 @@ async function recAC(identificador) {
             body: JSON.stringify({ identificador, servidor })
         })
 
-        if (!response.ok) {
+        // 429 (limite de solicitações) traz { mensagem } para exibir.
+        if (!response.ok && response.status !== 429) {
             console.error(`Falha ao deletar: ${response.status} ${response.statusText}`)
             const erroServidor = await response.text()
             console.error(`Resposta do servidor:`, erroServidor)
@@ -1342,7 +1330,8 @@ async function pdfEmail({ html, emails, htmlContent = 'Documento em anexo', titu
         const response = await fetch(`${api}/pdf-email`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${acesso?.token}`
             },
             body: JSON.stringify({ html, emails, htmlContent, titulo })
         })
@@ -1396,7 +1385,7 @@ async function pdf({ id, html = null, estilos = [], nome = 'documento' }) {
 
         const response = await fetch(`${api}/pdf`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${acesso?.token}` },
             body: JSON.stringify({ html: htmlFinal })
         })
 

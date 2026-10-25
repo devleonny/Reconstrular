@@ -455,19 +455,23 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
             ).flat()
         )
 
+        // A rota genérica bloqueia os campos de gestão da obra e os preserva
+        // sob lock no servidor. Não reenviá-los ao editar zonas e serviços.
+        const dadosEditaveis = Object.fromEntries(Object.entries(orcamento)
+            .filter(([chave]) => !['em_obra', 'colaboradores', 'dt_inicio'].includes(chave)))
         const orcamentoAtualizado = {
-            ...orcamento,
+            ...dadosEditaveis,
             cliente,
-            finalizado: 'N',
             data_visita: obVal('data_visita'),
             data_contato: obVal('data_contato'),
             campos
         }
 
-        await enviar(
+        const respostaSalvamento = await enviar(
             `dados_orcamentos/${idOrcamento}`,
             orcamentoAtualizado
         )
+        if (!respostaSalvamento || respostaSalvamento.erro || respostaSalvamento.success === false) throw new Error('O servidor não confirmou o salvamento do orçamento.')
 
         removerPopup()
 
@@ -482,79 +486,80 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
     }
 }
 
+async function carregarItensExecucoes(idOrcamento) {
+    // A view pode omitir os novos campos de margem; recupera-os do registro salvo.
+    const [view, registro] = await Promise.all([
+        recuperarDado('vw_dados_orcamentos', idOrcamento),
+        recuperarDado('dados_orcamentos', idOrcamento).catch(() => null)
+    ])
+    if (!view || view.campos == null) throw new Error('Não foi possível recuperar os serviços do orçamento.')
+    return Object.entries(view.campos).map(([id, item]) => {
+        const salvo = registro?.campos?.[item.id || id]
+        const resultado = { ...item, id: item.id || id }
+        for (const chave of ['unitario_original','margens_aplicadas','totais_categorias']) {
+            if (resultado[chave] == null && salvo?.[chave] != null) resultado[chave] = salvo[chave]
+        }
+        if (salvo?.margens_aplicadas && Number.isFinite(Number(salvo.unitario)) && salvo.unitario != null) resultado.unitario = Number(salvo.unitario)
+        return resultado
+    })
+}
+
 async function execucoes(idOrcamento) {
     try {
         overlayAguarde()
 
-        const { campos } = await recuperarDado('vw_dados_orcamentos', idOrcamento) || {}
-
-        const base = Object.values(campos)
+        const base = await carregarItensExecucoes(idOrcamento)
 
         const opcoesZonas = [...new Set(base.map(i => i.nome_zona))]
             .filter(Boolean)
             .sort((a, b) => a.localeCompare(b))
-            .map(zona => `<option>${zona}</option>`)
+            .map(zona => `<option value="${escaparAtributo(zona)}">${escaparAtributo(zona)}</option>`)
             .join('')
 
-        const tabela = await modTab({
-            btnExtras: `
+        controles.execucoes = { idOrcamento, base, atualizacaoManual: true, pagina: 1, limite: 25, filtros: {}, ordenar: {path:'timestamp', direcao:'desc'} }
+        const colunas = [['Editar',''],['Ambiente','nome_ambiente'],['Descrição do Serviço','descricao'],['Descrição Extra (facultativo)','descricaoExtra'],['Unidade de Medida','medida'],['Quantidade','quantidade'],['Valor Unit','unitario'],['Valor Total','total']]
+        const tabela = `<div class="topo-tabela"><div class="execucoes-paginacao"></div>
                 <div class="seletor-zona">
-                    <span>Zona atual</span>
-                    <select onchange="filtrarPorZona(this.value)">
-                        <option>Todas</option>
+                    <select aria-label="Filtrar serviços por zona" onchange="filtrarPorZona(this.value)">
+                        <option value="">Todas as zonas</option>
                         ${opcoesZonas}
                     </select>
                 </div>
-                `,
-            idOrcamento,
-            ordenar: {
-                path: 'timestamp',
-                direcao: 'desc',
-            },
-            colunas: {
-                'Editar': {},
-                'Ambiente': { chave: 'nome_ambiente' },
-                'Descrição do Serviço': { chave: 'descricao' },
-                'Descrição Extra <br>(facultativo)': {
-                    chave: 'descricaoExtra'
-                },
-                'Unidade de <br> Medida': { chave: 'medida' },
-                'Quantidade': {},
-                'Valor Unit': {},
-                'Valor Total': {}
-            },
-            pag: 'execucoes',
-            body: 'execucoes',
-            base,
-            criarLinha: 'criarLinhaExecucoes'
-        })
+                </div><div class="div-tabela execucoes-recorte"><table class="tabela"><thead><tr>${colunas.map(([nome,chave]) => `<th ${chave ? 'aria-sort="none"' : ''}>${chave ? `<button type="button" class="execucoes-ordenar" data-ordem-local="${chave}" onclick="ordenarExecucoesLocal('${chave}')">${nome}<span></span></button>` : nome}</th>`).join('')}</tr><tr class="tabela-linha-pesquisa">${colunas.map(([nome,chave]) => `<th>${chave ? `<input type="search" aria-label="Filtrar ${nome}" placeholder="Pesquisar…" oninput="filtrarExecucoesLocal('${chave}', this.value)">` : ''}</th>`).join('')}</tr></thead><tbody id="execucoes-local"></tbody></table></div>`
 
         tela.innerHTML = `
             <div class="execucoes">
-                <div style="width: max-content;">${tabela}</div>
+                <div class="execucoes-tabela">${tabela}</div>
 
-                <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
-                    <button onclick="editarDimensoes()">
-                        <img src="imagens/baixar.png">
+                <div class="execucoes-resumo" aria-live="polite"></div>
+                <div class="execucoes-rodape">
+                    <button type="button" onclick="editarDimensoes()">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                         Adicionar Linha
                     </button>
 
                     <div id="botaoFinalizacao">
-                        <button onclick="orcamentoFinal('${idOrcamento}')">
+                        <button type="button" onclick="orcamentoFinal('${idOrcamento}')">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8ZM14 3v5h5M8 12h8M8 16h6"/></svg>
                             Ver Orçamento
-                            <img src="imagens/orcamentos.png">
                         </button>
                     </div>
 
-                    <button onclick="alterarFinalizacao('${idOrcamento}', 'S')">
-                        Concluir Orçamento
-                        <img src="imagens/concluido.png">
+                    <button type="button" class="execucoes-editar-orcamento" onclick="formularioOrcamento('${idOrcamento}')">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6ZM13 6l5 5"/></svg>
+                        Editar orçamento
                     </button>
                 </div>
             </div>
         `
 
-        await paginacao('execucoes')
+        renderExecucoesLocal()
+        const root = document.querySelector('.execucoes')
+        const observador = new MutationObserver(() => {
+            if (!root.isConnected) { observador.disconnect(); return }
+            if (controles.execucoes?.pendente && !document.querySelector('.popup [name="servico"]')) atualizarExecucoesMemoria()
+        })
+        observador.observe(document.body, {childList:true})
 
     } catch (err) {
         console.error(err)
@@ -566,25 +571,95 @@ async function execucoes(idOrcamento) {
     }
 }
 
+function consultarExecucoesLocal(estado) {
+    const normalizar = valor => String(valor ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    const valor = (item, chave) => chave === 'total' ? (Number(item.unitario) || 0) * (Number(item.quantidade) || 0) : item[chave]
+    const numericas = ['quantidade','unitario','total','timestamp']
+    return estado.base.filter(item => Object.entries(estado.filtros).every(([chave, termo]) => !termo || (chave === 'nome_zona' ? normalizar(item[chave]) === normalizar(termo) : normalizar(valor(item,chave)).includes(normalizar(termo)))))
+        .sort((a,b) => {
+            const chave = estado.ordenar.path
+            const ordem = numericas.includes(chave) ? (Number(valor(a,chave)) || 0) - (Number(valor(b,chave)) || 0) : String(valor(a,chave) ?? '').localeCompare(String(valor(b,chave) ?? ''), 'pt-BR', {numeric:true})
+            return (estado.ordenar.direcao === 'desc' ? -ordem : ordem) || String(a.id).localeCompare(String(b.id))
+        })
+}
+
+function renderExecucoesLocal() {
+    const body = document.getElementById('execucoes-local'), estado = controles.execucoes
+    if (!body || !estado) return
+    const itens = consultarExecucoesLocal(estado)
+    body.innerHTML = itens.map(criarLinhaExecucoes).join('') || '<tr><td colspan="8" class="execucoes-vazio">Nenhum serviço encontrado.</td></tr>'
+    document.querySelector('.execucoes-paginacao').textContent = `${itens.length} itens`
+    document.querySelectorAll('[data-ordem-local]').forEach(botao => {
+        const ativa = botao.dataset.ordemLocal === estado.ordenar.path
+        botao.closest('th').setAttribute('aria-sort', ativa ? estado.ordenar.direcao === 'asc' ? 'ascending' : 'descending' : 'none')
+        botao.querySelector('span').textContent = ativa ? estado.ordenar.direcao === 'asc' ? '↑' : '↓' : ''
+    })
+    const select = document.querySelector('.execucoes .seletor-zona select')
+    const zonas = [...new Set(estado.base.map(item => item.nome_zona).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'))
+    select.innerHTML = '<option value="">Todas as zonas</option>' + zonas.map(zona=>`<option value="${escaparAtributo(zona)}">${escaparAtributo(zona)}</option>`).join('')
+    if (estado.filtros.nome_zona && !zonas.includes(estado.filtros.nome_zona)) { delete estado.filtros.nome_zona; estado.pagina = 1; renderExecucoesLocal(); return }
+    select.value = estado.filtros.nome_zona || ''
+    atualizarResumoExecucoes()
+}
+
+function filtrarExecucoesLocal(chave, valor) { controles.execucoes.filtros[chave] = valor.trim(); controles.execucoes.pagina = 1; renderExecucoesLocal() }
+function ordenarExecucoesLocal(chave) { const estado = controles.execucoes; estado.ordenar = {path:chave, direcao:estado.ordenar.path === chave && estado.ordenar.direcao === 'asc' ? 'desc' : 'asc'}; renderExecucoesLocal() }
+
+async function atualizarExecucoesMemoria() {
+    const estado = controles.execucoes
+    if (!document.getElementById('execucoes-local') || !estado) return
+    if (document.querySelector('.popup [name="servico"]')) { estado.pendente = true; return }
+    if (estado.sincronizando) { estado.pendente = true; return }
+    estado.pendente = false; estado.sincronizando = true
+    try {
+        const itens = await carregarItensExecucoes(estado.idOrcamento)
+        if (controles.execucoes !== estado || !document.getElementById('execucoes-local')) return
+        if (document.querySelector('.popup [name="servico"]')) { estado.pendente = true; return }
+        estado.base = itens
+        renderExecucoesLocal()
+    } catch (erro) { console.warn('Falha ao sincronizar ambientes:', erro.message) }
+    finally { estado.sincronizando = false; if (estado.pendente && !document.querySelector('.popup [name="servico"]') && controles.execucoes === estado) { estado.pendente = false; atualizarExecucoesMemoria() } }
+}
+
+function calcularResumoExecucoes(itens) {
+    let original = 0, total = 0, semOriginal = 0
+    for (const item of itens) {
+        const quantidade = Number(item.quantidade) || 0
+        total += (Number(item.unitario) || 0) * quantidade
+        let valorOriginal = item.unitario_original
+        if (valorOriginal == null && item.totais_categorias) {
+            const categorias = Object.keys(categoriasMargemOrcamento).map(tipo => item.totais_categorias[tipo])
+            if (categorias.every(c => c && Number.isFinite(Number(c.subtotal)) && Number.isFinite(Number(c.max)))) {
+                valorOriginal = categorias.reduce((soma,c) => soma + Number(c.subtotal) * (1 + Number(c.max)/100), 0)
+            }
+        }
+        // Itens anteriores ao controle de margens não têm ajuste registrado.
+        if (valorOriginal == null && !item.margens_aplicadas) valorOriginal = item.unitario
+        if (quantidade && (valorOriginal == null || valorOriginal === '' || !Number.isFinite(Number(valorOriginal)))) semOriginal++
+        else original += (Number(valorOriginal) || 0) * quantidade
+    }
+    const diferenca = total - original
+    return { itens: itens.length, original, total, semOriginal, diferenca, percentual: original ? diferenca / original * 100 : 0 }
+}
+
+function atualizarResumoExecucoes() {
+    const local = document.querySelector('.execucoes-resumo')
+    if (!local) return
+    const resumo = calcularResumoExecucoes(controles.execucoes?.base || [])
+    const comparavel = resumo.semOriginal === 0
+    local.innerHTML = `<div class="execucoes-resumo-titulo">Resumo do orçamento</div><div><small>Total de itens</small><strong>${resumo.itens}</strong></div><div><small>Valor original</small><span>${comparavel ? dinheiro(resumo.original) : '—'}</span></div><div><small>Diferença</small><span>${comparavel ? `${resumo.diferenca > 0 ? '+' : ''}${dinheiro(resumo.diferenca)} (${resumo.percentual > 0 ? '+' : ''}${resumo.percentual.toLocaleString('pt-BR', {maximumFractionDigits:2})}%)` : 'Sem histórico original'}</span></div><div class="execucoes-resumo-total"><small>Total geral</small><strong>${dinheiro(resumo.total)}</strong></div>${!comparavel ? `<small class="execucoes-resumo-aviso">${resumo.semOriginal} item(ns) sem valor original registrado para comparar diferenças.</small>` : ''}`
+}
+
 async function filtrarPorZona(zona) {
 
     controles.execucoes.filtros ??= {}
-    controles.execucoes.filtros.nome_zona = { op: '=', value: zona }
-    if (zona == 'Todas')
+    controles.execucoes.pagina = 1
+    controles.execucoes.filtros.nome_zona = zona
+    if (!zona)
         delete controles.execucoes.filtros.nome_zona
 
-    await paginacao('execucoes')
+    renderExecucoesLocal()
 
-}
-
-async function alterarFinalizacao(id, status) {
-    overlayAguarde()
-
-    await enviar(`dados_orcamentos/${id}/finalizado`, status)
-
-    await orcamentos()
-
-    removerOverlay()
 }
 
 function criarLinhaExecucoes(dados) {
@@ -602,8 +677,8 @@ function criarLinhaExecucoes(dados) {
     const total = (quantidade || 0) * unitario
 
     const tds = `
-        <td>
-            <div style="${horizontal}"><img onclick="editarDimensoes('${id}')" src="imagens/lapis.png"></div>
+        <td class="orcamento-celula-editar">
+            <button type="button" class="orcamento-editar-servico" onclick="editarDimensoes('${id}')" title="Editar serviço" aria-label="Editar serviço"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6ZM13 6l5 5M3 21l5-1-4-4"/></svg></button>
         </td>
 
         <td>
@@ -622,13 +697,76 @@ function criarLinhaExecucoes(dados) {
 
         <td style="white-space: nowrap;" name="quantidade">${quantidade || 0}</td>
         <td style="white-space: nowrap;" name="unitario">${dinheiro(unitario)}</td>
-        <td style="white-space: nowrap;" name="total">${dinheiro(total)}</td>
+        <td style="white-space: nowrap;" name="total">${total === 0 ? `<span class="orcamento-total-zerado" title="Valor total zerado">${dinheiro(total)}</span>` : dinheiro(total)}</td>
     `
 
     return `<tr data-campos="S" id="${id}">${tds}</tr>`
 }
 
-function editarDimensoes(idItem = crypto.randomUUID()) {
+const categoriasMargemOrcamento = { ferramentas: 'Ferramentas', mao_obra: 'Mão de obra', materiais: 'Materiais' }
+
+function valoresCategoriasOrcamento(campo, margens = {}) {
+    const totais = totaisCampo(campo)
+    let original = 0, alterado = 0
+    const categorias = {}
+    for (const tipo of Object.keys(categoriasMargemOrcamento)) {
+        const max = Math.max(0, Number(campo[`margem_${tipo}`]) || 0)
+        if (!Number.isFinite(max) || !Number.isFinite(totais[`subtotal_${tipo}`])) throw new Error(`Valores inválidos na composição de ${categoriasMargemOrcamento[tipo]}.`)
+        const margem = margens[tipo] == null ? max : Number(margens[tipo])
+        if (!Number.isFinite(margem) || margem < 0 || margem > max) throw new Error(`Margem de ${categoriasMargemOrcamento[tipo]} fora do limite de ${max}%.`)
+        const subtotal = totais[`subtotal_${tipo}`]
+        const valor = subtotal * (1 + margem / 100)
+        categorias[tipo] = { subtotal, max, margem, total: valor }
+        original += subtotal * (1 + max / 100)
+        alterado += valor
+    }
+    return { original, alterado, categorias }
+}
+
+function preencherMargensOrcamento(modal, campo, margens = {}) {
+    const calculo = valoresCategoriasOrcamento(campo, margens)
+    modal._margensOrcamento = { campo }
+    for (const [tipo, valores] of Object.entries(calculo.categorias)) {
+        const input = modal.querySelector(`[name="margem_orcamento_${tipo}"]`)
+        input.max = valores.max
+        input.value = valores.margem
+        input.disabled = valores.max === 0
+        input.title = `Margem máxima da composição: ${valores.max.toLocaleString('pt-BR')}%`
+        input.closest('label').querySelector('small').textContent = `Limite: ${valores.max.toLocaleString('pt-BR')}%`
+    }
+}
+
+function limitarMargemOrcamento(input, idItem, concluir = false) {
+    if (input.value === '' && !concluir) return
+    const numero = Number(input.value)
+    input.value = Math.min(Number(input.max), Math.max(0, Number.isFinite(numero) ? numero : 0))
+    calcularDimensoes(idItem)
+}
+
+function lerMargensOrcamento(modal) {
+    return Object.fromEntries(Object.keys(categoriasMargemOrcamento).map(tipo => [tipo, Number(modal.querySelector(`[name="margem_orcamento_${tipo}"]`).value)]))
+}
+
+function atualizarTotaisMargemOrcamento(modal, quantidade) {
+    const resumo = modal?.querySelector('.orcamento-comparativo')
+    if (!resumo || !modal._margensOrcamento) return
+    const calculo = valoresCategoriasOrcamento(modal._margensOrcamento.campo, lerMargensOrcamento(modal))
+    for (const [tipo, valores] of Object.entries(calculo.categorias)) {
+        const label = modal.querySelector(`[name="margem_orcamento_${tipo}"]`).closest('label')
+        let detalhes = label.querySelector('.orcamento-categoria-valores')
+        if (!detalhes) {
+            detalhes = document.createElement('div')
+            detalhes.className = 'orcamento-categoria-valores'
+            label.append(detalhes)
+        }
+        detalhes.innerHTML = `<div><span>Base / unidade</span><b>${dinheiro(valores.subtotal)}</b></div><div><span>Margem / unidade</span><b>${dinheiro(valores.total - valores.subtotal)}</b></div><div><span>Com margem / unidade</span><b>${dinheiro(valores.total)}</b></div><div class="orcamento-categoria-total"><span>Total da categoria</span><strong>${dinheiro(valores.total * quantidade)}</strong></div>`
+    }
+    const original = calculo.original * quantidade, alterado = calculo.alterado * quantidade
+    const diferenca = alterado - original, percentual = original ? diferenca / original * 100 : 0
+    resumo.innerHTML = `<div><small>Quantidade total</small><strong>${Number(quantidade).toLocaleString('pt-BR', {maximumFractionDigits:6})}</strong></div><div><small>Valor unitário</small><strong>${dinheiro(calculo.alterado)}</strong></div><div><small>Original</small><del>${dinheiro(original)}</del></div><div><small>Total alterado</small><strong>${dinheiro(alterado)}</strong></div><div><small>Diferença</small><span>${dinheiro(diferenca)} (${percentual.toLocaleString('pt-BR', {maximumFractionDigits:2})}%)</span></div>`
+}
+
+async function editarDimensoes(idItem = crypto.randomUUID()) {
 
     const base = (controles?.execucoes?.base || [])
     const {
@@ -701,6 +839,10 @@ function editarDimensoes(idItem = crypto.randomUUID()) {
             elemento: `<textarea name="descricao_extra" placeholder="Descrição opcional">${descricaoExtra || ''}</textarea>`
         },
         {
+            texto: 'Margens por categoria',
+            elemento: `<div class="orcamento-margens">${Object.entries(categoriasMargemOrcamento).map(([tipo, nome]) => `<label>${nome}<div class="orcamento-margem-input"><input type="number" min="0" max="0" step="any" inputmode="decimal" name="margem_orcamento_${tipo}" aria-label="Margem de ${nome} em porcentagem" disabled placeholder="0" oninput="limitarMargemOrcamento(this, '${idItem}')" onblur="limitarMargemOrcamento(this, '${idItem}', true)"><span>%</span></div><small>Selecione um serviço</small></label>`).join('')}</div>`
+        },
+        {
             texto: 'Unidades',
             elemento: `<input ${regras} type="number" name="unidades" value="${unidades || ''}">`
         },
@@ -719,14 +861,6 @@ function editarDimensoes(idItem = crypto.randomUUID()) {
         {
             texto: 'Altura',
             elemento: `<input ${regras} type="number" name="altura" value="${altura || ''}">`
-        },
-        {
-            elemento: `
-                <div style="${horizontal}; gap: 1rem; width: 100%;">
-                    <span>Quantidade Final</span>
-                    <span class="etiquetas" id="totalQuantidade">0</span>
-                </div>
-                `
         }
     ]
 
@@ -747,13 +881,39 @@ function editarDimensoes(idItem = crypto.randomUUID()) {
             funcao: `removerLinhaZona('${idItem}')`
         })
 
-    popup({
+    const idModal = popup({
         titulo: 'Edição do Serviço',
         linhas,
         botoes
     })
 
+    const modal = document.getElementById(idModal)
+    const estadoEdicao = controles.execucoes
+    const originalEdicao = structuredClone(estadoEdicao.base.find(item => item.id === idItem) || null)
+    const observarEdicao = new MutationObserver(() => {
+        if (modal.isConnected) return
+        observarEdicao.disconnect()
+        if (controles.execucoes !== estadoEdicao || modal.dataset.salvo === 'true') return
+        estadoEdicao.base = estadoEdicao.base.filter(item => item.id !== idItem)
+        if (originalEdicao) estadoEdicao.base.push(originalEdicao)
+        renderExecucoesLocal()
+    })
+    observarEdicao.observe(document.body, {childList:true})
+    const comparativo = document.createElement('div')
+    comparativo.className = 'orcamento-comparativo'
+    comparativo.setAttribute('aria-live', 'polite')
+    comparativo.textContent = 'Selecione um serviço para comparar os totais.'
+    modal.querySelector('.rodape-padrao').prepend(comparativo)
     calcularDimensoes(idItem)
+    if (id_campo) {
+        try {
+            const campo = await recuperarDado('campos', id_campo)
+            if (!modal.isConnected || modal.querySelector('[name="servico"]').id !== String(id_campo)) return
+            if (!campo) throw new Error('Composição não encontrada.')
+            preencherMargensOrcamento(modal, { ...campo, id: id_campo }, base.find(i => i.id === idItem)?.margens_aplicadas)
+            calcularDimensoes(idItem)
+        } catch (erro) { if (modal.isConnected) comparativo.textContent = `Não foi possível carregar as margens: ${erro.message}` }
+    }
 
 }
 
@@ -764,8 +924,7 @@ async function incluirServicoNoObjeto(idItem) {
         const id_campo = obVal('servico')
         const id_ambiente = obVal('id_ambiente')
 
-        if (!id_ambiente)
-            return popup({ mensagem: 'Selecione um ambiente' })
+        if (!id_ambiente) throw new Error('Selecione um ambiente.')
 
         const itemAmbiente = controles.execucoes.base
             .find(item => item.id_ambiente == id_ambiente)
@@ -779,6 +938,8 @@ async function incluirServicoNoObjeto(idItem) {
 
         const nome_zona = itemAmbiente?.nome_zona
 
+        const campo = await recuperarDado('campos', id_campo)
+        if (!campo) throw new Error('Composição não encontrada.')
         const {
             mao_obra,
             ferramentas,
@@ -787,7 +948,13 @@ async function incluirServicoNoObjeto(idItem) {
             medida,
             especialidade,
             snapshots
-        } = await recuperarDado('campos', id_campo) || {}
+        } = campo
+        const modal = painel.closest('.popup')
+        const mesmaComposicao = String(modal._margensOrcamento?.campo?.id) === String(id_campo)
+        const existente = controles.execucoes.base.find(item => item.id === idItem)
+        const margens = mesmaComposicao ? lerMargensOrcamento(modal) : existente?.id_campo === id_campo ? existente.margens_aplicadas : {}
+        preencherMargensOrcamento(modal, { ...campo, id: id_campo }, margens)
+        const calculoMargens = valoresCategoriasOrcamento(campo, lerMargensOrcamento(modal))
 
         const indice = controles.execucoes.base
             .findIndex(item => item.id == idItem)
@@ -805,7 +972,10 @@ async function incluirServicoNoObjeto(idItem) {
             descricao,
             medida,
             especialidade,
-            unitario: snapshots?.totais?.total || 0
+            margens_aplicadas: lerMargensOrcamento(modal),
+            totais_categorias: calculoMargens.categorias,
+            unitario_original: calculoMargens.original,
+            unitario: calculoMargens.alterado
         }
 
         if (indice >= 0)
@@ -816,7 +986,7 @@ async function incluirServicoNoObjeto(idItem) {
         calcularDimensoes(idItem)
     } catch (err) {
         console.error(err)
-        popup({ mensagem: 'Falha ao incluir o serviço: Fale com o suporte.' })
+        throw err
     } finally {
         removerOverlay()
     }
@@ -852,13 +1022,19 @@ async function salvarDimensoes(id) {
             ...itemParaSalvar
         } = item
 
-        await enviar(
+        const resposta = await enviar(
             `dados_orcamentos/${controles.execucoes.idOrcamento}/campos/${id}`,
             itemParaSalvar
         )
+        if (!resposta || resposta.erro || resposta.success === false) throw new Error('O servidor não confirmou o salvamento do serviço.')
 
-        await paginacao('execucoes')
+        const modalSalvo = document.querySelector('.popup [name="servico"]')?.closest('.popup')
+        if (modalSalvo) modalSalvo.dataset.salvo = 'true'
+        renderExecucoesLocal()
         removerTodosPopups()
+        await atualizarExecucoesMemoria()
+    } catch (erro) {
+        popup({ mensagem: escaparAtributo(erro.message || 'Não foi possível salvar o serviço.') })
     } finally {
         removerOverlay()
     }
@@ -938,8 +1114,7 @@ function calcularDimensoes(idItem) {
         unitario
     )
 
-    const localResultado = painel.querySelector('#totalQuantidade')
-    localResultado.textContent = quantidade
+    atualizarTotaisMargemOrcamento(painel.closest('.popup'), quantidade)
 
     if (medida != 'm2')
         return { dimensoesCalculo, quantidade }
@@ -986,16 +1161,15 @@ function calcularQuantidadeTotal(dimensoes, totalItem) {
 async function removerLinhaZona(idItem) {
     try {
         overlayAguarde()
-
-        controles.execucoes.base = controles.execucoes.base
-            .filter(campo => campo.id != idItem)
-
-        await paginacao('execucoes')
-
-        deletar(`dados_orcamentos/${controles.execucoes.idOrcamento}/campos/${idItem}`)
-
+        const modal = document.querySelector('.popup [name="servico"]')?.closest('.popup')
+        const resposta = await deletar(`dados_orcamentos/${controles.execucoes.idOrcamento}/campos/${idItem}`)
+        if (!resposta) throw new Error('O servidor não confirmou a exclusão do serviço.')
+        if (modal) { modal.dataset.salvo = 'true'; removerPopup(modal.id) }
+        await atualizarExecucoesMemoria()
+    } catch (erro) {
+        popup({mensagem: escaparAtributo(erro.message)})
     } finally {
-        removerTodosPopups()
+        removerOverlay()
     }
 }
 

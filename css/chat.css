@@ -211,7 +211,7 @@
 }
 
 /* Mensageiro. Os estilos anteriores continuam atendendo aos avisos legados. */
-.cabecalho-usuario .chat-push-controle { margin: 0; padding: 6px 8px; background: #ffffff12; color: #e5e8eb; border: 1px solid #ffffff20; border-radius: 6px; box-shadow: none; font-size: 11px; }
+.cabecalho-usuario .chat-push-controle { flex: 0 0 auto; min-height: 0; height: 28px; margin: 0; padding: 4px 7px; background: #ffffff12; color: #e5e8eb; border: 1px solid #ffffff20; border-radius: 5px; box-shadow: none; font-size: 10px; line-height: 1; white-space: nowrap; }
 .cabecalho-usuario .chat-push-controle:hover { background: #ffffff25; transform: none; }
 .chat-app {
     display: grid;

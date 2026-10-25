@@ -71,7 +71,7 @@ async function verificarColaborador() {
 
 }
 
-async function colaboradorPin(pin, idColaborador) {
+async function colaboradorPin(pin) {
     try {
 
         const url = `${api}/colaborador`
@@ -80,12 +80,13 @@ async function colaboradorPin(pin, idColaborador) {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ idColaborador, pin, servidor: 'RECONST' })
+            body: JSON.stringify({ pin, servidor: 'RECONST' })
         };
 
         const response = await fetch(url, requisicao)
 
-        if (!response.ok) {
+        // 429 (limite de tentativas) também traz { mensagem }.
+        if (!response.ok && response.status !== 429) {
             throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
         }
 
@@ -213,12 +214,15 @@ async function enviarPonto() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ idColaborador: usuarioAtual.idColaborador, data, servidor })
+            body: JSON.stringify({ ticket: usuarioAtual.ticket, servidor })
         })
 
         const resposta = await response.json()
         if (resposta.mensagem)
             return popup({ mensagem: resposta.mensagem })
+
+        // A hora oficial é a do servidor.
+        const registrada = resposta.data || data
 
 
         const linhas = [
@@ -227,7 +231,7 @@ async function enviarPonto() {
                 elemento: `
                     <div class="ticketPonto">
                         <span>${usuarioAtual.nome}</span>
-                        <span><b>${data}</b></span>
+                        <span><b>${registrada}</b></span>
                         <span>Realizado</span>
                     </div>
                 `

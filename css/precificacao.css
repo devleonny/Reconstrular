@@ -1,4 +1,57 @@
-.composicao-margem-cabecalho { display: flex; align-items: center; justify-content: center; gap: 7px; }
+/* Valores compactos apenas na listagem de composições. */
+.composicao-marcar-todos { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; cursor: pointer; }
+.composicao-marcar-todos input { width: 18px; height: 18px; margin: 0; padding: 0; accent-color: #526877; cursor: pointer; }
+.composicao-marcar-acoes { display: inline-flex; flex-direction: column; align-items: center; gap: 7px; }
+.composicao-marcar-acoes .composicao-desativar { margin: 0; padding: 4px 7px; border: 1px solid #d9c5bd; border-radius: 4px; background: #f9efea; color: #825643; font: inherit; font-size: 10px; white-space: nowrap; box-shadow: none; transform: none; transition: background-color 120ms ease; }
+.composicao-marcar-acoes .composicao-desativar:hover { background: #f0dfd6; box-shadow: none; transform: none; }
+.composicao-marcar-acoes .composicao-desativar:focus-visible { outline: 2px solid #825643; outline-offset: 2px; }
+.tabela:has(> tbody#campos) > :is(thead, tbody) > tr > :is(th, td):nth-child(n+5) {
+    width: 1%;
+    min-width: 92px;
+    padding-left: 9px;
+    padding-right: 9px;
+}
+.tabela:has(> tbody#campos) > thead > tr > th:nth-child(n+5) {
+    white-space: normal;
+}
+.tabela:has(> tbody#campos) > tbody > tr > td:nth-child(n+5) {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    vertical-align: middle;
+}
+.tabela:has(> tbody#campos) > thead > tr:first-child > th { vertical-align: top; padding-top: 10px; padding-bottom: 10px; }
+.tabela:has(> tbody#campos) > thead > tr:first-child > th:nth-child(n+5) > div { justify-content: center !important; gap: 0 !important; text-align: center; }
+.tabela:has(> tbody#campos) > thead > tr:first-child > th:nth-child(n+5) [data-ordem]:empty { display: none; }
+.tabela:has(> tbody#campos) > :is(thead, tbody) > tr > :is(th, td):nth-child(n+5) { border-left: 2px solid #d8e0e5; }
+.tabela:has(> tbody#campos) > thead > tr:first-child > th:nth-child(5) { background: #fcf3ef; }
+.tabela:has(> tbody#campos) > thead > tr:first-child > th:nth-child(6) { background: #eff4fb; }
+.tabela:has(> tbody#campos) > thead > tr:first-child > th:nth-child(7) { background: #eef6f0; }
+.tabela:has(> tbody#campos) > :is(thead, tbody) > tr > :is(th, td):nth-child(8) { background: #f2f5f7; }
+.topo-tabela .composicoes-filtro { display: flex; flex-direction: column; gap: 4px; margin: 3px 10px 3px 0; color: #fff; font-size: 11px; }
+.composicoes-filtro select { min-width: 190px; max-width: 100%; padding: 7px 9px; border: 1px solid #d3dce2; border-radius: 5px; background: #fff; color: #344653; font: inherit; }
+.composicao-descricao { display: flex; flex-direction: column; gap: 5px; min-width: 180px; text-align: left; }
+.composicao-descricao-linha { display: flex; align-items: center; gap: 12px; }
+.composicao-acoes { display: inline-flex; flex: none; align-items: center; gap: 2px; padding: 3px; border: 1px solid #dce3e8; border-radius: 7px; background: #f4f7f9; }
+.composicao-acoes button { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 6px; margin: 0; border: 0; border-radius: 4px; color: #4b6474; background: transparent; box-shadow: none; transform: none; transition: background-color 120ms ease, color 120ms ease; }
+.composicao-acoes button:hover { background: #e1e9ef; color: #294655; box-shadow: none; transform: none; }
+.composicao-acoes button:focus-visible { outline: 2px solid #526877; outline-offset: 1px; }
+.composicao-acoes svg { display: block; width: 18px; height: 18px; flex: none; }
+.composicao-especialidade { font-weight: 600; color: #4d626f; text-align: left; }
+.composicao-subtotal,.composicao-valor-total { display: grid; grid-template-rows: 34px 26px 40px; align-items: center; justify-items: stretch; gap: 5px; padding: 5px 0; }
+.composicao-valor-total > .composicao-valor-final { grid-row: 3; }
+.composicao-valor { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; line-height: 16px; font-size: 11px; }
+.composicao-valor small { font-size: 9px; color: #70818c; line-height: 12px; }
+.composicao-valor strong { font-weight: 600; color: #354b58; }
+.composicao-valor-final { border-top: 1px solid #52687726; padding-top: 6px; }
+.composicao-margem-controle { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-height: 26px; }
+.composicao-celula-subtotal { position: relative; }
+.composicao-celula-subtotal .composicao-subtotal { padding-left: 16px; }
+.composicao-margem-controle input { position: absolute; top: 6px; left: 6px; width: 14px; height: 14px; padding: 0; margin: 0; accent-color: #526877; }
+.composicao-margem-controle .composicao-margem-badge { display: inline-flex; align-items: center; gap: 5px; margin: 0; padding: 3px 7px; border: 1px solid #52687740; border-radius: 20px; background: #ffffffb3; color: #344b59; box-shadow: none; transform: none; font: inherit; font-size: 10px; white-space: nowrap; transition: background-color 120ms ease; }
+.composicao-margem-controle .composicao-margem-badge:hover { background: #fff; box-shadow: none; transform: none; }
+.composicao-margem-badge:focus-visible { outline: 2px solid #526877; outline-offset: 2px; }
+.composicao-margem-cabecalho { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 5px; }
 .composicao-margem-cabecalho input { width: 16px; height: 16px; flex: 0 0 16px; margin: 0; padding: 0; accent-color: #526877; cursor: pointer; }
 .composicao-margem-cabecalho .composicao-margem-editar { display: inline-flex; width: 26px; height: 26px; padding: 4px; margin: 0; border-radius: 4px; background: transparent; box-shadow: none; }
 .composicao-margem-cabecalho .composicao-margem-editar img { width: 18px; height: 18px; }

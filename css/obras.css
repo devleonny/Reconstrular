@@ -173,18 +173,32 @@
     flex-direction: column;
     align-items: start;
     justify-content: start;
-    gap: 2px;
-    max-width: 300px;
-    max-height: 150px;
+    gap: 4px;
+    max-width: 420px;
+    max-height: 180px;
 }
 
+/* Históricos (obras e colaboradores): popup quase da altura da tela, descontando o título e a margem. */
+.popup.popup-historico .janela { max-height: calc(100vh - 7.5rem); max-height: calc(100dvh - 7.5rem); }
+.popup-historico .janela-alteracoes { max-height: 320px; }
+
+/* Cada frase do histórico: leitura confortável, sem cor de alerta. */
 .tag-alteracao {
     display: inline-block;
-    padding: 3px 1vw;
-    border: solid 1px #d52000;
-    border-radius: 20px;
-    background-color: #ff4e2f8f;
+    padding: 4px 8px;
+    border: 1px solid #dfe5ea;
+    border-radius: 8px;
+    background-color: #f6f8fa;
+    color: #3f4d58;
+    line-height: 1.4;
+    text-align: left;
 }
+
+.tag-alteracao b { font-weight: 600; color: #2f3d48; }
+.historico-antes { color: #8a5a52; text-decoration: line-through; text-decoration-color: #d9b3ad; }
+.historico-depois { color: #2f6a46; font-weight: 600; }
+.historico-ref { font-style: normal; }
+.historico-pessoa { display: inline-block; padding: 3px 8px; border-radius: 8px; background: #eef3f7; color: #3f4d58; font-weight: 600; }
 
 @media screen and (orientation: landscape),
 screen and (min-aspect-ratio: 13/9) {
@@ -194,3 +208,15 @@ screen and (min-aspect-ratio: 13/9) {
     }
 
 }
+.popup-itens-obra .popup-janela-fora { width: min(1100px, 96vw); max-width: 96vw; }
+/* O resumo fica fora da área que rola; só a tabela rola (nos dois sentidos), com o cabeçalho fixo. */
+.popup-itens-obra .janela { width: 100%; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.obra-itens-orcamento { width: 100%; padding: 0; color: #4b5965; box-sizing: border-box; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.obra-itens-resumo { flex: none; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 12px 16px; font-size: 12px; background: #fff; border-bottom: 1px solid #e3e7ea; }
+.obra-itens-recorte { flex: 1 1 auto; min-height: 0; max-height: none; overflow: auto; overscroll-behavior: contain; border: 0; border-radius: 0; }
+.obra-itens-recorte .tabela { min-width: 650px; }
+/* Sticky nas células (e não só no thead): é o que o Safari/iOS respeita. */
+.obra-itens-recorte .tabela thead th { position: sticky; top: 0; z-index: 2; background-color: #f3f3f3; box-shadow: inset 0 -1px 0 #ccc; }
+.obra-itens-recorte td:nth-child(n+5) { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.obra-itens-orcamento > p { padding: 0 16px; font-size: 11px; color: #78838c; line-height: 1.6; }
+.obra-total-zerado { display: inline-block; padding: 4px 8px; border: 1px solid #edc3c3; border-radius: 6px; background: #fceaea; color: #a52f2f; font-weight: 600; }

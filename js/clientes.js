@@ -71,12 +71,15 @@ function criarLinhaClientes(dados) {
 
 }
 
-async function formularioCliente(idCliente = crypto.randomUUID()) {
+async function formularioCliente(idCliente) {
 
     try {
 
         overlayAguarde()
 
+        const editando = !!idCliente
+        const dadosCliente = editando ? await recuperarDado('dados_clientes', idCliente) : {}
+        idCliente ||= crypto.randomUUID()
         const {
             nome,
             telefone,
@@ -85,13 +88,13 @@ async function formularioCliente(idCliente = crypto.randomUUID()) {
             morada_execucao,
             morada_fiscal,
             numero_contribuinte
-        } = await recuperarDado('dados_clientes', idCliente) || {}
+        } = dadosCliente || {}
 
         const botoes = [
             { texto: 'Salvar', img: 'concluido', funcao: `salvarCliente('${idCliente}')` }
         ]
 
-        if (idCliente)
+        if (editando)
             botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExclusaoCliente('${idCliente}')` })
 
         const { nome: nomeCidade } = await recuperarDado('cidades', cidade) || {}
@@ -193,7 +196,9 @@ async function salvarCliente(idCliente) {
             cidade: obVal('cidade')
         }
 
-        await enviar(`dados_clientes/${idCliente}`, cliente)
+        // Se o servidor recusar, enviar() já mostra o motivo e o formulário continua aberto.
+        if (!await enviar(`dados_clientes/${idCliente}`, cliente))
+            return
 
         const { usuario } = acesso || {}
         const mensagem = {
@@ -204,10 +209,7 @@ async function salvarCliente(idCliente) {
             mensagem: `<i>Cadastro/Atualização de cliente <b>realizado</b>:</i> <br> <b>Nome</b>: ${cliente.nome}`
         }
 
-        await Promise.all([
-            enviar(`dados_clientes/${idCliente}`, cliente),
-            enviar(`mensagens/${idCliente}`, mensagem)
-        ])
+        await enviar(`mensagens/${idCliente}`, mensagem)
 
         removerTodosPopups()
 

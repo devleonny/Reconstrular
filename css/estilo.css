@@ -23,10 +23,20 @@
     filter: drop-shadow(0 4px 6px #00000025);
     align-items: flex-start;
 }
+
 .tela button.pdf-exportar-fixo:hover,
-.tela button.pdf-exportar-fixo:focus-visible { opacity: 1; transform: none; }
-@media print { .tela button.pdf-exportar-fixo { display: none; } }
-.tela button.pdf-exportar-fixo > span {
+.tela button.pdf-exportar-fixo:focus-visible {
+    opacity: 1;
+    transform: none;
+}
+
+@media print {
+    .tela button.pdf-exportar-fixo {
+        display: none;
+    }
+}
+
+.tela button.pdf-exportar-fixo>span {
     margin-top: 47px;
     font-size: 14px;
     line-height: 22px;
@@ -34,6 +44,7 @@
     letter-spacing: 1px;
     color: #fff;
 }
+
 .tela button.pdf-exportar-fixo:focus-visible {
     outline: 2px solid #8b9cab;
     outline-offset: 4px;
@@ -407,7 +418,7 @@ html {
     box-sizing: border-box;
 }
 
-.side-menu > * {
+.side-menu>* {
     flex-shrink: 0;
     width: 250px;
     box-sizing: border-box;
@@ -571,17 +582,18 @@ html {
     flex-basis: 18px;
 }
 
-.side-menu .botoesMenu > .menu-item:last-child {
+.side-menu .botoesMenu>.menu-item:last-child {
     margin-top: 12px;
     padding-top: 12px;
     border-top: 1px solid #ffffff12;
 }
 
-.side-menu .botoesMenu > .menu-item:last-child .menu-principal {
+.side-menu .botoesMenu>.menu-item:last-child .menu-principal {
     color: #d5dbe0;
 }
 
 @media (prefers-reduced-motion: reduce) {
+
     .side-menu,
     .side-menu .menu-principal,
     .side-menu .menu-seta {
@@ -866,6 +878,14 @@ img {
     background-color: #ade9ad;
 }
 
+.invalido {
+    display: inline-block;
+    padding: 3px 1vw;
+    border: solid 1px red;
+    border-radius: 20px;
+    background-color: #f7c5c5;
+}
+
 .baixa-medica {
     display: inline-block;
     padding: 3px 1vw;
@@ -1045,26 +1065,39 @@ input:focus {
 }
 
 button {
-    box-shadow: 0 0 2px #222;
-    margin: 3px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    background: #7f6a5b;
-    border: none;
-    padding: 10px 20px;
-    color: white;
+    flex: 0 1 auto;
+    height: auto;
+    margin: 0;
+    padding: 10px 16px;
+    box-sizing: border-box;
+    gap: 8px;
+    border: 1px solid #cdd3d9;
+    border-radius: 8px;
+    background: #fff;
+    color: #3f4852;
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
-    border-radius: 3px;
-    white-space: nowrap;
-    transition: ease-in-out 0.1s;
+    box-shadow: none;
+    transform: none;
+    transition: background-color 150ms ease;
 }
 
-button:hover {
-    background: #8d7666;
-    box-shadow: 0 0 8px #444;
-    transform: translateY(-1px);
+button:hover:not(:disabled) {
+    background: #e4e9ed;
+}
+
+button:focus-visible {
+    outline: 2px solid #526877;
+    outline-offset: 2px;
+}
+
+button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 .close {
@@ -1079,6 +1112,7 @@ button:hover {
 }
 
 .janela {
+    width: stretch;
     max-width: 90vw;
     overflow: hidden;
     max-height: 80vh;
@@ -1718,7 +1752,9 @@ button:hover {
         visibility: visible;
     }
 
-    .side-menu > * { width: 100%; }
+    .side-menu>* {
+        width: 100%;
+    }
 
     .side-menu.active+.tela {
         margin-left: 0;
@@ -1730,5 +1766,7 @@ button:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .side-menu { transition: none; }
+    .side-menu {
+        transition: none;
+    }
 }

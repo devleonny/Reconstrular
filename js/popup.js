@@ -86,7 +86,7 @@ function popup({
 
     const botaoPadrao = ({ funcao = '', img, texto, fechar = false }) => `
         <div onclick="${funcao}${fechar ? `${funcao ? ';' : ''}${removerAnteriores ? 'removerTodosPopups()' : `removerPopup('${idPopup}')`}` : ''}" class="botoes-rodape">
-            <img src="imagens/${img}.png">
+            <img src="imagens/${img.includes('.') ? img : `${img}.png`}">
             <span>${texto}</span>
         </div>
     `
@@ -142,6 +142,9 @@ function popup({
 }
 
 function limparRecursosPopup(id) {
+    document.getElementById(id)?.querySelectorAll('.colaborador-foto').forEach(painel => {
+        cancelarCameraColaborador(painel)
+    })
     ; (autoDestruicaoGlobal?.[id] || []).forEach(chave => {
         delete controles?.[chave]
         delete controlesCxOpcoes?.[chave]

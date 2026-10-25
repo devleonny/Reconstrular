@@ -61,8 +61,12 @@ function getByPath(obj, path) {
 function linCxOpcoes(dado) {
 
     const { ativo } = controlesCxOpcoes // Ativo é o mesmo que o [name]
-    const { colunas } = controlesCxOpcoes[ativo]
+    const controle = controlesCxOpcoes[ativo]
+    const { colunas } = controle
     const cod = dado.id || dado.codigo || dado.usuario || null
+    // usarLinha: a seleção usa a própria linha listada, sem nova consulta ao servidor.
+    if (controle.usarLinha && cod != null)
+        (controle.linhas ??= {})[cod] = dado
     const tds = []
 
     for (const coluna of Object.values(colunas)) {
@@ -88,17 +92,19 @@ async function selecionar(name, cod) {
     if (cod == 'null')
         return popup({ mensagem: 'O objeto "base" em controlesCx precisa contem o próprio "id" / "codigo" / "etc"' })
 
-    const { funcaoAdicional, base, retornar, armazenarDataset = {} } = controlesCxOpcoes[name]
+    const { funcaoAdicional, base, retornar, armazenarDataset = {}, linhas } = controlesCxOpcoes[name]
 
     if (!retornar)
         return popup({ mensagem: `campo retornar: ['exemplo'] → undefined` })
 
     // Painel quando for forms; do contrário qualquer outro elemento;
     const painel = Array.from(document.querySelectorAll('.painel-padrao')).at(-1)
-    const elemento = (painel || document).querySelector(`[name='${name}']`)
+    const elemento = painel?.querySelector(`[name='${name}']`) || document.querySelector(`[name='${name}']`)
     const termos = []
 
-    const dado = typeof base === 'string'
+    const dado = linhas?.[cod]
+        ? linhas[cod]
+        : typeof base === 'string'
         ? await recuperarDado(base, cod)
         : base.find(item =>
             String(item.id ?? item.codigo ?? item.usuario) === String(cod)
@@ -155,7 +161,8 @@ async function carregarControles() {
 
     const barraStatus = `
             <div id="divUsuarios"></div>
-            ${modelo('chat', 'painelChat()', 'contadorMensagens')}
+            <button type="button" class="tarefas-contador-controle" onclick="painelChat()" title="Conversas" aria-label="Abrir conversas"><img src="imagens/chat-colorido.svg" alt=""><span id="contadorMensagens" class="labelQuantidade" style="display: none;"></span></button>
+            <button type="button" class="tarefas-contador-controle" onclick="telaTarefas()" title="Tarefas pendentes" aria-label="Ver tarefas pendentes"><img src="imagens/tarefas-colorido.svg" alt=""><span id="contadorTarefas" class="labelQuantidade" hidden></span></button>
             <button type="button" class="chat-push-controle" onclick="chatPushConfigurar()" title="Ativar ou desativar notificações de mensagens">Notificações</button>
             ${permitidosAprovacoes.includes(acesso.permissao) ? modelo('construcao', 'configs()', '') : ''}
         `
@@ -165,6 +172,7 @@ async function carregarControles() {
 
     await usuariosToolbar()
     await verificarMensagens()
+    await atualizarContadorTarefas()
     chatPushSincronizar().catch(erro => console.warn('Notificações do chat:', erro.message))
     await chatPushAbrirDestino()
 

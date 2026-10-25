@@ -214,6 +214,11 @@ function comunicacao() {
         }
 
         if (tipo === 'atualizacao') {
+            if (tabela === 'tarefas') await atualizarContadorTarefas()
+            if (['dados_orcamentos', 'vw_dados_orcamentos', 'execucoes'].includes(tabela)
+                && document.getElementById('execucoes-local')) {
+                await atualizarExecucoesMemoria()
+            }
             if (['chat_conversas', 'chat_mensagens', 'chat_participantes'].includes(tabela)) {
                 await chatSincronizar()
                 await verificarMensagens()

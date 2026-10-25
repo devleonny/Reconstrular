@@ -93,8 +93,7 @@ async function baixarRelatorioExcel(dados = null) {
 
     if (!response.ok) {
         const erro = await response.json()
-        popup({ mensagem: erro.mensagem || 'Erro ao exportar' })
-        return
+        throw new Error(erro.mensagem || 'Erro ao exportar')
     }
 
     const blob = await response.blob()
@@ -102,7 +101,8 @@ async function baixarRelatorioExcel(dados = null) {
 
     const a = document.createElement('a')
     a.href = url
-    a.download = dados?.titulo || `relatorio-${Date.now()}.xlsx`
+    const titulo = dados?.titulo || `relatorio-${Date.now()}`
+    a.download = /\.xlsx$/i.test(titulo) ? titulo : `${titulo}.xlsx`
     document.body.appendChild(a)
     a.click()
 
@@ -221,8 +221,10 @@ async function enviar(caminho, info) {
         }
 
         if (!response.ok) {
-            // Se a API respondeu erro (ex: 400, 500);
+            // Se a API respondeu erro (ex: 400, 500): mostra o motivo enviado pelo servidor;
             console.error("Erro HTTP:", response.status, data);
+            const motivo = data?.mensagem || data?.erro || data?.message
+            popup({ mensagem: motivo ? `Não foi possível salvar: ${motivo}` : `Não foi possível salvar (erro ${response.status}).`, titulo: 'Salvamento recusado' })
             return null;
         }
 
