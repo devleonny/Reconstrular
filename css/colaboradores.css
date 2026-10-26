@@ -190,14 +190,32 @@
 .regiao-obras .regiao-opcao:hover { background: #e7ecf0; border-radius: 5px; }.regiao-obras .regiao-opcao:has(input:checked) { background: #dce6ed; border-radius: 5px; }
 .regiao-painel [hidden] { display: none !important; }
 .regiao-painel button:focus-visible,.regiao-painel input:focus-visible { outline: 2px solid #526877; outline-offset: 2px; }
-.colaborador-foto { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; text-align: left; }
-.colaborador-foto-titulo { margin: 0; padding: 0; font-size: 14px; font-weight: 600; line-height: 1.4; color: #3f4852; }
-.colaborador-foto-quadro { position: relative; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid #d8dee4; border-radius: 12px; background: #eef2f5; display: grid; place-items: center; }
-.colaborador-foto-quadro img, .colaborador-foto-quadro video { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; object-fit: contain; background: #e7ecf0; border-radius: 0; }
-.colaborador-foto-quadro img:not([src]), .colaborador-foto [hidden], .colaborador-foto.camera-ativa .colaborador-foto-quadro img { display: none; }
-.colaborador-foto-vazia { padding: 24px; font-size: 13px; color: #71808e; text-align: center; }
-.colaborador-foto-status { margin: 0; font-size: 13px; line-height: 1.5; color: #435364; }
-.colaborador-foto-acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Foto do colaborador: círculo grande no topo do formulário, borda em gradiente (marrom do app → cinza-azulado). */
+.linha-padrao:has(> .colaborador-foto) { justify-content: center; }
+.colaborador-foto { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 6px 0 4px; text-align: center; }
+.colaborador-foto [hidden] { display: none !important; }
+.popup .colaborador-avatar { position: relative; display: block; width: 172px; height: 172px; flex: none; margin: 0; padding: 5px; border: 0; border-radius: 50%;
+    background: linear-gradient(135deg, #b98a5e 0%, #7f6a5b 38%, #5b707f 72%, #8fb3c9 100%); box-shadow: 0 8px 22px rgba(31, 42, 49, .22); cursor: pointer; transition: transform 160ms ease, box-shadow 160ms ease; }
+.popup .colaborador-avatar:hover:not(:disabled) { background: linear-gradient(135deg, #c99a6c 0%, #8b7565 38%, #677d8d 72%, #9fc2d6 100%); transform: translateY(-1px); box-shadow: 0 12px 26px rgba(31, 42, 49, .28); }
+.popup .colaborador-avatar:focus-visible { outline: 3px solid #5b707f; outline-offset: 3px; }
+.colaborador-avatar-circulo { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; border: 4px solid #fff; border-radius: 50%; box-sizing: border-box;
+    background: #e5eaee url("../imagens/avatar-generico.svg") center / cover no-repeat; }
+.colaborador-avatar-circulo img, .colaborador-avatar-circulo video { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; object-fit: cover; border-radius: 0; background: #e5eaee; }
+.colaborador-avatar-circulo img:not([src]) { display: none; }
+.colaborador-foto.camera-ativa .colaborador-avatar-circulo img { display: none; }
+.colaborador-avatar-circulo video { transform: scaleX(-1); } /* prévia em espelho, como um espelho comum */
+.colaborador-avatar-editar { position: absolute; right: 10px; bottom: 10px; display: grid; place-items: center; width: 34px; height: 34px; border: 3px solid #fff; border-radius: 50%; background: #414b55; color: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .25); }
+.colaborador-foto.camera-ativa .colaborador-avatar { cursor: default; }
+.colaborador-foto.camera-ativa .colaborador-avatar-editar { display: none; }
+.colaborador-foto-menu { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 8px; background: #fff; border: 1px solid #d8dee4; border-radius: 12px; box-shadow: 0 6px 18px rgba(31, 42, 49, .12); }
+.colaborador-foto-acoes { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.colaborador-foto-acoes:not(:has(button:not([hidden]))) { display: none; }
 .colaborador-foto-acoes [data-camera-capturar] { background: #414b55; border-color: #414b55; color: #fff; }
 .colaborador-foto-acoes [data-camera-capturar]:hover { background: #55616d; }
-.colaborador-foto small { color: #71808e; font-size: 12px; }
+.colaborador-foto-status { margin: 0; font-size: 12.5px; line-height: 1.5; color: #5a6875; }
+
+/* Miniatura na tabela de colaboradores (mesmo estilo, bem menor). */
+.colaborador-mini { position: relative; display: block; width: 38px; height: 38px; margin: auto; padding: 2px; box-sizing: border-box; border-radius: 50%;
+    background: linear-gradient(135deg, #b98a5e 0%, #7f6a5b 38%, #5b707f 72%, #8fb3c9 100%); }
+.colaborador-mini::before { content: ''; position: absolute; inset: 2px; border: 2px solid #fff; border-radius: 50%; background: #e5eaee url("../imagens/avatar-generico.svg") center / cover no-repeat; }
+.colaborador-mini img { position: absolute; inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px); max-width: none; margin: 0; padding: 0; border-radius: 50%; object-fit: cover; }

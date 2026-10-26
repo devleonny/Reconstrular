@@ -175,6 +175,7 @@
                 if (id !== serial || !root.isConnected) return;
                 if (!Array.isArray(data.items)) throw new Error('Resposta de mensagens inválida.');
                 messages = data.items; pages = Math.max(1, Number(data.pages) || 1);
+                window.atualizarContadorEmails(); // leitura/movimentação muda os não lidos
                 list.innerHTML = messages.length ? messages.map(m => `<button class="em-row ${!m.read ? 'unread' : ''}${m.status === 'error' ? ' falhou' : ''}" data-message="${escape(m.id)}" aria-current="${current?.id === m.id}"><span>${m.status === 'error' ? '<mark class="em-badge-erro" title="Abra a mensagem para ver o motivo">Falha no envio</mark>' : ''}${m.starred ? '★ ' : ''}${escape(folder === 'sent' || folder === 'drafts' ? addresses(m.to) : m.from?.name || address(m.from))}</span><span>${escape(m.subject || '(Sem assunto)')}</span><small>${escape(m.preview || '')}</small><small>${escape(date(m.date))}${m.hasAttachments ? ' · Anexos' : ''}${Number(m.threadCount) > 1 ? ` · ${escape(m.threadCount)} mensagens` : ''}</small></button>`).join('') : '<div class="em-empty">Nenhum e-mail nesta pesquisa.</div>';
                 root.querySelector('.em-page').textContent = `${page} / ${pages}`;
                 root.querySelector('[data-prev]').disabled = page <= 1;
@@ -438,4 +439,35 @@
             if (!account.canSend) notice('Envio ainda não habilitado para sua conta.');
         } catch (error) { root.querySelector('.em-identity').textContent = 'Conta de e-mail indisponível'; notice(error.message, true); }
     };
+
+    // Ícone do topo: não lidos da caixa de entrada. Sem conta de e-mail, o ícone some.
+    let contadorConsulta = 0, contadorTimer = null;
+    window.atualizarContadorEmails = async function () {
+        const contador = document.getElementById('contadorEmails');
+        if (!contador) return;
+        const botao = contador.parentElement, consulta = ++contadorConsulta;
+        try {
+            const data = await request('/messages?folder=inbox&unread=true&page=1&limit=1');
+            if (consulta !== contadorConsulta || !contador.isConnected) return;
+            const total = Number(data?.total);
+            if (!Number.isFinite(total) || total < 0) throw new Error('Contagem inválida.');
+            botao.hidden = false;
+            contador.textContent = total > 99 ? '99+' : String(total);
+            contador.hidden = total === 0;
+            botao.title = total ? `${total} e-mail(s) não lido(s)` : 'E-mails';
+            botao.setAttribute('aria-label', total ? `${total} e-mails não lidos. Abrir e-mails` : 'Abrir e-mails');
+        } catch (error) {
+            if (consulta !== contadorConsulta) return;
+            // Conta não provisionada/serviço indisponível: esconde o atalho em vez de mostrar um contador errado.
+            if (/provisionad|atribuído|não está disponível|Entre novamente/i.test(error.message)) botao.hidden = true;
+            console.warn('Não foi possível atualizar o contador de e-mails:', error.message);
+        }
+    };
+    // Novos e-mails chegam pelo webhook da Brevo: confere a cada minuto com a aba visível.
+    window.iniciarContadorEmails = function () {
+        clearInterval(contadorTimer);
+        window.atualizarContadorEmails();
+        contadorTimer = setInterval(() => { if (!document.hidden) window.atualizarContadorEmails(); }, 60000);
+    };
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && contadorTimer) window.atualizarContadorEmails(); });
 })();

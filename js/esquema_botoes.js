@@ -175,6 +175,20 @@ const esquemaBotoes = {
             ]
         },
         {
+            nome: 'Ponto',
+            img: 'relogio',
+            bloqueio: ['Trabalhador'],
+            sub: [
+                { nome: 'Painel', funcao: 'telaAssiduidade', img: 'home' },
+                { nome: 'Folha de Ponto', funcao: 'telaAssiduidadeFolha', img: 'pdf' },
+                { nome: 'Registos', funcao: 'telaAssiduidadeRegistos', img: 'relogio' },
+                { nome: 'Horas Trabalhadas', funcao: 'telaAssiduidadeHoras', img: 'planilha' },
+                { nome: 'Férias e Ausências', funcao: 'telaAssiduidadeAusencias', img: 'checklist' },
+                { nome: 'Locais de Trabalho', funcao: 'telaAssiduidadeLocais', img: 'zona' },
+                { nome: 'Funcionários', funcao: 'telaAssiduidadeFuncionarios', img: 'cracha' }
+            ]
+        },
+        {
             nome: 'Obras',
             bloqueio: ['Trabalhador'],
             img: 'obras',

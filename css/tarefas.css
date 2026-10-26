@@ -119,3 +119,20 @@
 .tarefas-contador-controle svg { width: 24px; height: 24px; color: #fff; }
 .tarefas-contador-controle img { width: 26px; height: 26px; object-fit: contain; display: block; }
 .tarefas-contador-controle [hidden] { display: none; }
+
+/* Contadores do topo (chat, tarefas, e-mails): selo no canto superior direito do ícone. */
+/* Espaço no canto superior direito para o selo: ele fica inteiro dentro do botão e não é cortado pela barra. */
+.cabecalho-usuario .tarefas-contador-controle { position: relative; padding: 9px 11px 3px 3px; }
+.cabecalho-usuario .tarefas-contador-controle .labelQuantidade {
+    position: absolute; top: 1px; right: 0;
+    min-width: 16px; height: 16px; min-height: 0; padding: 0 4px; box-sizing: border-box;
+    border: 1.5px solid #222; border-radius: 999px;
+    background: #e11d48; color: #fff; font-size: 9px; font-weight: 700; letter-spacing: -.02em;
+    /* Poppins sobe o texto em caixas pequenas; a fonte do sistema e a linha com a altura interna (16 - 2×1,5) centram o número. */
+    display: block; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; line-height: 13px; text-align: center; font-variant-numeric: tabular-nums;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .35); pointer-events: none;
+}
+/* O display acima venceria o [hidden]: contador zerado continua escondido. */
+.cabecalho-usuario .tarefas-contador-controle .labelQuantidade[hidden] { display: none; }
+/* Ícones de contador mais juntos: desconta o espaço entre itens da barra (o canto direito já reserva lugar para o selo). */
+.cabecalho-usuario .tarefas-contador-controle + .tarefas-contador-controle { margin-left: -8px; }

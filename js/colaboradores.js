@@ -1,10 +1,46 @@
+// Foto do colaborador: círculo grande no topo do formulário. Sem foto, o círculo mostra um avatar genérico
+// (fundo CSS, nunca gravado: a foto real é a referência do reconhecimento facial do ponto).
+// Clicar na foto abre as opções de trocar: câmera ou imagem do aparelho.
+function fotoColaboradorHtml(foto) {
+    return `
+        <div class="colaborador-foto">
+            <button type="button" class="colaborador-avatar" title="Clique para alterar a foto" aria-label="Alterar foto do colaborador" aria-expanded="false" onclick="menuFotoColaborador(this)">
+                <span class="colaborador-avatar-circulo">
+                    <img name="foto" alt="Foto do colaborador" ${foto ? `src="${api}/uploads/RECONST/${encodeURIComponent(foto)}"` : ''}>
+                    <video autoplay muted playsinline hidden aria-label="Prévia da câmera"></video>
+                </span>
+                <span class="colaborador-avatar-editar" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+                </span>
+            </button>
+            <div class="colaborador-foto-menu" hidden>
+                <button type="button" onclick="abrirCameraColaborador(this)">Tirar foto com a câmera</button>
+                <button type="button" onclick="this.closest('.colaborador-foto').querySelector('[data-foto-arquivo]').click()">Escolher imagem</button>
+                <input type="file" accept="image/*" data-foto-arquivo hidden onchange="arquivoFotoColaborador(this)">
+            </div>
+            <div class="colaborador-foto-acoes">
+                <button type="button" data-camera-capturar hidden onclick="capturarFotoColaborador(this)">Capturar foto</button>
+                <button type="button" data-camera-cancelar hidden onclick="cancelarCameraColaborador(this.closest('.colaborador-foto'))">Cancelar</button>
+            </div>
+            <p class="colaborador-foto-status" role="status">${foto ? 'Clique na foto para alterar.' : 'Sem foto: clique no círculo para adicionar.'}</p>
+        </div>`
+}
+
+function menuFotoColaborador(botao) {
+    const painel = botao.closest('.colaborador-foto')
+    if (painel.classList.contains('camera-ativa')) return
+    const menu = painel.querySelector('.colaborador-foto-menu')
+    menu.hidden = !menu.hidden
+    botao.setAttribute('aria-expanded', String(!menu.hidden))
+}
+
 async function abrirCameraColaborador(botao) {
     const painel = botao.closest('.colaborador-foto')
     const video = painel.querySelector('video')
     const status = painel.querySelector('[role="status"]')
     const pedido = Symbol()
     painel.pedidoCamera = pedido
-    botao.disabled = true
+    painel.querySelector('.colaborador-foto-menu').hidden = true
     status.textContent = 'Abrindo câmera…'
     try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error('indisponivel')
@@ -16,19 +52,18 @@ async function abrirCameraColaborador(botao) {
         video.srcObject = captura
         video.hidden = false
         painel.classList.add('camera-ativa')
-        botao.hidden = true
         painel.querySelector('[data-camera-cancelar]').hidden = false
         await video.play()
         if (!painel.isConnected || painel.pedidoCamera !== pedido) return
         painel.querySelector('[data-camera-capturar]').hidden = false
-        status.textContent = 'Enquadre o rosto no centro e clique em Capturar foto.'
+        status.textContent = 'Enquadre o rosto no centro do círculo e clique em Capturar foto.'
     } catch (erro) {
         if (!painel.isConnected || painel.pedidoCamera !== pedido) return
         cancelarCameraColaborador(painel)
         status.textContent = erro.name === 'NotAllowedError'
             ? 'Permita o acesso à câmera no navegador e tente novamente.'
             : 'Não foi possível abrir a câmera. Confira se ela está disponível e tente novamente.'
-    } finally { botao.disabled = false }
+    }
 }
 
 function cancelarCameraColaborador(painel) {
@@ -38,10 +73,9 @@ function cancelarCameraColaborador(painel) {
     video.srcObject = null
     video.hidden = true
     painel.classList.remove('camera-ativa')
-    painel.querySelector('[data-camera-abrir]').hidden = false
     painel.querySelector('[data-camera-capturar]').hidden = true
     painel.querySelector('[data-camera-cancelar]').hidden = true
-    painel.querySelector('[role="status"]').textContent = 'Use um local iluminado e enquadre o rosto de frente.'
+    painel.querySelector('[role="status"]').textContent = 'Clique na foto para alterar.'
 }
 
 function capturarFotoColaborador(botao) {
@@ -54,8 +88,32 @@ function capturarFotoColaborador(botao) {
     canvas.getContext('2d').drawImage(video, 0, 0)
     painel.querySelector('[name="foto"]').src = canvas.toDataURL('image/png')
     cancelarCameraColaborador(painel)
-    painel.querySelector('[data-camera-abrir]').textContent = 'Tirar outra foto'
-    painel.querySelector('[role="status"]').textContent = 'Foto capturada. Confira a imagem antes de salvar o cadastro.'
+    painel.querySelector('[role="status"]').textContent = 'Foto capturada. Ela será salva ao salvar o cadastro.'
+}
+
+// Imagem do aparelho: reduzida para no máximo 1280 px (o envio e o reconhecimento facial não precisam de mais).
+function arquivoFotoColaborador(input) {
+    const painel = input.closest('.colaborador-foto')
+    const arquivo = input.files?.[0]
+    input.value = ''
+    painel.querySelector('.colaborador-foto-menu').hidden = true
+    if (!arquivo) return
+    const status = painel.querySelector('[role="status"]')
+    if (!arquivo.type.startsWith('image/')) return status.textContent = 'Escolha um arquivo de imagem (JPG, PNG…).'
+    const imagem = new Image()
+    const url = URL.createObjectURL(arquivo)
+    imagem.onload = () => {
+        const escala = Math.min(1, 1280 / Math.max(imagem.width, imagem.height))
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(imagem.width * escala)
+        canvas.height = Math.round(imagem.height * escala)
+        canvas.getContext('2d').drawImage(imagem, 0, 0, canvas.width, canvas.height)
+        URL.revokeObjectURL(url)
+        painel.querySelector('[name="foto"]').src = canvas.toDataURL('image/jpeg', 0.9)
+        status.textContent = 'Imagem escolhida. Ela será salva ao salvar o cadastro.'
+    }
+    imagem.onerror = () => { URL.revokeObjectURL(url); status.textContent = 'Não foi possível abrir esta imagem.' }
+    imagem.src = url
 }
 
 let obrasFiltrosColaboradores = []
@@ -114,6 +172,7 @@ async function telaColaboradores() {
     titulo.textContent = 'Colaboradores'
 
     const colunas = {
+        'Foto': {},
         'Usuário': { chave: 'usuario' },
         'Função': { chave: 'funcao', tipoPesquisa: 'select' },
         'Nome Completo': { chave: 'nome' },
@@ -177,7 +236,8 @@ async function criarLinhaColaboradores(colaborador) {
         nome,
         status_disponivel,
         especialidade,
-        acesso_bloqueado
+        acesso_bloqueado,
+        foto
     } = colaborador || {}
     const { distrito, nome: nomeCidade } = snapshots?.cidade || {}
 
@@ -211,7 +271,13 @@ async function criarLinhaColaboradores(colaborador) {
             </div>
         `
 
+    // Miniatura no mesmo estilo do formulário; sem foto (ou se falhar ao carregar) fica o avatar genérico.
     const tds = `
+        <td>
+            <span class="colaborador-mini" title="${escaparAtributo(nome || '')}">
+                ${foto ? `<img src="${api}/uploads/RECONST/${encodeURIComponent(foto)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+            </span>
+        </td>
         <td>
             ${usuario ? `<span class="tag-usuario">${usuario}</span>` : ''}
         </td>
@@ -382,6 +448,8 @@ async function adicionarColaborador(id) {
             .join('')
 
         const linhas = [
+            // FOTO (primeiro item do formulário)
+            { elemento: fotoColaboradorHtml(foto) },
             {
                 texto: 'Nome Completo',
                 elemento: `<textarea ${regras} name="nome" placeholder="Nome Completo">${nome || ''}</textarea>`
@@ -477,30 +545,6 @@ async function adicionarColaborador(id) {
                         </table>
                     </div>
             `
-            },
-
-            // FOTO
-            {
-                elemento: `
-                    <div class="colaborador-foto">
-                        <h3 class="colaborador-foto-titulo">Foto do colaborador</h3>
-                        <div class="colaborador-foto-quadro">
-                            <span class="colaborador-foto-vazia">Nenhuma foto adicionada</span>
-                            <img name="foto" alt="Foto do colaborador" ${foto
-                        ? `src="${api}/uploads/RECONST/${foto}"`
-                        : ''
-                    }>
-                            <video autoplay muted playsinline hidden aria-label="Prévia da câmera"></video>
-                        </div>
-                        <p class="colaborador-foto-status" role="status">Use um local iluminado e enquadre o rosto de frente.</p>
-                        <div class="colaborador-foto-acoes">
-                            <button type="button" data-camera-abrir onclick="abrirCameraColaborador(this)">${foto ? 'Tirar outra foto' : 'Abrir câmera'}</button>
-                            <button type="button" data-camera-capturar hidden onclick="capturarFotoColaborador(this)">Capturar foto</button>
-                            <button type="button" data-camera-cancelar hidden onclick="cancelarCameraColaborador(this.closest('.colaborador-foto'))">Cancelar</button>
-                        </div>
-                        <small>A foto será salva ao salvar o cadastro.</small>
-                    </div>
-                `
             },
 
             // PIN

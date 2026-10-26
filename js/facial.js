@@ -1,9 +1,14 @@
 let usuarioAtual = {}
-async function loadModels() {
-    const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
-    await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-    await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+// Modelos servidos pelo próprio app (antes vinham de um site de terceiros); carregados uma vez por sessão.
+let modelosFace = null
+function loadModels() {
+    const MODEL_URL = 'modelos-face';
+    modelosFace ||= Promise.all([
+        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+    ]).catch(erro => { modelosFace = null; throw erro })
+    return modelosFace
 }
 
 async function computeDescriptorFromImage(img) {
@@ -30,9 +35,34 @@ async function grabLiveDescriptor() {
     return det ? det.descriptor : null;
 }
 
+// ---------- Autorizações: sem câmera e localização não há marcação ----------
+// O ponto é usado no telemóvel do trabalhador. Antes do PIN, o app pede as duas permissões;
+// se alguma for recusada, explica como ativar e não deixa avançar.
+const AJUDA_PERMISSAO = {
+    negada: `<b>A permissão foi recusada.</b> Para marcar o ponto é obrigatório autorizar a câmera e a localização.
+        <ul>
+            <li><b>Android (Chrome):</b> toque no cadeado 🔒 ao lado do endereço → <i>Permissões</i> → ative <i>Câmera</i> e <i>Localização</i>.</li>
+            <li><b>iPhone (Safari):</b> toque em <i>aA</i> na barra de endereço → <i>Definições do site</i> → permita <i>Câmera</i> e <i>Localização</i>. Confirme também em <i>Ajustes → Privacidade → Serviços de localização → Safari: Ao usar a app</i>.</li>
+        </ul>
+        Depois toque em <b>Tentar novamente</b>.`,
+    gps: `<b>Não foi possível obter a localização.</b> Ligue a <i>Localização (GPS)</i> nas definições rápidas do telemóvel e tente de novo, de preferência ao ar livre ou junto a uma janela.`,
+    indisponivel: `<b>Este navegador não permite câmera ou localização.</b> Abra o app pelo endereço <i>https://</i> no Chrome (Android) ou no Safari (iPhone), não dentro de outra aplicação.`
+}
+let autorizacaoPonto = { camera: null, localizacao: null, posicao: null }
+
+async function pedirCameraPonto() {
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) return 'indisponivel'
+    try {
+        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+        s.getTracks().forEach(t => t.stop())
+        return 'ok'
+    } catch (e) { return ['NotAllowedError', 'SecurityError'].includes(e.name) ? 'negada' : 'indisponivel' }
+}
+
 async function telaRegistroPonto() {
 
-    const acumulado = `
+    autorizacaoPonto = { camera: null, localizacao: null, posicao: null }
+    tela.innerHTML = `
         <div id="acesso" class="loginBloco">
 
             <div class="botaoSuperiorLogin" onclick="telaLogin()">
@@ -40,20 +70,74 @@ async function telaRegistroPonto() {
                 <span>Voltar para a tela de Acesso</span>
             </div>
 
-            <div class="baixoLogin">
-            <span>Informe o seu PIN de 4 dígitos</span>
-            <input type="text" maxlength="4" name="pin" placeholder="Máximo de 4 dígitos">
-            <button onclick="verificarColaborador()">Avançar</butto>
+            <div class="baixoLogin ponto-autorizacao">
+                <h2>Registo de ponto</h2>
+                <p>Para marcar o ponto, este telemóvel precisa de duas autorizações:</p>
+                <ul class="ponto-permissoes">
+                    <li data-permissao="camera"><span class="ponto-perm-icone">📷</span><div><b>Câmera</b><small>para o reconhecimento facial</small></div><span class="ponto-perm-estado">Pendente</span></li>
+                    <li data-permissao="localizacao"><span class="ponto-perm-icone">📍</span><div><b>Localização (GPS)</b><small>para confirmar o local de trabalho</small></div><span class="ponto-perm-estado">Pendente</span></li>
+                </ul>
+                <div class="ponto-ajuda" hidden></div>
+                <button type="button" data-autorizar onclick="autorizarPonto()">Autorizar e continuar</button>
             </div>
 
         </div>
     `
 
-    tela.innerHTML = acumulado
+    // Já autorizado antes neste aparelho? Segue direto (o navegador não volta a perguntar).
+    try {
+        const [cam, geo] = await Promise.all(['camera', 'geolocation'].map(n => navigator.permissions?.query({ name: n }).then(p => p.state).catch(() => null)))
+        if (cam === 'granted' && geo === 'granted') autorizarPonto()
+        else if (cam === 'denied' || geo === 'denied') mostrarPermissoes({ camera: cam === 'denied' ? 'negada' : null, localizacao: geo === 'denied' ? 'negada' : null })
+    } catch { }
+}
 
+function mostrarPermissoes(estado) {
+    const rotulos = { ok: '✓ Autorizada', negada: '✕ Recusada', gps: '✕ GPS desligado', indisponivel: '✕ Indisponível', pedindo: 'A pedir…' }
+    for (const chave of ['camera', 'localizacao']) {
+        const li = document.querySelector(`[data-permissao="${chave}"]`)
+        if (!li || !estado[chave]) continue
+        li.dataset.estado = estado[chave]
+        li.querySelector('.ponto-perm-estado').textContent = rotulos[estado[chave]] || estado[chave]
+    }
+    const problema = ['indisponivel', 'negada', 'gps'].find(p => estado.camera === p || estado.localizacao === p)
+    const ajuda = document.querySelector('.ponto-ajuda')
+    if (ajuda) { ajuda.hidden = !problema; ajuda.innerHTML = problema ? AJUDA_PERMISSAO[problema] : '' }
+    const botao = document.querySelector('[data-autorizar]')
+    if (botao && problema) botao.textContent = 'Tentar novamente'
+}
+
+async function autorizarPonto() {
+    const botao = document.querySelector('[data-autorizar]')
+    if (botao) botao.disabled = true
+    mostrarPermissoes({ camera: 'pedindo', localizacao: 'pedindo' })
+    // Um pedido de cada vez: alguns navegadores ignoram o segundo aviso se forem simultâneos.
+    const camera = await pedirCameraPonto()
+    mostrarPermissoes({ camera })
+    const posicao = await obterLocalizacao()
+    const localizacao = posicao.erro || 'ok'
+    autorizacaoPonto = { camera, localizacao, posicao: posicao.erro ? null : posicao }
+    mostrarPermissoes({ camera, localizacao })
+    if (botao) botao.disabled = false
+    if (camera === 'ok' && localizacao === 'ok') telaPinPonto()
+}
+
+function telaPinPonto() {
+    const bloco = document.querySelector('.ponto-autorizacao')
+    if (!bloco) return
+    bloco.innerHTML = `
+        <h2>Registo de ponto</h2>
+        <p class="ponto-autorizado">✓ Câmera e localização autorizadas</p>
+        <span>Informe o seu PIN de 4 dígitos</span>
+        <input type="password" inputmode="numeric" autocomplete="off" maxlength="4" name="pin" placeholder="PIN de 4 dígitos" onkeydown="if (event.key === 'Enter') verificarColaborador()">
+        <button type="button" onclick="verificarColaborador()">Avançar</button>`
+    bloco.querySelector('[name="pin"]').focus()
 }
 
 async function verificarColaborador() {
+
+    if (autorizacaoPonto.camera !== 'ok' || autorizacaoPonto.localizacao !== 'ok')
+        return telaRegistroPonto()
 
     overlayAguarde()
     const pin = document.querySelector('[name="pin"]')
@@ -63,6 +147,8 @@ async function verificarColaborador() {
         return popup({ mensagem: resposta.mensagem })
 
     usuarioAtual = resposta
+    // Posição atualizada já aqui, em paralelo com o reconhecimento facial.
+    localizacaoPonto = obterLocalizacao()
 
     const fotoUrl = `${api}/uploads/RECONST/${resposta.foto}`
 
@@ -98,6 +184,18 @@ async function colaboradorPin(pin) {
 
 let refDescriptor = null;
 
+// GPS do telemóvel: obrigatório. O servidor recusa sem localização, imprecisa ou fora do raio do local.
+// Resolve com { latitude, longitude, precisao } ou { erro: 'negada' | 'gps' | 'indisponivel' }.
+let localizacaoPonto = null
+function obterLocalizacao() {
+    if (!window.isSecureContext || !navigator.geolocation) return Promise.resolve({ erro: 'indisponivel' })
+    return new Promise(resolve => navigator.geolocation.getCurrentPosition(
+        p => resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude, precisao: p.coords.accuracy }),
+        e => resolve({ erro: e.code === 1 ? 'negada' : 'gps' }),
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 }
+    ))
+}
+
 function mostrarStatus(msg, cls) {
     const liveStatus = document.getElementById('liveStatus');
     if (!liveStatus) return
@@ -125,7 +223,9 @@ async function validarFacial(fotoUrl) {
     `;
     tela.innerHTML = acumulado;
 
-    await loadModels();
+    mostrarStatus('A preparar o reconhecimento facial…', 'warn');
+    try { await loadModels(); }
+    catch { return mostrarStatus('Não foi possível carregar o reconhecimento facial. Verifique a internet e tente novamente.', 'err'); }
     await iniciarCam()
 
     const refImg = new Image();
@@ -136,7 +236,7 @@ async function validarFacial(fotoUrl) {
         mostrarStatus('Processando referência…', 'warn');
         refDescriptor = await computeDescriptorFromImage(refImg);
         if (!refDescriptor) {
-            mostrarStatus('Nenhum rosto detectado na foto', 'err');
+            mostrarStatus('A foto do seu cadastro não tem um rosto reconhecível. Peça ao encarregado para tirar outra foto.', 'err');
         } else {
             mostrarStatus('Referência pronta', 'ok');
             await baterPonto()
@@ -158,7 +258,7 @@ async function iniciarCam() {
 
         setTimeout(pararCam, 5 * 60 * 1000);
     } catch {
-        mostrarStatus('Falha ao iniciar câmera', 'err');
+        mostrarStatus('Não foi possível abrir a câmera. Confirme a autorização da câmera e tente novamente.', 'err');
     }
 }
 
@@ -181,6 +281,8 @@ async function baterPonto() {
     let tentativa = 60;
 
     while (0 < tentativa) {
+        // Saiu da tela (voltou ao login): para de analisar a câmera.
+        if (!document.getElementById('video') || !stream) return
         mostrarStatus(`Verificando… (${tentativa}s)`, 'warn');
         tentativa--
 
@@ -190,12 +292,14 @@ async function baterPonto() {
             const ok = dist <= 0.5;
 
             if (ok) {
+                // A imagem deste momento vai para o servidor, que confere o rosto de novo (o telemóvel não é confiável).
+                const selfie = capturarSelfie();
                 pararCam();
                 telaLogin();
 
-                return enviarPonto();
+                return enviarPonto(selfie);
             } else {
-                mostrarStatus(`Negado (dist ${dist.toFixed(4)})`, 'err');
+                mostrarStatus('Rosto não reconhecido: olhe de frente para a câmera.', 'err');
             }
         }
 
@@ -205,16 +309,35 @@ async function baterPonto() {
     mostrarStatus('Tempo esgotado para reconhecimento', 'err');
 }
 
-async function enviarPonto() {
+// Quadro atual da câmera em JPEG, com no máximo 640 px (suficiente para o reconhecimento e leve para enviar).
+function capturarSelfie() {
+    const video = document.getElementById('video')
+    if (!video?.videoWidth) return null
+    const escala = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(video.videoWidth * escala)
+    canvas.height = Math.round(video.videoHeight * escala)
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL('image/jpeg', 0.85)
+}
+
+async function enviarPonto(selfie) {
     try {
+        if (!selfie)
+            return popup({ titulo: 'Câmera', mensagem: 'Não foi possível capturar a imagem da câmera. Tente marcar novamente.' })
         overlayAguarde()
         const data = new Date().toLocaleString()
+        const posicao = await (localizacaoPonto || obterLocalizacao())
+        localizacaoPonto = null
+        // Sem localização não se envia nada (a autorização pode ter sido retirada a meio do processo).
+        if (posicao.erro)
+            return popup({ titulo: 'Localização necessária', mensagem: `Marcação não enviada.<br><br>${AJUDA_PERMISSAO[posicao.erro]}` })
         const response = await fetch(`${api}/ponto`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ ticket: usuarioAtual.ticket, servidor })
+            body: JSON.stringify({ ticket: usuarioAtual.ticket, servidor, latitude: posicao.latitude, longitude: posicao.longitude, precisao: posicao.precisao, selfie })
         })
 
         const resposta = await response.json()
@@ -231,12 +354,21 @@ async function enviarPonto() {
                 elemento: `
                     <div class="ticketPonto">
                         <span>${usuarioAtual.nome}</span>
+                        ${resposta.tipo ? `<span><b>${resposta.tipo}</b></span>` : ''}
                         <span><b>${registrada}</b></span>
+                        ${resposta.local ? `<span>${resposta.local}</span>` : ''}
                         <span>Realizado</span>
                     </div>
                 `
             }
         ]
+
+        // O trabalhador vê o que o gestor lançou/corrigiu no seu ponto (fica registado como visto).
+        if (resposta.avisos?.length)
+            linhas.push({
+                texto: 'O seu gestor alterou o seu ponto',
+                elemento: `<ul class="avisos-ponto">${resposta.avisos.map(a => `<li>${String(a).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))}</li>`).join('')}</ul>`
+            })
 
         popup({ linhas, titulo: 'Marcação realizada' })
 
