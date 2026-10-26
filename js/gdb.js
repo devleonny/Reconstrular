@@ -1,7 +1,19 @@
-async function fetchAutenticado(url, opcoes) {
-    const resposta = await fetch(url, opcoes)
+async function fetchAutenticado(url, opcoes = {}) {
+    let resposta = await fetch(url, opcoes)
 
-    if (![401, 403].includes(resposta.status))
+    // Token de acesso vencido: renova (sessao.js) e repete o pedido uma vez com o token novo.
+    if (resposta.status === 401) {
+        const enviado = /^Bearer (\S+)$/.exec(new Headers(opcoes.headers).get('Authorization') || '')?.[1] || null
+        const renovacao = await renovarSessao({ tokenRecusado: enviado })
+        if (renovacao === 'ok') {
+            const headers = new Headers(opcoes.headers)
+            headers.set('Authorization', `Bearer ${acesso.token}`)
+            resposta = await fetch(url, { ...opcoes, headers })
+        } else if (renovacao === 'falhou') return resposta // sem rede/servidor: não derruba a sessão
+    }
+
+    // 403 também é "sem permissão para esta ação": só encerra a sessão se o acesso foi bloqueado.
+    if (resposta.status !== 401 && resposta.status !== 403)
         return resposta
 
     let dadosErro = {}
@@ -11,6 +23,9 @@ async function fetchAutenticado(url, opcoes) {
     } catch {
         dadosErro.erro = await resposta.clone().text()
     }
+
+    if (resposta.status === 403 && dadosErro.erro !== 'Acesso bloqueado')
+        return resposta
 
     await encerrarAcesso(
         dadosErro.erro ||

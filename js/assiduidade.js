@@ -16,9 +16,17 @@ const Assiduidade = (() => {
     const folhaSel = { colaborador: '', ano: 0, mes: 0 }
 
     const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-    const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const hoje = () => iso(new Date())
-    const inicioMes = () => { const d = new Date(); return iso(new Date(d.getFullYear(), d.getMonth(), 1)) }
+    // "Hoje" no fuso da empresa (Portugal), não no do aparelho: um gestor fora do país via o dia errado.
+    // Ícones dos cartões do painel (traço na cor do cartão).
+const ICONES_PAINEL = {
+    presentes: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="m16 11 2 2 4-4"/></svg>',
+    atrasos: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2h5M12 2v3"/></svg>',
+    gps: '<svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><path d="M12 7v3.5M12 13h.01"/></svg>',
+    ausentes: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4M9.5 13.5l5 5M14.5 13.5l-5 5"/></svg>'
+}
+const FUSO_EMPRESA = 'Europe/Lisbon'
+    const hoje = () => new Intl.DateTimeFormat('en-CA', { timeZone: FUSO_EMPRESA, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+    const inicioMes = () => `${hoje().slice(0, 8)}01`
     const dataPt = v => v ? v.split('-').reverse().join('/') : ''
     const horas = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
     const mapa = (lat, lng) => lat != null && lng != null ? `https://www.google.com/maps?q=${lat},${lng}` : null
@@ -101,10 +109,10 @@ const Assiduidade = (() => {
         const cartao = (rotulo, valor, classe, icone, detalhe) => `<div class="asd-cartao asd-${classe}"><div><span>${rotulo}</span><strong>${valor}</strong>${detalhe ? `<small>${detalhe}</small>` : ''}</div><i aria-hidden="true">${icone}</i></div>`
         conteudo().innerHTML = cabecalho('Painel de hoje', `${dataPt(hoje())} · atualiza a cada minuto · equipa ativa: ${p.equipa}`, '<button type="button" data-atualizar>↻ Atualizar</button>')
             + `<div class="asd-cartoes">
-                ${cartao('Presentes agora', p.presentes, 'verde', '👷', 'com entrada ou retorno marcados')}
-                ${cartao('Atrasos de hoje', p.atrasos.length, 'amarelo', '⏱', 'tolerância de 5 minutos')}
-                ${cartao('Alertas de GPS', p.alertas.length, 'vermelho', '📍', 'marcações recusadas')}
-                ${cartao('Ausentes hoje', p.ausentes.length, 'azul', '🗓', 'férias e faltas lançadas')}
+                ${cartao('Presentes agora', p.presentes, 'verde', ICONES_PAINEL.presentes, 'com entrada ou retorno marcados')}
+                ${cartao('Atrasos de hoje', p.atrasos.length, 'amarelo', ICONES_PAINEL.atrasos, 'tolerância de 5 minutos')}
+                ${cartao('Alertas de GPS', p.alertas.length, 'vermelho', ICONES_PAINEL.gps, 'marcações recusadas')}
+                ${cartao('Ausentes hoje', p.ausentes.length, 'azul', ICONES_PAINEL.ausentes, 'férias e faltas lançadas')}
             </div>
             <div class="asd-grade">
                 <section class="asd-bloco"><h3>Atividade em tempo real</h3>${tabela(['Funcionário', 'Tipo', 'Hora', 'Local', 'Estado GPS', 'Mapa'],
@@ -160,12 +168,12 @@ const Assiduidade = (() => {
     let folhaAtual = null
     async function folhaPonto() {
         await carregarEquipa()
-        const agora = new Date()
-        folhaSel.ano ||= agora.getFullYear(); folhaSel.mes ||= agora.getMonth() + 1
+        const [anoAtual, mesAtual] = hoje().split('-').map(Number)
+        folhaSel.ano ||= anoAtual; folhaSel.mes ||= mesAtual
         const { colaborador: eu } = JSON.parse(localStorage.getItem('acesso')) || {}
         if (!equipa.items.some(c => c.id === folhaSel.colaborador))
             folhaSel.colaborador = (equipa.items.find(c => c.id !== String(eu)) || equipa.items[0])?.id || ''
-        const anos = [agora.getFullYear() - 2, agora.getFullYear() - 1, agora.getFullYear()]
+        const anos = [anoAtual - 2, anoAtual - 1, anoAtual]
         conteudo().innerHTML = cabecalho('Folha de ponto', 'Registo mensal por funcionário. Esquecimentos são lançados pelo gestor com motivo e ficam sinalizados com ✎ aqui, no PDF e no comprovativo do trabalhador na marcação seguinte.')
             + `<form class="asd-filtros">
                 <label>Funcionário<select name="colaborador">${opcoesEquipa(folhaSel.colaborador)}</select></label>
@@ -336,7 +344,7 @@ const Assiduidade = (() => {
     // ---------- Férias e ausências ----------
     async function ausencias() {
         await carregarEquipa()
-        const fimAno = `${new Date().getFullYear()}-12-31`
+        const fimAno = `${hoje().slice(0, 4)}-12-31`
         conteudo().innerHTML = cabecalho('Férias e ausências', 'Lançadas pelo gestor para a sua equipa. Os dias contam só os dias úteis (seg–sex).',
             '<button type="button" class="asd-primario" data-nova>＋ Lançar ausência</button>')
             + `<form class="asd-filtros"><label>Data inicial<input type="date" name="inicio" value="${inicioMes()}"></label><label>Data final<input type="date" name="fim" value="${fimAno}"></label><button type="submit" class="asd-primario">Filtrar</button><button type="button" data-imprimir>Imprimir / PDF</button></form>`

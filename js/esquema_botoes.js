@@ -284,6 +284,11 @@ const esquemaBotoes = {
             
         },
         {
+            nome: 'Aparelhos conectados',
+            funcao: 'telaSessoes',
+            img: 'colaborador'
+        },
+        {
             nome: 'Desconectar',
             funcao: 'confirmarSaida',
             img: 'sair'

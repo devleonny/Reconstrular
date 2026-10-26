@@ -10,6 +10,7 @@ connectWebSocket()
 async function encerrarAcesso(mensagem) {
     clearTimeout(reconnectTimeout)
     await chatPushEncerrar()
+    await encerrarSessaoServidor()
 
     localStorage.removeItem('acesso')
 
@@ -87,14 +88,21 @@ function connectWebSocket() {
 }
 
 async function validarAcesso() {
-    const dadosAcesso = JSON.parse(localStorage.getItem('acesso')) || {}
-    const { token } = dadosAcesso
+    let { token } = JSON.parse(localStorage.getItem('acesso')) || {}
 
     msgStatus('Validando acesso...')
 
     if (!token) {
         await encerrarAcesso('Sessão inválida')
         return false
+    }
+
+    // O telemóvel pode ter ficado horas parado: se o token de acesso já venceu (ou está a vencer), renova antes.
+    if (expiracaoTokenMs(token) - Date.now() <= SESSAO_MARGEM_MS) {
+        const renovacao = await renovarSessao({ tokenRecusado: token })
+        if (renovacao === 'recusada') { await encerrarAcesso('Sessão expirada, faça login novamente'); return false }
+        if (renovacao === 'falhou') return false // sem rede: o websocket tenta de novo mais tarde
+        token = acesso.token
     }
 
     try {
@@ -107,11 +115,12 @@ async function validarAcesso() {
 
         if (!resp.ok) {
             const dadosErro = await resp.json().catch(() => ({}))
+            if (resp.status >= 500) return false
 
             await encerrarAcesso(
-                dadosErro.erro ||
-                dadosErro.mensagem ||
-                'Sessão expirada, faça login novamente'
+                dadosErro.erro === 'Acesso bloqueado'
+                    ? 'Seu acesso foi bloqueado'
+                    : dadosErro.erro || dadosErro.mensagem || 'Sessão expirada, faça login novamente'
             )
 
             return false
@@ -119,14 +128,8 @@ async function validarAcesso() {
 
         return true
     } catch (err) {
+        // Falha de rede não encerra a sessão: antes, abrir o app sem internet mandava para o login.
         console.error(err)
-
-        await encerrarAcesso(
-            err.message === 'Acesso bloqueado'
-                ? 'Seu acesso foi bloqueado'
-                : 'Sessão expirada, faça login novamente'
-        )
-
         return false
     }
 }
@@ -175,6 +178,16 @@ function comunicacao() {
         } = data
 
         if (desconectar || resetarAcesso) {
+            // Token de acesso vencido na conexão: renova e reconecta, em vez de deslogar.
+            if (erro !== 'Acesso bloqueado') {
+                const renovacao = await renovarSessao({ tokenRecusado: acesso?.token })
+                if (renovacao === 'ok') {
+                    clearTimeout(reconnectTimeout)
+                    reconnectTimeout = setTimeout(connectWebSocket, 1000)
+                    return
+                }
+                if (renovacao === 'falhou') return // sem rede: o onclose agenda nova tentativa
+            }
             await encerrarAcesso(
                 erro === 'Acesso bloqueado'
                     ? 'Seu acesso foi bloqueado'

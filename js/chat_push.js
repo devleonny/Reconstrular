@@ -48,12 +48,27 @@ async function chatPushRegistro() {
     })
 }
 
+// Escolha do usuário neste aparelho: ativou e não desativou. Sobrevive ao logout, para a inscrição ser
+// refeita sozinha (logout, renovação do navegador) sem precisar de ativar de novo.
+const chatPushChaveDesejo = usuario => `chatPushAtivo:${usuario}`
+const chatPushDesejado = usuario => { try { return localStorage.getItem(chatPushChaveDesejo(usuario)) === '1' } catch { return false } }
+function chatPushMarcarDesejo(usuario, ativo) {
+    try { ativo ? localStorage.setItem(chatPushChaveDesejo(usuario), '1') : localStorage.removeItem(chatPushChaveDesejo(usuario)) } catch { }
+}
+
 async function chatPushSincronizar() {
     if (!chatPushSuportado() || Notification.permission !== 'granted' || !acesso?.usuario) return
     const registro = await chatPushRegistro()
-    const inscricao = await registro.pushManager.getSubscription()
+    let inscricao = await registro.pushManager.getSubscription()
+    // Permissão já concedida: refazer a inscrição não exige clique do usuário.
+    if (!inscricao && chatPushDesejado(acesso.usuario)) {
+        const configuracao = await chatPushApi('config')
+        if (!configuracao.publicKey) return
+        inscricao = await registro.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chatPushChave(configuracao.publicKey) })
+    }
     if (!inscricao) return
     const usuario = acesso.usuario
+    chatPushMarcarDesejo(usuario, true) // quem ativou antes desta versão também passa a ter a reativação automática
     await chatPushApi('inscrever', { subscription: inscricao.toJSON() })
     if (acesso?.usuario !== usuario) return
     registro.active.postMessage({ tipo: 'chat-push-usuario', usuario })
@@ -73,6 +88,7 @@ async function chatPushConfigurar() {
         if (atual) {
             await chatPushApi('remover', { endpoint: atual.endpoint })
             await atual.unsubscribe()
+            chatPushMarcarDesejo(acesso.usuario, false)
             registro.active.postMessage({ tipo: 'chat-push-usuario', usuario: null })
             popup({ mensagem: 'Notificações de mensagens desativadas neste dispositivo.' })
             return
@@ -84,6 +100,7 @@ async function chatPushConfigurar() {
             applicationServerKey: chatPushChave(configuracao.publicKey) })
         try { await chatPushSincronizar() }
         catch (erro) { await inscricao.unsubscribe(); throw erro }
+        chatPushMarcarDesejo(acesso.usuario, true)
         popup({ imagem: 'imagens/concluido.png', mensagem: 'Notificações de mensagens ativadas neste dispositivo.' })
     } catch (erro) { popup({ mensagem: chatHtml(erro.message) }) }
 }

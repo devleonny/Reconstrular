@@ -348,29 +348,33 @@ async function enviarPonto(selfie) {
         const registrada = resposta.data || data
 
 
-        const linhas = [
-            {
-                texto: 'Marcação realizada!',
-                elemento: `
-                    <div class="ticketPonto">
-                        <span>${usuarioAtual.nome}</span>
-                        ${resposta.tipo ? `<span><b>${resposta.tipo}</b></span>` : ''}
-                        <span><b>${registrada}</b></span>
-                        ${resposta.local ? `<span>${resposta.local}</span>` : ''}
-                        <span>Realizado</span>
-                    </div>
-                `
-            }
-        ]
+        // Comprovativo: hora em destaque, tipo com a cor da marcação, local e avisos do gestor.
+        const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+        const [dataTexto, horaTexto = ''] = String(registrada).split(/,\s*/)
+        const [hh = '', mm = '', ss = ''] = horaTexto.split(':')
+        const classeTipo = { 'Entrada': 'entrada', 'Saída almoço': 'saida-almoco', 'Retorno almoço': 'retorno-almoco', 'Saída': 'saida' }[resposta.tipo] || 'neutro'
+        const avisos = resposta.avisos?.length
+            ? `<div class="ticket-avisos"><b>O seu gestor alterou o seu ponto</b><ul>${resposta.avisos.map(a => `<li>${esc(a)}</li>`).join('')}</ul></div>`
+            : ''
 
-        // O trabalhador vê o que o gestor lançou/corrigiu no seu ponto (fica registado como visto).
-        if (resposta.avisos?.length)
-            linhas.push({
-                texto: 'O seu gestor alterou o seu ponto',
-                elemento: `<ul class="avisos-ponto">${resposta.avisos.map(a => `<li>${String(a).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))}</li>`).join('')}</ul>`
-            })
-
-        popup({ linhas, titulo: 'Marcação realizada' })
+        popup({
+            titulo: 'Marcação realizada',
+            elemento: `
+                <div class="ticketPonto">
+                    <div class="ticket-selo" aria-hidden="true"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
+                    <div class="ticket-estado">Ponto registado</div>
+                    ${resposta.tipo ? `<span class="ticket-tipo ticket-${classeTipo}">${esc(resposta.tipo)}</span>` : ''}
+                    <div class="ticket-hora">${esc(hh)}<span class="ticket-dois-pontos">:</span>${esc(mm)}${ss ? `<small>:${esc(ss)}</small>` : ''}</div>
+                    <div class="ticket-data">${esc(dataTexto)}</div>
+                    <div class="ticket-corte" aria-hidden="true"></div>
+                    <dl class="ticket-detalhes">
+                        <div><dt>Colaborador</dt><dd>${esc(usuarioAtual.nome)}</dd></div>
+                        ${resposta.local ? `<div><dt>Local</dt><dd>📍 ${esc(resposta.local)}</dd></div>` : ''}
+                    </dl>
+                    <p class="ticket-nota">Hora oficial do servidor</p>
+                    ${avisos}
+                </div>`
+        })
 
     } catch (err) {
         popup({ mensagem: `Erro na API: ${err}` })

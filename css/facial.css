@@ -90,16 +90,6 @@ canvas {
     width: 5vw;
 }
 
-.ticketPonto {
-    background-color: #d2d2d2;
-    gap: 5px;
-    padding: 2rem;
-    display: flex;
-    align-items: start;
-    justify-content: start;
-    flex-direction: column;
-}
-
 /* Ajustes para modo horizontal (landscape) */
 @media screen and (orientation: landscape),
 screen and (min-aspect-ratio: 13/9) {
@@ -112,9 +102,6 @@ screen and (min-aspect-ratio: 13/9) {
         width: 3vw;
     }
 }
-/* Intervenções do gestor mostradas ao trabalhador no comprovativo da marcação */
-.avisos-ponto { margin: 4px 0 0; padding: 10px 12px 10px 28px; border: 1px solid #f0c36d; border-radius: 8px; background: #fff8e6; color: #6b4e00; font-size: 13px; line-height: 1.5; text-align: left; }
-.avisos-ponto li + li { margin-top: 4px; }
 
 /* Registo de ponto: autorizações obrigatórias (câmera e localização) antes do PIN — cartão branco do login */
 .ponto-autorizacao { align-items: stretch; text-align: left; }
@@ -135,3 +122,38 @@ screen and (min-aspect-ratio: 13/9) {
 .ponto-ajuda ul { margin: 8px 0; padding-left: 18px; }
 .ponto-ajuda li + li { margin-top: 6px; }
 .ponto-autorizado { color: #15803d !important; font-weight: 600; }
+
+/* Comprovativo da marcação de ponto (recibo) */
+.ticketPonto { --tk-cor: #1f7a4d; --tk-fundo: #e3f3ea;
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    width: min(340px, 82vw); margin: 14px auto; padding: 26px 22px 18px; box-sizing: border-box;
+    background: #fff; border-radius: 16px; color: #2f3a42; text-align: center; font-family: inherit; }
+.ticket-selo { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%;
+    background: var(--tk-cor); color: #fff; box-shadow: 0 0 0 8px var(--tk-fundo); animation: ticket-selo .45s cubic-bezier(.2, 1.4, .4, 1) both; }
+.ticket-selo svg path { stroke-dasharray: 26; stroke-dashoffset: 26; animation: ticket-check .35s .3s ease-out forwards; }
+@keyframes ticket-selo { from { transform: scale(.4); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+@keyframes ticket-check { to { stroke-dashoffset: 0 } }
+.ticket-estado { margin-top: 10px; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6f7b84; }
+.ticket-tipo { padding: 4px 14px; border-radius: 999px; font-size: 14px; font-weight: 700; background: var(--tk-fundo); color: var(--tk-cor); }
+.ticket-entrada { --tk-cor: #1f7a4d; --tk-fundo: #e3f3ea; }
+.ticket-saida-almoco { --tk-cor: #9a6b00; --tk-fundo: #fff4d6; }
+.ticket-retorno-almoco { --tk-cor: #1f6fb2; --tk-fundo: #e2f0fb; }
+.ticket-saida { --tk-cor: #b42c2c; --tk-fundo: #fde4e4; }
+.ticket-neutro { --tk-cor: #4c5761; --tk-fundo: #eef1f3; }
+.ticket-hora { margin-top: 4px; font-size: 52px; font-weight: 700; line-height: 1; color: #1f2a31; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.ticket-hora small { font-size: 22px; font-weight: 600; color: #8a959d; }
+.ticket-dois-pontos { margin: 0 1px; color: #b3bcc2; }
+.ticket-data { font-size: 14px; color: #5a6875; }
+/* Linha picotada com recortes laterais, como um recibo. */
+.ticket-corte { position: relative; width: calc(100% + 44px); margin: 14px 0 8px; border-top: 2px dashed #dfe4e8; }
+.ticket-corte::before, .ticket-corte::after { content: ''; position: absolute; top: -11px; width: 20px; height: 20px; border-radius: 50%; background: #ebebeb; }
+.ticket-corte::before { left: -10px; } .ticket-corte::after { right: -10px; }
+.ticket-detalhes { display: flex; flex-direction: column; gap: 8px; width: 100%; margin: 0; }
+.ticket-detalhes > div { display: flex; justify-content: space-between; gap: 12px; text-align: left; }
+.ticket-detalhes dt { color: #8a959d; font-size: 12.5px; }
+.ticket-detalhes dd { margin: 0; font-size: 14px; font-weight: 600; color: #2f3a42; text-align: right; overflow-wrap: anywhere; }
+.ticket-nota { margin: 8px 0 0; font-size: 11.5px; color: #9aa4ab; }
+.ticket-avisos { width: 100%; margin-top: 10px; padding: 10px 12px; box-sizing: border-box; border: 1px solid #f0c36d; border-radius: 10px; background: #fff8e6; color: #5f4500; font-size: 12.5px; line-height: 1.5; text-align: left; }
+.ticket-avisos ul { margin: 6px 0 0; padding-left: 18px; }
+.ticket-avisos li + li { margin-top: 4px; }
+@media (prefers-reduced-motion: reduce) { .ticket-selo, .ticket-selo svg path { animation: none; stroke-dashoffset: 0; } }

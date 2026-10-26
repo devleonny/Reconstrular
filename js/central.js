@@ -337,8 +337,10 @@ function telaInicial() {
 
 async function removerAcesso() {
     await chatPushEncerrar()
+    await encerrarSessaoServidor()
     acesso = null
     localStorage.removeItem('acesso')
+    if (socket?.readyState === WebSocket.OPEN) socket.close()
     await telaLogin()
     removerOverlay()
 }
@@ -401,7 +403,10 @@ function confirmarSaida() {
 
 async function deslogar() {
     await chatPushEncerrar()
+    // Encerra a sessão no servidor (antes o token continuava válido até vencer) e fecha o websocket.
+    await encerrarSessaoServidor()
     localStorage.removeItem('acesso')
+    if (socket?.readyState === WebSocket.OPEN) socket.close()
     telaLogin()
 }
 

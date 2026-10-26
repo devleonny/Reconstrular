@@ -724,3 +724,26 @@
         transition: none;
     }
 }
+
+/* Aparelhos conectados (sessões do próprio usuário) */
+.sessoes-lista { padding: 14px 16px; width: min(520px, 90vw); box-sizing: border-box; }
+.sessoes-lista p { margin: 0 0 14px; color: #5a6875; font-size: 13px; line-height: 1.5; }
+.sessoes-itens { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
+.sessao-item { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid #e3e8ed; border-radius: 12px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+.sessao-item:hover { border-color: #cfd8e0; box-shadow: 0 2px 8px rgba(20, 35, 50, .06); }
+.sessao-item.atual { border-color: #b9e0c9; background: #f4fbf7; }
+.sessao-icone { flex: 0 0 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; background: #eef2f6; color: #4c5761; }
+.sessao-item.atual .sessao-icone { background: #dff2e7; color: #1f7a4d; }
+.sessao-icone svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.sessao-info { flex: 1; min-width: 0; }
+.sessao-nome { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: #22303c; }
+.sessao-datas { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 4px; font-size: 12px; color: #6b7884; }
+.sessao-datas b { font-weight: 600; color: #3c4a56; }
+.sessao-atual { padding: 2px 8px; border-radius: 999px; background: #dff2e7; color: #1f7a4d; font-size: 11px; font-weight: 700; }
+.sessao-encerrar { flex: 0 0 auto; padding: 7px 14px; border: 1px solid #f0c9c9; border-radius: 8px; background: #fff; color: #b3261e; font-size: 13px; font-weight: 600; cursor: pointer; }
+.sessao-encerrar:hover { background: #fdecec; border-color: #e6a7a7; }
+.sessoes-vazio { padding: 24px; text-align: center; color: #6b7884; font-size: 13px; border: 1px dashed #d5dde4; border-radius: 12px; }
+@media (max-width: 420px) {
+    .sessao-item { flex-wrap: wrap; }
+    .sessao-encerrar { width: 100%; }
+}
