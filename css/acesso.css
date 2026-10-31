@@ -1,5 +1,7 @@
 /* "O meu acesso" (js/meu-acesso.js) e linha "A ver:" do ponto (js/assiduidade.js). */
-.acesso { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 1100px; margin: 0 auto; padding: 4px 0 24px; box-sizing: border-box; color: #2f3a42; }
+/* Painel branco como o do ponto (.asd): o texto nunca fica direto sobre o fundo escuro da tela. */
+.acesso { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 1100px; margin: 0 auto; padding: 22px 24px 26px; box-sizing: border-box;
+    background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(10, 20, 30, .18); color: #2f3a42; }
 .acesso-topo { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #dfe5ea; }
 .acesso-topo h2 { margin: 0; font-size: 22px; color: #1f2a31; }
 .acesso-topo p { margin: 4px 0 0; color: #6f7b84; font-size: 13px; }
@@ -7,10 +9,10 @@
 .acesso-ver-como { display: flex; flex-direction: column; gap: 5px; min-width: min(320px, 100%); font-size: 11px; font-weight: 700; color: #5b707f; text-transform: uppercase; letter-spacing: .03em; }
 .acesso-ver-como select { padding: 9px 10px; border: 1px solid #c5ced5; border-radius: 8px; background: #fff; font-size: 13px; text-transform: none; letter-spacing: 0; }
 .acesso-cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 14px; }
-.acesso-cartao { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; border: 1px solid #dfe5ea; border-radius: 12px; background: #fff; box-shadow: 0 1px 3px rgba(20, 40, 60, .05); }
+.acesso-cartao { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; border: 1px solid #dfe5ea; border-radius: 12px; background: #f6f8fb; }
 .acesso-cartao header { display: flex; align-items: center; gap: 10px; }
 .acesso-cartao h3 { margin: 0; font-size: 14px; color: #3f505e; }
-.acesso-icone { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: #eef2f5; font-size: 17px; flex: none; }
+.acesso-icone { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: #fff; border: 1px solid #e3e8ec; font-size: 17px; flex: none; }
 .acesso-resposta { margin: 6px 0 0; font-size: 15px; line-height: 1.4; }
 .acesso-resposta small { color: #6f7b84; }
 .acesso-regra { margin: 0; color: #6f7b84; font-size: 12.5px; line-height: 1.5; }
@@ -19,8 +21,8 @@
 .acesso-cartao ul { max-height: 260px; overflow-y: auto; margin: 8px 0 0; padding: 0; list-style: none; border-top: 1px solid #eef1f3; }
 .acesso-cartao li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 2px; border-bottom: 1px solid #f2f4f6; font-size: 13px; }
 .acesso-cartao li small { color: #8a959d; text-align: right; }
-.acesso-nota { margin: 0; color: #8a959d; font-size: 12px; }
-.acesso-vazio { padding: 40px; text-align: center; color: #6f7b84; }
+.acesso-nota { margin: 0; color: #6f7b84; font-size: 12px; }
+.acesso-vazio { padding: 40px; text-align: center; color: #5a6875; }
 
 /* Linha "A ver:" por baixo do título das telas do ponto. */
 .asd-alcance { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: #eef4fa; color: #1f4f7a; font-size: 13px; }
