@@ -211,12 +211,10 @@
 }
 
 /* Mensageiro. Os estilos anteriores continuam atendendo aos avisos legados. */
-.cabecalho-usuario .chat-push-controle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 32px; height: 32px; min-height: 0; margin: 0; padding: 0; background: transparent; color: #e5e8eb; border: 0; border-radius: 50%; box-shadow: none; }
-.cabecalho-usuario .chat-push-controle:hover { background: #ffffff20; transform: none; }
-.cabecalho-usuario .chat-push-controle svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-/* Desligado: sino cortado, mais apagado; bloqueado no navegador: cortado e em vermelho. */
-.cabecalho-usuario .chat-push-controle:is([data-estado="inativo"], [data-estado="indisponivel"]) { color: #9aa3ab; }
-.cabecalho-usuario .chat-push-controle[data-estado="bloqueado"] { color: #f28b82; }
+/* Sino das notificações: imagem colorida como os outros ícones do topo (sino-colorido / -desligado / -bloqueado). */
+.cabecalho-usuario .chat-push-controle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; min-height: 0; margin: 0; padding: 5px; background: transparent; border: 0; border-radius: 5px; box-shadow: none; }
+.cabecalho-usuario .chat-push-controle:hover { background: #ffffff18; transform: none; }
+.cabecalho-usuario .chat-push-controle img { display: block; width: 26px; height: 26px; object-fit: contain; }
 .chat-app {
     display: grid;
     grid-template-columns: 310px minmax(0, 1fr);

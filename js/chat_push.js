@@ -88,10 +88,8 @@ async function chatPushEstado() {
     return (await registro?.pushManager.getSubscription()) ? 'ativo' : 'inativo'
 }
 
-const CHAT_PUSH_ICONES = {
-    ativo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
-    desligado: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></svg>'
-}
+// Mesmo estilo dos ícones coloridos do topo (chat, tarefas, e-mails).
+const CHAT_PUSH_ICONES = { ativo: 'sino-colorido', inativo: 'sino-desligado', bloqueado: 'sino-bloqueado', indisponivel: 'sino-desligado' }
 const CHAT_PUSH_ROTULOS = {
     ativo: 'Notificações ativas neste aparelho (toque para desativar)',
     inativo: 'Notificações desativadas (toque para ativar)',
@@ -103,7 +101,7 @@ async function chatPushAtualizarBotao() {
     if (!botao) return
     const estado = await chatPushEstado().catch(() => 'inativo')
     botao.dataset.estado = estado
-    botao.innerHTML = estado === 'ativo' ? CHAT_PUSH_ICONES.ativo : CHAT_PUSH_ICONES.desligado
+    botao.innerHTML = `<img src="imagens/${CHAT_PUSH_ICONES[estado]}.svg" alt="">`
     botao.title = CHAT_PUSH_ROTULOS[estado]
     botao.setAttribute('aria-label', CHAT_PUSH_ROTULOS[estado])
 }

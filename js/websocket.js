@@ -46,7 +46,68 @@ setInterval(() => {
 
 registrarAtividade()
 
-connectWebSocket()
+// Uma só ligação por navegador: com várias abas, só a aba ativa mantém o websocket. As outras não recebem
+// atualizações nem alertas (antes cada aba recebia tudo, repetido, e o servidor enviava os mesmos dados N vezes).
+// Web Locks: o navegador garante um só dono. A aba que fica visível rouba a ligação (steal); se a dona fechar,
+// a próxima da fila assume sozinha e a pessoa não aparece "offline" só por ter fechado uma aba.
+const LOCK_WEBSOCKET = 'reconst-websocket'
+let liderWebSocket = false
+let largarLideranca = null
+let pedidoLideranca = 0
+let filaLideranca = null
+let ficouSemLigacao = false
+
+function candidatarWebSocket(roubar = false) {
+    if (!navigator.locks) { liderWebSocket = true; return connectWebSocket() } // navegador antigo: como antes
+    const pedido = ++pedidoLideranca
+    filaLideranca?.abort()
+    filaLideranca = roubar ? null : new AbortController()
+    navigator.locks.request(LOCK_WEBSOCKET, roubar ? { steal: true } : { signal: filaLideranca.signal }, () => new Promise(fim => {
+        if (pedido !== pedidoLideranca) return fim()
+        liderWebSocket = true
+        largarLideranca = fim
+        connectWebSocket()
+    })).catch(() => {
+        if (pedido !== pedidoLideranca) return // pedido substituído por um mais recente (cancelado aqui)
+        // Outra aba ficou visível e levou a ligação: esta fecha a sua e volta para a fila.
+        deixarLiderancaWebSocket()
+        candidatarWebSocket()
+    })
+}
+
+function deixarLiderancaWebSocket() {
+    liderWebSocket = false
+    ficouSemLigacao = true
+    largarLideranca?.()
+    largarLideranca = null
+    clearTimeout(reconnectTimeout)
+    reconectando = false
+    if (socket) {
+        socket.onopen = socket.onmessage = socket.onerror = socket.onclose = null
+        try { socket.close() } catch { }
+        socket = null
+    }
+}
+
+// Ao voltar a esta aba, assume a ligação se ficar visível por 2 s (trocar de aba depressa não reconecta).
+let assumirTimeout = null
+document.addEventListener('visibilitychange', () => {
+    clearTimeout(assumirTimeout)
+    if (document.visibilityState !== 'visible' || liderWebSocket || !localStorage.getItem('acesso')) return
+    assumirTimeout = setTimeout(() => {
+        if (document.visibilityState === 'visible' && !liderWebSocket) candidatarWebSocket(true)
+    }, 2000)
+})
+
+// Depois do login (central.js) ou ao abrir: entra já se estiver visível, senão fica na fila.
+function iniciarWebSocket() {
+    if (liderWebSocket) return connectWebSocket()
+    const visivel = document.visibilityState === 'visible'
+    if (!visivel) ficouSemLigacao = true // aberta em segundo plano: atualiza os dados quando assumir
+    candidatarWebSocket(visivel)
+}
+
+iniciarWebSocket()
 
 async function encerrarAcesso(mensagem) {
     clearTimeout(reconnectTimeout)
@@ -73,7 +134,7 @@ async function encerrarAcesso(mensagem) {
 }
 
 function connectWebSocket() {
-    if (reconectando || !localStorage.getItem('acesso'))
+    if (!liderWebSocket || reconectando || !localStorage.getItem('acesso'))
         return
 
     reconectando = true
@@ -266,6 +327,11 @@ function comunicacao() {
             // Conexão nova nasce ativa: se a pessoa já estava parada, o servidor fica a saber já.
             if (ausenciaInformada) msg({ tipo: 'ausencia', ausente: true })
             await usuariosToolbar()
+            // Aba que esteve sem ligação (outra era a ativa): o que mudou entretanto não chegou aqui.
+            if (ficouSemLigacao) {
+                ficouSemLigacao = false
+                await Promise.allSettled([paginacao(), verificarMensagens(), atualizarContadorTarefas(), window.atualizarContadorEmails?.()])
+            }
             removerOverlay()
         }
 
