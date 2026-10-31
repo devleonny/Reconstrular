@@ -211,8 +211,12 @@
 }
 
 /* Mensageiro. Os estilos anteriores continuam atendendo aos avisos legados. */
-.cabecalho-usuario .chat-push-controle { flex: 0 0 auto; min-height: 0; height: 28px; margin: 0; padding: 4px 7px; background: #ffffff12; color: #e5e8eb; border: 1px solid #ffffff20; border-radius: 5px; box-shadow: none; font-size: 10px; line-height: 1; white-space: nowrap; }
-.cabecalho-usuario .chat-push-controle:hover { background: #ffffff25; transform: none; }
+.cabecalho-usuario .chat-push-controle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 32px; height: 32px; min-height: 0; margin: 0; padding: 0; background: transparent; color: #e5e8eb; border: 0; border-radius: 50%; box-shadow: none; }
+.cabecalho-usuario .chat-push-controle:hover { background: #ffffff20; transform: none; }
+.cabecalho-usuario .chat-push-controle svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+/* Desligado: sino cortado, mais apagado; bloqueado no navegador: cortado e em vermelho. */
+.cabecalho-usuario .chat-push-controle:is([data-estado="inativo"], [data-estado="indisponivel"]) { color: #9aa3ab; }
+.cabecalho-usuario .chat-push-controle[data-estado="bloqueado"] { color: #f28b82; }
 .chat-app {
     display: grid;
     grid-template-columns: 310px minmax(0, 1fr);

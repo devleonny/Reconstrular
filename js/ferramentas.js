@@ -164,7 +164,7 @@ async function carregarControles() {
             <button type="button" class="tarefas-contador-controle" onclick="painelChat()" title="Conversas" aria-label="Abrir conversas"><img src="imagens/chat-colorido.svg" alt=""><span id="contadorMensagens" class="labelQuantidade" style="display: none;"></span></button>
             <button type="button" class="tarefas-contador-controle" onclick="telaTarefas()" title="Tarefas pendentes" aria-label="Ver tarefas pendentes"><img src="imagens/tarefas-colorido.svg" alt=""><span id="contadorTarefas" class="labelQuantidade" hidden></span></button>
             ${acesso?.funcao !== 'Trabalhador' ? '<button type="button" class="tarefas-contador-controle" onclick="telaEmails()" title="E-mails" aria-label="Abrir e-mails"><img src="imagens/email-colorido.svg" alt=""><span id="contadorEmails" class="labelQuantidade" hidden></span></button>' : ''}
-            <button type="button" class="chat-push-controle" onclick="chatPushConfigurar()" title="Ativar ou desativar notificações de mensagens">Notificações</button>
+            <button type="button" class="chat-push-controle" onclick="chatPushConfigurar()" title="Notificações de mensagens" aria-label="Notificações de mensagens"></button>
             ${permitidosAprovacoes.includes(acesso.permissao) ? modelo('construcao', 'configs()', '') : ''}
         `
     const cabecalhoUsuario = document.querySelector('.cabecalho-usuario')
@@ -175,7 +175,9 @@ async function carregarControles() {
     await verificarMensagens()
     await atualizarContadorTarefas()
     window.iniciarContadorEmails?.()
-    chatPushSincronizar().catch(erro => console.warn('Notificações do chat:', erro.message))
+    chatPushAtualizarBotao()
+    chatPushSincronizar().catch(erro => console.warn('Notificações do chat:', erro.message)).finally(chatPushAtualizarBotao)
+    chatPushOferecer()
     await chatPushAbrirDestino()
 
 }
