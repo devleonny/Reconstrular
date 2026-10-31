@@ -15,7 +15,7 @@
 }
 
 .card {
-    margin-top: 15vh;
+    margin-top: 2vh;
     background: var(--card);
     border: 1px solid var(--ring);
     border-radius: 16px;
@@ -67,6 +67,16 @@ canvas {
     box-shadow: 0px 0px 10px #222;
     margin-top: 2vw;
     margin-bottom: 2vw;
+}
+
+/* Câmara do ponto: ocupa a maior parte do ecrã e aparece espelhada, como um espelho.
+   Só a pré-visualização é invertida; a captura (canvas) usa o quadro original. */
+.card #video {
+    height: 65vh;
+    height: 65dvh;
+    max-height: none;
+    object-fit: cover;
+    transform: scaleX(-1);
 }
 
 .status {

@@ -648,46 +648,40 @@
     justify-content: flex-end;
     padding: 12px 16px;
     gap: 8px;
-    border-top: 1px solid #dce1e6;
+    border-top: 1px solid #dce3e8;
     border-radius: 0;
-    background: linear-gradient(180deg, #e3e5e7, #d5d8db);
+    background: #eef2f5;
 }
 
+/* Botões claros como no GCS: fundo branco, texto na cor da marca e realce suave ao passar. */
 .popup .botoes-rodape {
     flex: 0 1 auto;
     min-height: 40px;
     height: auto;
     margin: 0;
-    padding: 10px 16px;
+    padding: 8px 12px;
     box-sizing: border-box;
-    gap: 8px;
-    border: 1px solid #cdd3d9;
-    border-radius: 8px;
+    gap: 10px;
+    border: 1px solid #cdd6dc;
+    border-radius: 7px;
     background: #fff;
-    color: #3f4852;
-    font-size: 12px;
+    color: #3f505e;
+    font-size: 13px;
     font-weight: 600;
     box-shadow: none;
     transform: none;
-    transition: background-color 150ms ease;
-}
-
-.popup .botoes-rodape:first-child {
-    background: #414b55;
-    border-color: #414b55;
-    color: #fff;
+    transition: background-color 150ms ease, border-color 150ms ease;
 }
 
 .popup .botoes-rodape:hover {
-    background: #e4e9ed;
-}
-
-.popup .botoes-rodape:first-child:hover {
-    background: #55616d;
+    background: #e8eef2;
+    border-color: #8a9daa;
 }
 
 .popup .botoes-rodape img {
-    width: 20px;
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
     margin: 0;
 }
 

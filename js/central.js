@@ -863,7 +863,7 @@ function telaLogin() {
 
             <div class="baixoLogin">
 
-                <img src="imagens/acesso.png" class="cadeado">
+                <img src="imagens/logo.jpeg" class="login-logo" alt="Reconstrular">
 
                 <div class="login-campos">
 

@@ -13,6 +13,8 @@
 .asd-cabecalho p { margin: 6px 0 0; max-width: 760px; color: var(--asd-suave); line-height: 1.5; }
 .asd .asd-acoes button { border: 1px solid #c9d8e8; border-radius: 8px; background: #f2f7fc; color: #1f4f7a; font-weight: 600; }
 .asd .asd-acoes button:hover:not(:disabled) { background: #e3eefa; border-color: #a9c4e0; }
+.asd .asd-atualizar { display: inline-flex; align-items: center; gap: 6px; }
+.asd .asd-atualizar svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .asd-conteudo > .asd-vazio { color: var(--asd-suave); }
 .asd-conteudo > .asd-vazio.asd-erro { color: #9b2c2c; }
 .asd-acoes { display: flex; flex-wrap: wrap; gap: 8px; }

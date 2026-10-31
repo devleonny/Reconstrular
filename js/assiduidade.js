@@ -109,7 +109,7 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
         const maximo = Math.max(100, ...p.semana.map(s => s.percentual))
         const dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex']
         const cartao = (rotulo, valor, classe, icone, detalhe) => `<div class="asd-cartao asd-${classe}"><div><span>${rotulo}</span><strong>${valor}</strong>${detalhe ? `<small>${detalhe}</small>` : ''}</div><i aria-hidden="true">${icone}</i></div>`
-        conteudo().innerHTML = cabecalho('Painel de hoje', `${dataPt(hoje())} · atualiza a cada minuto · equipa ativa: ${p.equipa}`, '<button type="button" data-atualizar>↻ Atualizar</button>')
+        conteudo().innerHTML = cabecalho('Painel de hoje', `${dataPt(hoje())} · atualiza a cada minuto · equipa ativa: ${p.equipa}`, '<button type="button" class="asd-atualizar" data-atualizar><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>Atualizar</button>')
             + `<div class="asd-cartoes">
                 ${cartao('Presentes agora', p.presentes, 'verde', ICONES_PAINEL.presentes, 'com entrada ou retorno marcados')}
                 ${cartao('Atrasos de hoje', p.atrasos.length, 'amarelo', ICONES_PAINEL.atrasos, 'tolerância de 5 minutos')}

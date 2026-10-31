@@ -302,6 +302,7 @@ html {
     flex-direction: column;
     margin-top: 0;
     justify-content: center;
+    justify-content: safe center;
     align-items: center;
     display: flex;
     width: 100%;
@@ -939,6 +940,12 @@ img {
     overflow: hidden;
     border: 1px solid #dde3e8;
     box-shadow: 0 2px 4px rgba(31, 45, 61, 0.06), 0 12px 32px rgba(31, 45, 61, 0.12);
+    flex-shrink: 0;
+}
+
+/* Com o teclado aberto o ecrã encolhe; nada dentro do bloco pode ser comprimido. */
+.loginBloco > * {
+    flex-shrink: 0;
 }
 
 
@@ -1040,8 +1047,10 @@ img {
     box-shadow: 0 0 0 3px #5b707f20;
 }
 
-.cadeado {
-    width: 4.5rem;
+.login-logo {
+    width: 6.5rem;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(31, 45, 61, 0.18);
 }
 
 .loginBloco .baixoLogin:has(> .login-campos) {
@@ -1115,6 +1124,7 @@ img {
 .loginBloco .botoes-rodape.login-entrar {
     justify-content: center;
     height: auto;
+    min-height: 48px;
     padding: 14px;
     background-color: #5b707f;
     color: white;
