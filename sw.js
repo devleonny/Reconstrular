@@ -1,5 +1,5 @@
 const CACHE_PREFIX = `reconstrular-${self.registration.scope}-`
-const CACHE = `${CACHE_PREFIX}ve1b9c8fd`
+const CACHE = `${CACHE_PREFIX}v9c888d7b`
 const localUrl = path => new URL(path, self.registration.scope).href
 const PUSH_CACHE = `reconstrular-push:${self.registration.scope}`
 
@@ -60,7 +60,8 @@ self.addEventListener('install', event => {
     if (!resposta.ok) throw new Error('Não foi possível carregar a interface do app.')
     const html = await resposta.clone().text()
     const arquivos = new Set(['manifest.json', 'imagens/logo.png',
-      'imagens/pwa/icone-192-v4.png', 'imagens/pwa/icone-512-v4.png'])
+      'imagens/pwa/icone-192-v4.png', 'imagens/pwa/icone-512-v4.png',
+      'imagens/pwa/icone-maskable-192-v4.png', 'imagens/pwa/icone-maskable-512-v4.png'])
     for (const atributo of html.matchAll(/(?:src|href)=["']([^"']+)["']/g)) {
       const url = new URL(atributo[1], self.registration.scope)
       if (url.href.startsWith(self.registration.scope)) arquivos.add(url.href)
