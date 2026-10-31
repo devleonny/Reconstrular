@@ -47,6 +47,7 @@ const PontoOffline = (() => {
     async function sincronizar() {
         if (enviando || !navigator.onLine) return
         enviando = true
+        const recusadas = []
         try {
             const fila = (await listar()).sort((a, b) => String(a.capturado_em).localeCompare(String(b.capturado_em)))
             for (const item of fila) {
@@ -58,7 +59,10 @@ const PontoOffline = (() => {
                 } catch { break }
                 if (!resposta.success && !resposta.definitivo) break
                 await remover(item.cliente_id)
-                if (!resposta.success) registrarRecusa(item, resposta.mensagem)
+                if (!resposta.success) {
+                    registrarRecusa(item, resposta.mensagem)
+                    recusadas.push({ capturado_em: item.capturado_em, mensagem: resposta.mensagem, invalidada: !!resposta.invalidada })
+                }
             }
         } catch (erro) {
             console.warn('Ponto offline: sincronização adiada.', erro?.message)
@@ -66,6 +70,26 @@ const PontoOffline = (() => {
             enviando = false
             atualizarAviso()
         }
+        if (recusadas.length) avisarRecusas(recusadas)
+    }
+
+    // Sem este aviso a marcação não aceite simplesmente sumia da fila e o trabalhador julgava que tinha marcado.
+    // "Por validar" não se perdeu (o encarregado decide); só a recusada de vez (ex.: PIN inexistente) pede para marcar de novo.
+    function avisarRecusas(recusadas) {
+        const lista = itens => `<ul style="text-align: left; margin: 10px 0; padding-left: 18px;">${itens.map(r => {
+            const momento = new Date(r.capturado_em)
+            const quando = `${momento.toLocaleDateString('pt-PT')} às ${momento.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}`
+            return `<li><b>${quando}</b> — ${escaparAtributo(r.mensagem || 'Recusada')}</li>`
+        }).join('')}</ul>`
+        const porValidar = recusadas.filter(r => r.invalidada), recusadasDeVez = recusadas.filter(r => !r.invalidada)
+        popup({
+            titulo: recusadasDeVez.length ? 'Marcação offline não aceite' : 'Marcação offline por validar',
+            mensagem: [
+                porValidar.length ? `A rede voltou, mas ${porValidar.length === 1 ? 'esta marcação não passou' : 'estas marcações não passaram'} nas verificações automáticas:
+                    ${lista(porValidar)}Ficou registada e o seu encarregado vai validar ou descartar. <b>Não precisa de marcar de novo.</b>` : '',
+                recusadasDeVez.length ? `${porValidar.length ? '<br><br>' : ''}O servidor não aceitou:${lista(recusadasDeVez)}Marque o ponto novamente ou fale com o seu encarregado.` : ''
+            ].join('')
+        })
     }
 
     async function guardar({ pin, selfie, posicao }) {

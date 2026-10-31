@@ -182,6 +182,7 @@ const esquemaBotoes = {
                 { nome: 'Painel', funcao: 'telaAssiduidade', img: 'home' },
                 { nome: 'Folha de Ponto', funcao: 'telaAssiduidadeFolha', img: 'pdf' },
                 { nome: 'Registos', funcao: 'telaAssiduidadeRegistos', img: 'relogio' },
+                { nome: 'Por Validar', funcao: 'telaAssiduidadeInvalidadas', img: 'checklist' },
                 { nome: 'Horas Trabalhadas', funcao: 'telaAssiduidadeHoras', img: 'planilha' },
                 { nome: 'Férias e Ausências', funcao: 'telaAssiduidadeAusencias', img: 'checklist' },
                 { nome: 'Locais de Trabalho', funcao: 'telaAssiduidadeLocais', img: 'zona' },

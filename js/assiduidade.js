@@ -5,13 +5,15 @@ const Assiduidade = (() => {
         ['painel', 'Painel'],
         ['folha', 'Folha de ponto'],
         ['registos', 'Registos'],
+        ['invalidadas', 'Por validar'],
         ['horas', 'Horas trabalhadas'],
         ['ausencias', 'Férias e ausências'],
         ['locais', 'Locais de trabalho'],
         ['funcionarios', 'Funcionários']
     ]
     const TIPOS = { entrada: 'Entrada', saida_almoco: 'Saída almoço', retorno_almoco: 'Retorno almoço', saida: 'Saída' }
-    const MOTIVOS_RECUSA = { fora_do_raio: 'Fora do raio', sem_localizacao: 'Sem localização', localizacao_imprecisa: 'Localização imprecisa', sem_local_autorizado: 'Sem local autorizado', rosto_diferente: 'Rosto não confere', sem_rosto_selfie: 'Rosto não detetado', sem_rosto_cadastro: 'Registo sem foto válida', sem_selfie: 'Sem imagem do rosto' }
+    const MOTIVOS_RECUSA = { fora_do_raio: 'Fora do raio', sem_localizacao: 'Sem localização', localizacao_imprecisa: 'Localização imprecisa', sem_local_autorizado: 'Sem local autorizado', rosto_diferente: 'Rosto não confere', sem_rosto_selfie: 'Rosto não detetado', sem_rosto_cadastro: 'Registo sem foto válida', sem_selfie: 'Sem imagem do rosto',
+        limite_marcacoes: 'Dia já com 4 marcações', intervalo_minimo: 'Muito próxima de outra', hora_invalida: 'Relógio do telemóvel errado', fora_do_prazo: 'Enviada fora do prazo' }
     let aba = 'painel', equipa = null, locais = null, atualizacao = null, ultimaLista = []
     const folhaSel = { colaborador: '', ano: 0, mes: 0 }
 
@@ -64,7 +66,7 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
         tela.innerHTML = `<section class="asd">
             <div class="asd-conteudo"><div class="asd-vazio">A carregar…</div></div>
         </section>`
-        try { await ({ painel, folha: folhaPonto, registos, horas: horasTrabalhadas, ausencias, locais: telaLocais, funcionarios }[aba])() }
+        try { await ({ painel, folha: folhaPonto, registos, invalidadas: porValidar, horas: horasTrabalhadas, ausencias, locais: telaLocais, funcionarios }[aba])() }
         catch (erro) { conteudo().innerHTML = `<div class="asd-vazio asd-erro">${esc(erro.message)}</div>` }
     }
     const conteudo = () => tela.querySelector('.asd-conteudo')
@@ -117,6 +119,8 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
                 ${cartao('Ausentes hoje', p.ausentes.length, 'azul', ICONES_PAINEL.ausentes, 'férias e faltas lançadas')}
                 ${p.offline ? cartao('Ponto offline', p.offline.pessoas, 'roxo', ICONES_PAINEL.offline,
                     `${p.offline.marcacoes} ${p.offline.marcacoes === 1 ? 'marcação feita' : 'marcações feitas'} sem internet hoje`) : ''}
+                ${p.porValidar ? cartao('Por validar', p.porValidar, 'roxo asd-cartao-link', ICONES_PAINEL.offline,
+                    'marcações offline que falharam as verificações · toque para decidir') : ''}
             </div>
             <div class="asd-grade">
                 <section class="asd-bloco"><h3>Atividade em tempo real</h3>${tabela(['Funcionário', 'Tipo', 'Hora', 'Local', 'Estado GPS', 'Mapa'],
@@ -134,6 +138,8 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
                 'Sem atrasos nem ausências hoje.')}</section>
             </div>`
         conteudo().querySelector('[data-atualizar]').onclick = () => painel().catch(falha)
+        const porValidarCartao = conteudo().querySelector('.asd-cartao-link')
+        if (porValidarCartao) porValidarCartao.onclick = () => telaAssiduidadeInvalidadas()
         clearInterval(atualizacao)
         atualizacao = setInterval(() => { if (ativa('painel') && !document.hidden) painel().catch(() => {}); else if (!ativa('painel')) clearInterval(atualizacao) }, 60000)
     }
@@ -164,6 +170,66 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
             if (excluir) formularioExclusao(ultimaLista[Number(excluir.dataset.excluir)])
         })
         await listar()
+    }
+
+    // ---------- Marcações offline por validar ----------
+    // Falharam as verificações ao sincronizar: não estão no ponto oficial até o gestor validar (ou descartar).
+    async function porValidar() {
+        conteudo().innerHTML = cabecalho('Marcações offline por validar', 'Marcações feitas sem internet que, ao chegar ao servidor, não passaram nas verificações (GPS, rosto, intervalo, prazo…). Não contam no ponto até serem validadas. Validar lança-as como intervenção do gestor (✎), com o seu nome e o motivo; descartar fica registado.')
+            + `<form class="asd-filtros">
+                <label>Mostrar<select name="estado"><option value="pendentes">Por decidir</option><option value="decididas">Já decididas</option></select></label>
+                <label data-periodo hidden>Decididas de<input type="date" name="inicio" value="${inicioMes()}"></label>
+                <label data-periodo hidden>até<input type="date" name="fim" value="${hoje()}"></label>
+                <button type="submit" class="asd-primario">Filtrar</button></form>
+                <div class="asd-resultado"></div>`
+        const form = conteudo().querySelector('.asd-filtros')
+        const motivo = i => `<span class="asd-gps asd-gps-erro">${esc(MOTIVOS_RECUSA[i.motivo] || i.motivo)}</span><small class="asd-sub">${esc(i.mensagem)}</small>`
+        const local = i => `${esc(i.local_nome || '—')}${i.distancia_m != null ? ` · ${esc(Math.round(i.distancia_m))} m` : ''}${i.precisao_m != null ? `<small class="asd-sub">GPS ±${esc(Math.round(i.precisao_m))} m</small>` : ''}`
+        const listar = async () => {
+            const estado = form.elements.estado.value
+            form.querySelectorAll('[data-periodo]').forEach(l => { l.hidden = estado !== 'decididas' })
+            const dados = await pedir(`/invalidadas?${lerFiltros(form)}`)
+            if (!ativa('invalidadas')) return
+            ultimaLista = dados.items
+            conteudo().querySelector('.asd-resultado').innerHTML = estado === 'decididas'
+                ? tabela(['Funcionário', 'Marcação', 'Motivo', 'Decisão', 'Por', 'Quando', 'Justificação'], dados.items.map(i => `<tr><td><b>${esc(i.nome)}</b></td><td class="asd-mono">${dataPt(i.data)} ${esc(i.hora)}</td><td>${motivo(i)}</td>
+                    <td>${i.decisao === 'validada' ? '<span class="asd-gps asd-gps-ok">Validada</span>' : '<span class="asd-gps asd-gps-aviso">Descartada</span>'}</td><td>${esc(i.decidido_por)}</td><td class="asd-mono">${esc(i.decidido_em)}</td><td>${esc(i.decisao_motivo)}</td></tr>`),
+                    'Nenhuma decisão no período.')
+                : tabela(['Funcionário', 'Marcação', 'Motivo', 'Local', 'Mapa', 'Recebida', ''], dados.items.map((i, n) => `<tr><td><b>${esc(i.nome)}</b><small class="asd-sub">${esc(i.usuario || '')}</small></td><td class="asd-mono">${dataPt(i.data)} ${esc(i.hora)}</td><td>${motivo(i)}</td>
+                    <td>${local(i)}</td><td>${linkMapa(i.latitude, i.longitude)}</td><td class="asd-mono">${esc(i.recebida_em)}</td>
+                    <td class="asd-linha-acoes"><button type="button" class="asd-primario" data-validar="${n}">Validar</button><button type="button" data-descartar="${n}">Descartar</button></td></tr>`),
+                    'Nenhuma marcação offline à espera de decisão.')
+        }
+        form.addEventListener('change', e => { if (e.target.name === 'estado') listar().catch(falha) })
+        form.addEventListener('submit', e => { e.preventDefault(); listar().catch(falha) })
+        conteudo().querySelector('.asd-resultado').addEventListener('click', e => {
+            const validar = e.target.closest('[data-validar]'), descartar = e.target.closest('[data-descartar]')
+            if (validar) formularioDecisao(ultimaLista[Number(validar.dataset.validar)], 'validar')
+            if (descartar) formularioDecisao(ultimaLista[Number(descartar.dataset.descartar)], 'descartar')
+        })
+        await listar()
+    }
+    function formularioDecisao(i, acao) {
+        emEdicao = i
+        const validar = acao === 'validar'
+        popup({
+            titulo: validar ? 'Validar marcação offline' : 'Descartar marcação offline', linhas: [
+                { texto: 'Marcação', elemento: `<span>${esc(i.nome)} · ${dataPt(i.data)} ${esc(i.hora)}</span>` },
+                { texto: 'Porque não foi aceite', elemento: `<span>${esc(i.mensagem)}</span>` },
+                { texto: 'Motivo (obrigatório)', elemento: `<textarea name="asd-motivo" rows="3" placeholder="${validar ? 'Ex.: estava na obra, o GPS falhou sem rede' : 'Ex.: marcação repetida por engano'}" style="width:100%;box-sizing:border-box"></textarea>` },
+                { elemento: validar
+                    ? '<p class="asd-nota asd-nota-destaque">✎ A marcação entra no ponto como <b>intervenção do gestor</b>, com o seu nome e o motivo, na folha, no PDF e no comprovativo da próxima marcação do trabalhador.</p>'
+                    : '<p class="asd-nota">A marcação não entra no ponto. A decisão e o motivo ficam guardados em "Já decididas".</p>' }
+            ], botoes: [validar
+                ? { texto: 'Validar', img: 'concluido', funcao: 'Assiduidade.confirmarDecisao(\'validar\')' }
+                : { texto: 'Descartar', img: 'cancel', funcao: 'Assiduidade.confirmarDecisao(\'descartar\')' }]
+        })
+    }
+    async function confirmarDecisao(acao) {
+        try {
+            await pedir(`/invalidadas/${encodeURIComponent(emEdicao.id)}/${acao}`, 'POST', { motivo: valor('asd-motivo') })
+            removerPopup(); conteudo()?.querySelector('.asd-filtros')?.requestSubmit()
+        } catch (erro) { falha(erro) }
     }
 
     // ---------- Folha de ponto (mês a mês; antiga folha de Colaboradores) ----------
@@ -662,13 +728,14 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
         } catch (erro) { falha(erro) }
     }
 
-    return { abrir, salvarAjuste, salvarCompletar, enviarFechamento, salvarMarcacao, salvarCorrecao, confirmarExclusao, corrigirDaFolha, excluirDaFolha, salvarAusencia, cancelarAusencia, salvarLocal, desativarLocal, usarMinhaLocalizacao, salvarAlocacao }
+    return { abrir, salvarAjuste, salvarCompletar, enviarFechamento, salvarMarcacao, salvarCorrecao, confirmarExclusao, confirmarDecisao, corrigirDaFolha, excluirDaFolha, salvarAusencia, cancelarAusencia, salvarLocal, desativarLocal, usarMinhaLocalizacao, salvarAlocacao }
 })()
 
 // Atalhos do menu lateral (esquema_botoes.js chama funções globais sem argumentos).
 function telaAssiduidade() { Assiduidade.abrir('painel') }
 function telaAssiduidadeFolha() { Assiduidade.abrir('folha') }
 function telaAssiduidadeRegistos() { Assiduidade.abrir('registos') }
+function telaAssiduidadeInvalidadas() { Assiduidade.abrir('invalidadas') }
 function telaAssiduidadeHoras() { Assiduidade.abrir('horas') }
 function telaAssiduidadeAusencias() { Assiduidade.abrir('ausencias') }
 function telaAssiduidadeLocais() { Assiduidade.abrir('locais') }
