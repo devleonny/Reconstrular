@@ -1433,29 +1433,82 @@ button:disabled {
     justify-content: start;
 }
 
+/* Balões de notificação (central.js, balaoNotificacao), como no GCS: empilhados no canto inferior direito. */
+.popup-mensagens {
+    position: fixed;
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
+    z-index: 999999;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: flex-end;
+    gap: 10px;
+    max-width: min(420px, calc(100vw - 32px));
+    pointer-events: none;
+}
+
 .popup-mensagem {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #333;
-    color: #fff;
-    padding: 10px 16px;
+    justify-content: flex-start;
+    gap: 12px;
+    position: relative;
+    width: 360px;
+    max-width: 100%;
+    padding: 14px;
+    box-sizing: border-box;
+    background: #f7f9fb;
+    color: #2f3a42;
+    border: 1px solid #d0d9e0;
+    border-left: 4px solid #5b707f;
     border-radius: 12px;
-    font-size: 0.95rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    font-size: 13px;
+    text-align: left;
+    box-shadow: 0 8px 24px rgba(31, 45, 61, .18);
     opacity: 0;
     transform: translateY(20px);
-    transition: opacity 0.4s, transform 0.4s;
-    z-index: 9999;
+    transition: opacity .4s, transform .4s;
+    pointer-events: auto;
 }
 
-.popup-mensagem img {
-    width: 3rem;
+.popup-mensagem.visivel { opacity: 1; transform: none; }
+
+.popup-mensagem > img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    flex-shrink: 0;
+    padding: 6px;
+    border-radius: 10px;
+    background: #e3e9ee;
+    box-sizing: border-box;
 }
+
+.popup-mensagem-conteudo { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.popup-mensagem-conteudo strong { color: #1f2a31; }
+.popup-mensagem-status { color: #6f7c86; font-size: 12px; }
+
+.popup-mensagem .popup-mensagem-fechar {
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #6f7c86;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.popup-mensagem .popup-mensagem-fechar:hover { background: #e3e9ee; }
+.popup-mensagem-fechar:focus-visible { outline: 2px solid #5b707f; outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) { .popup-mensagem { transition: none; } }
 
 .painelBotoes {
     border: solid 1px #797979;
@@ -1961,35 +2014,13 @@ button:disabled {
     }
 }
 
-/* Aviso de nova versão (index.html, verificarVersao): cartão fixo, não bloqueia o ecrã. */
-.aviso-versao {
-    position: fixed;
-    right: max(16px, env(safe-area-inset-right));
-    bottom: max(16px, env(safe-area-inset-bottom));
-    z-index: 10002;
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    width: min(360px, calc(100vw - 32px));
-    padding: 14px 16px;
-    box-sizing: border-box;
-    border: 1px solid #d6dee5;
-    border-left: 4px solid #5b707f;
-    border-radius: 12px;
-    background: #fff;
-    color: #2f3a42;
-    box-shadow: 0 10px 30px rgba(20, 30, 40, .22);
-    font-size: 13px;
-    line-height: 1.45;
-    text-align: left;
-    animation: aviso-versao-entrar .25s ease-out;
-}
-.aviso-versao > img { width: 36px; height: 36px; flex: none; object-fit: contain; border-radius: 8px; background: #5b707f; padding: 4px; box-sizing: border-box; }
-.aviso-versao strong { display: block; font-size: 14px; color: #1f2a31; }
-.aviso-versao span { display: block; margin-top: 2px; color: #6f7c86; }
-.aviso-versao-botoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.aviso-versao-botoes button { padding: 7px 12px; font-size: 12px; }
-.aviso-versao .aviso-versao-atualizar { background: #5b707f; border-color: #5b707f; color: #fff; }
+/* Aviso de nova versão (index.html): conteúdo do balão, texto em cima e botões empilhados em baixo. */
+.aviso-versao { display: flex; flex-direction: column; gap: 4px; }
+.aviso-versao strong { font-size: 14px; color: #1f2a31; }
+.aviso-versao > span { color: #6f7c86; font-size: 12px; }
+.aviso-versao-botoes { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.aviso-versao-botoes button { width: 100%; margin: 0; padding: 8px 12px; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.aviso-versao .aviso-versao-atualizar { border: 0; background: #5b707f; color: #fff; }
 .aviso-versao .aviso-versao-atualizar:hover { background: #4b5d6a; }
-@keyframes aviso-versao-entrar { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .aviso-versao { animation: none; } }
+.aviso-versao .aviso-versao-adiar { border: 1px solid #d0d9e0; background: #fff; color: #3f505e; }
+.aviso-versao .aviso-versao-adiar:hover { background: #e3e9ee; }

@@ -277,34 +277,51 @@ function overlayAguarde() {
     }, 30000)
 }
 
-function balaoUsuario(st, texto) {
+// Balão de notificação (como no GCS): empilhados no canto inferior direito, com × para fechar.
+// usuario/status: aviso de presença; texto: conteúdo livre (HTML). tempo em segundos; 0 = fica até fechar.
+function balaoNotificacao({ imagem, texto, usuario, status, tempo = 5 }) {
 
-    if (document.title == 'PDF') return
+    if (document.title == 'PDF')
+        return
 
-    let msg = document.querySelector('.popup-mensagem')
-    if (msg) msg.remove()
+    let container = document.querySelector('.popup-mensagens')
+    if (!container) {
+        container = document.createElement('div')
+        container.className = 'popup-mensagens'
+        document.body.appendChild(container)
+    }
 
-    const mensagemPop = `
-        <div class="popup-mensagem">
-            <img src="${imagemStatus(st)}">
-            <span>${st}</span>
-            <span>${texto}</span>
+    const msg = document.createElement('div')
+    msg.className = 'popup-mensagem'
+    msg.setAttribute('role', 'status')
+
+    msg.innerHTML = `
+        <img src="${escaparAtributo(imagem || 'imagens/logo.png')}" alt="">
+        <div class="popup-mensagem-conteudo">
+            ${usuario !== undefined
+                ? `<strong>${escaparAtributo(usuario)}</strong><span class="popup-mensagem-status">${escaparAtributo(status || 'offline')}</span>`
+                : (texto || '')}
         </div>
+        <button class="popup-mensagem-fechar" type="button" aria-label="Fechar notificação">×</button>
     `
-    document.body.insertAdjacentHTML('beforeend', mensagemPop)
 
-    msg = document.querySelector('.popup-mensagem')
-
-    requestAnimationFrame(() => {
-        msg.style.opacity = '1'
-        msg.style.transform = 'translateY(0)'
-    })
-
-    setTimeout(() => {
-        msg.style.opacity = '0'
-        msg.style.transform = 'translateY(20px)'
+    const fechar = () => {
+        msg.classList.remove('visivel')
         setTimeout(() => msg.remove(), 400)
-    }, 5000)
+    }
+    msg.querySelector('.popup-mensagem-fechar').addEventListener('click', fechar)
+
+    container.appendChild(msg)
+    requestAnimationFrame(() => msg.classList.add('visivel'))
+
+    if (tempo != 0)
+        setTimeout(fechar, tempo * 1000)
+}
+
+// Entrou, saiu ou ficou disponível de novo (ida e volta de "ausente" não mostra balão: websocket.js).
+function balaoUsuario(st, texto) {
+    const rotulos = { online: 'Ficou disponível', offline: 'Saiu', ausente: 'Está ausente' }
+    balaoNotificacao({ imagem: imagemStatus(st), usuario: texto, status: rotulos[st] || st })
 }
 
 async function telaPrincipal() {

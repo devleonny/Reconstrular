@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
     <title>Reconstrular</title>
     <link rel="stylesheet" type="text/css" href="css/tabelas.css?v=6e66ad71">
-    <link rel="stylesheet" type="text/css" href="css/estilo.css?v=b92ed561">
+    <link rel="stylesheet" type="text/css" href="css/estilo.css?v=91057399">
     <link rel="stylesheet" type="text/css" href="css/facial.css?v=a8a9ff2c">
     <link rel="stylesheet" type="text/css" href="css/folha.css?v=57270816">
     <link rel="stylesheet" type="text/css" href="css/epi.css?v=9afef87e">
@@ -63,7 +63,7 @@
     <script src="js/chat_push.js?v=0a9b400c"></script>
     <script src="js/ferramentas.js?v=a3f60dbc"></script>
     <script src="js/ponto-offline.js?v=7015989a"></script>
-    <script src="js/central.js?v=3b273442"></script>
+    <script src="js/central.js?v=8f587df2"></script>
     <script src="js/websocket.js?v=c9afdf23"></script>
     <script src="js/popup.js?v=8ca9269e"></script>
     <script src="js/tabelas.js?v=bb3300d2"></script>
@@ -88,7 +88,7 @@
     <script>
 
         // Carimbado por scripts/versionar.js no commit; comparado com versao.json publicado.
-        const versaoAtual = '48f42981'
+        const versaoAtual = '8ed55234'
 
         verificarVersao()
 
@@ -115,18 +115,19 @@
                 if (!versao || versao === String(versaoAtual) || document.querySelector('.aviso-versao'))
                     return
 
-                document.body.insertAdjacentHTML('beforeend', `
-                    <div class="aviso-versao" role="status" aria-live="polite">
-                        <img src="imagens/logo.png" alt="" aria-hidden="true">
-                        <div>
+                balaoNotificacao({
+                    imagem: 'imagens/atualizar.png',
+                    texto: `
+                        <div class="aviso-versao">
                             <strong>Nova versão disponível</strong>
                             <span>Atualize para carregar as últimas melhorias.</span>
                             <div class="aviso-versao-botoes">
                                 <button type="button" class="aviso-versao-atualizar" onclick="atualizarVersao()">Atualizar agora</button>
-                                <button type="button" class="aviso-versao-adiar" onclick="this.closest('.aviso-versao').remove()">Lembrar mais tarde</button>
+                                <button type="button" class="aviso-versao-adiar" onclick="this.closest('.popup-mensagem').remove()">Lembrar mais tarde</button>
                             </div>
-                        </div>
-                    </div>`)
+                        </div>`,
+                    tempo: 0 // fica até a pessoa escolher
+                })
             } catch {
                 // Sem rede: tenta no próximo ciclo.
             }
