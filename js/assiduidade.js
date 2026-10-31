@@ -66,13 +66,42 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
         tela.innerHTML = `<section class="asd">
             <div class="asd-conteudo"><div class="asd-vazio">A carregar…</div></div>
         </section>`
+        tela.querySelector('.asd').addEventListener('click', e => { if (e.target.closest('[data-alcance]')) explicarAlcance() })
+        // A equipa (e o alcance da linha "A ver:") vem antes de desenhar qualquer secção; fica em cache.
+        await carregarEquipa().catch(() => {})
         try { await ({ painel, folha: folhaPonto, registos, invalidadas: porValidar, horas: horasTrabalhadas, ausencias, locais: telaLocais, funcionarios }[aba])() }
         catch (erro) { conteudo().innerHTML = `<div class="asd-vazio asd-erro">${esc(erro.message)}</div>` }
     }
     const conteudo = () => tela.querySelector('.asd-conteudo')
     const ativa = qual => aba === qual && tela.querySelector('.asd')
 
-    const cabecalho = (tituloAba, descricao, acoes = '') => `<header class="asd-cabecalho"><div><h2>${tituloAba}</h2><p>${descricao}</p></div><div class="asd-acoes">${acoes}</div></header>`
+    const cabecalho = (tituloAba, descricao, acoes = '') => `<header class="asd-cabecalho"><div><h2>${tituloAba}</h2><p>${descricao}</p>${linhaAlcance()}</div><div class="asd-acoes">${acoes}</div></header>`
+
+    // "A ver:" por baixo do título: quem esta pessoa vê no ponto e quem vê o ponto dela (alcance de /colaboradores).
+    const funcoesResumo = itens => [...new Set(itens.map(c => c.funcao).filter(Boolean))].join(', ')
+    function linhaAlcance() {
+        if (!equipa?.alcance) return ''
+        const { items, alcance } = equipa
+        const quem = alcance.todaEmpresa
+            ? `<b>toda a empresa</b> (${items.length} pessoas)`
+            : items.length ? `<b>${items.length} ${items.length === 1 ? 'pessoa' : 'pessoas'}</b>${funcoesResumo(items) ? ` <small>(${esc(funcoesResumo(items))})</small>` : ''}` : '<b>ninguém</b> abaixo de si'
+        const meu = alcance.todaEmpresa ? '' : ` · <small>A sua folha é vista por ${alcance.quemMeVe.length ? `<b>${esc(alcance.quemMeVe.map(p => p.nome).join(', '))}</b>` : '<b>a administração</b>'}</small>`
+        return `<div class="asd-alcance">👁 A ver: ${quem}${meu}<button type="button" data-alcance>Porquê?</button></div>`
+    }
+    function explicarAlcance() {
+        const { items = [], alcance = {} } = equipa || {}
+        popup({
+            titulo: 'O que vê no ponto',
+            elemento: `<div style="padding: 16px; max-width: 520px; line-height: 1.55;">
+                ${alcance.todaEmpresa
+                    ? '<p style="margin-top: 0;">Como <b>CEO ou Diretor Programador</b>, vê o ponto de toda a empresa, incluindo o seu.</p>'
+                    : `<p style="margin-top: 0;">Cada pessoa vê só o <b>nível imediatamente abaixo</b>, na sua região:<br><b>Diretor → Coordenador → Encarregado → Trabalhador</b>.</p>
+                       <p>A sua própria folha não aparece aqui: quem a vê é ${alcance.quemMeVe?.length ? `<b>${esc(alcance.quemMeVe.map(p => `${p.nome} (${p.funcao})`).join(', '))}</b>` : 'a administração'}, e sempre o CEO e o Diretor Programador.</p>`}
+                ${items.length && !alcance.todaEmpresa ? `<p><b>Pessoas que vê (${items.length}):</b></p><ul style="margin: 0; padding-left: 18px; max-height: 220px; overflow-y: auto;">${items.map(c => `<li>${esc(c.nome)} <small style="color:#6f7b84">${esc(c.funcao || '')}</small></li>`).join('')}</ul>` : ''}
+                <p style="margin-bottom: 0;"><a href="#" onclick="removerPopup(); telaMeuAcesso(); return false;">Ver tudo o que pode ver no sistema →</a></p>
+            </div>`
+        })
+    }
     const tabela = (colunas, linhas, vazio) => `<div class="asd-tabela-caixa"><table class="asd-tabela"><thead><tr>${colunas.map(c => `<th>${c}</th>`).join('')}</tr></thead>
         <tbody>${linhas.length ? linhas.join('') : `<tr><td colspan="${colunas.length}" class="asd-vazio">${vazio}</td></tr>`}</tbody></table></div>`
     const etiquetaTipo = tipo => `<span class="asd-tipo asd-tipo-${esc(tipo)}">${esc(TIPOS[tipo] || 'Extra')}</span>`

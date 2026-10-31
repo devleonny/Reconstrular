@@ -168,8 +168,16 @@ async function abrirMapaDelegacao(selecionar = true) {
             while (regiao) { pais.unshift(rotuloRegiaoDelegacao(regiao, contexto)); regiao = regioes.get(regiao.pai_id) }
             const nomes = ocupantesPosicaoDelegacao(contexto,p.id)
             const tipo = contexto.tipologia?.cidades?.[p.regiao_id]
+            // Administração: "Ver acesso" de cada ocupante abre o resumo do que essa pessoa vê (meu-acesso.js).
+            const ocupantes = (indicesDelegacao(contexto).nomes.get(p.id) || []).filter(o => o.colaborador_id)
+            const verAcesso = !selecionar && contexto.administrador && ocupantes.length
+                ? `<div class="delegacao-ver-acesso">${ocupantes.map(o => `<button type="button" data-ver-acesso="${escaparAtributo(o.colaborador_id)}">👁 Ver acesso de ${escaparAtributo(o.nome)}</button>`).join('')}</div>` : ''
             const idConfirmacao = popup({ titulo: p.titulo, elemento:
-                `<div class="delegacao-confirmacao"><p>${p.tipo === 'administrativo' ? 'Acesso administrativo total.' : pais.map(n => escaparAtributo(/^nome\d+$/i.test(n) ? 'Grupo ' + n.slice(4) : n)).join(' → ')}</p><p>Atribuídos: ${nomes.length ? nomes.map(escaparAtributo).join(', ') : Array.isArray(contexto.ocupantes) ? 'nenhum colaborador visível nesta posição' : 'consulta indisponível'}.</p>${tipo ? `<p>${escaparAtributo(descricaoTipoAreaDelegacao(contexto, tipo))}</p>` : ''}${selecionar ? '<button type="button" class="delegacao-aplicar">Aplicar ao colaborador</button>' : ''}</div>` })
+                `<div class="delegacao-confirmacao"><p>${p.tipo === 'administrativo' ? 'Acesso administrativo total.' : pais.map(n => escaparAtributo(/^nome\d+$/i.test(n) ? 'Grupo ' + n.slice(4) : n)).join(' → ')}</p><p>Atribuídos: ${nomes.length ? nomes.map(escaparAtributo).join(', ') : Array.isArray(contexto.ocupantes) ? 'nenhum colaborador visível nesta posição' : 'consulta indisponível'}.</p>${tipo ? `<p>${escaparAtributo(descricaoTipoAreaDelegacao(contexto, tipo))}</p>` : ''}${verAcesso}${selecionar ? '<button type="button" class="delegacao-aplicar">Aplicar ao colaborador</button>' : ''}</div>` })
+            document.getElementById(idConfirmacao).querySelectorAll('[data-ver-acesso]').forEach(b => b.addEventListener('click', () => {
+                removerPopup(idConfirmacao); removerPopup(idModal)
+                telaMeuAcesso(b.dataset.verAcesso)
+            }))
             document.getElementById(idConfirmacao).querySelector('.delegacao-aplicar')?.addEventListener('click', () => {
                 if (!formulario.isConnected) return
                 aplicarPosicaoDelegacao(formulario,p,contexto)
