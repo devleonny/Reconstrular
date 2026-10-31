@@ -294,7 +294,7 @@ async function painelHistorico({ titulo, subtitulo = '', base, filtrosFixos = {}
         const n = ++consulta
         if (reiniciar) {
             pagina = 1; ultimoDia = null
-            lista.innerHTML = '<div class="hist-estado"><img src="imagens/loading-claro.png" alt="A carregar" width="56"></div>'
+            lista.innerHTML = `<div class="hist-estado">${iconeCarregando({ claro: true, largura: '56px' })}</div>`
         }
         botaoMais.disabled = true
         lista.setAttribute('aria-busy', 'true')

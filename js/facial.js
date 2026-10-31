@@ -132,7 +132,7 @@ function telaPinPonto() {
         <h2>Registo de ponto</h2>
         <p class="ponto-autorizado">✓ Câmara e localização autorizadas</p>
         <span>Informe o seu PIN de 4 dígitos</span>
-        <input type="password" inputmode="numeric" autocomplete="off" maxlength="4" name="pin" placeholder="PIN de 4 dígitos" onkeydown="if (event.key === 'Enter') verificarColaborador()">
+        <input type="text" class="campo-pin" ${ATRIBUTOS_PIN} name="pin" placeholder="PIN de 4 dígitos" onkeydown="if (event.key === 'Enter') verificarColaborador()">
         <button type="button" onclick="verificarColaborador()">Avançar</button>`
     bloco.querySelector('[name="pin"]').focus()
 }

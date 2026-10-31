@@ -573,7 +573,7 @@ function criarLoading(cols) {
     td.colSpan = cols
     td.innerHTML = `
         <div style="${horizontal}; width: 100%; gap: 1rem; justify-content: center; padding: 1rem;">
-            <img src="imagens/loading-claro.png" alt="A carregar" style="width: 4rem;">
+            ${iconeCarregando({ claro: true, largura: '4rem' })}
         </div>
     `
 

@@ -1125,6 +1125,7 @@ img {
     justify-content: center;
     height: auto;
     min-height: 48px;
+    box-sizing: border-box;
     padding: 14px;
     background-color: #5b707f;
     color: white;
@@ -1608,6 +1609,71 @@ button:disabled {
 .aguarde img {
     width: 35vw;
     animation: fade 0.3s ease;
+}
+
+/* Ícone de carregamento (iconeCarregando em central.js): branco no overlay, azul-acinzentado em fundos claros. */
+.icone-carregando {
+    display: block;
+    width: 5rem;
+    height: auto;
+    color: #fff;
+}
+
+.aguarde .icone-carregando {
+    animation: fade 0.3s ease;
+}
+
+.icone-carregando.claro {
+    color: #5b707f;
+}
+
+.icone-carregando .carregando-colher {
+    fill: currentColor;
+}
+
+.icone-carregando .carregando-trilho {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 4;
+    opacity: .18;
+}
+
+.icone-carregando .carregando-cometa > circle {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 4;
+    stroke-opacity: .2;
+}
+
+.icone-carregando .carregando-cometa > .carregando-cabeca {
+    stroke: none;
+    fill: currentColor;
+}
+
+/* Rotação linear e contínua em torno do centro do círculo (80, 91 no viewBox). */
+.icone-carregando .carregando-cometa {
+    transform-box: view-box;
+    transform-origin: 80px 91px;
+    animation: carregando-girar 1.2s linear infinite;
+}
+
+/* As quatro janelas piscam em conjunto. */
+.icone-carregando .carregando-janelas {
+    animation: carregando-piscar 1.2s ease-in-out infinite;
+}
+
+@keyframes carregando-girar {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes carregando-piscar {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .icone-carregando .carregando-cometa { animation-duration: 3s; }
+    .icone-carregando .carregando-janelas { animation: none; }
 }
 
 @keyframes fade {

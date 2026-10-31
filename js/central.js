@@ -227,6 +227,36 @@ function removerOverlay() {
     if (aguarde) aguarde.remove()
 }
 
+// Ícone de carregamento (substitui os APNG loading.png / loading-claro.png): colher e telhado fixos,
+// um arco em "cometa" a rodar em velocidade constante e as quatro janelas a piscar juntas.
+// O rasto do cometa são camadas sobrepostas que terminam todas na cabeça: a opacidade soma-se
+// em degradê sem precisar de <linearGradient> (ids repetidos quando há vários ícones na página).
+const ICONE_CARREGANDO = (() => {
+    const cx = 80, cy = 91, r = 70, volta = 2 * Math.PI * r, rasto = volta * 150 / 360, camadas = 16
+    const cometa = Array.from({ length: camadas }, (_, i) => {
+        const comprimento = rasto * (i + 1) / camadas
+        return `<circle cx="${cx}" cy="${cy}" r="${r}" stroke-dasharray="${comprimento.toFixed(2)} ${volta.toFixed(2)}" stroke-dashoffset="${(comprimento - rasto).toFixed(2)}"/>`
+    }).join('')
+    const cabeca = [cx + r * Math.cos(Math.PI * 150 / 180), cy + r * Math.sin(Math.PI * 150 / 180)].map(n => n.toFixed(2))
+    return `
+        <circle class="carregando-trilho" cx="${cx}" cy="${cy}" r="${r}"/>
+        <g class="carregando-cometa">${cometa}<circle class="carregando-cabeca" cx="${cabeca[0]}" cy="${cabeca[1]}" r="2"/></g>
+        <ellipse cx="61.5" cy="25" rx="4.6" ry="17.5" transform="rotate(13 61.5 25)" class="carregando-colher"/>
+        <path d="M57.5 42c-2.5 4-1.5 6 .5 7.5 1.5 1.1 1.5 2.5 1 4.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <path d="M41 53 87 54.5 28 121z" class="carregando-colher"/>
+        <path d="M90 59 83 66 130 120 145.5 120.5 116 83.5 116 72.5 106.5 73.5z" fill="#e03a12"/>
+        <g class="carregando-janelas" fill="currentColor">
+            <rect x="73.5" y="88.5" width="4.4" height="4.4"/><rect x="81.5" y="88.5" width="4.4" height="4.4"/>
+            <rect x="73.5" y="97.5" width="4.4" height="4.4"/><rect x="81.5" y="97.5" width="4.4" height="4.4"/>
+        </g>`
+})()
+
+// claro: versão azul-acinzentada para fundos brancos; largura: qualquer valor CSS.
+function iconeCarregando({ claro = false, largura } = {}) {
+    return `<svg class="icone-carregando${claro ? ' claro' : ''}" viewBox="0 0 160 176" role="img" aria-label="A carregar"
+        ${largura ? `style="width: ${largura}"` : ''}>${ICONE_CARREGANDO}</svg>`
+}
+
 function overlayAguarde() {
 
     if (sOverlay)
@@ -241,7 +271,7 @@ function overlayAguarde() {
         <div class="aguarde">
 
             <div class="loading-container">
-                <img src="imagens/loading.png" alt="A carregar">
+                ${iconeCarregando()}
             </div>
             
         </div>
@@ -863,7 +893,7 @@ function telaLogin() {
 
             <div class="baixoLogin">
 
-                <img src="imagens/logo.jpeg" class="login-logo" alt="Reconstrular">
+                <img src="imagens/pwa/icone-512-v4.png" class="login-logo" alt="Reconstrular">
 
                 <div class="login-campos">
 
