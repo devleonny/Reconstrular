@@ -63,7 +63,7 @@ function criarLinhaZona(dados) {
         linha,
         detalhes: `<section style="padding: 10px 12px;">
             <h3 style="margin: 0 0 10px; font-size: 12px; color: #52616e;">Serviços da zona</h3>
-            <div style="${vertical}; gap: 5px;">${itens || '<p>Nenhum serviço cadastrado.</p>'}</div>
+            <div style="${vertical}; gap: 5px;">${itens || '<p>Nenhum serviço registado.</p>'}</div>
         </section>`
     }
 }
@@ -106,7 +106,7 @@ async function edicaoZona(id) {
 
         const botoes = [
             {
-                texto: 'Salvar',
+                texto: 'Guardar',
                 funcao: `salvarZona('${id}')`,
                 img: 'concluido'
             }
@@ -114,7 +114,7 @@ async function edicaoZona(id) {
 
         if (dadosZona)
             botoes.push({
-                texto: 'Excluir',
+                texto: 'Eliminar',
                 img: 'cancel',
                 funcao: `confirmarExcluirZona('${id}')`
             })
@@ -122,7 +122,7 @@ async function edicaoZona(id) {
         popup({
             linhas,
             botoes,
-            titulo: 'Gerenciar Zona'
+            titulo: 'Gerir Zona'
         })
 
         // Povoar serviços;
@@ -170,7 +170,7 @@ async function abrirPainelServicos(id) {
 
         const botoes = [
             {
-                texto: 'Salvar',
+                texto: 'Guardar',
                 funcao: 'dispararServicos()',
                 img: 'concluido'
             }
@@ -293,7 +293,7 @@ async function salvarZona(id) {
 
     } catch (err) {
         console.error(err)
-        popup({ mensagem: 'Falha ao salvar a zona: Fale com o suporte.' })
+        popup({ mensagem: 'Falha ao guardar a zona: Fale com o suporte.' })
     }
 
 }
@@ -301,7 +301,7 @@ async function salvarZona(id) {
 function confirmarExcluirZona(id) {
 
     popup({
-        mensagem: 'Tem certeza que deseja excluir esta zona?',
+        mensagem: 'Tem a certeza de que deseja eliminar esta zona?',
         botoes: [
             {
                 texto: 'Confirmar',
@@ -321,6 +321,6 @@ async function excluirZona(id) {
         removerTodosPopups()
     } catch (err) {
         console.error(err)
-        popup({ mensagem: 'Falha ao excluir a zona: Fale com o suporte.' })
+        popup({ mensagem: 'Falha ao eliminar a zona: Fale com o suporte.' })
     }
 }

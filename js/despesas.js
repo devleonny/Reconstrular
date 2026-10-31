@@ -57,7 +57,7 @@ async function verificarDespesas() {
 
   } catch (err) {
     console.log(err)
-    popup({ mensagem: 'Falha ao abrir a tela de Despesas: Fale com o suporte.' })
+    popup({ mensagem: 'Falha ao abrir o ecrã de Despesas: Fale com o suporte.' })
   }
 
 }
@@ -252,13 +252,13 @@ async function formularioDespesa(idDespesa) {
     ]
 
     const botoes = [
-      { texto: 'Salvar', funcao: idDespesa ? `salvarDespesa('${idDespesa}')` : 'salvarDespesa()', img: 'concluido' }
+      { texto: 'Guardar', funcao: idDespesa ? `salvarDespesa('${idDespesa}')` : 'salvarDespesa()', img: 'concluido' }
     ]
 
     if (idDespesa)
-      botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExclusaoDespesa('${idDespesa}')` })
+      botoes.push({ texto: 'Eliminar', img: 'cancel', funcao: `confirmarExclusaoDespesa('${idDespesa}')` })
 
-    const idPopup = popup({ linhas, botoes, titulo: 'Gerenciar Despesa' })
+    const idPopup = popup({ linhas, botoes, titulo: 'Gerir Despesa' })
     const modalDespesa = document.getElementById(idPopup)
     modalDespesa.classList.add('popup-despesa')
     modalDespesa.querySelector('.rodape-padrao').insertAdjacentHTML('afterbegin', `
@@ -401,7 +401,7 @@ function confirmarExclusaoDespesa(idDespesa) {
   const botoes = [
     { texto: 'Confirmar', img: 'concluido', funcao: `excluirDespesa('${idDespesa}')`, fechar: true }
   ]
-  popup({ mensagem: 'Tem cezesa?', botoes, titulo: 'Exclusão de Despesa', removerAnteriores: true })
+  popup({ mensagem: 'Tem cezesa?', botoes, titulo: 'Eliminação de Despesa', removerAnteriores: true })
 }
 
 async function excluirDespesa(idDespesa) {
@@ -484,7 +484,7 @@ async function salvarDespesa(idDespesa = crypto.randomUUID()) {
 
   } catch (err) {
     console.error(err)
-    popup({ mensagem: 'Falha ao salvar a despesa: Fale com o suporte.' })
+    popup({ mensagem: 'Falha ao guardar a despesa: Fale com o suporte.' })
   }
 }
 
@@ -522,7 +522,7 @@ async function telaFornecedores() {
 
   } catch (err) {
     console.log(err)
-    popup({ mensagem: 'Falha ao abrir a tela de Fornecedores: Fale com o suporte.' })
+    popup({ mensagem: 'Falha ao abrir o ecrã de Fornecedores: Fale com o suporte.' })
   }
 
 }
@@ -620,10 +620,10 @@ async function adicionarFornecedor(idFornecedor) {
     ]
 
     const botoes = [
-      { texto: 'Salvar', img: 'concluido', funcao: `salvarFornecedor('${idFornecedor}')` }
+      { texto: 'Guardar', img: 'concluido', funcao: `salvarFornecedor('${idFornecedor}')` }
     ]
 
-    popup({ linhas, botoes, titulo: 'Gerenciar Fornecedor' })
+    popup({ linhas, botoes, titulo: 'Gerir Fornecedor' })
 
     verificarRegras()
 
@@ -671,7 +671,7 @@ async function salvarFornecedor(id) {
 
   } catch (err) {
     console.error(err)
-    popup({ mensagem: 'Falha ao salvar o cliente: Fale com o suporte.' })
+    popup({ mensagem: 'Falha ao guardar o cliente: Fale com o suporte.' })
   }
 
 }
@@ -708,7 +708,7 @@ async function telaGenerica(nomeBase, titulo) {
 
   } catch (err) {
     console.log(err)
-    popup({ mensagem: `Falha ao abrir a tela de ${titulo}: Fale com o suporte.` })
+    popup({ mensagem: `Falha ao abrir o ecrã de ${titulo}: Fale com o suporte.` })
   }
 
 
@@ -761,13 +761,13 @@ async function adicionarGenerico(id) {
     ]
 
     const botoes = [
-      { texto: 'Salvar', img: 'concluido', funcao: id ? `salvarGenerico('${id}')` : `salvarGenerico()` },
+      { texto: 'Guardar', img: 'concluido', funcao: id ? `salvarGenerico('${id}')` : `salvarGenerico()` },
     ]
 
     if (id)
-      botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExcluirGenerico('${id}')` })
+      botoes.push({ texto: 'Eliminar', img: 'cancel', funcao: `confirmarExcluirGenerico('${id}')` })
 
-    const titulo = id ? 'Salvar Item' : 'Editar Item'
+    const titulo = id ? 'Guardar Item' : 'Editar Item'
     popup({ linhas, botoes, titulo })
 
   } catch (err) {
@@ -819,10 +819,10 @@ async function excluirGenerico(id) {
 async function confirmarBaixarExcel() {
 
   popup({
-    mensagem: 'O Excel incluirá todos os registros permitidos pela sua hierarquia que correspondem aos filtros atuais, em todas as páginas. Continuar?',
+    mensagem: 'O Excel incluirá todos os registos permitidos pela sua hierarquia que correspondem aos filtros atuais, em todas as páginas. Continuar?',
     botoes: [
       {
-        texto: 'Baixar',
+        texto: 'Descarregar',
         img: 'planilha',
         funcao: 'baixarExcelDespesas()'
       }
@@ -850,7 +850,7 @@ async function baixarExcelDespesas() {
     })
 
     if (!response.ok) {
-      let erro = 'Erro ao baixar arquivo';
+      let erro = 'Erro ao descarregar ficheiro';
       try {
         const json = await response.json();
         erro = json.erro || json.detalhe || erro;

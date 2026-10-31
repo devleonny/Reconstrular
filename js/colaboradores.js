@@ -6,15 +6,15 @@ function fotoColaboradorHtml(foto) {
         <div class="colaborador-foto">
             <button type="button" class="colaborador-avatar" title="Clique para alterar a foto" aria-label="Alterar foto do colaborador" aria-expanded="false" onclick="menuFotoColaborador(this)">
                 <span class="colaborador-avatar-circulo">
-                    <img name="foto" alt="Foto do colaborador" ${foto ? `src="${api}/uploads/RECONST/${encodeURIComponent(foto)}"` : ''}>
-                    <video autoplay muted playsinline hidden aria-label="Prévia da câmera"></video>
+                    <img name="foto" alt="Foto do colaborador" ${foto ? `src="${urlArquivo(foto)}"` : ''}>
+                    <video autoplay muted playsinline hidden aria-label="Prévia da câmara"></video>
                 </span>
                 <span class="colaborador-avatar-editar" aria-hidden="true">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
                 </span>
             </button>
             <div class="colaborador-foto-menu" hidden>
-                <button type="button" onclick="abrirCameraColaborador(this)">Tirar foto com a câmera</button>
+                <button type="button" onclick="abrirCameraColaborador(this)">Tirar foto com a câmara</button>
                 <button type="button" onclick="this.closest('.colaborador-foto').querySelector('[data-foto-arquivo]').click()">Escolher imagem</button>
                 <input type="file" accept="image/*" data-foto-arquivo hidden onchange="arquivoFotoColaborador(this)">
             </div>
@@ -41,7 +41,7 @@ async function abrirCameraColaborador(botao) {
     const pedido = Symbol()
     painel.pedidoCamera = pedido
     painel.querySelector('.colaborador-foto-menu').hidden = true
-    status.textContent = 'Abrindo câmera…'
+    status.textContent = 'A abrir câmara…'
     try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error('indisponivel')
         const captura = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } } })
@@ -61,8 +61,8 @@ async function abrirCameraColaborador(botao) {
         if (!painel.isConnected || painel.pedidoCamera !== pedido) return
         cancelarCameraColaborador(painel)
         status.textContent = erro.name === 'NotAllowedError'
-            ? 'Permita o acesso à câmera no navegador e tente novamente.'
-            : 'Não foi possível abrir a câmera. Confira se ela está disponível e tente novamente.'
+            ? 'Permita o acesso à câmara no navegador e tente novamente.'
+            : 'Não foi possível abrir a câmara. Confira se ela está disponível e tente novamente.'
     }
 }
 
@@ -88,7 +88,7 @@ function capturarFotoColaborador(botao) {
     canvas.getContext('2d').drawImage(video, 0, 0)
     painel.querySelector('[name="foto"]').src = canvas.toDataURL('image/png')
     cancelarCameraColaborador(painel)
-    painel.querySelector('[role="status"]').textContent = 'Foto capturada. Ela será salva ao salvar o cadastro.'
+    painel.querySelector('[role="status"]').textContent = 'Foto capturada. Ela será guardada ao guardar o registo.'
 }
 
 // Imagem do aparelho: reduzida para no máximo 1280 px (o envio e o reconhecimento facial não precisam de mais).
@@ -99,7 +99,7 @@ function arquivoFotoColaborador(input) {
     painel.querySelector('.colaborador-foto-menu').hidden = true
     if (!arquivo) return
     const status = painel.querySelector('[role="status"]')
-    if (!arquivo.type.startsWith('image/')) return status.textContent = 'Escolha um arquivo de imagem (JPG, PNG…).'
+    if (!arquivo.type.startsWith('image/')) return status.textContent = 'Escolha um ficheiro de imagem (JPG, PNG…).'
     const imagem = new Image()
     const url = URL.createObjectURL(arquivo)
     imagem.onload = () => {
@@ -110,7 +110,7 @@ function arquivoFotoColaborador(input) {
         canvas.getContext('2d').drawImage(imagem, 0, 0, canvas.width, canvas.height)
         URL.revokeObjectURL(url)
         painel.querySelector('[name="foto"]').src = canvas.toDataURL('image/jpeg', 0.9)
-        status.textContent = 'Imagem escolhida. Ela será salva ao salvar o cadastro.'
+        status.textContent = 'Imagem escolhida. Ela será guardada ao guardar o registo.'
     }
     imagem.onerror = () => { URL.revokeObjectURL(url); status.textContent = 'Não foi possível abrir esta imagem.' }
     imagem.src = url
@@ -275,7 +275,7 @@ async function criarLinhaColaboradores(colaborador) {
     const tds = `
         <td>
             <span class="colaborador-mini" title="${escaparAtributo(nome || '')}">
-                ${foto ? `<img src="${api}/uploads/RECONST/${encodeURIComponent(foto)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+                ${foto ? `<img src="${urlArquivo(foto)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
             </span>
         </td>
         <td>
@@ -422,13 +422,23 @@ async function adicionarColaborador(id) {
             <input ${regras} value="${numero_documento || ''}" name="numero_documento" placeholder="Número do documento">
         </div>
         `
-        const divAnexos = (chave) => {
-            const anexos = colaborador?.[chave] || {}
-            let anexoString = ''
-            for (const [, anexo] of Object.entries(anexos)) {
-                anexoString += criarAnexoVisual(anexo)
-            }
-            return `<div id="anexos_${chave}" style="${vertical}">${anexoString}</div>`
+        // Documento: os já guardados (abrir/remover), os novos por enviar e a área para arrastar ou escolher.
+        // O input mantém o name do campo: salvarColaborador e verificarRegras leem dele os ficheiros novos.
+        const zonaDocumento = (chave, nomeDocumento) => {
+            const anexos = Object.entries(colaborador?.[chave] || {})
+            const guardados = anexos.map(([idAnexo, anexo]) => criarAnexoVisual({ ...anexo,
+                funcao: id ? `removerDocumentoColaborador(this, '${escaparAtributo(id)}', '${chave}', '${escaparAtributo(idAnexo)}')` : null })).join('')
+            return `
+                <div class="zona-documento" data-documento="${chave}">
+                    <div class="zona-documento-lista" id="anexos_${chave}">${guardados}</div>
+                    <div class="zona-documento-lista zona-documento-novos" data-novos></div>
+                    <label class="zona-documento-alvo">
+                        <input ${regras} name="${chave}" type="file" multiple accept="${DOCUMENTO_ACEITES}">
+                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+                        <span><b>Arraste o ${nomeDocumento} para aqui</b> ou clique para escolher</span>
+                        <small>PDF, imagem ou Word, até ${DOCUMENTO_MAX_MB} MB${anexos.length ? ' · os novos juntam-se aos já guardados' : ''}</small>
+                    </label>
+                </div>`
         }
 
         controlesCxOpcoes.cidade = {
@@ -463,11 +473,11 @@ async function adicionarColaborador(id) {
                 `
             },
             {
-                texto: 'Usuário',
+                texto: 'Utilizador',
                 elemento: `
                     <div style="${vertical}; gap: 5px;">
-                        <input name="usuario" aria-label="Usuário gerado pelo servidor" placeholder="Gerado automaticamente ao salvar" value="${escaparAtributo(usuario || '')}" readonly>
-                        <small>O usuário é gerado pelo servidor.</small>
+                        <input name="usuario" aria-label="Utilizador gerado pelo servidor" placeholder="Gerado automaticamente ao guardar" value="${escaparAtributo(usuario || '')}" readonly>
+                        <small>O utilizador é gerado pelo servidor.</small>
                     </div>
                 `
             },
@@ -509,24 +519,8 @@ async function adicionarColaborador(id) {
             { texto: 'Status', elemento: caixaStatus },
 
             // EXAMES
-            {
-                texto: 'Contrato de Obra',
-                elemento: `
-                    <div style="${vertical}; gap: 2px;">
-                        <input ${regras} name="contrato_obra" type="file">
-                        ${divAnexos('contrato_obra')}
-                    </div>
-                `
-            },
-            {
-                texto: 'Exame médico',
-                elemento: `
-                    <div style="${vertical}; gap: 2px;">
-                        <input ${regras} name="exame" type="file">
-                        ${divAnexos('exame')}
-                    </div>
-                `
-            },
+            { texto: 'Contrato de Obra', elemento: zonaDocumento('contrato_obra', 'contrato') },
+            { texto: 'Exame médico', elemento: zonaDocumento('exame', 'exame') },
             {
                 elemento: `
                     <div class="bloco-form-epi">
@@ -547,32 +541,39 @@ async function adicionarColaborador(id) {
             `
             },
 
-            // PIN
+            // PIN (Trabalhador); os demais entram com senha, gerada como provisória pelo rodapé.
             {
-                texto: 'Forma de Acesso [PIN / Senha]',
+                texto: 'Forma de Acesso [PIN]',
                 elemento: `
                     <div class="painel-pin">
-                        <input ${regras} type="password" value="${pin || ''}" ${pin ? `data-existente="${pin}"` : ''} name="pin" placeholder="Máximo de 4 números">
-                        <input ${regras} name="pinEspelho" value="${pin}" type="password" placeholder="Repita o PIN">
-                        
+                        <input ${regras} type="text" class="campo-pin" ${ATRIBUTOS_PIN} value="${pin || ''}" ${pin ? `data-existente="${pin}"` : ''} name="pin" placeholder="Máximo de 4 números">
+                        <input ${regras} type="text" class="campo-pin" ${ATRIBUTOS_PIN} name="pinEspelho" value="${pin || ''}" placeholder="Repita o PIN">
+
                         <div class="rodape-alerta"></div>
                         <button onclick="resetarPin()">Novo Pin</button>
-                    </div>
-                    <div class="painel-senha">
-                        <input type="password" placeholder="Senha" name="senha">
                     </div>
                 `
             }
         ]
 
+        linhas.push({ elemento: Remuneracao.formulario(colaborador) })
+
         const botoes = [
-            { funcao: id ? `salvarColaborador('${id}')` : 'salvarColaborador()', texto: 'Salvar', img: 'concluido' }
+            { funcao: id ? `salvarColaborador('${id}')` : 'salvarColaborador()', texto: 'Guardar', img: 'concluido' }
         ]
 
-        if (id)
-            botoes.push({ img: 'cancel', texto: 'Excluir', funcao: `confirmarExclusaoColaborador('${id}')` })
+        if (id && usuario && funcao !== 'Trabalhador')
+            botoes.push({ img: 'cadeado', texto: 'Palavra-passe provisória', funcao: `confirmarSenhaProvisoria('${id}')` })
 
-        popup({ linhas, botoes, titulo: 'Cadastro de Colaborador' })
+        if (id)
+            botoes.push({ img: 'cancel', texto: 'Eliminar', funcao: `confirmarExclusaoColaborador('${id}')` })
+
+        const idFormulario = popup({ linhas, botoes, titulo: 'Registo de Colaborador' })
+        document.getElementById(idFormulario)?.classList.add('popup-colaborador')
+        // Ficha de terceiros: o navegador não deve sugerir nem oferecer guardar estes dados (morada, telefone…).
+        document.getElementById(idFormulario)?.querySelectorAll('input:not([type="file"]):not([type="radio"]):not([type="checkbox"]), textarea')
+            .forEach(campo => campo.setAttribute('autocomplete', 'off'))
+        prepararZonasDocumento()
 
         await carregarTabelaFuncoes(funcao, filtros, id)
 
@@ -585,13 +586,166 @@ async function adicionarColaborador(id) {
 
 }
 
+// PIN do terminal de ponto: texto numérico mascarado por CSS (.campo-pin), não type="password",
+// para o navegador não o tratar como palavra-passe e oferecer guardá-lo ao fechar o formulário.
+// data-lpignore / data-1p-ignore: o mesmo para os gestores de palavras-passe LastPass e 1Password.
+const ATRIBUTOS_PIN = 'inputmode="numeric" maxlength="4" autocomplete="off" data-lpignore="true" data-1p-ignore'
+
+// ---------- Documentos do colaborador (contrato e exame) ----------
+const DOCUMENTO_EXTENSOES = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx']
+const DOCUMENTO_ACEITES = DOCUMENTO_EXTENSOES.map(e => '.' + e).join(',')
+const DOCUMENTO_MAX_MB = 20
+
+// Liga cada área de documento: arrastar ou escolher junta ficheiros (não substitui os já escolhidos),
+// mostra a pré-visualização dos novos e permite retirá-los antes de guardar.
+function prepararZonasDocumento(raiz = document) {
+    for (const zona of raiz.querySelectorAll('.zona-documento:not([data-pronta])')) {
+        zona.dataset.pronta = '1'
+        const input = zona.querySelector('input[type="file"]')
+        const novos = zona.querySelector('[data-novos]')
+        const escolhidos = new DataTransfer()
+
+        const desenhar = () => {
+            novos.querySelectorAll('img[data-previa]').forEach(img => URL.revokeObjectURL(img.src))
+            novos.innerHTML = [...escolhidos.files].map((f, i) => {
+                const extensao = (f.name.match(/\.([^.]+)$/)?.[1] || 'arq').toLowerCase()
+                const remover = `<button type="button" class="anexo-remover" data-retirar="${i}" title="Retirar" aria-label="Retirar ${escaparAtributo(f.name)}">&times;</button>`
+                return ['jpg', 'jpeg', 'png', 'webp'].includes(extensao)
+                    ? `<div class="anexo-imagem anexo-novo" title="${escaparAtributo(f.name)}">${remover}<img class="foto-status" data-previa src="${URL.createObjectURL(f)}" alt=""></div>`
+                    : `<div class="contorno-anexos anexo-novo" title="${escaparAtributo(f.name)}" style="--anexo-cor: ${corTipoAnexo(extensao)}">
+                        <div class="contorno-iterno"><span class="anexo-tipo">${escaparAtributo(extensao.slice(0, 4))}</span>
+                        <span class="anexo-textos"><span class="anexo-nome">${escaparAtributo(f.name.replace(/\.[^.]+$/, ''))}</span>
+                        <small>${(f.size / 1048576).toFixed(1)} MB · por enviar</small></span></div>${remover}</div>`
+            }).join('')
+        }
+        // O input passa a conter todos os escolhidos; avisa a validação do formulário.
+        const sincronizar = () => {
+            input.files = escolhidos.files
+            desenhar()
+            input.dispatchEvent(new Event('input', { bubbles: true }))
+        }
+        const adicionar = ficheiros => {
+            const recusados = []
+            for (const f of ficheiros) {
+                const extensao = (f.name.match(/\.([^.]+)$/)?.[1] || '').toLowerCase()
+                if (!DOCUMENTO_EXTENSOES.includes(extensao)) recusados.push(`${f.name}: tipo não aceite`)
+                else if (f.size > DOCUMENTO_MAX_MB * 1048576) recusados.push(`${f.name}: acima de ${DOCUMENTO_MAX_MB} MB`)
+                else if (![...escolhidos.files].some(e => e.name === f.name && e.size === f.size)) escolhidos.items.add(f)
+            }
+            sincronizar()
+            if (recusados.length) popup({ titulo: 'Documento', mensagem: `Não foi possível juntar:<br>${recusados.map(escaparAtributo).join('<br>')}<br><br>Aceites: PDF, imagem (JPG, PNG, WEBP) ou Word, até ${DOCUMENTO_MAX_MB} MB.` })
+        }
+
+        input.addEventListener('change', () => adicionar([...input.files]))
+        novos.addEventListener('click', e => {
+            const botao = e.target.closest('[data-retirar]')
+            if (!botao) return
+            escolhidos.items.remove(Number(botao.dataset.retirar))
+            sincronizar()
+        })
+        // Arrastar: a área inteira aceita a largada; o destaque some ao sair ou largar.
+        let profundidade = 0
+        zona.addEventListener('dragenter', e => { e.preventDefault(); profundidade++; zona.classList.add('arrastando') })
+        zona.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' })
+        zona.addEventListener('dragleave', () => { if (--profundidade <= 0) { profundidade = 0; zona.classList.remove('arrastando') } })
+        zona.addEventListener('drop', e => {
+            e.preventDefault()
+            profundidade = 0
+            zona.classList.remove('arrastando')
+            if (e.dataTransfer?.files?.length) adicionar([...e.dataTransfer.files])
+        })
+    }
+}
+
+// Remover um documento já guardado: pede confirmação e apaga só aquele anexo do registo.
+function removerDocumentoColaborador(botao, idColaborador, chave, idAnexo) {
+    botao.closest('.anexo-imagem, .contorno-anexos')?.setAttribute('data-remover', idAnexo)
+    popup({
+        titulo: 'Remover documento',
+        mensagem: 'Remover este documento do registo do colaborador?',
+        botoes: [{ texto: 'Remover', img: 'cancel', funcao: `confirmarRemoverDocumento('${idColaborador}', '${chave}', '${idAnexo}')`, fechar: true }]
+    })
+}
+
+async function confirmarRemoverDocumento(idColaborador, chave, idAnexo) {
+    overlayAguarde()
+    // deletar devolve o resultado (objeto) só quando apagou; recusa do servidor já mostra o motivo.
+    const resultado = await deletar(`dados_colaboradores/${idColaborador}/${chave}/${idAnexo}`)
+    removerOverlay()
+    if (resultado === null) return popup({ mensagem: 'Não foi possível remover o documento. Tente novamente.' })
+    if (typeof resultado !== 'object') return
+    document.querySelector(`[data-remover="${CSS.escape(idAnexo)}"]`)?.remove()
+    verificarRegras()
+}
+
+// Senha provisória: para usuário novo ou para quem perdeu o acesso. No primeiro login com ela
+// a pessoa é obrigada a criar a própria senha (central.js, formularioPrimeiroAcesso).
+function confirmarSenhaProvisoria(id) {
+
+    const botoes = [
+        { texto: 'Gerar', img: 'cadeado', funcao: `gerarSenhaProvisoria('${id}')` }
+    ]
+
+    popup({
+        mensagem: `
+            Gerar uma palavra-passe provisória para este colaborador?<br>
+            <small>A palavra-passe atual deixa de funcionar e os aparelhos conectados saem. A provisória vale 48 horas
+            e, no primeiro acesso, a pessoa cria a palavra-passe dela.</small>`,
+        botoes,
+        titulo: 'Palavra-passe provisória'
+    })
+}
+
+async function gerarSenhaProvisoria(id) {
+
+    overlayAguarde()
+
+    try {
+        const resposta = await fetchAutenticado(`${api}/senha-provisoria`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${acesso?.token}` },
+            body: JSON.stringify({ id })
+        })
+        const dados = await resposta.json().catch(() => ({}))
+
+        removerPopup()
+
+        if (!resposta.ok || !dados.success)
+            return popup({ mensagem: dados.mensagem || 'Falha ao gerar a palavra-passe provisória.' })
+
+        const validade = new Date(dados.expiraEm).toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' })
+
+        const linhas = [
+            { texto: 'Utilizador', elemento: `<input value="${escaparAtributo(dados.usuario)}" readOnly>` },
+            {
+                texto: 'Palavra-passe provisória',
+                elemento: `
+                    <div style="${horizontal}; gap: 5px;">
+                        <input value="${escaparAtributo(dados.senha)}" readOnly style="font-family: monospace; font-size: 1.1rem;">
+                        <button type="button" onclick="navigator.clipboard.writeText(this.previousElementSibling.value).then(() => this.textContent = 'Copiada')">Copiar</button>
+                    </div>`
+            },
+            { elemento: `<small style="text-align: left;">Válida até ${validade}. Ela aparece só agora: copie e envie para a pessoa.</small>` },
+            dados.bloqueado
+                ? { elemento: `<small style="text-align: left; color: #a63c3c;">O acesso deste colaborador está bloqueado: desbloqueie para ele conseguir entrar.</small>` }
+                : {}
+        ]
+
+        popup({ linhas, titulo: 'Palavra-passe provisória' })
+
+    } catch {
+        removerOverlay()
+        popup({ mensagem: 'Sem conexão com o servidor. Tente novamente.' })
+    }
+}
+
 function confirmarExclusaoColaborador(id) {
 
     const botoes = [
         { texto: 'Confirmar', img: 'concluido', funcao: `excluirColaborador('${id}')`, fechar: true }
     ]
 
-    popup({ mensagem: 'Tem certeza?', botoes, titulo: 'Excluir colaborador', removerAnteriores: true })
+    popup({ mensagem: 'Tem certeza?', botoes, titulo: 'Eliminar colaborador', removerAnteriores: true })
 }
 
 async function excluirColaborador(id) {
@@ -603,7 +757,9 @@ async function excluirColaborador(id) {
     removerOverlay()
 }
 
-async function salvarColaborador(idColaborador = crypto.randomUUID()) {
+async function salvarColaborador(idExistente) {
+
+    const idColaborador = idExistente || crypto.randomUUID()
 
     try {
 
@@ -623,6 +779,10 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
             })
 
         const colaborador = {}
+        // Cadastro novo ainda não existe no servidor: não há histórico de remuneração a preservar.
+        const anterior = idExistente ? await recuperarDado('dados_colaboradores', idColaborador) || {} : {}
+        const remuneracao = Remuneracao.coletar(anterior)
+        if (remuneracao) colaborador.remuneracao = remuneracao
 
         const camposFixos = [
             'nome',
@@ -658,17 +818,10 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
             const inputPin = document.querySelector('[name="pin"]')
             colaborador.pin = inputPin.value
 
-        } else {
-
-            // O servidor atribui o usuário na criação e preserva o login nas edições.
-            // Não enviar uma sugestão do navegador: a reserva precisa ser atômica no banco.
-
-            const possivelSenha = obVal('senha')
-
-            if (possivelSenha) // Se existir, salva;
-                colaborador.senha = possivelSenha
-
         }
+
+        // O servidor atribui o usuário na criação e preserva o login nas edições.
+        // A senha não sai deste formulário: é gerada como provisória pelo botão do rodapé.
 
         const camposAnexos = ['contrato_obra', 'exame']
         for (const campo of camposAnexos) {
@@ -741,7 +894,7 @@ async function salvarColaborador(idColaborador = crypto.randomUUID()) {
 
     } catch (err) {
         console.error(err)
-        popup({ mensagem: 'Falha ao salvar o colaborador: Fale com o suporte.' })
+        popup({ mensagem: err.message || 'Falha ao guardar o colaborador: Fale com o suporte.' })
     }
 }
 
@@ -765,7 +918,7 @@ async function excelColaboradores() {
 
     } catch (err) {
         console.error(err)
-        popup({ mensagem: 'Falha ao gerar o arquivo Excel: Fale com o suporte.' })
+        popup({ mensagem: 'Falha ao gerar o ficheiro Excel: Fale com o suporte.' })
     } finally { removerOverlay() }
 
 }
@@ -955,57 +1108,16 @@ function filtrarCidades({ filtros = null, campo = null }) {
 async function historicoColaborador() {
 
     try {
-
-        overlayAguarde()
-
-        const pag = 'his'
-        const tabela = await modTab({
+        await painelHistorico({
+            titulo: 'Histórico de colaboradores',
+            subtitulo: 'Registos, alterações e eliminações',
             base: 'vw_historico_colaboradores',
-            pag,
-            body: 'his',
-            colunas: {
-                'Colaborador': { chave: 'nome_colaborador' },
-                'Alterações': {},
-                'Data': { chave: 'data', tipoPesquisa: 'data' },
-                'Alterado por': { chave: 'usuario' }
-            },
-            criarLinha: 'linhaHis'
+            tabelaPadrao: 'dados_colaboradores',
+            buscarPessoa: true
         })
-
-        const idPopup = popup({
-            elemento: `<div style="padding: 0.5rem;">${tabela}</div>`
-        })
-        document.getElementById(idPopup).classList.add('popup-historico')
-
-        await paginacao(pag)
-
     } catch (err) {
         console.error(err)
         popup({ mensagem: 'Falha ao gerar o histórico: Fale com o suporte.' })
     }
-
-
-}
-
-function linhaHis(his) {
-
-    const {
-        nome_colaborador,
-        data,
-        usuario
-    } = his || {}
-
-    return `
-        <tr>
-            <td>
-                <span class="historico-pessoa">${escaparAtributo(nome_colaborador || '—')}</span>
-            </td>
-            <td>
-                <div class="janela-alteracoes">${linhasAlteracoesHistorico(his, 'dados_colaboradores')}</div>
-            </td>
-            <td>${escaparAtributo(data)}</td>
-            <td>${escaparAtributo(usuario)}</td>
-        </tr>
-    `
 
 }

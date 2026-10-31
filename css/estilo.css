@@ -934,10 +934,11 @@ img {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    width: auto;
-    border-radius: 10px;
+    width: min(360px, calc(100vw - 32px));
+    border-radius: 14px;
     overflow: hidden;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid #dde3e8;
+    box-shadow: 0 2px 4px rgba(31, 45, 61, 0.06), 0 12px 32px rgba(31, 45, 61, 0.12);
 }
 
 
@@ -945,13 +946,41 @@ img {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #b8b8b8;
-    padding: 1vw;
-    gap: 3vw;
+    background: linear-gradient(135deg, #8d9499, #5b707f);
+    color: white;
+    font-weight: 500;
+    padding: 12px 16px;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    isolation: isolate;
+}
+
+.botaoSuperiorLogin::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(135deg, #6f7a82, #3f505e);
+    opacity: 0;
+    transition: opacity .2s;
+}
+
+.botaoSuperiorLogin:hover::before {
+    opacity: 1;
 }
 
 .botaoSuperiorLogin img {
-    width: 2rem;
+    transition: transform .2s;
+}
+
+.botaoSuperiorLogin:hover img {
+    transform: scale(1.1);
+}
+
+.botaoSuperiorLogin img {
+    width: 1.75rem;
 }
 
 .painel-recuperacao {
@@ -1012,7 +1041,90 @@ img {
 }
 
 .cadeado {
-    width: 5rem;
+    width: 4.5rem;
+}
+
+.loginBloco .baixoLogin:has(> .login-campos) {
+    padding: 28px 24px 20px;
+    gap: 8px;
+}
+
+.login-campos {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    padding-top: 8px;
+}
+
+.login-campos label {
+    margin: 12px 0 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #5b707f;
+}
+
+.login-campos > input,
+.login-senha input {
+    width: 100%;
+}
+
+.login-senha {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.loginBloco .login-senha input[type="text"],
+.loginBloco .login-senha input[type="password"] {
+    padding-right: 44px;
+}
+
+.login-senha .olho {
+    position: absolute;
+    right: 10px;
+    width: 1.5rem;
+    cursor: pointer;
+    opacity: .7;
+    transition: opacity .15s;
+}
+
+.login-senha .olho:hover {
+    opacity: 1;
+}
+
+.login-esqueceu {
+    align-self: flex-end;
+    margin-top: 14px;
+    font-size: 12px;
+    color: #5b707f;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.login-esqueceu:hover {
+    color: #3f505e;
+}
+
+.loginBloco .rodape-padrao {
+    border-radius: 0;
+    border-top: none;
+}
+
+.loginBloco .botoes-rodape.login-entrar {
+    justify-content: center;
+    height: auto;
+    padding: 14px;
+    background-color: #5b707f;
+    color: white;
+    font-weight: 600;
+    letter-spacing: .03em;
+    transition: background-color .15s;
+}
+
+.loginBloco .botoes-rodape.login-entrar:hover {
+    background-color: #4b5d6a;
 }
 
 .overlay {
@@ -1207,27 +1319,105 @@ button:disabled {
     cursor: pointer;
 }
 
+/* Cartão de anexo (criarAnexoVisual, central.js): selo com o tipo na cor do formato, nome cortado com …,
+   × no canto. Imagens viram miniatura. Baseado no cartão do GCS. */
 .contorno-anexos {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    background-color: #222;
-    color: white;
-    border-radius: 5px;
+    --anexo-cor: #5b707f;
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    width: 230px;
+    max-width: 100%;
+    min-width: 0;
     height: max-content;
-    padding: 5px;
-    margin: 1px;
+    margin: 3px 0;
+    box-sizing: border-box;
+    color: #2f3a42;
+    background: #fff;
+    border: 1px solid #d6dee5;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(31, 45, 61, .06);
+    transition: border-color .15s, background-color .15s;
 }
+
+.contorno-anexos:hover { border-color: var(--anexo-cor); background-color: #fafbfc; }
 
 .contorno-iterno {
     display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 8px 30px 8px 8px;
+    cursor: pointer;
+}
+
+.anexo-tipo {
+    display: inline-flex;
+    flex: 0 0 auto;
     align-items: center;
     justify-content: center;
-    padding: 5px;
-    border-radius: 3px;
-    background-color: #99999940;
+    width: 42px;
+    height: 46px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--anexo-cor);
+    border-radius: 9px;
+    box-shadow: inset 0 -8px 0 rgba(0, 0, 0, .08);
 }
+
+.anexo-textos { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
+.anexo-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; font-weight: 600; }
+.anexo-textos small { font-size: .68rem; color: #7a8894; }
+
+.anexo-imagem { position: relative; width: max-content; max-width: 100%; margin: 3px 0; }
+.anexo-imagem .foto-status {
+    display: block;
+    width: 120px;
+    height: 90px;
+    max-width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #d6dee5;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(31, 45, 61, .06);
+    cursor: zoom-in;
+    object-fit: cover;
+}
+
+/* × pequeno no canto do cartão. */
+.anexo-remover {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+    line-height: 1;
+    color: #7a8894;
+    background: #fff;
+    border: 1px solid #d6dee5;
+    border-radius: 50%;
+    box-shadow: none;
+    cursor: pointer;
+}
+
+.anexo-remover:hover { color: #fff; background: #c0392b; border-color: #c0392b; }
+.anexo-imagem .anexo-remover { box-shadow: 0 1px 4px rgba(0, 0, 0, .25); }
+
+/* Visualizador de PDF dentro do app (abrirArquivo). */
+.popup-visualizador .popup-janela-fora { width: min(960px, 96vw); max-width: 96vw; }
+.visualizador-pdf { display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 8px; box-sizing: border-box; }
+.visualizador-pdf iframe { width: 100%; height: min(75vh, 900px); height: min(75dvh, 900px); border: 1px solid #d6dee5; border-radius: 8px; background: #fff; }
+.visualizador-pdf a { align-self: flex-end; color: #3c6e91; font-weight: 600; font-size: 13px; }
 
 .btnLateral img {
     filter: drop-shadow(0 0 0.5px black);
@@ -1770,3 +1960,36 @@ button:disabled {
         transition: none;
     }
 }
+
+/* Aviso de nova versão (index.html, verificarVersao): cartão fixo, não bloqueia o ecrã. */
+.aviso-versao {
+    position: fixed;
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
+    z-index: 10002;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: min(360px, calc(100vw - 32px));
+    padding: 14px 16px;
+    box-sizing: border-box;
+    border: 1px solid #d6dee5;
+    border-left: 4px solid #5b707f;
+    border-radius: 12px;
+    background: #fff;
+    color: #2f3a42;
+    box-shadow: 0 10px 30px rgba(20, 30, 40, .22);
+    font-size: 13px;
+    line-height: 1.45;
+    text-align: left;
+    animation: aviso-versao-entrar .25s ease-out;
+}
+.aviso-versao > img { width: 36px; height: 36px; flex: none; object-fit: contain; border-radius: 8px; background: #5b707f; padding: 4px; box-sizing: border-box; }
+.aviso-versao strong { display: block; font-size: 14px; color: #1f2a31; }
+.aviso-versao span { display: block; margin-top: 2px; color: #6f7c86; }
+.aviso-versao-botoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.aviso-versao-botoes button { padding: 7px 12px; font-size: 12px; }
+.aviso-versao .aviso-versao-atualizar { background: #5b707f; border-color: #5b707f; color: #fff; }
+.aviso-versao .aviso-versao-atualizar:hover { background: #4b5d6a; }
+@keyframes aviso-versao-entrar { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .aviso-versao { animation: none; } }

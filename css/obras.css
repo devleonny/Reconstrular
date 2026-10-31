@@ -167,38 +167,80 @@
     border: solid 1px #a7a7a7;
 }
 
-.janela-alteracoes {
-    overflow: auto;
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    justify-content: start;
-    gap: 4px;
-    max-width: 420px;
-    max-height: 180px;
+/* ---------- Histórico (obras e colaboradores): linha do tempo (historico.js, painelHistorico) ---------- */
+.popup-historico .popup-janela-fora { width: min(760px, 96vw); max-width: 96vw; }
+.popup.popup-historico .janela {
+    width: 100%; padding: 0; box-sizing: border-box; background: #f4f6f8 !important;
+    max-height: calc(100vh - 7.5rem); max-height: calc(100dvh - 7.5rem); overflow: auto;
 }
+.hist { --hist-texto: #3f505e; --hist-suave: #7a8894; --hist-linha: #dfe5ea; color: var(--hist-texto); font-size: 13px; text-align: left; }
 
-/* Históricos (obras e colaboradores): popup quase da altura da tela, descontando o título e a margem. */
-.popup.popup-historico .janela { max-height: calc(100vh - 7.5rem); max-height: calc(100dvh - 7.5rem); }
-.popup-historico .janela-alteracoes { max-height: 320px; }
-
-/* Cada frase do histórico: leitura confortável, sem cor de alerta. */
-.tag-alteracao {
-    display: inline-block;
-    padding: 4px 8px;
-    border: 1px solid #dfe5ea;
-    border-radius: 8px;
-    background-color: #f6f8fa;
-    color: #3f4d58;
-    line-height: 1.4;
-    text-align: left;
+/* Filtros fixos no topo enquanto a lista rola. */
+.hist-filtros {
+    position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+    padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--hist-linha); box-shadow: 0 2px 6px rgba(31, 45, 61, .04);
 }
+.hist-campo { display: flex; flex-direction: column; gap: 4px; flex: 1 1 160px; min-width: 0; font-size: 11px; font-weight: 600; color: var(--hist-suave); }
+.hist-campo.hist-data { flex: 0 1 140px; }
+.hist-campo input {
+    box-sizing: border-box; width: 100%; min-width: 0; height: 34px; padding: 6px 10px; border: 1px solid #ccd5dc; border-radius: 8px;
+    background: #f8fafb; color: var(--hist-texto); font: inherit; font-size: 13px; font-weight: 400;
+}
+.hist-campo input:focus { outline: none; border-color: #5b707f; background: #fff; box-shadow: 0 0 0 3px #5b707f20; }
+.hist-resumo { display: flex; justify-content: space-between; gap: 8px; padding: 10px 16px 0; font-size: 12px; color: var(--hist-suave); }
+.hist-total { margin-left: auto; font-weight: 600; }
 
-.tag-alteracao b { font-weight: 600; color: #2f3d48; }
+/* Linha do tempo: trilho vertical à esquerda e um marcador por evento. */
+.hist-lista { position: relative; padding: 4px 16px 8px 16px; }
+.hist-dia { margin: 14px 0 8px 34px; font-size: 12px; font-weight: 700; color: var(--hist-suave); text-transform: none; letter-spacing: .01em; }
+.hist-evento { position: relative; display: flex; gap: 12px; padding-bottom: 10px; }
+.hist-evento::before { content: ''; position: absolute; left: 12px; top: 26px; bottom: -2px; width: 2px; background: var(--hist-linha); }
+.hist-evento:has(+ .hist-dia)::before, .hist-evento:last-child::before { display: none; }
+.hist-marcador {
+    position: relative; z-index: 1; flex: none; display: grid; place-items: center; width: 26px; height: 26px; margin-top: 6px;
+    border-radius: 50%; background: #e3ebf2; color: #3c6e91; box-shadow: 0 0 0 3px #f4f6f8;
+}
+.hist-criado .hist-marcador { background: #ddf0e3; color: #2f6a46; }
+.hist-excluido .hist-marcador { background: #f8e1dc; color: #b3412f; }
+
+.hist-cartao { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--hist-linha); border-radius: 10px; background: #fff; box-shadow: 0 1px 2px rgba(31, 45, 61, .04); }
+.hist-cartao header { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 8px; }
+.hist-acao { padding: 1px 8px; border-radius: 999px; background: #e3ebf2; color: #3c6e91; font-size: 11px; font-weight: 700; }
+.hist-criado .hist-acao { background: #ddf0e3; color: #2f6a46; }
+.hist-excluido .hist-acao { background: #f8e1dc; color: #b3412f; }
+.hist-entidade { flex: 1; min-width: 0; font-weight: 600; color: #2f3d48; }
+.hist-pessoa { color: #5b707f; }
+.hist-cartao time { margin-left: auto; font-size: 12px; color: var(--hist-suave); font-variant-numeric: tabular-nums; }
+
+/* Mudanças: uma por linha, antes riscado → depois em destaque. */
+.hist-mudancas { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; line-height: 1.45; overflow-wrap: anywhere; }
+.hist-mudancas > li { padding: 4px 8px; border-radius: 6px; background: #f6f8fa; }
+.hist-mudancas b { font-weight: 600; color: #2f3d48; }
+.hist-mais { background: transparent !important; padding: 0 !important; }
+.hist-mais summary { padding: 2px 8px; color: #5b707f; font-size: 12px; font-weight: 600; cursor: pointer; }
+.hist-mais ul { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.hist-mais ul > li { padding: 4px 8px; border-radius: 6px; background: #f6f8fa; }
 .historico-antes { color: #8a5a52; text-decoration: line-through; text-decoration-color: #d9b3ad; }
 .historico-depois { color: #2f6a46; font-weight: 600; }
 .historico-ref { font-style: normal; }
-.historico-pessoa { display: inline-block; padding: 3px 8px; border-radius: 8px; background: #eef3f7; color: #3f4d58; font-weight: 600; }
+
+.hist-cartao footer { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--hist-suave); }
+.hist-cartao footer b { color: var(--hist-texto); font-weight: 600; }
+.hist-avatar { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #5b707f; color: #fff; font-size: 10px; font-weight: 700; flex: none; }
+
+.hist-estado { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 40px 16px; color: var(--hist-suave); text-align: center; }
+.hist-estado strong { color: var(--hist-texto); }
+.hist-erro strong { color: #b3412f; }
+.hist-rodape { display: flex; justify-content: center; padding: 4px 16px 16px; }
+.hist-rodape button { padding: 8px 18px; border: 1px solid #ccd5dc; border-radius: 999px; background: #fff; color: #5b707f; font-weight: 600; cursor: pointer; }
+.hist-rodape button:hover:not(:disabled) { background: #5b707f; border-color: #5b707f; color: #fff; }
+.hist-rodape button:disabled { opacity: .6; cursor: progress; }
+
+@media (max-width: 600px) {
+    .hist-campo, .hist-campo.hist-data { flex: 1 1 calc(50% - 10px); }
+    .hist-lista { padding-inline: 10px; }
+    .hist-evento { gap: 8px; }
+}
 
 @media screen and (orientation: landscape),
 screen and (min-aspect-ratio: 13/9) {

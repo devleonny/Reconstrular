@@ -121,8 +121,8 @@
 .execucoes .topo-tabela { padding: 12px 14px; box-sizing: border-box; background: #e3ded6; border-radius: 8px 8px 0 0; border-bottom: 1px solid #d2cbc1; gap: 10px; }
 .execucoes #paginacao_execucoes > div { color: #62594f !important; font-size: 12px; }
 .execucoes #paginacao_execucoes span { padding: 2px 4px; }
-.execucoes .rodape-tabela { min-height: 0; background: transparent; border-radius: 0; }
-.execucoes .div-tabela { border-radius: 0; box-shadow: none; }
+.execucoes .rodape-tabela { min-height: 0; background: transparent; border-radius: 0; border: none; }
+.execucoes .div-tabela { border-radius: 0; box-shadow: none; border-inline: none; }
 .execucoes .tabela > thead > tr > th { background: #eae6df; color: #62594f; }
 .execucoes .tabela > thead > .tabela-linha-pesquisa > th { background: #faf9f7; }
 .execucoes .tabela > tbody > tr:not(.tabela-linha-detalhes):hover { background: #f5f3ef; }

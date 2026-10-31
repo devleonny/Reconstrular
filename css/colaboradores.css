@@ -1,3 +1,99 @@
+/* Bloco final do cadastro: nova diária e histórico de vigências. */
+.colaborador-remuneracao {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 18px;
+    border: 1px solid #d9e1e8;
+    border-radius: 12px;
+    background: #fff;
+    color: #354351;
+    text-align: left;
+}
+.colaborador-remuneracao .remuneracao-cabecalho h3 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    color: #263a4c;
+}
+.colaborador-remuneracao p {
+    margin: 0;
+    color: #687582;
+    font-size: 12px;
+    line-height: 1.6;
+}
+.remuneracao-campos {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 18px;
+}
+.colaborador-remuneracao .remuneracao-campos label {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 7px;
+    min-width: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #425363;
+}
+.popup .colaborador-remuneracao .remuneracao-campos input,
+.popup .colaborador-remuneracao .remuneracao-campos select {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    box-sizing: border-box;
+    font-variant-numeric: tabular-nums;
+}
+/* Periodicidade do pagamento numa linha própria, acima dos campos da diária. */
+.colaborador-remuneracao .remuneracao-campos label:has(> [name="rem-periodicidade"]) {
+    grid-column: 1 / -1;
+}
+.colaborador-remuneracao .remuneracao-ajuda { margin-top: 12px; }
+.remuneracao-historico {
+    margin-top: 18px;
+    border-top: 1px solid #e4e9ee;
+    padding-top: 14px;
+}
+.remuneracao-historico summary {
+    cursor: pointer;
+    color: #3b5368;
+    font-size: 12px;
+    font-weight: 600;
+}
+.remuneracao-historico summary span {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: #eef3f7;
+    color: #65788a;
+    font-size: 11px;
+    font-weight: 400;
+}
+.remuneracao-historico summary:focus-visible { outline: 2px solid #526877; outline-offset: 4px; }
+.remuneracao-tabela { overflow-x: auto; margin: 12px 0 8px; }
+.popup .remuneracao-tabela table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.popup .remuneracao-tabela th,
+.popup .remuneracao-tabela td {
+    padding: 10px 12px;
+    border: 0;
+    border-bottom: 1px solid #e7edf2;
+    text-align: left;
+    white-space: nowrap;
+}
+.popup .remuneracao-tabela th { position: static; background: #f3f6f9; color: #536576; font-weight: 600; }
+.popup .remuneracao-tabela td { background: #fff; color: #425363; }
+.colaborador-remuneracao .remuneracao-vazio {
+    margin-top: 16px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #f4f7fa;
+}
+@media (max-width: 640px) {
+    .colaborador-remuneracao { padding: 14px; }
+    .remuneracao-campos { grid-template-columns: 1fr; }
+}
+
 .campo-filtros {
     display: flex;
     justify-content: start;
@@ -12,10 +108,6 @@
     align-items: end;
     flex-direction: column;
     gap: 10px
-}
-
-.painel-senha {
-    display: none;
 }
 
 .caixa-filtros {
@@ -219,3 +311,28 @@
     background: linear-gradient(135deg, #b98a5e 0%, #7f6a5b 38%, #5b707f 72%, #8fb3c9 100%); }
 .colaborador-mini::before { content: ''; position: absolute; inset: 2px; border: 2px solid #fff; border-radius: 50%; background: #e5eaee url("../imagens/avatar-generico.svg") center / cover no-repeat; }
 .colaborador-mini img { position: absolute; inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px); max-width: none; margin: 0; padding: 0; border-radius: 50%; object-fit: cover; }
+
+/* Documentos do colaborador (contrato e exame): guardados, novos por enviar e área para arrastar/escolher. */
+.zona-documento { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; }
+.zona-documento-lista { display: flex; flex-wrap: wrap; gap: 8px; }
+.zona-documento-lista:empty { display: none; }
+.zona-documento-alvo {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    width: 100%; min-height: 92px; padding: 14px 16px; box-sizing: border-box;
+    border: 2px dashed #c7d2db; border-radius: 12px; background: #f7f9fb; color: #5b707f;
+    text-align: center; font-size: 13px; line-height: 1.4; cursor: pointer; transition: border-color .15s, background-color .15s;
+}
+.zona-documento-alvo:hover, .zona-documento-alvo:focus-within { border-color: #5b707f; background: #f0f4f7; }
+.zona-documento-alvo b { color: #3f505e; }
+.zona-documento-alvo small { color: #8592a0; font-size: 11.5px; }
+/* O input cobre a área (clicar abre a escolha) mas fica invisível. */
+.zona-documento-alvo input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.zona-documento.arrastando .zona-documento-alvo { border-color: #3c6e91; border-style: solid; background: #e7f0f7; color: #3c6e91; }
+/* Novos ainda não enviados: contorno tracejado para distinguir dos já guardados. */
+.anexo-novo.contorno-anexos, .anexo-novo .foto-status { border-style: dashed; border-color: #8fb3c9; }
+
+/* PIN mascarado sem type="password" (o navegador deixa de oferecer guardá-lo como palavra-passe). */
+.campo-pin { -webkit-text-security: disc; text-security: disc; font-variant-numeric: tabular-nums; letter-spacing: .2em; }
+
+/* Formulário do colaborador: "Guardar" (1º botão, com o destaque) vai para a ponta direita do rodapé. */
+.popup-colaborador .rodape-padrao > .botoes-rodape:first-child { order: 1; }

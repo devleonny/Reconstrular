@@ -338,11 +338,19 @@
 .chat-erro-pessoas { font-size: 12px; color: #80552f; line-height: 1.6; }
 @media (max-width: 900px) { .chat-app { grid-template-columns: 270px minmax(0, 1fr); } }
 @media (max-width: 680px) {
+    /* Com o chat aberto, a página mede só a área visível (sem barra de endereço nem teclado; --altura-visivel
+       vem de chat.js) e não rola: antes o body (100vh) era maior que o chat e a página subia alguns pixels. */
+    html:has(.chat-app), body:has(.chat-app) {
+        height: 100dvh;
+        height: var(--altura-visivel, 100dvh);
+        overflow: hidden;
+        overscroll-behavior: none;
+    }
+    /* O chat ocupa o que sobra abaixo da barra do topo (em vez de calcular 100dvh - 6vh). */
     .layout:has(.chat-app) {
-        height: calc(100vh - 6vh);
-        height: calc(100dvh - 6vh);
+        height: auto;
+        flex: 1 1 0;
         min-height: 0;
-        flex-shrink: 0;
     }
     .tela:has(> .chat-app) {
         min-height: 0;

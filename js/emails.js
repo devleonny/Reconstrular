@@ -5,7 +5,7 @@
     const address = value => typeof value === 'string' ? value : value?.email || '';
     const addresses = values => (values || []).map(address).join(', ');
     // Situação de envio/entrega gravada pelo servidor (email-api / email-worker).
-    const statusTexto = { draft:'Rascunho', queued:'Na fila de envio', sending:'Enviando…', sent:'Enviado', delivered:'Entregue',
+    const statusTexto = { draft:'Rascunho', queued:'Na fila de envio', sending:'A enviar…', sent:'Enviado', delivered:'Entregue',
         deferred:'Entrega adiada (nova tentativa)', bounced:'Devolvido: endereço não aceitou', blocked:'Bloqueado pelo provedor',
         spam:'Marcado como spam', error:'Falha no envio', received:'Recebido' };
     const status = value => statusTexto[value] || value || '';
@@ -62,7 +62,7 @@
             if (grupo[0] === 'cores') return `<label class="em-cor" title="Cor do texto"><span class="em-cor-a">A</span><input type="color" data-cor="foreColor" value="#c53030" aria-label="Cor do texto"></label><label class="em-cor" title="Cor de destaque"><span class="em-cor-marca">${svg('<path d="m9 11-5 5v4h4l5-5"/><path d="m13 7 4 4"/><path d="M11 9l5-5 4 4-5 5z"/>')}</span><input type="color" data-cor="hiliteColor" value="#fff59d" aria-label="Cor de destaque"></label>`;
             return grupo.map(([cmd, titulo, icone]) => `<button type="button" data-cmd="${cmd}" title="${titulo}" aria-label="${titulo}">${icone}</button>`).join('');
         });
-        return `<div class="em-editor-campo"><span class="em-dest-rotulo">Mensagem</span><div class="em-editor"><div class="em-toolbar" role="toolbar" aria-label="Formatação">${grupos.map(g => `<div class="em-toolbar-grupo">${g}</div>`).join('')}</div><div class="em-link-bar" hidden><input type="text" data-link-url placeholder="https://site.com ou nome@email.com" aria-label="Endereço do link"><button type="button" data-link-ok class="em-primary">Aplicar</button><button type="button" data-link-cancelar>Cancelar</button></div><div class="em-editor-area" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Mensagem"></div></div><div class="em-assinatura-titulo">Assinatura incluída automaticamente no envio</div><div class="em-assinatura-previa" aria-label="Prévia da assinatura">Carregando assinatura…</div></div>`;
+        return `<div class="em-editor-campo"><span class="em-dest-rotulo">Mensagem</span><div class="em-editor"><div class="em-toolbar" role="toolbar" aria-label="Formatação">${grupos.map(g => `<div class="em-toolbar-grupo">${g}</div>`).join('')}</div><div class="em-link-bar" hidden><input type="text" data-link-url placeholder="https://site.com ou nome@email.com" aria-label="Endereço do link"><button type="button" data-link-ok class="em-primary">Aplicar</button><button type="button" data-link-cancelar>Cancelar</button></div><div class="em-editor-area" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Mensagem"></div></div><div class="em-assinatura-titulo">Assinatura incluída automaticamente no envio</div><div class="em-assinatura-previa" aria-label="Prévia da assinatura">A carregar assinatura…</div></div>`;
     }
     let assinaturaCache = null;
     // Liga a barra de ferramentas ao editor; devolve leitores do conteúdo para o salvamento.
@@ -110,11 +110,11 @@
             e.preventDefault();
             if (html || texto) document.execCommand('insertHTML', false, html ? limparHtml(html, false) : textoHtml(texto));
         });
-        area.addEventListener('drop', e => { if (e.dataTransfer?.files?.length) { e.preventDefault(); notice('Para enviar arquivos, use o campo Anexos.'); } });
+        area.addEventListener('drop', e => { if (e.dataTransfer?.files?.length) { e.preventDefault(); notice('Para enviar ficheiros, use o campo Anexos.'); } });
         // Assinatura obrigatória: prévia do cartão que o servidor monta com os dados do seu cadastro.
         const previa = form.querySelector('.em-assinatura-previa');
         (assinaturaCache ||= request('/signature').catch(erro => { assinaturaCache = null; throw erro; }))
-            .then(a => { if (form.isConnected) previa.innerHTML = a?.html || 'Assinatura vazia: confira nome e função no seu cadastro.'; })
+            .then(a => { if (form.isConnected) previa.innerHTML = a?.html || 'Assinatura vazia: confira nome e função no seu registo.'; })
             .catch(erro => { if (form.isConnected) { previa.classList.add('em-assinatura-erro'); previa.textContent = `Prévia indisponível: ${erro.message}`; } });
         return {
             html: () => limparHtml(area.innerHTML, true),
@@ -124,7 +124,7 @@
     }
     async function request(path, method = 'GET', data) {
         const { token } = JSON.parse(localStorage.getItem('acesso') || '{}');
-        if (!token) throw new Error('Entre novamente para acessar seus e-mails.');
+        if (!token) throw new Error('Entre novamente para aceder aos seus e-mails.');
         const multipart = data instanceof FormData;
         const response = await fetchAutenticado(`${api}/emails${path}`, {
             method, headers: { Authorization:`Bearer ${token}`, ...(!multipart && data ? {'Content-Type':'application/json'} : {}) },
@@ -142,8 +142,8 @@
     window.telaEmails = async function () {
         titulo.textContent = 'E-mails';
         tela.innerHTML = `<section class="emails" aria-label="E-mails"><div class="em-shell">
-            <div class="em-top"><div class="em-account">${iconeMenu('carta')}<span class="em-identity">Carregando sua conta…</span></div><div class="em-notice" role="status" aria-live="polite"></div></div>
-            <aside class="em-sidebar"><button class="em-primary" data-new disabled>＋ Escrever e-mail</button><nav class="em-folders" aria-label="Pastas de e-mail">${Object.entries(folders).map(([key,name]) => `<button data-folder="${key}" aria-current="${key === 'inbox'}">${name}</button>`).join('')}</nav></aside>
+            <div class="em-top"><div class="em-account">${iconeMenu('carta')}<span class="em-identity">A carregar sua conta…</span></div><div class="em-notice" role="status" aria-live="polite"></div></div>
+            <aside class="em-sidebar"><button class="em-primary" data-new disabled>＋ Escrever e-mail</button><nav class="em-folders" aria-label="Pastas de e-mail">${Object.entries(folders).map(([key,name]) => `<button data-folder="${key}" aria-current="${key === 'inbox'}"><span>${name}</span><span class="em-contagem" data-contagem="${key}"></span></button>`).join('')}</nav></aside>
             <div class="em-column"><form class="em-tools em-search" role="search"><div class="em-query"><input name="q" aria-label="Pesquisar e-mails" placeholder="Pesquisar nesta pasta…" maxlength="200"><button type="submit" data-refresh aria-label="Pesquisar e atualizar mensagens" title="Pesquisar e atualizar mensagens"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button></div><div class="em-filters"><select name="unread" aria-label="Filtrar leitura"><option value="">Todos os e-mails</option><option value="true">Não lidos</option></select></div></form><div class="em-list" aria-label="Mensagens"></div><div class="em-pagination"><button data-prev disabled aria-label="Página anterior">‹</button><span class="em-page"></span><button data-next disabled aria-label="Próxima página">›</button></div></div>
             <article class="em-reader" aria-label="Leitura e composição"><div class="em-empty">${iconeMenu('carta')}<strong>Suas mensagens, em um só lugar</strong><span>Selecione um e-mail para ler ou escreva uma nova mensagem.</span></div></article>
         </div></section>`;
@@ -164,12 +164,26 @@
             const fim = new MutationObserver(() => { if (!document.getElementById(id)) { fim.disconnect(); delete respostas[chave]; resolve(false); } });
             fim.observe(document.body, { childList: true });
         });
-        const canLeave = async () => !compose || !compose.dirty || await confirmar('Descartar o e-mail em edição? As alterações não salvas serão perdidas.', 'Descartar e-mail', 'Descartar');
+        const canLeave = async () => !compose || !compose.dirty || await confirmar('Descartar o e-mail em edição? As alterações não guardadas serão perdidas.', 'Descartar e-mail', 'Descartar');
+        // Total e não lidos ao lado de cada pasta; falha só deixa os números como estavam.
+        let contagemSerial = 0;
+        async function contar() {
+            const n = ++contagemSerial;
+            try {
+                const contagem = await request('/counts');
+                if (n !== contagemSerial || !root.isConnected) return;
+                for (const el of root.querySelectorAll('[data-contagem]')) {
+                    const { total = 0, unread = 0 } = contagem[el.dataset.contagem] || {};
+                    el.innerHTML = `${total ? `<small>${total}</small>` : ''}${unread ? `<mark title="${unread} não lido(s)">${unread > 99 ? '99+' : unread}</mark>` : ''}`;
+                }
+            } catch (error) { console.warn('Não foi possível contar os e-mails:', error.message); }
+        }
         async function load() {
+            contar();
             const id = ++serial;
             const params = new URLSearchParams({folder, page, limit:25, q:root.querySelector('[name=q]').value, unread:root.querySelector('[name=unread]').value});
             if (account?.supportsThreads) params.set('groupBy', 'thread');
-            notice('Carregando mensagens…');
+            notice('A carregar mensagens…');
             try {
                 const data = await request(`/messages?${params}`);
                 if (id !== serial || !root.isConnected) return;
@@ -204,15 +218,31 @@
             // Texto puro: HTML externo nunca é inserido no documento, evitando scripts e pixels de rastreamento.
             const corpo = reader.querySelector('.em-body');
             if (m.html) {
-                // Só mensagens enviadas por aqui têm HTML (limpo no servidor). O iframe sem allow-scripts não executa nada;
-                // allow-same-origin serve apenas para medir a altura do conteúdo.
+                // HTML limpo no servidor (enviados pelo app e recebidos). O iframe sem allow-scripts não executa nada;
+                // allow-same-origin serve apenas para medir a altura do conteúdo e liberar as imagens.
                 const quadro = document.createElement('iframe');
                 quadro.className = 'em-html'; quadro.title = 'Conteúdo da mensagem';
                 quadro.setAttribute('sandbox', 'allow-same-origin allow-popups allow-popups-to-escape-sandbox');
                 quadro.setAttribute('referrerpolicy', 'no-referrer');
-                quadro.addEventListener('load', () => { const doc = quadro.contentDocument; if (doc) quadro.style.height = `${doc.documentElement.scrollHeight + 4}px`; });
-                quadro.srcdoc = `<!doctype html><meta charset="utf-8"><base target="_blank"><style>body{margin:0;overflow:hidden}blockquote{margin:6px 0 6px 4px;padding-left:12px;border-left:3px solid #d5dbd7;color:#555}</style>${m.html}`;
+                const medir = () => { const doc = quadro.contentDocument; if (doc) quadro.style.height = `${doc.documentElement.scrollHeight + 4}px`; };
+                quadro.addEventListener('load', medir);
+                // Layout de outros clientes (tabelas de 600px, imagens largas): encolhe no telemóvel e rola na horizontal se não couber.
+                quadro.srcdoc = `<!doctype html><meta charset="utf-8"><base target="_blank"><style>html{overflow-x:auto;overflow-y:hidden}body{margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#222;word-wrap:break-word}img{max-width:100%;height:auto}table{max-width:100%}pre{white-space:pre-wrap}blockquote{margin:6px 0 6px 4px;padding-left:12px;border-left:3px solid #d5dbd7;color:#555}</style>${m.html}`;
                 corpo.classList.add('em-body-html'); corpo.append(quadro);
+                // Imagens externas só carregam a pedido: abrir o e-mail não avisa o remetente (pixel de rastreamento).
+                if (m.html.includes('data-src=')) {
+                    const aviso = document.createElement('div');
+                    aviso.className = 'em-imagens';
+                    aviso.innerHTML = '<span>As imagens desta mensagem foram bloqueadas.</span><button type="button">Exibir imagens</button>';
+                    aviso.querySelector('button').onclick = () => {
+                        for (const img of quadro.contentDocument?.querySelectorAll('img[data-src]') || []) {
+                            img.addEventListener('load', medir, { once: true });
+                            img.src = img.dataset.src;
+                        }
+                        aviso.remove();
+                    };
+                    corpo.before(aviso);
+                }
             } else corpo.textContent = m.text || 'Esta mensagem não possui versão em texto.';
             if (conversation.length) {
                 const history = document.createElement('section');
@@ -228,7 +258,7 @@
         function edit(draft = {}) {
             ++detailSerial;
             compose = {...draft, attachments:[...(draft.attachments || [])], files:[], dirty:false, key:crypto.randomUUID()};
-            reader.innerHTML = `<form class="em-compose"><h3>${draft.id ? 'Editar rascunho' : 'Nova mensagem'}</h3><div class="em-meta">De: ${escape(account.senderEmail)}</div>${[['to','Para'],['cc','Cc'],['bcc','Cco']].map(([name,label]) => `<div class="em-dest" data-dest="${name}"><span class="em-dest-rotulo">${label}</span><div class="em-chips"><input class="em-chip-input" aria-label="${label}" placeholder="Digite um e-mail e tecle Enter ou vírgula" autocomplete="off"></div><input type="hidden" name="${name}"><span class="opcoes em-dest-contato" name="contato_${name}" onclick="cxOpcoes('contato_${name}')" title="Escolher cliente, fornecedor ou colaborador">Contatos</span></div>`).join('')}<label>Assunto<input name="subject" value="${escape(draft.subject || '')}" maxlength="998"></label>${editorHtml()}<label>Anexos (até 15 MB no total)<input type="file" multiple name="files"></label><div class="em-attachments"></div><div class="em-actions"><button type="submit" class="em-primary">Enviar</button><button type="button" data-save>Salvar rascunho</button><button type="button" data-cancel>Fechar</button></div></form>`;
+            reader.innerHTML = `<form class="em-compose"><h3>${draft.id ? 'Editar rascunho' : 'Nova mensagem'}</h3><div class="em-meta">De: ${escape(account.senderEmail)}</div>${[['to','Para'],['cc','Cc'],['bcc','Cco']].map(([name,label]) => `<div class="em-dest" data-dest="${name}"><span class="em-dest-rotulo">${label}</span><div class="em-chips"><input class="em-chip-input" aria-label="${label}" placeholder="Escreva um e-mail e tecle Enter ou vírgula" autocomplete="off"></div><input type="hidden" name="${name}"><span class="opcoes em-dest-contato" name="contato_${name}" onclick="cxOpcoes('contato_${name}')" title="Escolher cliente, fornecedor ou colaborador">Contactos</span></div>`).join('')}<label>Assunto<input name="subject" value="${escape(draft.subject || '')}" maxlength="998"></label>${editorHtml()}<label>Anexos (até 15 MB no total)<input type="file" multiple name="files"></label><div class="em-attachments"></div><div class="em-actions"><button type="submit" class="em-primary">Enviar</button><button type="button" data-save>Guardar rascunho</button><button type="button" data-cancel>Fechar</button></div></form>`;
             const form = reader.querySelector('form');
             form.querySelector('[type=submit]').disabled = !account.canSend;
             const showFiles = () => { form.querySelector('.em-attachments').innerHTML = [...compose.attachments, ...compose.files].map((f,i) => `<button type="button" data-remove-file="${i}" aria-label="Remover ${escape(f.name)}">${escape(f.name)} ×</button>`).join(''); };
@@ -289,7 +319,7 @@
                 const email = picker?.dataset.email;
                 if (!email || !form.isConnected) return;
                 const nome = picker.textContent;
-                picker.textContent = 'Contatos'; picker.removeAttribute('id');
+                picker.textContent = 'Contactos'; picker.removeAttribute('id');
                 destinatarios[name].adicionar(email); sujo();
                 notice(`${nome} adicionado.`);
             };
@@ -327,7 +357,7 @@
             overlay.className = 'em-editor-overlay';
             overlay.setAttribute('role', 'status');
             overlay.setAttribute('aria-live', 'polite');
-            overlay.innerHTML = `<span class="em-spinner" aria-hidden="true"></span><strong>${send ? 'Enviando mensagem…' : 'Salvando rascunho…'}</strong><span>Aguarde a confirmação do servidor.</span>`;
+            overlay.innerHTML = `<span class="em-spinner" aria-hidden="true"></span><strong>${send ? 'A enviar mensagem…' : 'A guardar rascunho…'}</strong><span>Aguarde a confirmação do servidor.</span>`;
             form.setAttribute('aria-busy', 'true');
             form.inert = true;
             reader.classList.add('em-reader-busy');
@@ -344,7 +374,7 @@
                 const result = await request(send ? '/send' : '/drafts', 'POST', payload);
                 if (send) { compose = null; current = null; reader.innerHTML = '<div class="em-empty">Mensagem aceita para envio. A entrega será confirmada pelo serviço.</div>'; }
                 else { compose.id = result.id; compose.dirty = false; compose.key = crypto.randomUUID(); }
-                await load(); notice(send ? 'Mensagem aceita para envio.' : 'Rascunho salvo.');
+                await load(); notice(send ? 'Mensagem aceita para envio.' : 'Rascunho guardado.');
             } finally {
                 busy = false;
                 overlay.remove();
@@ -359,6 +389,8 @@
                 }
             }
         }
+        // Aviso do servidor (websocket.js): com a tela aberta, recarrega a lista (que já atualiza o contador).
+        window.recarregarEmails = () => { if (!root.isConnected) return false; if (!busy) load(); return true; };
         root.querySelector('[data-new]').onclick = async () => { if (!busy && await canLeave()) edit(); };
         root.querySelectorAll('[data-folder]').forEach(b => b.onclick = guarded(async () => {
             if (busy || !await canLeave()) return;
@@ -378,7 +410,7 @@
             if (download && current) {
                 const {token} = JSON.parse(localStorage.getItem('acesso') || '{}');
                 const response = await fetchAutenticado(`${api}/emails/messages/${encodeURIComponent(current.id)}/attachments/${encodeURIComponent(download.dataset.download)}`, {headers:{Authorization:`Bearer ${token}`}});
-                if (!response?.ok) throw new Error('Não foi possível baixar o anexo.');
+                if (!response?.ok) throw new Error('Não foi possível descarregar o anexo.');
                 const url = URL.createObjectURL(await response.blob()), a = document.createElement('a'); a.href = url; a.download = current.attachments.find(x => String(x.id) === download.dataset.download)?.name || 'anexo'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10000); return;
             }
             const action = e.target.closest('[data-act]')?.dataset.act;
@@ -463,7 +495,7 @@
             console.warn('Não foi possível atualizar o contador de e-mails:', error.message);
         }
     };
-    // Novos e-mails chegam pelo webhook da Brevo: confere a cada minuto com a aba visível.
+    // Novos e-mails chegam na hora pelo WebSocket; a conferência a cada minuto cobre uma conexão caída.
     window.iniciarContadorEmails = function () {
         clearInterval(contadorTimer);
         window.atualizarContadorEmails();

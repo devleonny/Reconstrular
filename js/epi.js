@@ -192,7 +192,7 @@ async function baixarFichaEPI(nomeColaborador) {
 
     } catch (err) {
         console.error(err)
-        popup({ mensagem: 'Falha ao baixar FICHA DE EPI: Fale com o suporte.' })
+        popup({ mensagem: 'Falha ao descarregar FICHA DE EPI: Fale com o suporte.' })
     }
 
 }

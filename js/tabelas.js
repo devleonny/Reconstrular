@@ -102,7 +102,7 @@ async function modTab(configuracoes) {
                     </th>`
 
             return `
-                <th class="tabela-pesquisa-texto" role="textbox" aria-label="Filtrar ${escaparAtributo(th.replace(/<[^>]*>/g, ''))}" data-placeholder="Pesquisar…" title="Digite e pressione Enter para pesquisar"
+                <th class="tabela-pesquisa-texto" role="textbox" aria-label="Filtrar ${escaparAtributo(th.replace(/<[^>]*>/g, ''))}" data-placeholder="Pesquisar…" title="Escreva e pressione Enter para pesquisar"
                 data-chave="${query.chave}"
                 data-op="${query.op || 'includes'}"
                 onkeydown="confirmarPesquisa({ event, chave: '${query.chave}', op: '${query.op || 'includes'}', elemento: this, pag: '${pag}'})"
@@ -113,9 +113,9 @@ async function modTab(configuracoes) {
     )).join('')
 
     const modelo = `
-        <div style="${vertical}; width: 100%;">
+        <div class="modtab${nude ? ' nude' : ''}" style="${vertical}; width: 100%;">
 
-            <div class="topo-tabela${nude ? ' nude' : ''}" ${cor ? `style="background: ${cor};"` : ''}">
+            <div class="topo-tabela${nude ? ' nude' : ''}" ${cor ? `style="background: ${cor};"` : ''}>
                 ${detalhes === true ? `<button type="button" class="tabela-expandir" data-expandir-todos data-body="${escaparAtributo(body)}" aria-expanded="false" aria-label="Expandir todos os detalhes" title="Expandir todos os detalhes" onclick="alternarTodosDetalhes(this)">+</button>` : ''}
                 <div id="paginacao_${pag}"></div>
                 <div style="padding: 0 1rem;">
@@ -198,6 +198,12 @@ function restaurarPesquisa(pag) {
                 colocarCursorNoFim(el)
         }
     }
+}
+
+// Setas da paginação: SVG na cor do texto do topo (branco nos topos escuros, escuro nos claros).
+const SETA_PAGINACAO = {
+    anterior: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
+    seguinte: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>'
 }
 
 async function mudarPagina(valor, pag) {
@@ -500,10 +506,10 @@ async function paginacao(pag) {
                 <div style="${alinPag}; align-items: center; padding: 2px; color: white; gap: 5px;">
 
                     <div style="display: ${ocultarPaginacao ? 'none' : 'flex'}; align-items: center; justify-content: center; gap: 5px;">
-                        <img src="imagens/esq.png" style="width: 2rem;" onclick="mudarPagina(-1, '${pag}')">
+                        <button type="button" class="pag-seta" data-pag-anterior="${pag}" aria-label="Página anterior" title="Página anterior" onclick="mudarPagina(-1, '${pag}')">${SETA_PAGINACAO.anterior}</button>
                         <span id="paginaAtual_${pag}">${pagina}</span> de
-                        <span id="totalPaginas_${pag}">${dados.paginas}</span> 
-                        <img src="imagens/dir.png" style="width: 2rem;" onclick="mudarPagina(1, '${pag}')">
+                        <span id="totalPaginas_${pag}">${dados.paginas}</span>
+                        <button type="button" class="pag-seta" data-pag-seguinte="${pag}" aria-label="Página seguinte" title="Página seguinte" onclick="mudarPagina(1, '${pag}')">${SETA_PAGINACAO.seguinte}</button>
                     </div>
                     <span style="display: ${ocultarLegenda ? 'none' : 'flex'}; align-items: center; justify-content: center; white-space: nowrap; gap: 5px;">
                         <span style="font-size: 1rem;" id="resultados_${pag}">${dados.total}</span>
@@ -517,6 +523,9 @@ async function paginacao(pag) {
             document.getElementById(`totalPaginas_${pag}`).textContent = dados.paginas
             resultados.textContent = dados.total
         }
+        // Setas desativadas na primeira e na última página.
+        divPaginacao.querySelector('[data-pag-anterior]')?.toggleAttribute('disabled', pagina <= 1)
+        divPaginacao.querySelector('[data-pag-seguinte]')?.toggleAttribute('disabled', pagina >= (dados.paginas || 1))
 
         if (!dados.resultados.length) {
             controles[pag].ultimaAssinaturaPagina = assinaturaAtualPagina
@@ -564,7 +573,7 @@ function criarLoading(cols) {
     td.colSpan = cols
     td.innerHTML = `
         <div style="${horizontal}; width: 100%; gap: 1rem; justify-content: center; padding: 1rem;">
-            <img src="gifs/loading.gif" style="width: 5rem;">
+            <img src="imagens/loading-claro.png" alt="A carregar" style="width: 4rem;">
         </div>
     `
 

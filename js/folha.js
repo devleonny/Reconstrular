@@ -25,7 +25,7 @@ function gerarTodosPDFs() {
         `,
         botoes: [
             {
-                texto: 'Baixar',
+                texto: 'Descarregar',
                 funcao: 'gerarPdfFolha()',
                 img: 'concluido'
             }
@@ -53,7 +53,7 @@ async function gerarPdfFolha(idColaborador) {
 
     } catch (err) {
         console.error(err)
-        popup({ mensagem: `Falha ao baixar PDFs: Fale com o suporte.` })
+        popup({ mensagem: `Falha ao descarregar PDFs: Fale com o suporte.` })
     } finally { removerOverlay() }
 }
 
@@ -103,7 +103,7 @@ async function baixarFolha(req = null) {
     if (!contentDisposition) {
         return popup({
             mensagem:
-                'A API não enviou o nome do arquivo.'
+                'A API não enviou o nome do ficheiro.'
         })
     }
 
@@ -115,7 +115,7 @@ async function baixarFolha(req = null) {
 
         return popup({
             mensagem:
-                'A API enviou um nome de arquivo inválido.'
+                'A API enviou um nome de ficheiro inválido.'
         })
     }
 
@@ -124,7 +124,7 @@ async function baixarFolha(req = null) {
     if (!blob.size) {
         return popup({
             mensagem:
-                'A API retornou um arquivo vazio.'
+                'A API retornou um ficheiro vazio.'
         })
     }
 

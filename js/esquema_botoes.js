@@ -169,8 +169,8 @@ const esquemaBotoes = {
                 { nome: 'Ver Colaboradores', funcao: 'telaColaboradores', img: 'cracha' },
                 { nome: 'Organizador Hierárquico', funcao: 'telaMapaDelegacao', img: 'zona' },
                 { nome: 'Adicionar Parceiro', funcao: 'adicionarColaborador', img: 'baixar' },
-                { nome: 'Baixar em Excel', bloqueio: ['Encarregado de Obra'], funcao: 'excelColaboradores', img: 'planilha' },
-                { nome: 'Baixar em PDF', bloqueio: ['Encarregado de Obra'], funcao: 'gerarTodosPDFs', img: 'pdf' },
+                { nome: 'Descarregar em Excel', bloqueio: ['Encarregado de Obra'], funcao: 'excelColaboradores', img: 'planilha' },
+                { nome: 'Descarregar em PDF', bloqueio: ['Encarregado de Obra'], funcao: 'gerarTodosPDFs', img: 'pdf' },
                 { nome: 'Histórico de Edições', bloqueio: ['Encarregado de Obra'], funcao: 'historicoColaborador', img: 'relogio' }
             ]
         },
@@ -212,7 +212,7 @@ const esquemaBotoes = {
             img: 'contas',
             sub: [
                 { nome: 'Verificar Despesas', funcao: 'verificarDespesas', img: 'contas' },
-                { nome: 'Baixar em Excel', permitido: ['CEO'], funcao: 'confirmarBaixarExcel', img: 'planilha' },
+                { nome: 'Descarregar em Excel', permitido: ['CEO'], funcao: 'confirmarBaixarExcel', img: 'planilha' },
                 { nome: 'Adicionar Despesa', funcao: 'formularioDespesa', img: 'baixar' },
                 { nome: 'Fornecedores', funcao: 'telaFornecedores', img: 'fornecedor' },
 

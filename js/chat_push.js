@@ -26,7 +26,7 @@ async function chatPushRegistro() {
     return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
             limpar()
-            reject(new Error('O service worker não conseguiu ativar. Verifique no Console se algum arquivo do app falhou ao carregar.'))
+            reject(new Error('O service worker não conseguiu ativar. Verifique no Console se algum ficheiro do app falhou ao carregar.'))
         }, 20000)
         const worker = registro.installing || registro.waiting
         function limpar() {
@@ -76,7 +76,7 @@ async function chatPushSincronizar() {
 
 async function chatPushConfigurar() {
     if (!chatPushSuportado()) {
-        return popup({ mensagem: 'Notificações indisponíveis neste navegador. No iPhone, abra o app instalado na tela inicial.' })
+        return popup({ mensagem: 'Notificações indisponíveis neste navegador. No iPhone, abra o app instalado no ecrã inicial.' })
     }
     try {
         if (Notification.permission !== 'granted') {

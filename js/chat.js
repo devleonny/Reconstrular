@@ -3,6 +3,21 @@ let chatAtual = null
 let chatContadorTimer = null
 let chatContadorConsulta = null
 
+// Telemóvel: o chat ocupa só a altura realmente visível (sem barra de endereço e sem teclado; ver chat.css).
+// O iPhone não encolhe a página ao abrir o teclado, desloca-a para cima: aqui ela fica presa no topo.
+function chatAjustarAltura() {
+    const raiz = document.documentElement
+    if (!window.visualViewport || !document.querySelector('.chat-app')) return raiz.style.removeProperty('--altura-visivel')
+    const historico = document.querySelector('.chat-historico')
+    const noFim = historico && historico.scrollHeight - historico.scrollTop - historico.clientHeight < 120
+    raiz.style.setProperty('--altura-visivel', `${Math.round(visualViewport.height)}px`)
+    if (window.scrollY) window.scrollTo(0, 0)
+    // A conversa que estava no fim continua no fim quando o teclado abre ou fecha.
+    if (noFim) requestAnimationFrame(() => { historico.scrollTop = historico.scrollHeight })
+}
+window.visualViewport?.addEventListener('resize', chatAjustarAltura)
+window.visualViewport?.addEventListener('scroll', chatAjustarAltura)
+
 function chatMostrarContador(quantidade) {
     const contador = document.getElementById('contadorMensagens')
     if (!contador) return
@@ -117,7 +132,7 @@ async function painelChat() {
                     </div>
                 </header>
                 <div class="chat-pesquisa"><input type="search" class="chat-filtro" placeholder="Pesquisar conversas" aria-label="Pesquisar conversas"></div>
-                <div class="chat-lista"><p class="chat-vazio">Carregando conversas…</p></div>
+                <div class="chat-lista"><p class="chat-vazio">A carregar conversas…</p></div>
                 <button type="button" class="chat-mais-conversas" hidden>Mais conversas</button>
                 <footer class="chat-lateral-rodape">
                     <button type="button" data-acao="atualizar" aria-label="Atualizar conversas" title="Atualizar">${chatIcone('atualizar')}</button></footer>
@@ -129,11 +144,12 @@ async function painelChat() {
                 <form class="chat-compositor" hidden><div class="chat-anexos-pendentes"></div>
                     <input type="file" class="chat-arquivos" multiple hidden accept="image/jpeg,image/png,image/webp,application/pdf,.txt,.docx,.xlsx">
                     <button type="button" data-acao="anexar" aria-label="Adicionar anexos" title="Adicionar anexos">${chatIcone('anexo')}</button>
-                    <textarea rows="1" maxlength="4000" placeholder="Digite uma mensagem" aria-label="Mensagem"></textarea>
+                    <textarea rows="1" maxlength="4000" placeholder="Escreva uma mensagem" aria-label="Mensagem"></textarea>
                     <button type="submit" aria-label="Enviar mensagem">${chatIcone('enviar')}</button></form>
             </div>
             <div class="chat-aviso" role="status" aria-live="polite"></div>
         </section>`
+    chatAjustarAltura()
     const estado = chatAtual = {
         raiz: tela.querySelector('.chat-app'), usuario: acesso.usuario,
         conversas: [], selecionada: null, mensagens: [], rascunhos: new Map(),
@@ -263,7 +279,7 @@ async function chatAbrirConversa(id) {
     const campo = estado.raiz.querySelector('textarea')
     campo.value = estado.rascunhos.get(id) || ''
     campo.style.height = 'auto'
-    estado.raiz.querySelector('.chat-historico').innerHTML = '<p class="chat-vazio">Carregando mensagens…</p>'
+    estado.raiz.querySelector('.chat-historico').innerHTML = '<p class="chat-vazio">A carregar mensagens…</p>'
     chatRenderLista(estado)
     await chatCarregarHistorico(estado)
 }
@@ -401,7 +417,7 @@ async function chatBaixarAnexo(estado, id) {
             method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ anexo_id: id })
         })
-        if (!resposta?.ok) throw new Error('Não foi possível baixar o anexo.')
+        if (!resposta?.ok) throw new Error('Não foi possível descarregar o anexo.')
         const blob = await resposta.blob()
         if (!chatVivo(estado)) return
         const url = URL.createObjectURL(blob)
@@ -481,12 +497,12 @@ function chatEscolherPessoas(grupo, editar = null) {
     const id = popup({
         titulo: editar ? 'Editar grupo' : grupo ? 'Criar grupo' : 'Nova conversa', elemento: `
         <div class="chat-pessoas">
-            ${grupo ? `<label>Nome do grupo<input class="chat-nome-grupo" maxlength="80" placeholder="Ex.: Equipe da obra" value="${chatHtml(editar?.nome || '')}"></label>` : ''}
-            <label>Encontrar pessoas<input type="search" class="chat-busca-pessoas" placeholder="Nome ou usuário" autocomplete="off"></label>
+            ${grupo ? `<label>Nome do grupo<input class="chat-nome-grupo" maxlength="80" placeholder="Ex.: Equipa da obra" value="${chatHtml(editar?.nome || '')}"></label>` : ''}
+            <label>Encontrar pessoas<input type="search" class="chat-busca-pessoas" placeholder="Nome ou utilizador" autocomplete="off"></label>
             <div class="chat-selecionados" aria-live="polite"></div>
-            <div class="chat-resultados-pessoas"><p>Carregando pessoas…</p></div>
+            <div class="chat-resultados-pessoas"><p>A carregar pessoas…</p></div>
             <div class="chat-paginacao-pessoas"><button type="button" data-pagina="-1">Anterior</button><span></span><button type="button" data-pagina="1">Próxima</button></div>
-            ${grupo ? `<button type="button" class="chat-criar-grupo">${editar ? 'Salvar alterações' : 'Criar grupo'}</button>` : ''}
+            ${grupo ? `<button type="button" class="chat-criar-grupo">${editar ? 'Guardar alterações' : 'Criar grupo'}</button>` : ''}
             <p class="chat-erro-pessoas" role="status"></p>
         </div>` })
     const modal = document.getElementById(id)
@@ -508,7 +524,7 @@ function chatEscolherPessoas(grupo, editar = null) {
     renderSelecionados()
     async function pesquisar() {
         const versaoLocal = ++versao
-        lista.innerHTML = '<p>Buscando pessoas…</p>'
+        lista.innerHTML = '<p>A procurar pessoas…</p>'
         const busca = modal.querySelector('.chat-busca-pessoas').value.trim().toLocaleLowerCase()
         try {
             const resposta = await chatApi('pessoas/listar', { pagina, limite: 30, busca })
@@ -545,7 +561,7 @@ function chatEscolherPessoas(grupo, editar = null) {
     async function criar(dados) {
         if (ocupada || !chatVivo(estado)) return
         ocupada = true
-        erroLocal.textContent = editar ? 'Salvando alterações…' : 'Criando conversa…'
+        erroLocal.textContent = editar ? 'A guardar alterações…' : 'Criando conversa…'
         try {
             const resposta = await chatApi(editar ? 'grupos/editar' : 'conversas/criar', editar
                 ? { conversa_id: editar.id, nome: dados.nome, participantes: [estado.usuario, ...dados.participantes] }

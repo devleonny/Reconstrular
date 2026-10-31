@@ -56,8 +56,11 @@ async function recuperarDado(base, chave) {
         return null
 
     if (!resposta.ok) {
+        // O servidor responde {"mensagem"} ou {"erro"}: mostra só o texto, não o JSON.
         const erro = await resposta.text()
-        throw new Error(erro || 'Erro na requisição')
+        let texto = erro
+        try { const dados = JSON.parse(erro); texto = dados.mensagem || dados.erro || erro } catch { }
+        throw new Error(texto || 'Erro na requisição')
     }
 
     return await resposta.json()
@@ -184,7 +187,7 @@ async function deletar(caminho) {
             return null
 
         if (!response.ok) {
-            console.error(`Falha ao deletar: ${response.status} ${response.statusText}`)
+            console.error(`Falha ao eliminar: ${response.status} ${response.statusText}`)
             const erroServidor = await response.text()
             console.error(`Resposta do servidor:`, erroServidor)
             throw new Error(`Erro HTTP ${response.status}`)
@@ -193,7 +196,7 @@ async function deletar(caminho) {
         const data = await response.json()
 
         if (data.aguardando_aprovacao)
-            return popup({ mensagem: 'Exclusão encaminhada para os níveis responsáveis' })
+            return popup({ mensagem: 'Eliminação encaminhada para os níveis responsáveis' })
 
         if (data.mensagem)
             return popup({ mensagem: data.mensagem })
@@ -201,7 +204,7 @@ async function deletar(caminho) {
         return data
 
     } catch (erro) {
-        console.error(`Erro ao tentar deletar '${caminho}':`, erro.message || erro)
+        console.error(`Erro ao tentar eliminar '${caminho}':`, erro.message || erro)
         removerOverlay()
         return null
     }
@@ -239,7 +242,7 @@ async function enviar(caminho, info) {
             // Se a API respondeu erro (ex: 400, 500): mostra o motivo enviado pelo servidor;
             console.error("Erro HTTP:", response.status, data);
             const motivo = data?.mensagem || data?.erro || data?.message
-            popup({ mensagem: motivo ? `Não foi possível salvar: ${motivo}` : `Não foi possível salvar (erro ${response.status}).`, titulo: 'Salvamento recusado' })
+            popup({ mensagem: motivo ? `Não foi possível guardar: ${motivo}` : `Não foi possível guardar (erro ${response.status}).`, titulo: 'Salvamento recusado' })
             return null;
         }
 
@@ -320,7 +323,7 @@ async function bloquearUsuario(id_usuario, input) {
         console.error(err)
 
         popup({
-            mensagem: err.message || 'Falha ao bloquear o usuário: fale com o suporte.'
+            mensagem: err.message || 'Falha ao bloquear o utilizador: fale com o suporte.'
         })
 
         // O inverso;

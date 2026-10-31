@@ -375,6 +375,43 @@
     padding: 1rem;
 }
 
+/* Painel de utilizadores (ferramentas.js, renderUsuariosPresenca): visual do GCS com as cores do app. */
+.painel-usuarios { display: flex; flex-direction: column; gap: 12px; width: min(760px, 92vw); max-height: 72vh; max-height: 72dvh; padding: 14px; box-sizing: border-box; background: #f3f5f7; overflow: hidden; text-align: left; }
+.painel-usuarios-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.painel-usuarios-meu-status { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #fff; border: 1px solid #ccd5dc; border-radius: 8px; font-size: 12px; color: #3f505e; }
+.painel-usuarios-meu-status:empty { display: none; }
+.painel-usuarios-meu-status img { width: 1.2rem; }
+.painel-usuarios-busca { flex: 1 1 220px; min-height: 34px; padding: 4px 12px; border: 1px solid #ccd5dc; border-radius: 8px; background: #fff; box-sizing: border-box; }
+.painel-usuarios-resumo { display: flex; flex-wrap: wrap; gap: 6px; }
+.painel-usuarios-chip { --chip-cor: #6b7280; padding: 3px 10px; font-size: 12px; color: var(--chip-cor); background: #fff; border: 1px solid currentColor; border-radius: 999px; }
+.painel-usuarios-chip--online { --chip-cor: #15803d; }
+.painel-usuarios-chip--ausente { --chip-cor: #a16207; }
+.painel-usuarios-lista { display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow-y: auto; padding-right: 4px; }
+.painel-usuarios-grupo h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #4f5e69; }
+.painel-usuarios-grupo h4 b { padding: 0 7px; font-size: 11px; color: #fff; background: #8a96a0; border-radius: 999px; }
+.painel-usuarios-grupo h4 small { font-weight: 400; letter-spacing: 0; text-transform: none; color: #8592a0; }
+.painel-usuarios-grupo--online h4 b { background: #15803d; }
+.painel-usuarios-grupo--ausente h4 b { background: #a16207; }
+.painel-usuarios-grupo summary { list-style: none; cursor: pointer; }
+.painel-usuarios-grupo summary::-webkit-details-marker { display: none; }
+.painel-usuarios-grupo summary h4::before { content: '▸'; font-size: 11px; }
+.painel-usuarios-grupo[open] summary h4::before { content: '▾'; }
+.painel-usuarios-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+.painel-usuarios-item { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 7px 10px; background: #fff; border: 1px solid #d6dee5; border-radius: 8px; }
+.painel-usuarios-item--eu { border-color: #5b707f; box-shadow: inset 3px 0 0 #5b707f; }
+/* Ausentes e offline esmaecidos: o olho vai primeiro para quem está disponível. */
+.painel-usuarios-grupo--ausente .painel-usuarios-item, .painel-usuarios-grupo--offline .painel-usuarios-item { opacity: .65; }
+.painel-usuarios-avatar { position: relative; flex: 0 0 auto; display: grid; place-items: center; width: 34px; height: 34px; font-size: 12px; font-weight: 700; color: #3f505e; background: #dde4ea; border-radius: 50%; }
+/* Sem foto (ou foto que não abriu), mostra as iniciais. */
+.painel-usuarios-avatar::before { content: attr(data-iniciais); }
+.painel-usuarios-avatar > img:not(.painel-usuarios-status-icone) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.painel-usuarios-status-icone { position: absolute; right: -3px; bottom: -3px; width: 15px; height: 15px; background: #fff; border-radius: 50%; }
+.painel-usuarios-texto { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding-left: 4px; text-align: left; }
+.painel-usuarios-texto b, .painel-usuarios-texto small { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.painel-usuarios-texto b { font-size: 13px; color: #22303a; }
+.painel-usuarios-texto small { font-size: 11px; color: #6f7c86; }
+.painel-usuarios-vazio { margin: 0; padding: 16px; text-align: center; color: #7a8894; }
+
 .popup .popup-janela-fora {
     max-width: min(960px, 100%);
     max-height: 100%;

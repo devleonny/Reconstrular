@@ -157,3 +157,13 @@ screen and (min-aspect-ratio: 13/9) {
 .ticket-avisos ul { margin: 6px 0 0; padding-left: 18px; }
 .ticket-avisos li + li { margin-top: 4px; }
 @media (prefers-reduced-motion: reduce) { .ticket-selo, .ticket-selo svg path { animation: none; stroke-dashoffset: 0; } }
+
+/* Ponto offline (ponto-offline.js): comprovativo em roxo e aviso de marcações por enviar. */
+.ticketPonto.ticket-offline { --tk-cor: #6b4fbb; --tk-fundo: #efeafb; }
+.ticket-offline .ticket-nota { color: #6f7b84; line-height: 1.5; }
+.ponto-pendentes { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: #efeafb; color: #4b3592; font-size: 11.5px; font-weight: 700; }
+.ponto-pendentes::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #6b4fbb; animation: ponto-pulso 1.6s ease-in-out infinite; }
+.ponto-pendentes[hidden] { display: none; }
+@keyframes ponto-pulso { 50% { opacity: .35 } }
+.ponto-offline [data-marcar-offline] { width: 100%; margin-top: 10px; padding: 12px; border: 0; border-radius: 10px; background: #6b4fbb; color: #fff; font-size: 15px; font-weight: 700; }
+.ponto-offline [data-marcar-offline]:disabled { opacity: .55; }

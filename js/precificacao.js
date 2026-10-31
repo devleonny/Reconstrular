@@ -57,7 +57,7 @@ async function telaPrecos(filtro = null) {
 
     } catch (err) {
         console.error(err)
-        popup({ mensagem: 'Falha ao abrir a tela de Preços: Fale com o suporte.' })
+        popup({ mensagem: 'Falha ao abrir o ecrã de Preços: Fale com o suporte.' })
     }
 
 }
@@ -122,7 +122,7 @@ function editarMargemEmMassa(tabela) {
     ]
 
     const botoes = [
-        { texto: 'Salvar', img: 'concluido', funcao: `aplicarEmMassa('${tabela}')` }
+        { texto: 'Guardar', img: 'concluido', funcao: `aplicarEmMassa('${tabela}')` }
     ]
 
     const idModal = popup({ botoes, linhas, titulo: `Aplicar margem em ${codigos.length} composições` })
@@ -309,7 +309,7 @@ async function edicaoItem(idCampo) {
         }
     ]
     const botoes = [
-        { texto: 'Salvar', img: 'concluido', funcao: idCampo ? `salvarCampo('${idCampo}')` : 'salvarCampo()' }
+        { texto: 'Guardar', img: 'concluido', funcao: idCampo ? `salvarCampo('${idCampo}')` : 'salvarCampo()' }
     ]
 
     const titulo = idCampo
@@ -373,10 +373,10 @@ async function painelMargem(id, tabela) {
     ]
 
     const botoes = [
-        { texto: 'Salvar', img: 'concluido', funcao: `salvarMargem('${tabela}', '${id}')` }
+        { texto: 'Guardar', img: 'concluido', funcao: `salvarMargem('${tabela}', '${id}')` }
     ]
 
-    const idPopup = popup({ linhas, botoes, titulo: 'Gerenciar Margem' })
+    const idPopup = popup({ linhas, botoes, titulo: 'Gerir Margem' })
     document.getElementById(idPopup).dataset.totalOutrasCategorias = totais.total - totais[`total_${tabela}`]
 
 }
@@ -404,7 +404,7 @@ async function salvarMargem(tabela, idCampo) {
         const margem = Number(input?.value)
         if (!idCampo || !Number.isFinite(margem) || margem < 0) throw new Error('Informe uma margem válida, positiva ou zero.')
         const resposta = await enviar(`campos/${idCampo}/margem_${tabela}`, margem)
-        if (!resposta || resposta.success === false || resposta.erro) throw new Error(resposta?.mensagem || 'Não foi possível salvar a margem.')
+        if (!resposta || resposta.success === false || resposta.erro) throw new Error(resposta?.mensagem || 'Não foi possível guardar a margem.')
         removerPopup(input.closest('.popup').id)
         await paginacao('campos')
     } catch (erro) { popup({ mensagem: escaparAtributo(erro.message) }) }
@@ -437,7 +437,7 @@ async function composicoes(id) {
                 </div>
                 <div class="rodapeTabela">
                     <button type="button" onclick="adicionarLinhaComposicoes({tabela: '${tipoTabela}', idCampo: '${id}'})">Adicionar Linha</button>
-                    <button type="button" class="composicao-salvar" onclick="salvarComposicao('${id}')">Salvar</button>
+                    <button type="button" class="composicao-salvar" onclick="salvarComposicao('${id}')">Guardar</button>
                 </div>
             </div>`
     }
@@ -669,7 +669,7 @@ async function salvarComposicao(idCampo) {
 
     removerPopup()
     await paginacao('campos')
-    } catch (erro) { popup({ mensagem: escaparAtributo(erro.message || 'Não foi possível salvar a composição.') }) }
+    } catch (erro) { popup({ mensagem: escaparAtributo(erro.message || 'Não foi possível guardar a composição.') }) }
     finally { removerOverlay() }
 }
 

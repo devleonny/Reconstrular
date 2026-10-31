@@ -167,9 +167,9 @@ function criarLinhaTarefa(dados) {
         <section><h3>Imagens / Documentos</h3><div class="tarefa-anexos">${anexos || '<p>Nenhum anexo.</p>'}</div></section>
     </div><section class="tarefa-historico"><h3>Histórico de alterações</h3>${registros.length ? `
         <div class="tarefa-historico-recorte"><table class="tabela">
-            <thead><tr><th>Data e hora</th><th>Usuário</th><th>Alteração</th></tr></thead>
+            <thead><tr><th>Data e hora</th><th>Utilizador</th><th>Alteração</th></tr></thead>
             <tbody>${registros.map(registro => `<tr><td class="tarefa-historico-data">${escaparAtributo(new Date(registro.timestamp).toLocaleString('pt-BR'))}</td><td>${escaparAtributo(registro.usuario)}</td><td>${escaparAtributo(registro.acao)}</td></tr>`).join('')}</tbody>
-        </table></div>` : '<p>Nenhuma alteração registrada.</p>'}</section>`
+        </table></div>` : '<p>Nenhuma alteração registada.</p>'}</section>`
     return { linha, detalhes }
 }
 
@@ -198,14 +198,14 @@ function historicoAlteracoesTarefa(atual, alteracoes, criacao = false) {
 async function gravarAlteracoesTarefa(id, atual, alteracoes, criacao = false) {
     const atualizado = { ...atual, ...alteracoes, historico: historicoAlteracoesTarefa(atual, alteracoes, criacao) }
     const resultado = await enviar(`tarefas/${id}`, atualizado)
-    if (!resultado || resultado.success === false) throw new Error('Não foi possível salvar a tarefa e seu histórico.')
+    if (!resultado || resultado.success === false) throw new Error('Não foi possível guardar a tarefa e seu histórico.')
     return resultado
 }
 
 async function registroTarefaAutorizado(id, modo = 'ver') {
     const tarefa = await recuperarDado('tarefas', id)
     if (!tarefa || !(modo === 'editar' ? podeEditarTarefa(tarefa) : modo === 'atualizar' ? podeAtualizarTarefa(tarefa) : podeVerTarefa(tarefa)))
-        throw new Error('Você não tem permissão para esta alteração.')
+        throw new Error('Não tem permissão para esta alteração.')
     return tarefa
 }
 
@@ -218,7 +218,7 @@ async function alterarCampoTarefa(id, campo, input) {
         if (!opcoes.includes(input.value)) throw new Error('Opção inválida.')
         const atual = await registroTarefaAutorizado(id, 'atualizar')
         const resposta = await gravarAlteracoesTarefa(id, atual, { [campo]: input.value })
-        if (!resposta || resposta.success === false) throw new Error('Não foi possível salvar a alteração.')
+        if (!resposta || resposta.success === false) throw new Error('Não foi possível guardar a alteração.')
         input.dataset.anterior = input.value
         await paginacao(document.getElementById('tarefas_historico') ? 'tarefas_historico' : 'tarefas')
     } catch (erro) { input.value = anterior; input.dataset.valor = anterior; popup({ mensagem: escaparAtributo(erro.message) }) }
@@ -238,7 +238,7 @@ async function gerenciarTarefa(id) {
             { texto: 'Tarefa', editor: htmlSeguroTarefa(dados.tarefa) },
             { texto: 'Destinatário', elemento: `<span id="${escaparAtributo(destinatario)}" data-funcao-destinatario="${escaparAtributo(dados.destinatario_funcao || (destinatario === acesso.usuario ? acesso.funcao : ''))}" class="opcoes" name="destinatario" onclick="cxOpcoes('destinatario')">${escaparAtributo(destinatario)}</span>` },
             { texto: 'Descrição da tarefa', editor: htmlSeguroTarefa(dados.notas) },
-            { elemento: '<p class="tarefa-ajuda">Tarefas criadas para você são particulares. Ao escolher outra pessoa, a tarefa segue as regras da hierarquia.</p>' },
+            { elemento: '<p class="tarefa-ajuda">Tarefas criadas para si são particulares. Ao escolher outra pessoa, a tarefa segue as regras da hierarquia.</p>' },
             { texto: 'Prioridade', elemento: `<select name="prioridade">${opcoesTarefa(prioridades, dados.prioridade || 'Média')}</select>` },
             { texto: 'Estado', elemento: `<select name="estado">${opcoesTarefa(estados, dados.estado || 'Não iniciado')}</select>` },
             { texto: 'Data de início', elemento: `<input name="data_inicio" type="date" value="${escaparAtributo(dados.data_inicio || '')}">` },
@@ -246,7 +246,7 @@ async function gerenciarTarefa(id) {
             { texto: 'Imagem / Documento', elemento: `<input name="anexos_tarefa" type="file" multiple><div class="tarefa-anexos">${Object.values(dados.anexos || {}).map(criarAnexoVisual).join('')}</div>` }
         ]
         const idPopup = popup({ titulo: id ? 'Editar tarefa' : 'Nova tarefa', linhas,
-            botoes: [{ texto: 'Salvar', img: 'concluido', funcao: 'salvarTarefa()' }] })
+            botoes: [{ texto: 'Guardar', img: 'concluido', funcao: 'salvarTarefa()' }] })
         formularioTarefaAtual = { id, idPopup, usuario: acesso.usuario }
     } catch (erro) { popup({ mensagem: escaparAtributo(erro.message) }) }
 }
@@ -284,7 +284,7 @@ async function salvarTarefa() {
         const id = contexto.id || crypto.randomUUID()
         if (contexto.usuario !== acesso.usuario || !modal.isConnected) throw new Error('O formulário ou a sessão foi encerrado.')
         const resultado = await gravarAlteracoesTarefa(id, atual, atualizado, !contexto.id)
-        if (!resultado || resultado.success === false) throw new Error('Não foi possível salvar a tarefa.')
+        if (!resultado || resultado.success === false) throw new Error('Não foi possível guardar a tarefa.')
         removerPopup(contexto.idPopup)
         formularioTarefaAtual = null
         await paginacao(document.getElementById('tarefas_historico') ? 'tarefas_historico' : 'tarefas')
@@ -298,7 +298,7 @@ async function editarNotaTarefa(id) {
         const usuario = acesso.usuario
         const chave = encodeURIComponent(usuario)
         const idPopup = popup({ titulo: 'Minha nota', linhas: [{ texto: 'Nota pessoal', editor: htmlSeguroTarefa(tarefa.notas_usuario?.[chave]) }],
-            botoes: [{ texto: 'Salvar nota', img: 'concluido', funcao: 'salvarNotaTarefa()' }] })
+            botoes: [{ texto: 'Guardar nota', img: 'concluido', funcao: 'salvarNotaTarefa()' }] })
         const modal = document.getElementById(idPopup)
         modal.dataset.tarefa = id
         modal.dataset.usuarioNota = usuario
@@ -316,7 +316,7 @@ async function salvarNotaTarefa() {
         const resultado = await gravarAlteracoesTarefa(modal.dataset.tarefa, atual, {
             notas_usuario: { ...atual.notas_usuario, [encodeURIComponent(acesso.usuario)]: nota }
         })
-        if (!resultado || resultado.success === false) throw new Error('Não foi possível salvar a nota.')
+        if (!resultado || resultado.success === false) throw new Error('Não foi possível guardar a nota.')
         removerPopup(modal.id)
         await paginacao(document.getElementById('tarefas_historico') ? 'tarefas_historico' : 'tarefas')
     } catch (erro) { popup({ mensagem: escaparAtributo(erro.message) }) }

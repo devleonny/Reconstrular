@@ -55,7 +55,7 @@ async function orcamentos() {
         removerOverlay()
     } catch (err) {
         console.log(err)
-        popup({ mensagem: 'Falha ao abrir a tela de Orçamentos: Fale com o suporte.' })
+        popup({ mensagem: 'Falha ao abrir o ecrã de Orçamentos: Fale com o suporte.' })
     }
 }
 
@@ -83,7 +83,7 @@ async function criarLinhaOrcamento(orcamento) {
                     <td>
                         <img
                             src="imagens/documento.svg" class="icone-tabela" alt="Abrir documento" title="Abrir documento"
-                            onclick="window.open('${api}/uploads/${link}', '_blank')">
+                            onclick="window.open(urlArquivo('${link}'), '_blank')">
                     </td>
                 `
             }
@@ -205,7 +205,7 @@ async function alterarStatusOrcamento(idOrcamento, status, statusAtualFinalizado
         status,
         finalizado
     })
-    if (!resposta || resposta.success === false || resposta.erro) throw new Error('Não foi possível salvar o status do orçamento.')
+    if (!resposta || resposta.success === false || resposta.erro) throw new Error('Não foi possível guardar o status do orçamento.')
     if (select) { select.dataset.status = status; select.dataset.finalizado = finalizado }
     } catch (erro) {
         if (select) {
@@ -230,7 +230,7 @@ async function formularioOrcamento(idOrcamento) {
 
         const botoes = [
             {
-                texto: 'Salvar',
+                texto: 'Guardar',
                 img: 'concluido',
                 funcao: idOrcamento
                     ? `salvarOrcamento('${idOrcamento}')`
@@ -240,7 +240,7 @@ async function formularioOrcamento(idOrcamento) {
 
         if (idOrcamento) {
             botoes.push({
-                texto: 'Excluir',
+                texto: 'Eliminar',
                 img: 'cancel',
                 funcao: `confirmarExcluirOrcamento('${idOrcamento}')`
             })
@@ -273,7 +273,7 @@ async function formularioOrcamento(idOrcamento) {
                 `
             },
             {
-                texto: 'Data de contato',
+                texto: 'Data de contacto',
                 elemento: `
                     <input
                         value="${orcamento?.data_contato || ''}"
@@ -352,7 +352,7 @@ async function formularioOrcamento(idOrcamento) {
 
 function confirmarExcluirOrcamento(idOrcamento) {
     popup({
-        mensagem: 'Tem certeza que deseja excluir este orçamento?',
+        mensagem: 'Tem a certeza de que deseja eliminar este orçamento?',
         botoes: [
             {
                 texto: 'Confirmar',
@@ -371,9 +371,9 @@ async function excluirOrcamento(idOrcamento) {
 
         removerTodosPopups()
 
-        popup({ mensagem: 'Exclusão realizada/enviada para aprovação!' })
+        popup({ mensagem: 'Eliminação realizada/enviada para aprovação!' })
     } catch (err) {
-        popup({ mensagem: 'Falha ao excluir o orçamento: Fale com o suporte.' })
+        popup({ mensagem: 'Falha ao eliminar o orçamento: Fale com o suporte.' })
         console.error(err)
     }
 }
@@ -479,7 +479,7 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
     } catch (err) {
         console.error(err)
         popup({
-            mensagem: 'Falha ao salvar o orçamento: Fale com o suporte.'
+            mensagem: 'Falha ao guardar o orçamento: Fale com o suporte.'
         })
     } finally {
         removerOverlay()
@@ -647,7 +647,7 @@ function atualizarResumoExecucoes() {
     if (!local) return
     const resumo = calcularResumoExecucoes(controles.execucoes?.base || [])
     const comparavel = resumo.semOriginal === 0
-    local.innerHTML = `<div class="execucoes-resumo-titulo">Resumo do orçamento</div><div><small>Total de itens</small><strong>${resumo.itens}</strong></div><div><small>Valor original</small><span>${comparavel ? dinheiro(resumo.original) : '—'}</span></div><div><small>Diferença</small><span>${comparavel ? `${resumo.diferenca > 0 ? '+' : ''}${dinheiro(resumo.diferenca)} (${resumo.percentual > 0 ? '+' : ''}${resumo.percentual.toLocaleString('pt-BR', {maximumFractionDigits:2})}%)` : 'Sem histórico original'}</span></div><div class="execucoes-resumo-total"><small>Total geral</small><strong>${dinheiro(resumo.total)}</strong></div>${!comparavel ? `<small class="execucoes-resumo-aviso">${resumo.semOriginal} item(ns) sem valor original registrado para comparar diferenças.</small>` : ''}`
+    local.innerHTML = `<div class="execucoes-resumo-titulo">Resumo do orçamento</div><div><small>Total de itens</small><strong>${resumo.itens}</strong></div><div><small>Valor original</small><span>${comparavel ? dinheiro(resumo.original) : '—'}</span></div><div><small>Diferença</small><span>${comparavel ? `${resumo.diferenca > 0 ? '+' : ''}${dinheiro(resumo.diferenca)} (${resumo.percentual > 0 ? '+' : ''}${resumo.percentual.toLocaleString('pt-BR', {maximumFractionDigits:2})}%)` : 'Sem histórico original'}</span></div><div class="execucoes-resumo-total"><small>Total geral</small><strong>${dinheiro(resumo.total)}</strong></div>${!comparavel ? `<small class="execucoes-resumo-aviso">${resumo.semOriginal} item(ns) sem valor original registado para comparar diferenças.</small>` : ''}`
 }
 
 async function filtrarPorZona(zona) {
@@ -866,7 +866,7 @@ async function editarDimensoes(idItem = crypto.randomUUID()) {
 
     const botoes = [
         {
-            texto: 'Salvar',
+            texto: 'Guardar',
             img: 'concluido',
             funcao: idItem
                 ? `salvarDimensoes('${idItem}')`
@@ -876,7 +876,7 @@ async function editarDimensoes(idItem = crypto.randomUUID()) {
 
     if (idItem)
         botoes.push({
-            texto: 'Excluir',
+            texto: 'Eliminar',
             img: 'cancel',
             funcao: `removerLinhaZona('${idItem}')`
         })
@@ -1034,7 +1034,7 @@ async function salvarDimensoes(id) {
         removerTodosPopups()
         await atualizarExecucoesMemoria()
     } catch (erro) {
-        popup({ mensagem: escaparAtributo(erro.message || 'Não foi possível salvar o serviço.') })
+        popup({ mensagem: escaparAtributo(erro.message || 'Não foi possível guardar o serviço.') })
     } finally {
         removerOverlay()
     }
@@ -1163,7 +1163,7 @@ async function removerLinhaZona(idItem) {
         overlayAguarde()
         const modal = document.querySelector('.popup [name="servico"]')?.closest('.popup')
         const resposta = await deletar(`dados_orcamentos/${controles.execucoes.idOrcamento}/campos/${idItem}`)
-        if (!resposta) throw new Error('O servidor não confirmou a exclusão do serviço.')
+        if (!resposta) throw new Error('O servidor não confirmou a eliminação do serviço.')
         if (modal) { modal.dataset.salvo = 'true'; removerPopup(modal.id) }
         await atualizarExecucoesMemoria()
     } catch (erro) {

@@ -1,5 +1,5 @@
 const CACHE_PREFIX = `reconstrular-${self.registration.scope}-`
-const CACHE = `${CACHE_PREFIX}v1.80`
+const CACHE = `${CACHE_PREFIX}v48f42981`
 const localUrl = path => new URL(path, self.registration.scope).href
 const PUSH_CACHE = `reconstrular-push:${self.registration.scope}`
 
@@ -30,7 +30,7 @@ self.addEventListener('push', event => {
     if (vinculo?.usuario !== dados.usuario) return
     await self.registration.showNotification('Reconstrular — Nova mensagem', {
       body: 'Você recebeu uma nova mensagem no chat.',
-      icon: localUrl('imagens/pwa/icone-192-v3.png'),
+      icon: localUrl('imagens/pwa/icone-192-v4.png'),
       tag: `chat-${String(dados.conversa_id).slice(0, 150)}`,
       data: { conversa_id: String(dados.conversa_id), usuario: dados.usuario }
     })
@@ -60,7 +60,7 @@ self.addEventListener('install', event => {
     if (!resposta.ok) throw new Error('Não foi possível carregar a interface do app.')
     const html = await resposta.clone().text()
     const arquivos = new Set(['manifest.json', 'imagens/logo.png',
-      'imagens/pwa/icone-192-v3.png', 'imagens/pwa/icone-512-v3.png'])
+      'imagens/pwa/icone-192-v4.png', 'imagens/pwa/icone-512-v4.png'])
     for (const atributo of html.matchAll(/(?:src|href)=["']([^"']+)["']/g)) {
       const url = new URL(atributo[1], self.registration.scope)
       if (url.href.startsWith(self.registration.scope)) arquivos.add(url.href)

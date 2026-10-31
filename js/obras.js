@@ -32,7 +32,7 @@ async function telaObras() {
 
     } catch (err) {
         console.error(err)
-        popup({ mensagem: 'Falha ao abrir a tela de parceiros: Fale com o suporte.' })
+        popup({ mensagem: 'Falha ao abrir o ecrã de parceiros: Fale com o suporte.' })
     }
 
 }
@@ -133,7 +133,7 @@ async function mostrarMateriaisOrcamento(id_obra, tipo) {
         const itens = await carregarItensExecucoes(id_obra)
         const linhas = listarComponentesObra(itens, tipo)
         const total = linhas.reduce((soma, item) => soma + item.total, 0)
-        const html = `<div class="obra-itens-orcamento"><div class="obra-itens-resumo"><span>${linhas.length} itens · Quantidades do orçamento</span><strong>Custo total: ${dinheiro(total)}</strong></div><div class="obra-itens-recorte"><table class="tabela"><thead><tr><th>Ambiente</th><th>Zona</th><th>Serviço</th><th>Item</th><th>Quantidade total</th><th>Custo unitário</th><th>Custo total</th></tr></thead><tbody>${linhas.map(item => `<tr><td>${escaparAtributo(item.ambiente)}</td><td>${escaparAtributo(item.zona)}</td><td>${escaparAtributo(item.servico)}</td><td>${escaparAtributo(item.descricao)}</td><td>${item.quantidade.toLocaleString('pt-BR', {maximumFractionDigits:6})}</td><td>${dinheiro(item.preco)}</td><td>${item.total === 0 ? `<span class="obra-total-zerado" title="Valor total zerado">${dinheiro(item.total)}</span>` : dinheiro(item.total)}</td></tr>`).join('') || '<tr><td colspan="7">Nenhum item desta categoria registrado no orçamento.</td></tr>'}</tbody></table></div></div>`
+        const html = `<div class="obra-itens-orcamento"><div class="obra-itens-resumo"><span>${linhas.length} itens · Quantidades do orçamento</span><strong>Custo total: ${dinheiro(total)}</strong></div><div class="obra-itens-recorte"><table class="tabela"><thead><tr><th>Ambiente</th><th>Zona</th><th>Serviço</th><th>Item</th><th>Quantidade total</th><th>Custo unitário</th><th>Custo total</th></tr></thead><tbody>${linhas.map(item => `<tr><td>${escaparAtributo(item.ambiente)}</td><td>${escaparAtributo(item.zona)}</td><td>${escaparAtributo(item.servico)}</td><td>${escaparAtributo(item.descricao)}</td><td>${item.quantidade.toLocaleString('pt-BR', {maximumFractionDigits:6})}</td><td>${dinheiro(item.preco)}</td><td>${item.total === 0 ? `<span class="obra-total-zerado" title="Valor total zerado">${dinheiro(item.total)}</span>` : dinheiro(item.total)}</td></tr>`).join('') || '<tr><td colspan="7">Nenhum item desta categoria registado no orçamento.</td></tr>'}</tbody></table></div></div>`
         const idPopup = popup({titulo:`${categorias[tipo]} do orçamento`, elemento:html})
         document.getElementById(idPopup).classList.add('popup-itens-obra')
     } catch (erro) {
@@ -255,13 +255,13 @@ async function adicionarObra(idOrcamento = null) {
         const selecionados = new Set(dados.obra?.colaboradores || [])
         let salvando = false
         const idModal = popup({ titulo: idOrcamento ? 'Colaboradores da obra' : 'Evoluir orçamento para uma obra',
-            botoes: [{ texto: idOrcamento ? 'Salvar colaboradores' : 'Evoluir orçamento para uma obra', img: 'concluido' }],
+            botoes: [{ texto: idOrcamento ? 'Guardar colaboradores' : 'Evoluir orçamento para uma obra', img: 'concluido' }],
             elemento: `<div class="obra-formulario">
                 <label>Orçamento<select class="obra-orcamento" ${idOrcamento ? 'disabled' : ''}>
                 <option value="">${!idOrcamento && !dados.orcamentos?.length ? 'Nenhum orçamento disponível' : 'Selecione um orçamento'}</option>
                 ${(idOrcamento ? [dados.obra] : dados.orcamentos || []).filter(Boolean).map(o => `<option value="${escaparAtributo(o.id)}" ${idOrcamento ? 'selected' : ''}>${escaparAtributo(o.contrato)} — ${escaparAtributo(o.nome_cliente || '')}</option>`).join('')}
                 </select></label>
-                <label>Colaboradores<input type="search" class="obra-busca-usuarios" placeholder="Pesquisar usuário, nome ou função"></label>
+                <label>Colaboradores<input type="search" class="obra-busca-usuarios" placeholder="Pesquisar utilizador, nome ou função"></label>
                 <div class="obra-usuarios"></div><p class="obra-selecao" aria-live="polite"></p>
                 <p class="obra-erro" role="status"></p>
             </div>` })
@@ -271,7 +271,7 @@ async function adicionarObra(idOrcamento = null) {
             modal.querySelector('.obra-usuarios').innerHTML = usuarios.filter(u =>
                 `${u.usuario} ${u.nome_completo || u.nome || ''} ${u.funcao || ''}`.toLocaleLowerCase().includes(busca))
                 .map(u => `<label class="obra-usuario"><input type="checkbox" value="${escaparAtributo(u.usuario)}" ${selecionados.has(u.usuario) ? 'checked' : ''} ${salvando ? 'disabled' : ''}>
-                <span><b>${escaparAtributo(u.nome_completo || u.nome || u.usuario)}</b><small>${escaparAtributo(u.usuario)} · ${escaparAtributo(u.funcao || '')}</small></span></label>`).join('') || '<p>Nenhum usuário encontrado.</p>'
+                <span><b>${escaparAtributo(u.nome_completo || u.nome || u.usuario)}</b><small>${escaparAtributo(u.usuario)} · ${escaparAtributo(u.funcao || '')}</small></span></label>`).join('') || '<p>Nenhum utilizador encontrado.</p>'
             modal.querySelector('.obra-selecao').textContent = `${selecionados.size} colaboradores selecionados`
         }
         modal.querySelector('.obra-busca-usuarios').addEventListener('input', renderUsuarios)
@@ -292,7 +292,7 @@ async function adicionarObra(idOrcamento = null) {
             if (!orcamento) { mostrarErro('Selecione um orçamento.'); return }
             salvando = true
             botaoSalvar.setAttribute('aria-disabled', 'true')
-            textoBotao.textContent = idOrcamento ? 'Salvando…' : 'Evoluindo orçamento…'
+            textoBotao.textContent = idOrcamento ? 'A guardar…' : 'Evoluindo orçamento…'
             aviso.textContent = ''
             try {
                 renderUsuarios()
@@ -484,7 +484,7 @@ async function carregarLinhasAndamento(idObra) {
                 <td><b>${escaparAtributo(especialidade)}</b></td>
                 <td>Qtde Orçada / Qtde Realizada</td>
                 <td>Andamento</td>
-                <td>Gerenciar</td>
+                <td>Gerir</td>
             `
 
             // ====== Itens ======
@@ -618,7 +618,7 @@ async function riscarItem(idObra, idOrcamento, idDescricao) {
 async function salvarChecklist(caminho, valor) {
     const resposta = await enviar(caminho, valor)
     if (!resposta || resposta.success === false || resposta.erro)
-        throw new Error(resposta?.mensagem || 'Não foi possível salvar a alteração no checklist.')
+        throw new Error(resposta?.mensagem || 'Não foi possível guardar a alteração no checklist.')
     return resposta
 }
 
@@ -639,7 +639,7 @@ async function atualizarItemChecklist(idObra, idOrcamento, idDescricao, alteraco
     linha.children[3].textContent = `${quantidade > 0 ? quantidade : 'Não definida'} / ${realizado}`
     linha.children[4].innerHTML = `<input name="porcentagem" hidden type="number" value="${percentual}">${andamentoVisualChecklist(quantidade, realizado, concluido)}`
     try { await atualizarToolbar({ nomeTarefa: painel.querySelector('#etapas')?.value }) }
-    catch (erro) { popup({ mensagem: 'O item foi salvo, mas o resumo da obra não pôde ser atualizado. Abra novamente o checklist para tentar.' }) }
+    catch (erro) { popup({ mensagem: 'O item foi guardado, mas o resumo da obra não pôde ser atualizado. Abra novamente o checklist para tentar.' }) }
 }
 
 function percentualItemChecklist(quantidade, realizado, concluido) {
@@ -661,7 +661,7 @@ async function painelFotos(idObra, idOrcamento, idDescricao) {
         { elemento: await blocoAuxiliarFotos(fotos || {}) }
     ]
     const botoes = [
-        { texto: 'Salvar', img: 'concluido', funcao: `salvarFotos('${idObra}', '${idOrcamento}', '${idDescricao}')` }
+        { texto: 'Guardar', img: 'concluido', funcao: `salvarFotos('${idObra}', '${idOrcamento}', '${idDescricao}')` }
     ]
 
     popup({ linhas, botoes, titulo: 'Painel de Fotos' })
@@ -697,7 +697,7 @@ async function salvarFotos(idObra, idOrcamento, idDescricao) {
 
     removerPopup()
     await verAndamento(idObra)
-    } catch (erro) { popup({ mensagem: escaparAtributo(erro.message || 'Não foi possível salvar as fotos.') }) }
+    } catch (erro) { popup({ mensagem: escaparAtributo(erro.message || 'Não foi possível guardar as fotos.') }) }
     finally { removerOverlay() }
 }
 
@@ -713,13 +713,13 @@ async function gerenciar(idObra, idOrcamento, idDescricao) {
     ]
     const botoes = [
         {
-            texto: 'Salvar',
+            texto: 'Guardar',
             img: 'concluido',
             funcao: `salvarAndamento('${idObra}', '${idOrcamento}', '${idDescricao}')`
         }
     ]
 
-    popup({ linhas, botoes, titulo: 'Gerenciar quantidade' })
+    popup({ linhas, botoes, titulo: 'Gerir quantidade' })
 
 }
 
@@ -872,64 +872,17 @@ function porcentagemHtml(percentual) {
 async function historicoObras(ordem) {
 
     try {
-
-        overlayAguarde()
-
-        const pag = 'hisObras'
-        const tabela = await modTab({
+        // Inclui o orçamento, as despesas da obra e as mudanças de acesso de colaboradores a ela.
+        await painelHistorico({
+            titulo: 'Histórico da obra',
+            subtitulo: `Obra ${ordem}`,
             base: 'vw_historico_obras',
-            pag,
-            body: 'hisObras',
-            filtros: {
-                'ordem_obra': { op: '=', value: ordem }
-            },
-            colunas: {
-                'Alterações': {},
-                'Tabela': {},
-                'Data': { chave: 'data', tipoPesquisa: 'data' },
-                'Alterado por': { chave: 'usuario' }
-            },
-            criarLinha: 'linhaHisObras'
+            filtrosFixos: { ordem_obra: { op: '=', value: ordem } },
+            tabelaPadrao: 'dados_orcamentos'
         })
-
-        const idPopup = popup({
-            elemento: `<div style="padding: 0.5rem;">${tabela}</div>`
-        })
-        document.getElementById(idPopup).classList.add('popup-historico')
-
-        await paginacao(pag)
-
     } catch (err) {
         console.error(err)
         popup({ mensagem: 'Falha ao gerar o histórico: Fale com o suporte.' })
     }
-
-
-}
-
-function linhaHisObras(his) {
-
-    const {
-        data,
-        usuario,
-        nome_colaborador
-    } = his || {}
-
-    // Alterações em colaboradores (ex.: acesso a esta obra) mostram de quem se trata.
-    const entidade = escaparAtributo(nomeEntidadeHistorico(his, 'dados_orcamentos'))
-    const labelEntidade = nome_colaborador
-        ? `${entidade} · <span class="historico-pessoa">${escaparAtributo(nome_colaborador)}</span>`
-        : entidade
-
-    return `
-        <tr>
-            <td>
-                <div class="janela-alteracoes">${linhasAlteracoesHistorico(his, 'dados_orcamentos')}</div>
-            </td>
-            <td>${labelEntidade}</td>
-            <td>${escaparAtributo(data)}</td>
-            <td>${escaparAtributo(usuario)}</td>
-        </tr>
-    `
 
 }

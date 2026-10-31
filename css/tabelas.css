@@ -43,6 +43,7 @@ td:has(> .icone-editar), td:has(> .icone-tabela) {
     width: 100%;
     border-collapse: collapse;
     font-size: 11px;
+    line-height: 1.5;
 }
 
 .tabela.nude {
@@ -71,7 +72,7 @@ td:has(> .icone-editar), td:has(> .icone-tabela) {
 
 .tabela:not(.nude) > thead,
 .tabela:not(.nude) > thead > tr {
-    background-color: #f3f3f3;
+    background-color: #f1f4f6;
 }
 
 .tabela thead input,
@@ -84,15 +85,16 @@ td:has(> .icone-editar), td:has(> .icone-tabela) {
 }
 
 .tabela th {
-    background-color: #f3f3f3;
-    font-weight: 500;
-    border: 1px solid #dedede;
-    padding: 5px 4px;
+    background-color: #f1f4f6;
+    font-weight: 600;
+    color: #3f505e;
+    border: 1px solid #dde3e8;
+    padding: 9px 10px;
 }
 
 .tabela td {
-    padding: 6px 5px;
-    border: 1px solid #e3e3e3;
+    padding: 6px 8px;
+    border: 1px solid #e8ecef;
 }
 
 .popup .tabela td {
@@ -101,6 +103,15 @@ td:has(> .icone-editar), td:has(> .icone-tabela) {
 
 .tabela:not(.nude) > tbody > tr:not(.tabela-linha-detalhes) {
     background-color: #fff;
+}
+
+/* Linhas zebradas para guiar a leitura em tabelas largas. */
+.tabela:not(.nude) > tbody > tr:not(.tabela-linha-detalhes):nth-child(even) {
+    background-color: #f8fafb;
+}
+
+.tabela:not(.nude) > tbody > tr:not(.tabela-linha-detalhes):nth-child(even):hover {
+    background-color: #e7edf2;
 }
 
 .tabela:not(.nude) > tbody > tr:not(.tabela-linha-detalhes):hover {
@@ -310,26 +321,69 @@ td:has(> .icone-editar), td:has(> .icone-tabela) {
     min-height: 2vh;
     display: flex;
     align-items: center;
-    border-radius: 5px 5px 0 0;
-    gap: 2px;
-    width: 100%;
+    border-radius: 10px 10px 0 0;
+    gap: 6px;
+    padding: 6px 8px;
+    box-sizing: border-box;
 }
 
+/* Rodapé curto e claro (como no GCS): só fecha a moldura, sem competir com o topo. */
 .rodape-tabela {
     display: flex;
     align-items: start;
     justify-content: start;
     gap: 5px;
-    background: linear-gradient(135deg, #79685c, #68594f);
+    background: #eef1f3;
     width: 100%;
-    min-height: 2vh;
-    border-radius: 0 0 5px 5px;
+    min-height: 8px;
+    border: 1px solid #dde3e8;
+    border-top: none;
+    box-sizing: border-box;
+    border-radius: 0 0 10px 10px;
 }
 
 .topo-tabela.nude {
-    border-radius: 5px;
+    border-radius: 10px;
+}
+
+/* Moldura arredondada em volta de topo, corpo e rodapé. */
+.modtab:not(.nude) {
+    box-sizing: border-box;
+    min-width: 0;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(31, 45, 61, 0.06);
+}
+
+.div-tabela:not(.nude) {
+    border-inline: 1px solid #dde3e8;
 }
 
 .topo-tabela span {
     padding: 5px;
 }
+
+/* Setas da paginação (tabelas.js): botão circular na cor do texto do topo (branco nos escuros, escuro nos claros). */
+.pag-seta {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 30px;
+    height: 30px;
+    margin: 0;
+    padding: 0;
+    border: 1.5px solid rgba(255, 255, 255, .55);
+    border-color: color-mix(in srgb, currentColor 55%, transparent);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .24);
+    background: color-mix(in srgb, currentColor 24%, transparent);
+    color: inherit;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
+    cursor: pointer;
+    transition: background-color .15s, transform .1s;
+}
+.pag-seta svg { width: 18px; height: 18px; stroke-width: 2.8; }
+.pag-seta:hover:not(:disabled) { background: color-mix(in srgb, currentColor 38%, transparent); }
+.pag-seta:active:not(:disabled) { transform: scale(.92); }
+.pag-seta:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+/* Desativada (primeira/última página): continua visível, só sem efeito. */
+.pag-seta:disabled { opacity: .5; box-shadow: none; cursor: default; }

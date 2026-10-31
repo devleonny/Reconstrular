@@ -196,14 +196,90 @@ function atribuirVariaveis() {
 let usuariosPresencaTimer = null
 let usuariosPresencaVersao = 0
 
+// Ícone do estado (online.png / offline.png; ausente é SVG).
+const imagemStatus = status => status === 'ausente' ? 'imagens/ausente.svg' : `imagens/${status || 'alerta'}.png`
+
+// Painel de pessoas (visual do GCS): o seu estado e busca no topo, resumo em chips e cartões por grupo.
+// Online/ausente vêm da presença (usuariosToolbar, a cada 30 s e a cada aviso); os offline são as pessoas
+// do diretório do chat (mesma regra de hierarquia) que não estão ligadas.
+const painelPresenca = { online: [], todos: [], todosEm: 0, busca: '', offlineAberto: false }
+const GRUPOS_PRESENCA = [
+    { chave: 'online', titulo: 'Disponíveis' },
+    { chave: 'ausente', titulo: 'Ausentes' },
+    { chave: 'offline', titulo: 'Offline' }
+]
+const ROTULO_STATUS = { online: 'Disponível', ausente: 'Ausente (sem interação há mais de 10 min)', offline: 'Offline' }
+
 function renderUsuariosPresenca(pessoas) {
-    const corpo = document.querySelector('[data-usuarios-online]')
-    if (!corpo) return
-    corpo.innerHTML = pessoas.length ? pessoas.map(p => `<tr>
-        <td>${escaparAtributo(p.usuario)}</td>
-        <td>${escaparAtributo(p.nome_completo || '')}</td>
-        <td>${escaparAtributo(p.funcao || '')}</td>
-    </tr>`).join('') : '<tr><td colspan="3">Nenhum usuário online.</td></tr>'
+    if (pessoas) painelPresenca.online = pessoas
+    const painel = document.querySelector('.painel-usuarios')
+    if (!painel) return
+
+    const normalizar = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    const busca = normalizar(painelPresenca.busca).trim()
+
+    // Todos (offline por padrão) + estado de quem está ligado; a própria pessoa não vem no diretório.
+    const pessoasMap = new Map(painelPresenca.todos.map(p => [p.usuario, { ...p, status: 'offline' }]))
+    for (const p of painelPresenca.online) pessoasMap.set(p.usuario, { ...pessoasMap.get(p.usuario), ...p, status: p.status || 'online' })
+    const todas = [...pessoasMap.values()]
+    const eu = todas.find(p => p.usuario === acesso?.usuario)
+    const filtradas = todas.filter(p => !busca || [p.usuario, p.nome_completo, p.funcao].some(c => normalizar(c).includes(busca)))
+
+    painel.querySelector('.painel-usuarios-meu-status').innerHTML = eu
+        ? `<img src="${imagemStatus(eu.status)}" alt=""><span>O seu estado: <b>${eu.status === 'ausente' ? 'Ausente' : 'Disponível'}</b></span>`
+        : ''
+
+    const porGrupo = Object.fromEntries(GRUPOS_PRESENCA.map(g => [g.chave, []]))
+    for (const p of filtradas) (porGrupo[p.status] || porGrupo.online).push(p)
+    for (const lista of Object.values(porGrupo))
+        lista.sort((a, b) => String(a.nome_completo || a.usuario).localeCompare(String(b.nome_completo || b.usuario), 'pt'))
+
+    painel.querySelector('.painel-usuarios-resumo').innerHTML = GRUPOS_PRESENCA
+        .map(g => `<span class="painel-usuarios-chip painel-usuarios-chip--${g.chave}"><b>${porGrupo[g.chave].length}</b> ${g.titulo.toLowerCase()}</span>`).join('')
+
+    const cartao = p => {
+        const nome = p.nome_completo || p.usuario
+        const iniciais = String(nome || '?').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0]).join('').toUpperCase()
+        const detalhe = [p.usuario !== nome ? p.usuario : '', p.funcao].filter(Boolean).join(' · ')
+        return `
+            <div class="painel-usuarios-item${p.usuario === acesso?.usuario ? ' painel-usuarios-item--eu' : ''}" title="${escaparAtributo(ROTULO_STATUS[p.status] || '')}">
+                <span class="painel-usuarios-avatar" data-iniciais="${escaparAtributo(iniciais)}">
+                    ${p.foto ? `<img src="${escaparAtributo(urlArquivo(p.foto))}" alt="" loading="lazy" onerror="this.remove()">` : ''}
+                    <img class="painel-usuarios-status-icone" src="${imagemStatus(p.status)}" alt="${escaparAtributo(ROTULO_STATUS[p.status] || '')}">
+                </span>
+                <span class="painel-usuarios-texto">
+                    <b>${escaparAtributo(nome)}</b>
+                    ${detalhe ? `<small>${escaparAtributo(detalhe)}</small>` : ''}
+                </span>
+            </div>`
+    }
+
+    // Offline começa recolhido (costuma ser a maior lista); com busca, abre.
+    const lista = GRUPOS_PRESENCA.filter(g => porGrupo[g.chave].length).map(g => {
+        const cabecalho = `<span>${g.titulo}</span><b>${porGrupo[g.chave].length}</b>${g.chave === 'ausente' ? '<small>sem interação há mais de 10 min</small>' : ''}`
+        const itens = porGrupo[g.chave].map(cartao).join('')
+        if (g.chave !== 'offline')
+            return `<section class="painel-usuarios-grupo painel-usuarios-grupo--${g.chave}"><h4>${cabecalho}</h4><div class="painel-usuarios-grade">${itens}</div></section>`
+        return `<details class="painel-usuarios-grupo painel-usuarios-grupo--offline" ${painelPresenca.offlineAberto || busca ? 'open' : ''}
+                ontoggle="if (!painelPresenca.busca) painelPresenca.offlineAberto = this.open">
+                <summary><h4>${cabecalho}</h4></summary><div class="painel-usuarios-grade">${itens}</div></details>`
+    }).join('')
+
+    painel.querySelector('.painel-usuarios-lista').innerHTML = lista
+        || `<p class="painel-usuarios-vazio">${busca ? 'Ninguém encontrado com essa pesquisa.' : 'Nenhum utilizador online.'}</p>`
+}
+
+// Pessoas do diretório do chat (todas as páginas), guardadas por 2 minutos.
+async function carregarPessoasPresenca() {
+    if (Date.now() - painelPresenca.todosEm < 2 * 60 * 1000) return
+    const todos = []
+    for (let pagina = 1, paginas = 1; pagina <= paginas && pagina <= 20; pagina++) {
+        const r = await chatApi('pessoas/listar', { pagina, limite: 100 })
+        todos.push(...(r.resultados || []))
+        paginas = r.paginas || 1
+    }
+    painelPresenca.todos = todos
+    painelPresenca.todosEm = Date.now()
 }
 
 async function usuariosToolbar() {
@@ -224,14 +300,16 @@ async function usuariosToolbar() {
     if (!resposta) return
     const dados = await resposta.json().catch(() => null)
     if (!resposta.ok || dados?.success !== true || !Array.isArray(dados.resultados))
-        throw new Error(dados?.mensagem || 'Não foi possível consultar os usuários online.')
+        throw new Error(dados?.mensagem || 'Não foi possível consultar os utilizadores online.')
     if (versao !== usuariosPresencaVersao || acesso?.usuario !== usuarioAtual) return
     const pessoas = [...new Map(dados.resultados.filter(p => p.usuario).map(p => [p.usuario, p])).values()]
-    const status = pessoas.some(p => p.usuario === usuarioAtual) ? 'online' : 'offline'
+    const eu = pessoas.find(p => p.usuario === usuarioAtual)
+    const status = eu ? (eu.status || 'online') : 'offline'
+    const ausentes = pessoas.filter(p => p.status === 'ausente').length
 
     const usuariosToolbarString = `
-        <div class="botao-usuarios">
-            <img name="imgStatus" onclick="painelUsuarios()" src="imagens/${status || 'alerta'}.png">
+        <div class="botao-usuarios" title="${pessoas.length - ausentes} disponíveis${ausentes ? ` · ${ausentes} ausentes` : ''}">
+            <img name="imgStatus" onclick="painelUsuarios()" src="${imagemStatus(status)}" alt="${status}">
             <label style="font-size: 1.2rem;">${pessoas.length}</label>
         </div>`
 
@@ -246,8 +324,8 @@ async function usuariosToolbar() {
         if (versao !== usuariosPresencaVersao || acesso?.usuario !== usuarioAtual) return
         const divUsuarios = document.getElementById('divUsuarios')
         if (divUsuarios) divUsuarios.innerHTML = '<button type="button" onclick="painelUsuarios()" title="Presença indisponível">Online: —</button>'
-        const corpo = document.querySelector('[data-usuarios-online]')
-        if (corpo) corpo.innerHTML = '<tr><td colspan="3">Presença indisponível. Tente atualizar.</td></tr>'
+        const listaPainel = document.querySelector('.painel-usuarios-lista')
+        if (listaPainel) listaPainel.innerHTML = '<p class="painel-usuarios-vazio">Presença indisponível. Tente atualizar.</p>'
         console.warn(erro.message)
     } finally {
         if (versao === usuariosPresencaVersao && acesso?.usuario === usuarioAtual)
@@ -257,30 +335,24 @@ async function usuariosToolbar() {
 }
 
 async function painelUsuarios() {
-    if (!document.querySelector('[data-usuarios-online]')) popup({
-        titulo: 'Usuários online', elemento: `<div class="painel-usuarios-online">
-            <table class="tabela"><thead><tr><th>Usuário</th><th>Nome</th><th>Função</th></tr></thead>
-            <tbody data-usuarios-online><tr><td colspan="3">Consultando presença…</td></tr></tbody></table>
-        </div>`
-    })
-    await usuariosToolbar()
-}
-
-function criarLinhaPainelUsuarios(dados) {
-
-    const { usuario, status, funcao } = dados || {}
-
-    return `
-    <tr>
-        <td>
-            <div style="${horizontal}; justify-content: start; gap: 0.5rem;">
-                <img src="imagens/${status || 'offline'}.png" style="width: 1.5rem;">
-                <label>${status || 'offline'}</label>
-            </div>
-        </td>
-        <td>${usuario || ''}</td>
-        <td>${funcao || ''}</td>
-    </tr>`
+    if (!document.querySelector('.painel-usuarios')) {
+        painelPresenca.busca = ''
+        popup({
+            titulo: 'Utilizadores', elemento: `
+            <div class="painel-usuarios">
+                <div class="painel-usuarios-topo">
+                    <div class="painel-usuarios-meu-status"></div>
+                    <input type="search" class="painel-usuarios-busca" placeholder="Pesquisar nome, utilizador ou função"
+                        aria-label="Pesquisar utilizador" oninput="painelPresenca.busca = this.value; renderUsuariosPresenca()">
+                </div>
+                <div class="painel-usuarios-resumo"></div>
+                <div class="painel-usuarios-lista"><p class="painel-usuarios-vazio">A consultar a presença…</p></div>
+            </div>`
+        })
+    }
+    // Sem o diretório (erro de rede), o painel mostra pelo menos quem está ligado.
+    await Promise.allSettled([carregarPessoasPresenca(), usuariosToolbar()])
+    renderUsuariosPresenca()
 }
 
 function mostrarMenus() {

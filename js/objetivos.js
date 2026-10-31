@@ -58,7 +58,7 @@ async function telaObjetivos() {
         await renderObjetivos(painel)
     } catch (erro) {
         if (consulta === objetivosConsulta && painel.isConnected)
-            painel.querySelector('.objetivos-grupos').textContent = 'Não foi possível carregar os objetivos. Abra novamente esta tela para tentar.'
+            painel.querySelector('.objetivos-grupos').textContent = 'Não foi possível carregar os objetivos. Abra novamente este ecrã para tentar.'
         console.error(erro)
     }
 }
@@ -100,7 +100,7 @@ async function atualizarDadosObjetivos() {
     do {
         const resposta = await pesquisarDB({ base: 'vw_objetivos', limite: 100, pagina,
             ordenar: { path: 'distrito', direcao: 'asc' } })
-        if (!resposta || !Array.isArray(resposta.resultados)) throw new Error('A meta foi salva, mas não foi possível atualizar os dados.')
+        if (!resposta || !Array.isArray(resposta.resultados)) throw new Error('A meta foi guardada, mas não foi possível atualizar os dados.')
         if (consulta !== objetivosConsulta || !painel.isConnected) return
         for (const cidade of resposta.resultados) cidades.set(cidade.id, cidade)
         paginas = resposta.paginas || 1
@@ -158,7 +158,7 @@ function gerenciarObjetivo(valorAtual = 0, cidade, id, objetivo) {
         `,
         botoes: [
             {
-                texto: 'Salvar',
+                texto: 'Guardar',
                 funcao: `alterarObjetivo(${escaparAtributo(JSON.stringify(id))}, '${objetivo}')`,
                 img: 'concluido'
             }
@@ -185,7 +185,7 @@ async function alterarObjetivo(id, objetivo) {
         removerTodosPopups()
         await atualizarDadosObjetivos()
     } catch (erro) {
-        popup({ mensagem: escaparAtributo(erro.message || 'Não foi possível salvar a meta.') })
+        popup({ mensagem: escaparAtributo(erro.message || 'Não foi possível guardar a meta.') })
     } finally { removerOverlay() }
 
 

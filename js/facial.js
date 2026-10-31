@@ -39,14 +39,14 @@ async function grabLiveDescriptor() {
 // O ponto é usado no telemóvel do trabalhador. Antes do PIN, o app pede as duas permissões;
 // se alguma for recusada, explica como ativar e não deixa avançar.
 const AJUDA_PERMISSAO = {
-    negada: `<b>A permissão foi recusada.</b> Para marcar o ponto é obrigatório autorizar a câmera e a localização.
+    negada: `<b>A permissão foi recusada.</b> Para marcar o ponto é obrigatório autorizar a câmara e a localização.
         <ul>
-            <li><b>Android (Chrome):</b> toque no cadeado 🔒 ao lado do endereço → <i>Permissões</i> → ative <i>Câmera</i> e <i>Localização</i>.</li>
-            <li><b>iPhone (Safari):</b> toque em <i>aA</i> na barra de endereço → <i>Definições do site</i> → permita <i>Câmera</i> e <i>Localização</i>. Confirme também em <i>Ajustes → Privacidade → Serviços de localização → Safari: Ao usar a app</i>.</li>
+            <li><b>Android (Chrome):</b> toque no cadeado 🔒 ao lado do endereço → <i>Permissões</i> → ative <i>Câmara</i> e <i>Localização</i>.</li>
+            <li><b>iPhone (Safari):</b> toque em <i>aA</i> na barra de endereço → <i>Definições do site</i> → permita <i>Câmara</i> e <i>Localização</i>. Confirme também em <i>Ajustes → Privacidade → Serviços de localização → Safari: Ao usar a app</i>.</li>
         </ul>
         Depois toque em <b>Tentar novamente</b>.`,
     gps: `<b>Não foi possível obter a localização.</b> Ligue a <i>Localização (GPS)</i> nas definições rápidas do telemóvel e tente de novo, de preferência ao ar livre ou junto a uma janela.`,
-    indisponivel: `<b>Este navegador não permite câmera ou localização.</b> Abra o app pelo endereço <i>https://</i> no Chrome (Android) ou no Safari (iPhone), não dentro de outra aplicação.`
+    indisponivel: `<b>Este navegador não permite câmara ou localização.</b> Abra o app pelo endereço <i>https://</i> no Chrome (Android) ou no Safari (iPhone), não dentro de outra aplicação.`
 }
 let autorizacaoPonto = { camera: null, localizacao: null, posicao: null }
 
@@ -67,14 +67,15 @@ async function telaRegistroPonto() {
 
             <div class="botaoSuperiorLogin" onclick="telaLogin()">
                 <img src="imagens/cracha.png">
-                <span>Voltar para a tela de Acesso</span>
+                <span>Voltar para o ecrã de Acesso</span>
             </div>
 
             <div class="baixoLogin ponto-autorizacao">
                 <h2>Registo de ponto</h2>
+                <small class="ponto-pendentes" data-ponto-pendentes hidden></small>
                 <p>Para marcar o ponto, este telemóvel precisa de duas autorizações:</p>
                 <ul class="ponto-permissoes">
-                    <li data-permissao="camera"><span class="ponto-perm-icone">📷</span><div><b>Câmera</b><small>para o reconhecimento facial</small></div><span class="ponto-perm-estado">Pendente</span></li>
+                    <li data-permissao="camera"><span class="ponto-perm-icone">📷</span><div><b>Câmara</b><small>para o reconhecimento facial</small></div><span class="ponto-perm-estado">Pendente</span></li>
                     <li data-permissao="localizacao"><span class="ponto-perm-icone">📍</span><div><b>Localização (GPS)</b><small>para confirmar o local de trabalho</small></div><span class="ponto-perm-estado">Pendente</span></li>
                 </ul>
                 <div class="ponto-ajuda" hidden></div>
@@ -83,6 +84,8 @@ async function telaRegistroPonto() {
 
         </div>
     `
+
+    PontoOffline.atualizarAviso()
 
     // Já autorizado antes neste aparelho? Segue direto (o navegador não volta a perguntar).
     try {
@@ -127,7 +130,7 @@ function telaPinPonto() {
     if (!bloco) return
     bloco.innerHTML = `
         <h2>Registo de ponto</h2>
-        <p class="ponto-autorizado">✓ Câmera e localização autorizadas</p>
+        <p class="ponto-autorizado">✓ Câmara e localização autorizadas</p>
         <span>Informe o seu PIN de 4 dígitos</span>
         <input type="password" inputmode="numeric" autocomplete="off" maxlength="4" name="pin" placeholder="PIN de 4 dígitos" onkeydown="if (event.key === 'Enter') verificarColaborador()">
         <button type="button" onclick="verificarColaborador()">Avançar</button>`
@@ -139,9 +142,20 @@ async function verificarColaborador() {
     if (autorizacaoPonto.camera !== 'ok' || autorizacaoPonto.localizacao !== 'ok')
         return telaRegistroPonto()
 
-    overlayAguarde()
     const pin = document.querySelector('[name="pin"]')
+    if (!/^\d{4}$/.test(pin.value))
+        return popup({ mensagem: 'Informe o PIN de 4 dígitos.' })
+    pinPonto = pin.value
+
+    // Sem internet (ou servidor sem resposta): a marcação fica guardada no telemóvel (ponto-offline.js).
+    if (!navigator.onLine)
+        return PontoOffline.marcar(pin.value)
+
+    overlayAguarde()
     const resposta = await colaboradorPin(pin.value)
+
+    if (resposta.err)
+        return PontoOffline.marcar(pin.value)
 
     if (resposta.mensagem)
         return popup({ mensagem: resposta.mensagem })
@@ -150,7 +164,8 @@ async function verificarColaborador() {
     // Posição atualizada já aqui, em paralelo com o reconhecimento facial.
     localizacaoPonto = obterLocalizacao()
 
-    const fotoUrl = `${api}/uploads/RECONST/${resposta.foto}`
+    // Terminal sem sessão: o servidor manda um link assinado só para esta foto (válido 10 minutos).
+    const fotoUrl = `${api}/uploads/RECONST/${encodeURIComponent(resposta.foto)}?a=${encodeURIComponent(resposta.fotoAssinatura || '')}`
 
     removerOverlay()
     await validarFacial(fotoUrl)
@@ -183,6 +198,8 @@ async function colaboradorPin(pin) {
 }
 
 let refDescriptor = null;
+// PIN da marcação em curso: se a rede cair no envio, a marcação é guardada offline com ele.
+let pinPonto = null
 
 // GPS do telemóvel: obrigatório. O servidor recusa sem localização, imprecisa ou fora do raio do local.
 // Resolve com { latitude, longitude, precisao } ou { erro: 'negada' | 'gps' | 'indisponivel' }.
@@ -217,7 +234,7 @@ async function validarFacial(fotoUrl) {
             </div>
             <video id="video" autoplay muted playsinline></video>
             <canvas style="display:none;"></canvas>
-            <div id="liveStatus" class="status muted">Câmera parada</div>
+            <div id="liveStatus" class="status muted">Câmara parada</div>
         </div>
 
     `;
@@ -233,10 +250,10 @@ async function validarFacial(fotoUrl) {
     refImg.src = fotoUrl;
 
     refImg.onload = async () => {
-        mostrarStatus('Processando referência…', 'warn');
+        mostrarStatus('A processar referência…', 'warn');
         refDescriptor = await computeDescriptorFromImage(refImg);
         if (!refDescriptor) {
-            mostrarStatus('A foto do seu cadastro não tem um rosto reconhecível. Peça ao encarregado para tirar outra foto.', 'err');
+            mostrarStatus('A foto do seu registo não tem um rosto reconhecível. Peça ao encarregado para tirar outra foto.', 'err');
         } else {
             mostrarStatus('Referência pronta', 'ok');
             await baterPonto()
@@ -254,11 +271,11 @@ async function iniciarCam() {
         const video = document.getElementById('video');
         video.srcObject = stream;
         video.onloadedmetadata = () => video.play();
-        mostrarStatus('Câmera ativa', 'ok');
+        mostrarStatus('Câmara ativa', 'ok');
 
         setTimeout(pararCam, 5 * 60 * 1000);
     } catch {
-        mostrarStatus('Não foi possível abrir a câmera. Confirme a autorização da câmera e tente novamente.', 'err');
+        mostrarStatus('Não foi possível abrir a câmara. Confirme a autorização da câmara e tente novamente.', 'err');
     }
 }
 
@@ -268,7 +285,7 @@ function pararCam() {
     const video = document.getElementById('video');
     if (!video) return
     video.srcObject = null;
-    mostrarStatus('Câmera parada', 'warn');
+    mostrarStatus('Câmara parada', 'warn');
 }
 
 async function baterPonto() {
@@ -276,14 +293,14 @@ async function baterPonto() {
         return mostrarStatus('Sem referência facial', 'err');
 
     if (!stream)
-        return mostrarStatus('Câmera não iniciada', 'err');
+        return mostrarStatus('Câmara não iniciada', 'err');
 
     let tentativa = 60;
 
     while (0 < tentativa) {
         // Saiu da tela (voltou ao login): para de analisar a câmera.
         if (!document.getElementById('video') || !stream) return
-        mostrarStatus(`Verificando… (${tentativa}s)`, 'warn');
+        mostrarStatus(`A verificar… (${tentativa}s)`, 'warn');
         tentativa--
 
         const liveDesc = await grabLiveDescriptor();
@@ -299,7 +316,7 @@ async function baterPonto() {
 
                 return enviarPonto(selfie);
             } else {
-                mostrarStatus('Rosto não reconhecido: olhe de frente para a câmera.', 'err');
+                mostrarStatus('Rosto não reconhecido: olhe de frente para a câmara.', 'err');
             }
         }
 
@@ -324,7 +341,7 @@ function capturarSelfie() {
 async function enviarPonto(selfie) {
     try {
         if (!selfie)
-            return popup({ titulo: 'Câmera', mensagem: 'Não foi possível capturar a imagem da câmera. Tente marcar novamente.' })
+            return popup({ titulo: 'Câmara', mensagem: 'Não foi possível capturar a imagem da câmara. Tente marcar novamente.' })
         overlayAguarde()
         const data = new Date().toLocaleString()
         const posicao = await (localizacaoPonto || obterLocalizacao())
@@ -332,13 +349,21 @@ async function enviarPonto(selfie) {
         // Sem localização não se envia nada (a autorização pode ter sido retirada a meio do processo).
         if (posicao.erro)
             return popup({ titulo: 'Localização necessária', mensagem: `Marcação não enviada.<br><br>${AJUDA_PERMISSAO[posicao.erro]}` })
-        const response = await fetch(`${api}/ponto`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ ticket: usuarioAtual.ticket, servidor, latitude: posicao.latitude, longitude: posicao.longitude, precisao: posicao.precisao, selfie })
-        })
+        let response
+        try {
+            response = await fetch(`${api}/ponto`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ ticket: usuarioAtual.ticket, servidor, latitude: posicao.latitude, longitude: posicao.longitude, precisao: posicao.precisao, selfie })
+            })
+        } catch {
+            // A rede caiu depois do reconhecimento: guarda a marcação já capturada em vez de a perder.
+            removerOverlay()
+            if (!pinPonto) throw new Error('Sem ligação ao servidor.')
+            return PontoOffline.comprovante(await PontoOffline.guardar({ pin: pinPonto, selfie, posicao }))
+        }
 
         const resposta = await response.json()
         if (resposta.mensagem)

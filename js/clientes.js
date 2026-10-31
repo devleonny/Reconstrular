@@ -33,7 +33,7 @@ async function telaClientes() {
 
     } catch (err) {
         console.log(err)
-        popup({ mensagem: 'Falha ao abrir a tela de Clientes: Fale com o suporte.' })
+        popup({ mensagem: 'Falha ao abrir o ecrã de Clientes: Fale com o suporte.' })
     }
 
 }
@@ -91,11 +91,11 @@ async function formularioCliente(idCliente) {
         } = dadosCliente || {}
 
         const botoes = [
-            { texto: 'Salvar', img: 'concluido', funcao: `salvarCliente('${idCliente}')` }
+            { texto: 'Guardar', img: 'concluido', funcao: `salvarCliente('${idCliente}')` }
         ]
 
         if (editando)
-            botoes.push({ texto: 'Excluir', img: 'cancel', funcao: `confirmarExclusaoCliente('${idCliente}')` })
+            botoes.push({ texto: 'Eliminar', img: 'cancel', funcao: `confirmarExclusaoCliente('${idCliente}')` })
 
         const { nome: nomeCidade } = await recuperarDado('cidades', cidade) || {}
 
@@ -148,7 +148,7 @@ async function formularioCliente(idCliente) {
 
     } catch (err) {
         console.error(err)
-        popup({ mensagem: 'Falha ao abrir o cadastro do cliente: Fale com o suporte.' })
+        popup({ mensagem: 'Falha ao abrir o registo do cliente: Fale com o suporte.' })
     }
 }
 
@@ -158,7 +158,7 @@ function confirmarExclusaoCliente(idCliente) {
         { texto: 'Confirmar', img: 'concluido', funcao: `excluirCliente('${idCliente}')`, fechar: true }
     ]
 
-    popup({ mensagem: 'Tem certeza?', botoes, titulo: 'Exclusão de Cliente', removerAnteriores: true })
+    popup({ mensagem: 'Tem certeza?', botoes, titulo: 'Eliminação de Cliente', removerAnteriores: true })
 }
 
 async function excluirCliente(idCliente) {
@@ -203,7 +203,7 @@ async function salvarCliente(idCliente) {
         const { usuario } = acesso || {}
         const mensagem = {
             funcao: ['Coordenador Operativo'],
-            assunto: 'Cadastro de Cliente Realizado',
+            assunto: 'Registo de Cliente Realizado',
             remetente: usuario,
             data: new Date().toLocaleString(),
             mensagem: `<i>Cadastro/Atualização de cliente <b>realizado</b>:</i> <br> <b>Nome</b>: ${cliente.nome}`
@@ -215,6 +215,6 @@ async function salvarCliente(idCliente) {
 
     } catch (err) {
         console.error(err)
-        popup({ mensagem: 'Falha ao salvar o cliente: Fale com o suporte.' })
+        popup({ mensagem: 'Falha ao guardar o cliente: Fale com o suporte.' })
     }
 }

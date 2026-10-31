@@ -5,6 +5,47 @@ let reconectando = false
 let priExe = true
 let encerrandoAcesso = false
 
+// Ausência automática (como no GCS): sem interação por 10 min em nenhuma aba, avisa o servidor
+// (esta conexão fica "ausente"); na primeira interação depois disso, avisa a volta. O servidor só mostra
+// a pessoa como ausente quando TODAS as conexões dela estão ociosas (RECONST/SCRIPTS/presenca.js).
+// A hora da última atividade fica no localStorage para as abas abertas valerem como uma só.
+const TEMPO_AUSENCIA_MS = 10 * 60 * 1000
+const CHAVE_ATIVIDADE = 'ultimaAtividadeReconst'
+let ultimaAtividadeGravada = 0
+let ausenciaInformada = false
+
+function ultimaAtividade() {
+    let partilhada = 0
+    try { partilhada = Number(localStorage.getItem(CHAVE_ATIVIDADE)) || 0 } catch { }
+    return Math.max(ultimaAtividadeGravada, partilhada)
+}
+
+function informarAusencia(ausente) {
+    ausenciaInformada = ausente
+    msg({ tipo: 'ausencia', ausente })
+}
+
+function registrarAtividade() {
+    const agora = Date.now()
+    // Gravar a cada movimento do rato seria excessivo: no máximo a cada 5 s.
+    if (agora - ultimaAtividadeGravada > 5000) {
+        ultimaAtividadeGravada = agora
+        try { localStorage.setItem(CHAVE_ATIVIDADE, String(agora)) } catch { }
+    }
+    if (ausenciaInformada) informarAusencia(false)
+}
+
+for (const evento of ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart', 'scroll'])
+    window.addEventListener(evento, registrarAtividade, { passive: true, capture: true })
+
+setInterval(() => {
+    const parado = Date.now() - ultimaAtividade() >= TEMPO_AUSENCIA_MS
+    if (parado && !ausenciaInformada) informarAusencia(true)
+    else if (!parado && ausenciaInformada) informarAusencia(false) // houve interação noutra aba
+}, 30000)
+
+registrarAtividade()
+
 connectWebSocket()
 
 async function encerrarAcesso(mensagem) {
@@ -90,7 +131,7 @@ function connectWebSocket() {
 async function validarAcesso() {
     let { token } = JSON.parse(localStorage.getItem('acesso')) || {}
 
-    msgStatus('Validando acesso...')
+    msgStatus('A validar acesso...')
 
     if (!token) {
         await encerrarAcesso('Sessão inválida')
@@ -191,7 +232,7 @@ function comunicacao() {
             await encerrarAcesso(
                 erro === 'Acesso bloqueado'
                     ? 'Seu acesso foi bloqueado'
-                    : erro || 'Usuário desconectado'
+                    : erro || 'Utilizador desconectado'
             )
 
             return
@@ -222,6 +263,8 @@ function comunicacao() {
             }
 
             acesso.status = 'online'
+            // Conexão nova nasce ativa: se a pessoa já estava parada, o servidor fica a saber já.
+            if (ausenciaInformada) msg({ tipo: 'ausencia', ausente: true })
             await usuariosToolbar()
             removerOverlay()
         }
@@ -245,9 +288,15 @@ function comunicacao() {
 
         }
 
+        // E-mail recebido ou status de envio alterado na própria caixa.
+        if (tipo === 'email') {
+            if (!window.recarregarEmails?.()) window.atualizarContadorEmails?.()
+        }
+
         if (tipo === 'status') {
             await usuariosToolbar()
-            balaoUsuario(status, usuario)
+            // Ida e volta de "ausente" (ociosidade) só atualiza as listas, sem balão para todos.
+            if (!data.automatico) balaoUsuario(status, usuario)
         }
     }
 }

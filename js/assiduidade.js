@@ -11,7 +11,7 @@ const Assiduidade = (() => {
         ['funcionarios', 'Funcionários']
     ]
     const TIPOS = { entrada: 'Entrada', saida_almoco: 'Saída almoço', retorno_almoco: 'Retorno almoço', saida: 'Saída' }
-    const MOTIVOS_RECUSA = { fora_do_raio: 'Fora do raio', sem_localizacao: 'Sem localização', localizacao_imprecisa: 'Localização imprecisa', sem_local_autorizado: 'Sem local autorizado', rosto_diferente: 'Rosto não confere', sem_rosto_selfie: 'Rosto não detetado', sem_rosto_cadastro: 'Cadastro sem foto válida', sem_selfie: 'Sem imagem do rosto' }
+    const MOTIVOS_RECUSA = { fora_do_raio: 'Fora do raio', sem_localizacao: 'Sem localização', localizacao_imprecisa: 'Localização imprecisa', sem_local_autorizado: 'Sem local autorizado', rosto_diferente: 'Rosto não confere', sem_rosto_selfie: 'Rosto não detetado', sem_rosto_cadastro: 'Registo sem foto válida', sem_selfie: 'Sem imagem do rosto' }
     let aba = 'painel', equipa = null, locais = null, atualizacao = null, ultimaLista = []
     const folhaSel = { colaborador: '', ano: 0, mes: 0 }
 
@@ -22,7 +22,8 @@ const ICONES_PAINEL = {
     presentes: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="m16 11 2 2 4-4"/></svg>',
     atrasos: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2h5M12 2v3"/></svg>',
     gps: '<svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><path d="M12 7v3.5M12 13h.01"/></svg>',
-    ausentes: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4M9.5 13.5l5 5M14.5 13.5l-5 5"/></svg>'
+    ausentes: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4M9.5 13.5l5 5M14.5 13.5l-5 5"/></svg>',
+    offline: '<svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .7-7.94A6 6 0 0 0 6.3 9.2 4.5 4.5 0 0 0 7 18z"/><path d="M3 3l18 18"/></svg>'
 }
 const FUSO_EMPRESA = 'Europe/Lisbon'
     const hoje = () => new Intl.DateTimeFormat('en-CA', { timeZone: FUSO_EMPRESA, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
@@ -74,8 +75,9 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
         <tbody>${linhas.length ? linhas.join('') : `<tr><td colspan="${colunas.length}" class="asd-vazio">${vazio}</td></tr>`}</tbody></table></div>`
     const etiquetaTipo = tipo => `<span class="asd-tipo asd-tipo-${esc(tipo)}">${esc(TIPOS[tipo] || 'Extra')}</span>`
     const estadoGps = r => r.origem === 'manual' ? '<span class="asd-gps asd-gps-manual">Lançada pelo gestor</span>'
-        : r.distancia_m != null ? `<span class="asd-gps asd-gps-ok">Dentro do raio · ${Math.round(r.distancia_m)} m</span>`
-            : '<span class="asd-gps asd-gps-sem">Sem cerca</span>'
+        : (r.origem === 'offline' ? '<span class="asd-gps asd-gps-offline" title="Feita sem internet e enviada depois, com as mesmas verificações">Offline</span> ' : '')
+        + (r.distancia_m != null ? `<span class="asd-gps asd-gps-ok">Dentro do raio · ${Math.round(r.distancia_m)} m</span>`
+            : '<span class="asd-gps asd-gps-sem">Sem cerca</span>')
     const linkMapa = (lat, lng) => { const url = mapa(lat, lng); return url ? `<a class="asd-mapa" href="${url}" target="_blank" rel="noopener noreferrer" title="Abrir no mapa">Mapa ↗</a>` : '—' }
     const opcoesEquipa = (selecionado, incluirTodos) => (incluirTodos ? '<option value="">Todos os funcionários</option>' : '<option value="">Selecione…</option>')
         + (equipa?.items || []).map(c => `<option value="${esc(c.id)}" ${c.id === selecionado ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')
@@ -113,6 +115,8 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
                 ${cartao('Atrasos de hoje', p.atrasos.length, 'amarelo', ICONES_PAINEL.atrasos, 'tolerância de 5 minutos')}
                 ${cartao('Alertas de GPS', p.alertas.length, 'vermelho', ICONES_PAINEL.gps, 'marcações recusadas')}
                 ${cartao('Ausentes hoje', p.ausentes.length, 'azul', ICONES_PAINEL.ausentes, 'férias e faltas lançadas')}
+                ${p.offline ? cartao('Ponto offline', p.offline.pessoas, 'roxo', ICONES_PAINEL.offline,
+                    `${p.offline.marcacoes} ${p.offline.marcacoes === 1 ? 'marcação feita' : 'marcações feitas'} sem internet hoje`) : ''}
             </div>
             <div class="asd-grade">
                 <section class="asd-bloco"><h3>Atividade em tempo real</h3>${tabela(['Funcionário', 'Tipo', 'Hora', 'Local', 'Estado GPS', 'Mapa'],
@@ -148,7 +152,7 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
             ultimaLista = dados.items
             conteudo().querySelector('.asd-resultado').innerHTML = dados.recusadas
                 ? tabela(['Funcionário', 'Data e hora', 'Motivo', 'Local mais próximo', 'Distância', 'Mapa'], dados.items.map(t => `<tr><td><b>${esc(t.nome)}</b></td><td class="asd-mono">${dataPt(t.data)} ${esc(t.hora)}</td><td><span class="asd-gps asd-gps-erro">${esc(MOTIVOS_RECUSA[t.motivo] || t.motivo)}</span></td><td>${esc(t.local_nome || '—')}</td><td>${t.distancia_m != null ? `${esc(t.distancia_m)} m${t.raio_m ? ` (raio ${esc(t.raio_m)} m)` : ''}` : '—'}</td><td>${linkMapa(t.latitude, t.longitude)}</td></tr>`), 'Nenhuma tentativa recusada no período.')
-                : tabela(['Funcionário', 'Tipo', 'Data e hora', 'Local', 'Estado GPS', 'Mapa', ''], dados.items.map((r, i) => `<tr><td><b>${esc(r.nome)}</b><small class="asd-sub">${esc(r.usuario || '')}</small></td><td>${etiquetaTipo(r.tipo)}</td><td class="asd-mono">${dataPt(r.data)} ${esc(r.hora)}</td><td>${esc(r.local_nome || '—')}</td><td>${estadoGps(r)}</td><td>${linkMapa(r.latitude, r.longitude)}</td><td class="asd-linha-acoes"><button type="button" data-editar="${i}" title="Corrigir hora">Corrigir</button><button type="button" data-excluir="${i}" title="Excluir marcação">Excluir</button></td></tr>`), 'Nenhuma marcação no período.')
+                : tabela(['Funcionário', 'Tipo', 'Data e hora', 'Local', 'Estado GPS', 'Mapa', ''], dados.items.map((r, i) => `<tr><td><b>${esc(r.nome)}</b><small class="asd-sub">${esc(r.usuario || '')}</small></td><td>${etiquetaTipo(r.tipo)}</td><td class="asd-mono">${dataPt(r.data)} ${esc(r.hora)}</td><td>${esc(r.local_nome || '—')}</td><td>${estadoGps(r)}</td><td>${linkMapa(r.latitude, r.longitude)}</td><td class="asd-linha-acoes"><button type="button" data-editar="${i}" title="Corrigir hora">Corrigir</button><button type="button" data-excluir="${i}" title="Eliminar marcação">Eliminar</button></td></tr>`), 'Nenhuma marcação no período.')
         }
         form.addEventListener('submit', e => { e.preventDefault(); listar().catch(falha) })
         conteudo().querySelector('[data-imprimir]').onclick = () => imprimir('Registos de ponto')
@@ -164,7 +168,7 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
 
     // ---------- Folha de ponto (mês a mês; antiga folha de Colaboradores) ----------
     const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
-    const ACOES_GESTOR = { criar: 'Lançada', alterar: 'Corrigida', excluir: 'Excluída' }
+    const ACOES_GESTOR = { criar: 'Lançada', alterar: 'Corrigida', excluir: 'Eliminada' }
     let folhaAtual = null
     async function folhaPonto() {
         await carregarEquipa()
@@ -174,12 +178,12 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
         if (!equipa.items.some(c => c.id === folhaSel.colaborador))
             folhaSel.colaborador = (equipa.items.find(c => c.id !== String(eu)) || equipa.items[0])?.id || ''
         const anos = [anoAtual - 2, anoAtual - 1, anoAtual]
-        conteudo().innerHTML = cabecalho('Folha de ponto', 'Registo mensal por funcionário. Esquecimentos são lançados pelo gestor com motivo e ficam sinalizados com ✎ aqui, no PDF e no comprovativo do trabalhador na marcação seguinte.')
+        conteudo().innerHTML = cabecalho('Folha de ponto', 'Registo mensal por funcionário. Registos manuais são lançados pelo gestor com motivo e ficam sinalizados com ✎ aqui, no PDF e no comprovativo do trabalhador na marcação seguinte.')
             + `<form class="asd-filtros">
                 <label>Funcionário<select name="colaborador">${opcoesEquipa(folhaSel.colaborador)}</select></label>
                 <label>Mês<select name="mes">${MESES.map((m, i) => `<option value="${i + 1}" ${i + 1 === folhaSel.mes ? 'selected' : ''}>${m}</option>`).join('')}</select></label>
                 <label>Ano<select name="ano">${anos.map(a => `<option ${a === folhaSel.ano ? 'selected' : ''}>${a}</option>`).join('')}</select></label>
-                <button type="button" data-pdf>Baixar PDF</button><button type="button" data-imprimir>Imprimir</button></form>
+                <button type="button" data-pdf>Descarregar PDF</button><button type="button" data-imprimir>Imprimir</button></form>
                 <div class="asd-resultado"></div>`
         const form = conteudo().querySelector('.asd-filtros')
         const mostrar = () => {
@@ -204,7 +208,7 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
                 const r = { id: m.id, nome: folhaAtual.colaborador.nome, tipo: m.tipo, data: d.data, hora: m.hora }
                 popup({
                     titulo: 'Marcação', mensagem: `<b>${esc(r.nome)}</b> · ${esc(TIPOS[r.tipo] || '')} · ${dataPt(r.data)} ${esc(r.hora)}${m.correcao ? `<br><small>✎ ${esc(ACOES_GESTOR[m.correcao.acao])} por ${esc(m.correcao.autor)} em ${esc(m.correcao.momento)} — ${esc(m.correcao.motivo)}</small>` : ''}`,
-                    botoes: [{ texto: 'Corrigir hora', img: 'lapis', funcao: `Assiduidade.corrigirDaFolha(${dia}, ${i})` }, { texto: 'Excluir', img: 'cancel', funcao: `Assiduidade.excluirDaFolha(${dia}, ${i})` }]
+                    botoes: [{ texto: 'Corrigir hora', img: 'lapis', funcao: `Assiduidade.corrigirDaFolha(${dia}, ${i})` }, { texto: 'Eliminar', img: 'cancel', funcao: `Assiduidade.excluirDaFolha(${dia}, ${i})` }]
                 })
             }
             if (esquecida) formularioMarcacao({ colaborador: folhaSel.colaborador, data: esquecida.dataset.esquecida })
@@ -241,8 +245,12 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
                     : ['entrada', 'saida_almoco', 'retorno_almoco', 'saida'].map(t => `<td>${celula(d, di, t)}</td>`).join('')}
                     <td class="asd-mono">${d.marcas.length ? horas(d.minutos) : ''}${d.incompleto ? ' <span class="asd-gps asd-gps-aviso" title="Número ímpar de marcações">incompleto</span>' : ''}</td>
                     <td class="asd-mono">${sinal(d.diferenca)}</td>
-                    <td class="asd-linha-acoes">${f.podeLancar && d.marcas.length < 4 && d.data <= hojeIso && (!d.fds || d.marcas.length) && !d.ausencia ? `<button type="button" data-esquecida="${d.data}" title="Lançar marcação esquecida">＋ Esquecimento</button>` : ''}</td></tr>`),
+                    <td class="asd-linha-acoes">${f.podeLancar && d.marcas.length < 4 && d.data <= hojeIso && (!d.fds || d.marcas.length) && !d.ausencia ? `<button type="button" data-esquecida="${d.data}" title="Lançar registo manual">＋ Registo manual</button>` : ''}</td></tr>`),
                 'Sem dias.')}
+            ${f.remuneracao ? '<section class="asd-bloco"><h3>Remuneração do período</h3>' + tabela(['Data','Diária','Proporcional','Complemento','Bonificação','Total','Motivo / responsável'], f.dias.filter(d=>d.marcas.length || d.remuneracao.ajustes.length).map(d=>{
+                const v=d.remuneracao
+                return '<tr><td>'+dataPt(d.data)+'</td><td>'+Remuneracao.moeda(v.diaria)+'</td><td>'+Remuneracao.moeda(v.base)+'</td><td>'+horas(v.complemento)+' / '+Remuneracao.moeda(v.adicional)+'</td><td>'+Remuneracao.moeda(v.bonus)+'</td><td>'+Remuneracao.moeda(v.total)+'</td><td>'+v.ajustes.map(a=>esc(a.motivo)+' · '+esc(a.criado_por)).join('<br>')+'</td></tr>'
+            }), 'Sem valores no período.') + '<div class="asd-total">Total a pagar: <b>'+Remuneracao.moeda(f.remuneracao.total)+'</b></div></section>' : ''}
             <section class="asd-bloco asd-intervencoes"><h3>✎ Intervenções do gestor neste mês</h3>${tabela(['Data', 'Hora', 'Tipo', 'Ação', 'Por', 'Quando', 'Motivo', 'Trabalhador'],
                 f.lancamentos.map(l => `<tr><td class="asd-mono">${dataPt(l.data)}</td><td class="asd-mono">${esc(l.hora)}</td><td>${etiquetaTipo(l.tipo)}</td><td>${esc(ACOES_GESTOR[l.acao])}</td><td>${esc(l.autor)}</td><td class="asd-mono">${esc(l.momento)}</td><td>${esc(l.motivo)}</td><td>${l.visto_em ? `<span class="asd-gps asd-gps-ok">Visto ${esc(l.visto_em)}</span>` : '<span class="asd-gps asd-gps-aviso">Ainda não visto</span>'}</td></tr>`),
                 'Nenhuma intervenção do gestor neste mês: todas as marcações são do próprio trabalhador.')}</section>`
@@ -260,7 +268,7 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
     const valor = nome => document.querySelector(`.painel-padrao [name="${nome}"]`)?.value?.trim() ?? ''
     function formularioMarcacao({ colaborador = '', data = hoje() } = {}) {
         popup({
-            titulo: 'Lançar marcação esquecida', linhas: [
+            titulo: 'Registo manual', linhas: [
                 { texto: 'Funcionário', elemento: `<select name="asd-colaborador">${opcoesEquipa(colaborador)}</select>` },
                 { texto: 'Data', elemento: `<input type="date" name="asd-data" value="${esc(data)}" max="${hoje()}">` },
                 { texto: 'Hora', elemento: '<input type="time" name="asd-hora">' },
@@ -295,11 +303,11 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
     function formularioExclusao(r) {
         emEdicao = r
         popup({
-            titulo: 'Excluir marcação', linhas: [
+            titulo: 'Eliminar marcação', linhas: [
                 { texto: 'Marcação', elemento: `<span>${esc(r.nome)} · ${esc(TIPOS[r.tipo] || '')} · ${dataPt(r.data)} ${esc(r.hora.slice(0, 5))}</span>` },
                 { texto: 'Motivo (obrigatório)', elemento: campoMotivo },
-                { elemento: '<p class="asd-nota">A marcação excluída fica guardada no histórico de correções.</p>' }
-            ], botoes: [{ texto: 'Excluir', img: 'cancel', funcao: 'Assiduidade.confirmarExclusao()' }]
+                { elemento: '<p class="asd-nota">A marcação eliminada fica guardada no histórico de correções.</p>' }
+            ], botoes: [{ texto: 'Eliminar', img: 'cancel', funcao: 'Assiduidade.confirmarExclusao()' }]
         })
     }
     async function confirmarExclusao() {
@@ -322,24 +330,198 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
     }
 
     // ---------- Horas trabalhadas ----------
+    let atualizarHoras = null
     async function horasTrabalhadas() {
-        await carregarEquipa()
-        conteudo().innerHTML = cabecalho('Horas trabalhadas', 'Calculadas pelas marcações: (saída almoço − entrada) + (saída − retorno). Dias só com entrada e saída contam o intervalo inteiro.')
-            + filtros() + '<div class="asd-resultado"></div>'
+        await carregarEquipa(true)
+        const administracao = ['CEO', 'Diretor Programador'].includes(acesso?.funcao)
+        conteudo().innerHTML = cabecalho('Horas trabalhadas e valores', 'Proporcional = diária × horas / jornada da vigência de cada dia. Complementos e bonificações não alteram as marcações.',
+            '<button type="button" data-completar title="Calcula quanto falta para a carga do período e sugere o complemento">⏱ Completar horas</button><button type="button" data-ajuste>＋ Complemento</button>'
+            + (administracao ? '<button type="button" data-fechamentos title="E-mails de fechamento enviados aos superiores">✉ Fechamentos</button>' : ''))
+            + `<div class="asd-marcadores" role="group" aria-label="Períodos de pagamento">${MARCADORES_PERIODO.map(([id, rotulo]) => `<button type="button" data-periodo="${id}">${rotulo}</button>`).join('')}</div>`
+            + filtros('<label>Pagamento<select name="periodicidade"><option value="">Todos</option><option value="mensal">Mensais</option><option value="semanal">Semanais (sex–qui)</option></select></label>')
+            + '<div class="asd-resultado"></div>'
         const form = conteudo().querySelector('.asd-filtros')
+        // Marcadores: preenchem as datas do período (semana de sexta a quinta, mês do dia 1 ao último) e filtram.
+        conteudo().querySelectorAll('[data-periodo]').forEach(botao => botao.onclick = () => {
+            const [inicio, fim] = periodoMarcador(botao.dataset.periodo)
+            form.elements.inicio.value = inicio
+            form.elements.fim.value = fim
+            if (botao.dataset.periodo.startsWith('semana')) form.elements.periodicidade.value = 'semanal'
+            else if (botao.dataset.periodo.startsWith('mes')) form.elements.periodicidade.value = 'mensal'
+            conteudo().querySelectorAll('[data-periodo]').forEach(b => b.setAttribute('aria-pressed', String(b === botao)))
+            listar().catch(falha)
+        })
+        if (administracao) conteudo().querySelector('[data-fechamentos]').onclick = () => abrirFechamentos().catch(falha)
+        let sequencia = 0
         const listar = async () => {
-            const dados = await pedir(`/horas?${lerFiltros(form)}`)
-            if (!ativa('horas')) return
-            const celula = (v, tipo) => v ? `<span class="asd-hora asd-tipo-${tipo}">${esc(v)}</span>` : '<span class="asd-falta">—</span>'
-            conteudo().querySelector('.asd-resultado').innerHTML = tabela(['Funcionário', 'Data', 'Entrada', 'Saída almoço', 'Ret. almoço', 'Saída', 'Horas'],
-                dados.items.map(l => `<tr><td><b>${esc(l.nome)}</b></td><td class="asd-mono">${dataPt(l.data)}</td><td>${celula(l.entrada, 'entrada')}</td><td>${celula(l.saida_almoco, 'saida_almoco')}</td><td>${celula(l.retorno_almoco, 'retorno_almoco')}</td><td>${celula(l.saida, 'saida')}</td><td class="asd-mono asd-direita"><b>${horas(l.minutos)}</b> h</td></tr>`),
-                'Nenhuma marcação no período.')
-                + (dados.items.length ? `<div class="asd-total">Total acumulado: <b>${horas(dados.totalMinutos)} h</b></div>` : '')
+            if (!form.reportValidity()) return
+            const filtro = Object.fromEntries(new FormData(form))
+            if (!filtro.inicio || !filtro.fim || filtro.inicio > filtro.fim) throw new Error('Informe um período válido.')
+            const pedido = ++sequencia
+            const dados = await pedir('/horas?' + lerFiltros(form))
+            if (!ativa('horas') || pedido !== sequencia) return
+            if (!dados.remuneracao || dados.items.some(l=>!l.remuneracao)) throw new Error('Atualize o backend e aplique a migração de remuneração para calcular os valores.')
+            const linhas = dados.items
+            linhas.sort((a,b)=>a.data.localeCompare(b.data) || String(a.nome).localeCompare(String(b.nome)))
+            let total = 0, minutos = 0, complementos = 0
+            const celula = v => esc(v || '—')
+            const html = linhas.map(l => {
+                const r = l.remuneracao
+                total += r.total; minutos += Number(l.minutos) || 0; complementos += r.complemento
+                const motivos = r.ajustes.map(a=>esc(a.motivo) + ' · ' + esc(a.criado_por || '')).join('<br>')
+                return '<tr><td><b>'+esc(l.nome)+'</b></td><td>'+dataPt(l.data)+'</td><td>'+celula(l.entrada)+'</td><td>'+celula(l.saida_almoco)+'</td><td>'+celula(l.retorno_almoco)+'</td><td>'+celula(l.saida)+'</td><td>'+horas(Number(l.minutos)||0)+'</td><td>'+Remuneracao.moeda(r.diaria)+'</td><td>'+Remuneracao.moeda(r.base)+'</td><td>'+horas(r.complemento)+' / '+Remuneracao.moeda(r.adicional)+'</td><td>'+Remuneracao.moeda(r.bonus)+'</td><td><b>'+Remuneracao.moeda(r.total)+'</b></td><td>'+motivos+'</td></tr>'
+            })
+            conteudo().querySelector('.asd-resultado').innerHTML = '<p>Período: '+dataPt(filtro.inicio)+' a '+dataPt(filtro.fim)+'</p>' + tabela(['Funcionário','Data','Entrada','Saída almoço','Ret. almoço','Saída','Horas reais','Diária','Proporcional','Complemento (h / €)','Bonificação','Total','Motivo / responsável'], html, 'Nenhum registo no período.') + '<div class="asd-total">Horas reais: <b>'+horas(minutos)+'</b> ＋ Complementos: <b>'+horas(complementos)+'</b> · Total a pagar: <b>'+Remuneracao.moeda(total)+'</b></div>'
         }
-        form.addEventListener('submit', e => { e.preventDefault(); listar().catch(falha) })
-        conteudo().querySelector('[data-imprimir]').onclick = () => imprimir('Horas trabalhadas')
+        atualizarHoras = listar
+        form.addEventListener('submit', e=>{e.preventDefault();listar().catch(falha)})
+        conteudo().querySelector('[data-imprimir]').onclick = ()=>imprimir('Horas trabalhadas e valores')
+        // Complemento: o tipo escolhe o campo (+ horas pagas pela diária do dia, ou + valor em euros).
+        conteudo().querySelector('[data-ajuste]').onclick = ()=>{
+            const id = popup({ titulo:'Complemento', linhas:[
+                {texto:'Funcionário',elemento:'<select name="rem-colaborador">'+opcoesEquipa(form.elements.colaborador.value)+'</select>'},
+                {texto:'Tipo de complemento',elemento:'<select name="rem-tipo"><option value="horas">＋ Horas</option><option value="dinheiro">＋ Dinheiro (bonificação)</option></select>'},
+                {texto:'Data de competência',elemento:'<input type="date" name="rem-data" value="'+hoje()+'">'},
+                {texto:'<span data-tipo-rotulo>Horas adicionais a pagar</span>',elemento:'<input name="rem-horas" type="number" min="0" max="24" step="0.01" value="0"><input name="rem-bonus" inputmode="decimal" value="0" placeholder="0,00" hidden>'},
+                {texto:'Motivo obrigatório',elemento:'<textarea name="rem-motivo"></textarea>'},
+                {elemento:'<p data-tipo-ajuda></p>'}
+            ],botoes:[{texto:'Guardar complemento',img:'concluido',funcao:'Assiduidade.salvarAjuste()'}]})
+            const janela = document.getElementById(id), tipo = janela.querySelector('[name="rem-tipo"]')
+            const trocar = () => {
+                const horasSel = tipo.value === 'horas'
+                janela.querySelector('[name="rem-horas"]').hidden = !horasSel
+                janela.querySelector('[name="rem-bonus"]').hidden = horasSel
+                janela.querySelector('[data-tipo-rotulo]').textContent = horasSel ? 'Horas adicionais a pagar' : 'Valor da bonificação (€)'
+                janela.querySelector('[data-tipo-ajuda]').textContent = horasSel
+                    ? 'Exemplo: trabalhou 6 h de uma diária de 8 h? Acrescente 2 h para pagar a diária completa. O valor sai da diária em vigor na data de competência.'
+                    : 'Valor fixo somado ao total, sem alterar as horas. A data define em que período ele entra.'
+            }
+            tipo.onchange = trocar
+            trocar()
+        }
+        conteudo().querySelector('[data-completar]').onclick = ()=>abrirCompletarHoras(form).catch(falha)
         await listar()
     }
+
+    // Períodos de pagamento: semana de sexta a quinta; mês do dia 1 ao último dia.
+    const MARCADORES_PERIODO = [['semana-atual', 'Semana atual (sex–qui)'], ['semana-anterior', 'Semana anterior'], ['mes-atual', 'Mês atual'], ['mes-anterior', 'Mês anterior']]
+    function periodoMarcador(id) {
+        const [a, m, d] = hoje().split('-').map(Number), base = new Date(Date.UTC(a, m - 1, d))
+        const iso = data => data.toISOString().slice(0, 10)
+        if (id.startsWith('semana')) {
+            const sexta = new Date(base); sexta.setUTCDate(base.getUTCDate() - ((base.getUTCDay() + 2) % 7))
+            if (id === 'semana-anterior') sexta.setUTCDate(sexta.getUTCDate() - 7)
+            const quinta = new Date(sexta); quinta.setUTCDate(sexta.getUTCDate() + 6)
+            return [iso(sexta), iso(quinta)]
+        }
+        const deslocamento = id === 'mes-anterior' ? -1 : 0
+        return [iso(new Date(Date.UTC(a, m - 1 + deslocamento, 1))), iso(new Date(Date.UTC(a, m + deslocamento, 0)))]
+    }
+
+    // Fechamentos por e-mail (administração): envios feitos e envio manual do último período fechado.
+    async function abrirFechamentos() {
+        const r = await pedir('/fechamentos')
+        const estado = { enviado: 'Enviado', erro: 'Falhou', pendente: 'Pendente' }
+        const linhas = r.items.map(f => `<tr><td>${f.tipo === 'semanal' ? 'Semanal' : 'Mensal'}</td><td class="asd-mono">${dataPt(f.inicio)} a ${dataPt(f.fim)}</td>
+            <td><span class="asd-gps asd-gps-${f.estado === 'enviado' ? 'ok' : f.estado === 'erro' ? 'erro' : 'aviso'}">${estado[f.estado] || esc(f.estado)}</span></td>
+            <td>${f.destinatarios || 0}</td><td>${f.enviado_em ? new Date(f.enviado_em).toLocaleString('pt-PT') : esc(f.erro || '—')}</td></tr>`)
+        const ultimo = p => `${dataPt(p.inicio)} a ${dataPt(p.fim)}`
+        popup({ titulo: 'Fechamentos por e-mail', elemento: `<div class="asd-popup-lista asd-fechamentos">
+            <p class="asd-nota">Semanal (sexta a quinta): enviado na sexta às 07:00. Mensal (dia 1 ao último dia): enviado no último dia útil às 19:00.
+                Cada superior recebe os colaboradores da sua equipa; a administração recebe todos. O envio automático precisa estar ligado no servidor.</p>
+            <div class="asd-acoes">
+                <button type="button" onclick="Assiduidade.enviarFechamento('semanal')">✉ Enviar semanal agora (${ultimo(r.ultimos.semanal)})</button>
+                <button type="button" onclick="Assiduidade.enviarFechamento('mensal')">✉ Enviar mensal agora (${ultimo(r.ultimos.mensal)})</button>
+            </div>
+            ${tabela(['Tipo', 'Período', 'Estado', 'E-mails', 'Enviado em / erro'], linhas, 'Nenhum fechamento enviado ainda.')}
+        </div>` })
+    }
+    async function enviarFechamento(tipo) {
+        try {
+            const r = await pedir('/fechamentos/enviar', 'POST', { tipo })
+            removerPopup()
+            popup({ titulo: 'Fechamento', mensagem: r.enviados
+                ? `Fechamento ${tipo} de ${dataPt(r.periodo.inicio)} a ${dataPt(r.periodo.fim)} enviado para ${r.enviados} ${r.enviados === 1 ? 'pessoa' : 'pessoas'}.`
+                : 'Nenhum e-mail enviado: não há colaboradores com esse tipo de pagamento no período, ou os superiores não têm e-mail registado.' })
+        } catch (erro) { falha(erro) }
+    }
+
+    // Completar horas: o servidor calcula a carga prevista do período (jornada × dias úteis, sem ausências)
+    // menos horas reais e complementos já lançados; o gestor ajusta o valor e confirma antes de lançar.
+    async function abrirCompletarHoras(form) {
+        const filtro = Object.fromEntries(new FormData(form))
+        if (!filtro.colaborador) throw new Error('Escolha o funcionário no filtro acima para completar as horas.')
+        if (!filtro.inicio || !filtro.fim || filtro.inicio > filtro.fim) throw new Error('Informe um período válido no filtro.')
+        const r = await pedir('/horas/completar?' + new URLSearchParams({ colaborador: filtro.colaborador, inicio: filtro.inicio, fim: filtro.fim }))
+        const sugestao = (r.falta / 60).toFixed(2).replace(/\.?0+$/, '')
+        const periodoTxt = `${dataPt(r.inicio)} a ${dataPt(r.fim)}`
+        const motivo = `Complemento de horas: ${horas(r.trabalhado + r.complementos)} de ${horas(r.previsto)} previstas no período ${periodoTxt}.`
+        const id = popup({ titulo: 'Completar horas', linhas: [
+            { elemento: `<div class="asd-completar">
+                <p><b>${esc(r.nome)}</b> · ${periodoTxt} · pagamento ${r.periodicidade === 'semanal' ? 'semanal' : 'mensal'}</p>
+                <dl>
+                    <div><dt>Carga prevista</dt><dd>${horas(r.previsto)}<small>${r.dias_uteis - r.dias_ausencia} dias úteis${r.dias_ausencia ? ` (${r.dias_ausencia} de ausência fora)` : ''}</small></dd></div>
+                    <div><dt>Horas reais</dt><dd>${horas(r.trabalhado)}</dd></div>
+                    <div><dt>Complementos já lançados</dt><dd>${horas(r.complementos)}</dd></div>
+                    <div class="asd-completar-falta"><dt>Faltam</dt><dd>${horas(r.falta)}</dd></div>
+                </dl>
+                ${r.previsto ? '' : '<p class="asd-nota-destaque">Sem diária/jornada registada no período: não há carga prevista para completar.</p>'}
+            </div>` },
+            { texto: 'Horas a completar', elemento: `<input name="cmp-horas" type="number" min="0" step="0.01" value="${sugestao || 0}">` },
+            { texto: 'Data de competência', elemento: `<input type="date" name="cmp-data" value="${r.fim}">` },
+            { texto: 'Motivo', elemento: `<textarea name="cmp-motivo">${esc(motivo)}</textarea>` },
+            { elemento: `<label class="asd-confirmar"><input type="checkbox" name="cmp-confirmo"> <span>Confirmo o lançamento deste complemento para <b>${esc(r.nome)}</b>. O valor é pago pela diária em vigor na data de competência.</span></label>` }
+        ], botoes: [{ texto: 'Lançar complemento', img: 'concluido', funcao: `Assiduidade.salvarCompletar('${esc(r.colaborador)}')` }] })
+        document.getElementById(id).classList.add('popup-completar')
+    }
+
+    let salvandoCompletar = false
+    async function salvarCompletar(colaborador) {
+        if (salvandoCompletar) return
+        salvandoCompletar = true
+        try {
+            const janela = [...document.querySelectorAll('.popup-completar')].at(-1)
+            const ler = nome => janela.querySelector(`[name="cmp-${nome}"]`)
+            const minutos = Math.round(Remuneracao.numero(ler('horas').value) * 60), data = ler('data').value, motivo = ler('motivo').value.trim()
+            if (!Number.isFinite(minutos) || minutos <= 0) throw new Error('Informe as horas a completar (maior que zero).')
+            if (!Remuneracao.dataValida(data)) throw new Error('Informe a data de competência.')
+            if (motivo.length < 5 || motivo.length > 500) throw new Error('O motivo deve ter entre 5 e 500 caracteres.')
+            if (!ler('confirmo').checked) throw new Error('Marque a confirmação antes de lançar.')
+            const c = await recuperarDado('dados_colaboradores', colaborador)
+            if (!c) throw new Error('Funcionário não encontrado.')
+            const rem = { vigencias: [], ajustes: [], ...(c.remuneracao || {}) }
+            // Cada lançamento aceita até 24 h: períodos longos viram vários lançamentos na mesma data.
+            const novos = []
+            for (let resto = minutos; resto > 0; resto -= 1440)
+                novos.push({ id: crypto.randomUUID(), data, minutos: Math.min(resto, 1440), centavos: 0, motivo, criado_por: acesso.usuario, criado_em: new Date().toISOString() })
+            const salvo = await enviar('dados_colaboradores/' + colaborador, { remuneracao: { ...rem, ajustes: [...(rem.ajustes || []), ...novos] } })
+            if (!salvo) return
+            removerPopup(janela.id)
+            if (ativa('horas')) await atualizarHoras()
+        } catch (erro) { falha(erro) } finally { salvandoCompletar = false }
+    }
+    let salvandoAjuste = false
+    async function salvarAjuste() {
+        if (salvandoAjuste) return
+        salvandoAjuste = true
+        try {
+            const ler = nome => document.querySelector('[name="rem-'+nome+'"]').value
+            const id=ler('colaborador'), data=ler('data'), motivo=ler('motivo').trim()
+            // Só o campo do tipo escolhido conta; o outro vai como zero.
+            const tipo=document.querySelector('[name="rem-tipo"]')?.value || 'horas'
+            const h=tipo==='horas' ? Remuneracao.numero(ler('horas')) : 0, bonus=tipo==='dinheiro' ? Remuneracao.numero(ler('bonus')) : 0
+            if (!id || !Remuneracao.dataValida(data) || motivo.length < 5 || motivo.length > 500 || !Number.isFinite(h) || h<0 || h>24 || !Number.isFinite(bonus) || bonus<0 || !Number.isSafeInteger(Math.round(bonus*100)) || (Math.round(h*60)===0 && Math.round(bonus*100)===0)) throw new Error('Informe funcionário, data, motivo e horas ou bonificação positivas.')
+            const c=await recuperarDado('dados_colaboradores',id)
+            if (!c) throw new Error('Funcionário não encontrado.')
+            const rem=c.remuneracao || {vigencias:[],ajustes:[]}
+            const ajuste={id:crypto.randomUUID(),data,minutos:Math.round(h*60),centavos:Math.round(bonus*100),motivo,criado_por:acesso.usuario,criado_em:new Date().toISOString()}
+            const salvo=await enviar('dados_colaboradores/'+id,{remuneracao:{...rem,ajustes:[...(rem.ajustes||[]),ajuste]}})
+            if (!salvo) return
+            removerPopup()
+            if (ativa('horas')) await atualizarHoras()
+        } catch(erro) { falha(erro) } finally { salvandoAjuste=false }
+    }
+
 
     // ---------- Férias e ausências ----------
     async function ausencias() {
@@ -393,12 +575,12 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
         const dados = await carregarLocais(true)
         if (!ativa('locais')) return
         ultimaLista = dados.items
-        conteudo().innerHTML = cabecalho('Locais de trabalho (cercas virtuais)', 'A marcação só é aceite dentro do raio de um local autorizado. Quem não tem locais alocados pode marcar em qualquer local ativo. A localização é sempre obrigatória; sem nenhum local cadastrado, ela é registada mas não limita onde se marca.',
+        conteudo().innerHTML = cabecalho('Locais de trabalho (cercas virtuais)', 'A marcação só é aceite dentro do raio de um local autorizado. Quem não tem locais alocados pode marcar em qualquer local ativo. A localização é sempre obrigatória; sem nenhum local registado, ela é registada mas não limita onde se marca.',
             dados.podeEditar ? '<button type="button" class="asd-primario" data-novo>＋ Adicionar local</button>' : '')
             + `<div class="asd-resultado">${tabela(['Designação', 'Início do turno', 'Coordenadas', 'Raio', 'Alocados', ''],
                 dados.items.map((l, i) => `<tr><td><b>${esc(l.nome)}</b></td><td><span class="asd-gps asd-gps-azul">🕗 ${esc(l.inicio_turno)}</span></td><td class="asd-mono">${Number(l.latitude).toFixed(6)}, ${Number(l.longitude).toFixed(6)}</td><td><span class="asd-gps asd-gps-azul">${esc(l.raio_m)} m</span></td><td>${l.alocados ? `${l.alocados} funcionário(s)` : 'Todos'}</td>
                     <td class="asd-linha-acoes">${linkMapa(l.latitude, l.longitude)}${dados.podeEditar ? `<button type="button" data-editar="${i}">Editar</button><button type="button" data-desativar="${i}">Desativar</button>` : ''}</td></tr>`),
-                'Nenhum local cadastrado: as marcações registam a localização, mas ainda não há cerca que as limite.')}</div>`
+                'Nenhum local registado: as marcações registam a localização, mas ainda não há cerca que as limite.')}</div>`
         conteudo().querySelector('[data-novo]')?.addEventListener('click', () => formularioLocal())
         conteudo().querySelector('.asd-resultado').addEventListener('click', e => {
             const editar = e.target.closest('[data-editar]'), desativar = e.target.closest('[data-desativar]')
@@ -447,7 +629,7 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
         const [dados, lista] = await Promise.all([carregarEquipa(true), carregarLocais(true)])
         if (!ativa('funcionarios')) return
         ultimaLista = dados.items
-        conteudo().innerHTML = cabecalho('Funcionários', 'Estado do reconhecimento facial (foto no cadastro) e locais onde cada um pode marcar. Para editar a ficha, use Colaboradores.')
+        conteudo().innerHTML = cabecalho('Funcionários', 'Estado do reconhecimento facial (foto no registo) e locais onde cada um pode marcar. Para editar a ficha, use Colaboradores.')
             + `<form class="asd-filtros asd-busca" onsubmit="return false"><label>Pesquisar<input type="search" name="busca" placeholder="Nome, utilizador ou NIF"></label></form>`
             + `<div class="asd-resultado">${tabela(['Funcionário', 'NIF', 'Função', 'Reconhecimento', 'Estado', 'Locais autorizados', ''],
                 dados.items.map((c, i) => `<tr data-busca="${esc(`${c.nome} ${c.usuario || ''} ${c.nif || ''}`.toLowerCase())}"><td><b>${esc(c.nome)}</b><small class="asd-sub">${esc(c.usuario || '')}</small></td><td class="asd-mono">${esc(c.nif || '—')}</td><td><span class="asd-funcao">${esc(c.funcao || '—')}</span></td>
@@ -480,7 +662,7 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
         } catch (erro) { falha(erro) }
     }
 
-    return { abrir, salvarMarcacao, salvarCorrecao, confirmarExclusao, corrigirDaFolha, excluirDaFolha, salvarAusencia, cancelarAusencia, salvarLocal, desativarLocal, usarMinhaLocalizacao, salvarAlocacao }
+    return { abrir, salvarAjuste, salvarCompletar, enviarFechamento, salvarMarcacao, salvarCorrecao, confirmarExclusao, corrigirDaFolha, excluirDaFolha, salvarAusencia, cancelarAusencia, salvarLocal, desativarLocal, usarMinhaLocalizacao, salvarAlocacao }
 })()
 
 // Atalhos do menu lateral (esquema_botoes.js chama funções globais sem argumentos).

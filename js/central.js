@@ -1,6 +1,6 @@
 const horizontal = `display: flex; align-items: center; justify-content: center;`
 const vertical = `display: flex; align-items: start; justify-content: start; flex-direction: column`
-const api = `https://leonny.dev.br`
+const api = `https://api.reconstrularobras.com`
 const servidor = 'RECONST'
 let stream;
 let emAtualizacao = false
@@ -111,7 +111,7 @@ async function acessoLogin() {
     const url = `${api}/acesso`
 
     if (inputs[0].value == '' || inputs[1].value == '') {
-        popup({ mensagem: 'Senha e/ou usuário não informado(s)' })
+        popup({ mensagem: 'Palavra-passe e/ou utilizador não informado(s)' })
         divAcesso.style.display = 'flex'
 
     } else {
@@ -137,6 +137,11 @@ async function acessoLogin() {
             }
 
             const data = await response.json()
+
+            if (data.trocarSenha) {
+                divAcesso.style.display = 'flex'
+                return formularioPrimeiroAcesso(data.usuario, inputs[1].value)
+            }
 
             if (data.mensagem) {
                 divAcesso.style.display = 'flex'
@@ -179,7 +184,7 @@ function salvarCadastro() {
 
     if (usuario == "" || senha == "" || email == "") {
 
-        popup(mensagem('Senha, usuário ou e-mail não informado(s)'), 'AVISO', true)
+        popup(mensagem('Palavra-passe, utilizador ou e-mail não informado(s)'), 'AVISO', true)
 
     } else {
 
@@ -236,8 +241,7 @@ function overlayAguarde() {
         <div class="aguarde">
 
             <div class="loading-container">
-                <img src="gifs/loading.gif" alt="Carregando">
-                <div class="div-mensagem">Aguarde...</div>
+                <img src="imagens/loading.png" alt="A carregar">
             </div>
             
         </div>
@@ -282,7 +286,7 @@ function balaoUsuario(st, texto) {
 
     const mensagemPop = `
         <div class="popup-mensagem">
-            <img src="imagens/${st}.png">
+            <img src="${imagemStatus(st)}">
             <span>${st}</span>
             <span>${texto}</span>
         </div>
@@ -442,7 +446,7 @@ async function abrirCamera() {
         setTimeout(pararCam, 5 * 60 * 1000);
 
     } catch (err) {
-        popup({ mensagem: 'Erro ao acessar a câmera: ' + err.message })
+        popup({ mensagem: 'Erro ao aceder à câmara: ' + err.message })
     }
 }
 
@@ -574,31 +578,32 @@ async function verificarRegras() {
 
         const existente = document.getElementById(`anexos_${doc}`).children.length
 
+        // A marcação de obrigatório vai na área de documento (o input fica escondido dentro dela).
+        const alvoDoc = inputExame.closest('.zona-documento')?.querySelector('.zona-documento-alvo') || inputExame
+
         if (funcoesExigemDocs.includes(funcao)) {
 
             if (!inputExame.files.length && existente == 0) {
                 campos.push(`Documento ${doc}`.replace('_', ' '))
-                inv(inputExame)
+                inv(alvoDoc)
             } else {
-                inv(inputExame, true)
+                inv(alvoDoc, true)
             }
 
         } else {
-            inv(inputExame, true)
+            inv(alvoDoc, true)
         }
 
     }
 
-    // Bloco correspondente a Pin & Senha;
+    // Bloco correspondente ao Pin (a senha é gerada como provisória pelo rodapé);
     const trabalhador = funcao == 'Trabalhador'
-    const painelSenha = document.querySelector('.painel-senha')
     const painelPin = document.querySelector('.painel-pin')
 
-    if (painelSenha)
-        painelSenha.style.display = trabalhador ? 'none' : 'flex'
-
-    if (painelPin)
+    if (painelPin) {
         painelPin.style.display = trabalhador ? 'flex' : 'none'
+        painelPin.closest('.linha-padrao').style.display = trabalhador ? 'flex' : 'none'
+    }
 
     // Obrigatoriedade do Usuário;
     const inpUsuario = input('usuario')
@@ -640,17 +645,6 @@ async function verificarRegras() {
     } else if (inpUsuario) {
         // O usuário é gerado pelo servidor ao salvar: não é campo obrigatório.
         inv(inpUsuario, true)
-    }
-
-    // Senha é opcional na edição, mas se preenchida segue o mínimo do servidor (validarNovaSenha).
-    const senha = input('senha')
-    if (senha && !trabalhador) {
-        if (senha.value && senha.value.length < 8) {
-            inv(senha)
-            campos.push('senha (mínimo de 8 caracteres)')
-        } else {
-            inv(senha, true)
-        }
     }
 
     for (let [name, regra] of Object.entries(limites)) {
@@ -847,33 +841,32 @@ function telaLogin() {
             <div class="botaoSuperiorLogin" onclick="telaRegistroPonto()">
                 <img src="imagens/relogio.png">
                 <span>Registo de Ponto</span>
+                <small class="ponto-pendentes" data-ponto-pendentes hidden></small>
             </div>
 
             <div class="baixoLogin">
 
-                <br>
                 <img src="imagens/acesso.png" class="cadeado">
 
-                <div style="padding: 20px; display: flex; flex-direction: column; align-items: start; justify-content: center;">
+                <div class="login-campos">
 
-                    <label>Usuário</label>
-                    <input type="text" placeholder="Usuário">
+                    <label>Utilizador</label>
+                    <input type="text" placeholder="Utilizador">
 
-                    <label>Senha</label>
-                    <div style="${horizontal}; gap: 10px;">
-                        <input onkeydown="if(event.key === 'Enter') acessoLogin()" type="password" placeholder="Senha">
+                    <label>Palavra-passe</label>
+                    <div class="login-senha">
+                        <input onkeydown="if(event.key === 'Enter') acessoLogin()" type="password" placeholder="Palavra-passe">
                         <img src="imagens/olhoFechado.png" class="olho" onclick="exibirSenha(this)">
                     </div>
-                    
-                    <br>
-                    <span onclick="recuperarSenha()" style="text-decoration: underline; cursor: pointer;">Esqueceu a senha?</span>
+
+                    <span class="login-esqueceu" onclick="recuperarSenha()">Esqueceu-se da palavra-passe?</span>
 
                 </div>
 
             </div>
 
             <div class="rodape-padrao">
-                <label class="botoes-rodape" style="color: white; background-color: #5b707f;" onclick="acessoLogin()">Entrar</label>
+                <label class="botoes-rodape login-entrar" onclick="acessoLogin()">Entrar</label>
             </div>
 
         </div>
@@ -882,12 +875,81 @@ function telaLogin() {
     tela.innerHTML = acumulado
     tela.classList.add('login')
     tela.classList.remove('active')
+    PontoOffline.atualizarAviso()
+}
+
+// Primeiro acesso com senha provisória: cria a senha definitiva e entra.
+// A provisória fica só em memória, não vai para o formulário.
+let primeiroAcesso = null
+
+function formularioPrimeiroAcesso(usuario, senhaProvisoria) {
+
+    primeiroAcesso = { usuario, senhaProvisoria }
+
+    const campo = (nome, placeholder) =>
+        `<input name="${nome}" type="password" autocomplete="new-password" placeholder="${placeholder}">`
+
+    const linhas = [
+        { elemento: `<span style="text-align: left;">Entrou com uma palavra-passe provisória. Crie a sua palavra-passe para continuar.</span>` },
+        { texto: 'Nova palavra-passe', elemento: campo('novaSenha', 'Nova palavra-passe') },
+        { texto: 'Repita a nova palavra-passe', elemento: campo('confirmarSenha', 'Repita a nova palavra-passe') },
+        { elemento: `<small style="text-align: left;">A palavra-passe precisa ter pelo menos 8 caracteres.</small>` }
+    ]
+
+    const botoes = [
+        { texto: 'Guardar e entrar', img: 'concluido', funcao: 'salvarPrimeiroAcesso()' }
+    ]
+
+    popup({ linhas, botoes, titulo: 'Crie a sua palavra-passe' })
+}
+
+async function salvarPrimeiroAcesso() {
+
+    const painel = [...document.querySelectorAll('.painel-padrao')].at(-1)
+    const valor = nome => painel?.querySelector(`[name="${nome}"]`)?.value || ''
+    const novaSenha = valor('novaSenha')
+
+    if (!primeiroAcesso)
+        return removerTodosPopups()
+
+    if (novaSenha !== valor('confirmarSenha'))
+        return popup({ mensagem: 'A confirmação não confere com a nova palavra-passe.' })
+
+    if (novaSenha.length < 8)
+        return popup({ mensagem: 'A palavra-passe precisa ter pelo menos 8 caracteres.' })
+
+    overlayAguarde()
+
+    try {
+        const resposta = await fetch(`${api}/definir-senha`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...primeiroAcesso, novaSenha })
+        })
+        const dados = await resposta.json().catch(() => ({}))
+
+        // Erro de validação: mantém o formulário aberto para corrigir.
+        if (!resposta.ok || !dados.success) {
+            removerOverlay()
+            return popup({ mensagem: dados.mensagem || 'Falha ao criar a palavra-passe.' })
+        }
+
+        primeiroAcesso = null
+        removerTodosPopups()
+
+        // Entra com a senha nova, pelo login normal.
+        document.querySelectorAll('#acesso input')[1].value = novaSenha
+        acessoLogin()
+    } catch {
+        removerOverlay()
+        popup({ mensagem: 'Sem conexão com o servidor. Tente novamente.' })
+    }
 }
 
 function recuperarSenha() {
 
     const linhas = [
-        { texto: 'Digite o Usuário', elemento: `<input name="identificador">` }
+        { texto: 'Escreva o Utilizador', elemento: `<input name="identificador">` }
     ]
 
     const botoes = [
@@ -919,8 +981,8 @@ async function solicitarCodigo() {
                 `
             },
             {
-                texto: 'Nova senha',
-                elemento: `<input id="novaSenha" placeholder="Nova Senha" class="camp-1">`
+                texto: 'Nova palavra-passe',
+                elemento: `<input id="novaSenha" placeholder="Nova Palavra-passe" class="camp-1">`
             }
         ]
         const botoes = [
@@ -1001,7 +1063,7 @@ function pesquisar(input, idTbody) {
 async function enviarExcel(idObra) {
     const input = document.querySelector('#arquivoExcel')
     if (!input.files.length)
-        return popup({ mensagem: 'Você ainda não selecionou nenhum arquivo' })
+        return popup({ mensagem: 'Ainda não selecionou nenhum ficheiro' })
 
     const formData = new FormData()
     formData.append('arquivo', input.files[0])
@@ -1079,54 +1141,63 @@ async function importarAnexos({ input, foto }) {
     }
 }
 
+// Link de um ficheiro enviado (/uploads exige acesso): as imagens e os links não mandam cabeçalhos,
+// por isso o token de ficheiros da sessão vai na URL. Ele só abre ficheiros (não serve na API).
+function urlArquivo(link) {
+    const k = acesso?.tokenArquivos
+    return `${api}/uploads/RECONST/${encodeURIComponent(link)}${k ? `?k=${encodeURIComponent(k)}` : ''}`
+}
+
+// Cor do selo de tipo no cartão de anexo.
+function corTipoAnexo(extensao) {
+    const cores = {
+        pdf: '#d1453b',
+        xls: '#1f8a4c', xlsx: '#1f8a4c', csv: '#1f8a4c',
+        doc: '#2b6cb0', docx: '#2b6cb0', txt: '#2b6cb0',
+        ppt: '#d9822b', pptx: '#d9822b',
+        zip: '#7b4fb0', rar: '#7b4fb0', '7z': '#7b4fb0',
+        dwg: '#0f8a8a', dxf: '#0f8a8a'
+    }
+    return cores[extensao] || '#5b707f'
+}
+
+// Cartão de anexo (miniatura para imagem, selo com o tipo para os outros), como no GCS.
+// O botão de remover é filho direto do cartão e não abre o anexo (stopPropagation).
 function criarAnexoVisual({ nome, link, funcao }) {
 
-    const formImg = ['jpg', 'jpeg', 'png']
-    const regex = /\.([^.]+)$/
-    const resultado = nome.match(regex)
-    const formato = resultado ? resultado[1] : null
+    nome = String(nome || link || 'anexo')
+    const formato = (nome.match(/\.([^.]+)$/)?.[1] || '').toLowerCase()
+    const titulo = escaparAtributo(nome)
+    const excluir = funcao
+        ? `<button type="button" class="anexo-remover" title="Remover" aria-label="Remover ${titulo}"
+            onclick="event.stopPropagation(); ${funcao}">&times;</button>`
+        : ''
 
-    // Formato imagem;
-    if (formImg.includes(formato)) {
-
-        const excluir = funcao
-            ? `<img onclick="${funcao}" src="imagens/cancel.png" style="position: absolute; top: 2px; right: 2px; width: 1.5rem;">`
-            : ''
-
+    if (['jpg', 'jpeg', 'png', 'webp'].includes(formato)) {
         return `
-            <div style="position: relative; width: max-content;">
+            <div class="anexo-imagem" title="${titulo}">
                 ${excluir}
-                <img
-                    class="foto-status"
-                    id="${link}"
-                    src="${api}/uploads/${link}"
-                    onclick="ampliarImagem(this, '${link}')">
-            </div>
-        `
-
-    } else {
-
-        const nomeFormatado = nome.length > 15
-            ? `${nome.slice(0, 6)}...${nome.slice(-6)}`
-            : nome;
-
-        const excluir = funcao
-            ? `<img src="imagens/cancel.png" style="width: 1.5rem;" onclick="${funcao}">`
-            : ''
-
-        return `
-            <div class="contorno-anexos" name="${link}">
-                <div onclick="abrirArquivo('${link}')" 
-                class="contorno-iterno" 
-                style="width: 100%; display: flex; align-items: center; justify-content: start; gap: 2px;">
-                    <img src="imagens/anexo2.png" style="width: 1.5rem;">
-                    <label style="font-size: 0.7rem; cursor: pointer;" title="${nome}">${nomeFormatado}</label>
-                    ${excluir}
-                </div>
+                <img class="foto-status" id="${escaparAtributo(link)}" src="${escaparAtributo(urlArquivo(link))}"
+                    alt="${titulo}" loading="lazy" onclick="ampliarImagem(this, '${escaparAtributo(link)}')">
             </div>
         `
     }
 
+    // A extensão vai no selo colorido; o nome aparece sem ela (cortado com … pelo CSS).
+    const extensao = formato || 'arq'
+    const nomeSemExtensao = formato ? nome.slice(0, -(formato.length + 1)) : nome
+    return `
+        <div class="contorno-anexos" name="${escaparAtributo(link)}" title="${titulo}" style="--anexo-cor: ${corTipoAnexo(extensao)}">
+            <div class="contorno-iterno" onclick="abrirArquivo('${escaparAtributo(link)}')">
+                <span class="anexo-tipo">${escaparAtributo(extensao.slice(0, 4))}</span>
+                <span class="anexo-textos">
+                    <span class="anexo-nome">${escaparAtributo(nomeSemExtensao || nome)}</span>
+                    <small>${extensao === 'pdf' ? 'Clique para ver' : 'Clique para abrir'}</small>
+                </span>
+            </div>
+            ${excluir}
+        </div>
+    `
 }
 
 function ampliarImagem(img) {
@@ -1142,10 +1213,10 @@ function ampliarImagem(img) {
 }
 
 function abrirArquivo(link) {
-    link = `${api}/uploads/RECONST/${link}`;
-    const imagens = ['png', 'jpg', 'jpeg'];
-
-    const extensao = link.split('.').pop().toLowerCase(); // pega sem o ponto
+    // Extensão do nome do ficheiro (antes de montar a URL, que leva o token em ?k=).
+    const extensao = String(link).split('.').pop().toLowerCase();
+    link = urlArquivo(link);
+    const imagens = ['png', 'jpg', 'jpeg', 'webp'];
 
     if (imagens.includes(extensao)) {
         const elemento = `
@@ -1156,6 +1227,17 @@ function abrirArquivo(link) {
         return popup({ elemento })
     }
 
+    // PDF: visualizador dentro do app, com atalho para abrir noutro separador (ou descarregar).
+    if (extensao === 'pdf') {
+        const id = popup({ titulo: 'Documento', elemento: `
+            <div class="visualizador-pdf">
+                <iframe src="${link}#view=FitH" title="Documento PDF"></iframe>
+                <a href="${link}" target="_blank" rel="noopener">Abrir noutro separador ↗</a>
+            </div>` })
+        document.getElementById(id)?.classList.add('popup-visualizador')
+        return
+    }
+
     window.open(link, '_blank');
 }
 
@@ -1164,14 +1246,14 @@ async function blocoAuxiliarFotos(fotos) {
     if (fotos) {
 
         const imagens = Object.entries(fotos)
-            .map(([link,]) => `<img name="foto" data-salvo="sim" id="${link}" src="${api}/uploads/${servidor}/${link}" class="foto" onclick="ampliarImagem(this, '${link}')">`)
+            .map(([link,]) => `<img name="foto" data-salvo="sim" id="${link}" src="${urlArquivo(link)}" class="foto" onclick="ampliarImagem(this, '${link}')">`)
             .join('')
 
         const painel = `
             <div style="${vertical}; gap: 5px;">
                 <div class="capturar" onclick="blocoAuxiliarFotos()">
                     <img src="imagens/camera.png" class="olho">
-                    <span>Abrir Câmera</span>
+                    <span>Abrir Câmara</span>
                 </div>
                 <div class="fotos">${imagens}</div>
             </div>
@@ -1193,7 +1275,7 @@ async function blocoAuxiliarFotos(fotos) {
                 </div>
             </div>
             `
-        popup({ elemento, titulo: 'Registrar Fotos' })
+        popup({ elemento, titulo: 'Registar fotos' })
         await abrirCamera()
     }
 
@@ -1265,7 +1347,7 @@ async function recAC(identificador) {
 
         // 429 (limite de solicitações) traz { mensagem } para exibir.
         if (!response.ok && response.status !== 429) {
-            console.error(`Falha ao deletar: ${response.status} ${response.statusText}`)
+            console.error(`Falha ao eliminar: ${response.status} ${response.statusText}`)
             const erroServidor = await response.text()
             console.error(`Resposta do servidor:`, erroServidor)
             throw new Error(`Erro HTTP ${response.status}`)
@@ -1293,7 +1375,7 @@ async function salvarNovaSenha({ identificador, novaSenha, codigo }) {
         })
 
         if (!response.ok) {
-            console.error(`Falha ao deletar: ${response.status} ${response.statusText}`)
+            console.error(`Falha ao eliminar: ${response.status} ${response.statusText}`)
             const erroServidor = await response.text()
             console.error(`Resposta do servidor:`, erroServidor)
             throw new Error(`Erro HTTP ${response.status}`)
@@ -1395,7 +1477,7 @@ async function pdf({ id, html = null, estilos = [], nome = 'documento' }) {
         })
 
         if (!response.ok) {
-            let msg = 'Falha ao baixar PDF'
+            let msg = 'Falha ao descarregar PDF'
             const text = await response.text()
             const j = JSON.parse(text)
             msg = j?.mensagem || j?.error || text || msg

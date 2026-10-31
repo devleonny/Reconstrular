@@ -16,6 +16,8 @@
 .asd-conteudo > .asd-vazio { color: var(--asd-suave); }
 .asd-conteudo > .asd-vazio.asd-erro { color: #9b2c2c; }
 .asd-acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Evita o flash branco ao alternar fundos sólidos e gradientes no hover. */
+.asd button { transition: none; }
 .asd button.asd-primario, .asd .asd-acoes button.asd-primario, .asd-filtros button.asd-primario { background: linear-gradient(180deg, #2a7fcc, var(--asd-primario)); border-color: var(--asd-primario); color: #fff; box-shadow: 0 2px 6px rgba(31, 111, 178, .25); }
 .asd button.asd-primario:hover:not(:disabled), .asd .asd-acoes button.asd-primario:hover:not(:disabled) { background: var(--asd-primario-hover); border-color: var(--asd-primario-hover); }
 
@@ -33,6 +35,7 @@
 .asd-amarelo { --cor: var(--asd-amarelo); --tinta: #fff1cc; }
 .asd-vermelho { --cor: var(--asd-vermelho); --tinta: #fde4e4; }
 .asd-azul { --cor: var(--asd-azul); --tinta: #e2f0fb; }
+.asd-roxo { --cor: var(--asd-roxo); --tinta: #efeafb; }
 
 .asd-grade { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 16px; }
 .asd-grade.asd-grade-igual { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -57,6 +60,11 @@
 
 /* Tabelas */
 .asd-tabela-caixa { overflow-x: auto; background: #fff; border: 1px solid var(--asd-borda); border-radius: 12px; box-shadow: var(--asd-sombra); }
+/* O trilho cinza global é retangular e não acompanha o canto arredondado: recuado das pontas e
+   transparente aqui, a barra de rolagem fica dentro da caixa. */
+.asd-tabela-caixa::-webkit-scrollbar-track { margin-inline: 12px; background: transparent; }
+.asd-tabela-caixa::-webkit-scrollbar-corner { background: transparent; }
+.asd-tabela-caixa::-webkit-scrollbar-thumb { border-color: #fff; }
 .asd-tabela { width: 100%; border-collapse: separate; border-spacing: 0; }
 /* Anula o "th { border }" global (despesas.css): só linhas horizontais, cantos seguem a caixa arredondada. */
 .asd .asd-tabela th, .asd .asd-tabela td { border: 0; }
@@ -91,6 +99,7 @@
 .asd-gps-aviso { background: #fff4d6; color: #9a6b00; }
 .asd-gps-azul { background: #e2f0fb; color: #1f6fb2; }
 .asd-gps-sem, .asd-gps-manual { background: #eef1f3; color: #4c5761; }
+.asd-gps-offline { background: #efeafb; color: #4b3592; }
 .asd-funcao { background: linear-gradient(135deg, #6b4fbb, #3b8ee0); color: #fff; }
 .asd-chip { margin: 2px 4px 2px 0; background: #efeafb; color: #4b3592; font-weight: 600; }
 
@@ -136,3 +145,25 @@
 .asd-intervencoes h3 { color: #7a5600; }
 .asd-nota-destaque { padding: 10px 12px; border: 1px dashed #d99a00; border-radius: 8px; background: #fff8e6; color: #5f4500; }
 .asd-caixa { background: #fff; border-radius: 12px; }
+
+/* Marcadores de período de pagamento (horas trabalhadas) */
+.asd-marcadores { display: flex; flex-wrap: wrap; gap: 8px; }
+.asd .asd-marcadores button { padding: 6px 14px; border: 1px solid #c9d8e8; border-radius: 999px; background: #fff; color: #1f4f7a; font-size: 12.5px; font-weight: 600; }
+.asd .asd-marcadores button:hover { background: #f2f7fc; }
+.asd .asd-marcadores button[aria-pressed="true"] { background: #1f6fb2; border-color: #1f6fb2; color: #fff; }
+.asd-fechamentos .asd-acoes { margin: 10px 0 14px; }
+.asd-fechamentos .asd-acoes button { border: 1px solid #c9d8e8; border-radius: 8px; background: #f2f7fc; color: #1f4f7a; font-weight: 600; }
+
+/* Completar horas (popup fora da .asd: cores explícitas) */
+.asd-completar { width: 100%; text-align: left; color: #2f3a42; }
+.asd-completar > p { margin: 0 0 10px; }
+.asd-completar dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.asd-completar dl > div { padding: 10px 12px; border: 1px solid #cfd9e4; border-radius: 10px; background: #f6f8fb; }
+.asd-completar dt { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: #6f7b84; }
+.asd-completar dd { margin: 4px 0 0; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; color: #1b2733; }
+.asd-completar dd small { display: block; margin-top: 2px; font-size: 11px; font-weight: 400; color: #6f7b84; }
+.asd-completar .asd-completar-falta { border-color: #f0c36d; background: #fff8e6; }
+.asd-completar .asd-completar-falta dd { color: #9a6b00; }
+.asd-completar .asd-nota-destaque { margin-top: 10px; }
+.asd-confirmar { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 1px dashed #b9d1ea; border-radius: 10px; background: #eaf2fb; color: #1f4f7a; text-align: left; line-height: 1.45; cursor: pointer; }
+.asd-confirmar input { margin-top: 2px; flex: none; }

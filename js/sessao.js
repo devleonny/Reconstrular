@@ -72,6 +72,11 @@ async function verificarSessao() {
     if (await renovarSessao() === 'recusada') await encerrarAcesso('Sessão expirada, faça login novamente')
 }
 setInterval(verificarSessao, 60 * 1000)
+// Sessões abertas antes da proteção dos ficheiros (/uploads) não têm o token de ficheiros: renova já para o obter.
+setTimeout(() => {
+    const guardado = lerAcessoGuardado()
+    if (guardado?.refreshToken && !guardado.tokenArquivos) renovarSessao({ tokenRecusado: guardado.token })
+}, 0)
 document.addEventListener('visibilitychange', () => { if (!document.hidden) verificarSessao() })
 window.addEventListener('online', verificarSessao)
 // Outra aba renovou: esta passa a usar o token novo também.
