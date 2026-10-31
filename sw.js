@@ -1,5 +1,5 @@
 const CACHE_PREFIX = `reconstrular-${self.registration.scope}-`
-const CACHE = `${CACHE_PREFIX}v716f2cc8`
+const CACHE = `${CACHE_PREFIX}v9fa611b2`
 const localUrl = path => new URL(path, self.registration.scope).href
 const PUSH_CACHE = `reconstrular-push:${self.registration.scope}`
 
@@ -28,10 +28,23 @@ self.addEventListener('push', event => {
     const resposta = await cache.match(localUrl('push-usuario'))
     const vinculo = resposta ? await resposta.json() : null
     if (vinculo?.usuario !== dados.usuario) return
-    await self.registration.showNotification('Reconstrular — Nova mensagem', {
-      body: 'Você recebeu uma nova mensagem no chat.',
+    // "Fulano" (ou "Fulano · Grupo") e o início da mensagem; servidores antigos sem estes campos caem no texto genérico.
+    const texto = typeof dados.texto === 'string' ? dados.texto.replace(/\s+/g, ' ').trim().slice(0, 140) : ''
+    const anexos = Number(dados.anexos) || 0
+    const remetente = typeof dados.remetente === 'string' ? dados.remetente.slice(0, 60) : ''
+    const grupo = typeof dados.grupo === 'string' ? dados.grupo.slice(0, 60) : ''
+    const titulo = remetente ? (grupo ? `${remetente} · ${grupo}` : remetente) : 'Reconstrular — Nova mensagem'
+    const corpo = texto ? `${anexos ? '📎 ' : ''}${texto}`
+      : anexos ? `📎 Enviou ${anexos === 1 ? 'um anexo' : `${anexos} anexos`}`
+      : remetente ? 'Enviou uma mensagem.' : 'Tem uma nova mensagem no chat.'
+    await self.registration.showNotification(titulo, {
+      body: corpo,
       icon: localUrl('imagens/pwa/icone-192-v4.png'),
+      // Silhueta da logo na barra de estado do Android (sem ela o Chrome mostra um sino).
+      badge: localUrl('imagens/pwa/badge-96.png'),
       tag: `chat-${String(dados.conversa_id).slice(0, 150)}`,
+      // Mesma conversa substitui a notificação anterior, mas volta a tocar/vibrar a cada mensagem nova.
+      renotify: true,
       data: { conversa_id: String(dados.conversa_id), usuario: dados.usuario }
     })
   })())
@@ -61,7 +74,7 @@ self.addEventListener('install', event => {
     const html = await resposta.clone().text()
     const arquivos = new Set(['manifest.json', 'imagens/logo.png',
       'imagens/pwa/icone-192-v4.png', 'imagens/pwa/icone-512-v4.png',
-      'imagens/pwa/icone-maskable-192-v4.png', 'imagens/pwa/icone-maskable-512-v4.png'])
+      'imagens/pwa/icone-maskable-192-v4.png', 'imagens/pwa/icone-maskable-512-v4.png', 'imagens/pwa/badge-96.png'])
     for (const atributo of html.matchAll(/(?:src|href)=["']([^"']+)["']/g)) {
       const url = new URL(atributo[1], self.registration.scope)
       if (url.href.startsWith(self.registration.scope)) arquivos.add(url.href)

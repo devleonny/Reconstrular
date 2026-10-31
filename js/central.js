@@ -279,14 +279,8 @@ function overlayAguarde() {
 
     document.body.insertAdjacentHTML('beforeend', elemento)
 
+    // Altura pelo CSS (fixed + inset: 0): medida aqui em px congelava-se com o teclado aberto e o overlay ficava a meio ecrã.
     const aguarde = document.querySelector('.aguarde')
-
-    let pageHeight = Math.max(
-        document.body.scrollHeight,
-        document.documentElement.scrollHeight
-    )
-
-    aguarde.style.height = `${pageHeight}px`
 
     clearTimeout(overlayTimeout)
 
