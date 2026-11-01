@@ -282,7 +282,7 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
                 { texto: 'Porque não foi aceite', elemento: `<span>${esc(i.mensagem)}</span>` },
                 { texto: 'Motivo (obrigatório)', elemento: `<textarea name="asd-motivo" rows="3" placeholder="${validar ? 'Ex.: estava na obra, o GPS falhou sem rede' : 'Ex.: marcação repetida por engano'}" style="width:100%;box-sizing:border-box"></textarea>` },
                 { elemento: validar
-                    ? '<p class="asd-nota asd-nota-destaque">✎ A marcação entra no ponto como <b>intervenção do gestor</b>, com o seu nome e o motivo, na folha, no PDF e no comprovativo da próxima marcação do trabalhador.</p>'
+                    ? '<p class="asd-nota asd-nota-destaque">✎ A marcação entra no ponto como <b>intervenção do gestor</b>, com o seu nome e o motivo, na folha e no comprovativo da próxima marcação do trabalhador.</p>'
                     : '<p class="asd-nota">A marcação não entra no ponto. A decisão e o motivo ficam guardados em "Já decididas".</p>' }
             ], botoes: [validar
                 ? { texto: 'Validar', img: 'concluido', funcao: 'Assiduidade.confirmarDecisao(\'validar\')' }
@@ -308,7 +308,7 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
         if (!equipa.items.some(c => c.id === folhaSel.colaborador))
             folhaSel.colaborador = (equipa.items.find(c => c.id !== String(eu)) || equipa.items[0])?.id || ''
         const anos = [anoAtual - 2, anoAtual - 1, anoAtual]
-        conteudo().innerHTML = cabecalho('Folha de ponto', 'Registo mensal por funcionário. Registos manuais são lançados pelo gestor com motivo e ficam sinalizados com ✎ aqui, no PDF e no comprovativo do trabalhador na marcação seguinte.')
+        conteudo().innerHTML = cabecalho('Folha de ponto', 'Registo mensal por funcionário. Registos manuais são lançados pelo gestor com motivo e ficam sinalizados com ✎ aqui e no comprovativo do trabalhador na marcação seguinte.')
             + `<form class="asd-filtros">
                 <label>Funcionário<select name="colaborador">${opcoesEquipa(folhaSel.colaborador)}</select></label>
                 <label>Mês<select name="mes">${MESES.map((m, i) => `<option value="${i + 1}" ${i + 1 === folhaSel.mes ? 'selected' : ''}>${m}</option>`).join('')}</select></label>
@@ -403,7 +403,7 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
                 { texto: 'Data', elemento: `<input type="date" name="asd-data" value="${esc(data)}" max="${hoje()}">` },
                 { texto: 'Hora', elemento: '<input type="time" name="asd-hora">' },
                 { texto: 'Motivo (obrigatório)', elemento: campoMotivo },
-                { elemento: '<p class="asd-nota asd-nota-destaque">✎ A marcação fica sinalizada como <b>lançada pelo gestor</b> na folha e no PDF, com o seu nome e o motivo, e é mostrada ao trabalhador no comprovativo da próxima marcação. O tipo (entrada, almoço, saída) segue a ordem das marcações do dia.</p>' }
+                { elemento: '<p class="asd-nota asd-nota-destaque">✎ A marcação fica sinalizada como <b>lançada pelo gestor</b> na folha, com o seu nome e o motivo, e é mostrada ao trabalhador no comprovativo da próxima marcação. O tipo (entrada, almoço, saída) segue a ordem das marcações do dia.</p>' }
             ], botoes: [{ texto: 'Lançar', img: 'concluido', funcao: 'Assiduidade.salvarMarcacao()' }]
         })
     }
