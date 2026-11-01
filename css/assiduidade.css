@@ -71,11 +71,11 @@
 .asd-tabela-caixa::-webkit-scrollbar-thumb { border-color: #fff; }
 .asd-tabela { width: 100%; border-collapse: separate; border-spacing: 0; }
 /* Anula o "th { border }" global (despesas.css): só linhas horizontais, cantos seguem a caixa arredondada. */
-.asd .asd-tabela th, .asd .asd-tabela td { border: 0; }
-.asd .asd-tabela th { position: sticky; top: 0; padding: 11px 12px; background: #eaf2fb; border-bottom: 2px solid #b9d1ea; color: #1f4f7a; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-align: left; text-transform: uppercase; white-space: nowrap; }
-.asd .asd-tabela td { padding: 11px 12px; border-bottom: 1px solid #e6ecf2; vertical-align: middle; }
+.asd .asd-tabela th, .asd .asd-tabela td, .asd-popup-lista .asd-tabela th, .asd-popup-lista .asd-tabela td { border: 0; }
+.asd .asd-tabela th, .asd-popup-lista .asd-tabela th { position: sticky; top: 0; padding: 11px 12px; background: #eaf2fb; border-bottom: 2px solid #b9d1ea; color: #1f4f7a; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-align: left; text-transform: uppercase; white-space: nowrap; }
+.asd .asd-tabela td, .asd-popup-lista .asd-tabela td { padding: 11px 12px; border-bottom: 1px solid #e6ecf2; vertical-align: middle; }
 .asd-tabela tbody tr:nth-child(even) td { background: #fafcfe; }
-.asd .asd-tabela tbody tr:last-child td { border-bottom: 0; }
+.asd .asd-tabela tbody tr:last-child td, .asd-popup-lista .asd-tabela tbody tr:last-child td { border-bottom: 0; }
 .asd-tabela tbody tr:hover td { background: #f1f7fd; }
 .asd-tabela tr[hidden] { display: none; }
 .asd-mono { font-family: Consolas, 'SFMono-Regular', monospace; font-size: 12.5px; white-space: nowrap; }
@@ -116,7 +116,7 @@
 .asd-checks { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow: auto; }
 .asd-checks label { display: flex; align-items: center; gap: 8px; }
 .asd-checks small { color: var(--asd-suave); }
-.asd-popup-lista { padding: 12px; max-width: min(1000px, 92vw); max-height: 70vh; overflow: auto; }
+.asd-popup-lista { padding: 12px; text-align: left; color: #2f3a42; max-width: min(1000px, 92vw); max-height: 70vh; overflow: auto; }
 
 @media (max-width: 900px) {
     .asd-grade, .asd-grade.asd-grade-igual { grid-template-columns: minmax(0, 1fr); }
@@ -156,7 +156,9 @@
 .asd .asd-marcadores button:hover { background: #f2f7fc; }
 .asd .asd-marcadores button[aria-pressed="true"] { background: #1f6fb2; border-color: #1f6fb2; color: #fff; }
 .asd-fechamentos .asd-acoes { margin: 10px 0 14px; }
-.asd-fechamentos .asd-acoes button { border: 1px solid #c9d8e8; border-radius: 8px; background: #f2f7fc; color: #1f4f7a; font-weight: 600; }
+.asd-fechamentos .asd-acoes button { padding: 8px 14px; border: 1px solid #c9d8e8; border-radius: 8px; cursor: pointer; background: #f2f7fc; color: #1f4f7a; font-weight: 600; }
+.asd-destinatarios { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.asd-destinatarios .asd-mono { color: #1f6fb2; }
 
 /* Completar horas (popup fora da .asd: cores explícitas) */
 .asd-completar { width: 100%; text-align: left; color: #2f3a42; }

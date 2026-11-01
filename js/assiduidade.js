@@ -517,28 +517,36 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
     async function abrirFechamentos() {
         const r = await pedir('/fechamentos')
         const estado = { enviado: 'Enviado', erro: 'Falhou', pendente: 'Pendente' }
+        // Envios antigos não guardavam a lista: fica só a contagem.
+        const destinatarios = f => f.envios?.length
+            ? `<ul class="asd-destinatarios">${f.envios.map(e => `<li class="${e.erro ? 'asd-erro' : ''}" title="${esc(e.erro || '')}">
+                <b>${esc(e.nome)}</b> <span class="asd-mono">${esc(e.email)}</span>
+                <small class="asd-sub">${e.todos ? 'Administração · todos' : 'Equipa'} · ${e.colaboradores} ${e.colaboradores === 1 ? 'colaborador' : 'colaboradores'}${e.erro ? ' · falhou' : ''}</small></li>`).join('')}</ul>`
+            : `${f.destinatarios || 0} <small class="asd-sub">lista não registada</small>`
         const linhas = r.items.map(f => `<tr><td>${f.tipo === 'semanal' ? 'Semanal' : 'Mensal'}</td><td class="asd-mono">${dataPt(f.inicio)} a ${dataPt(f.fim)}</td>
             <td><span class="asd-gps asd-gps-${f.estado === 'enviado' ? 'ok' : f.estado === 'erro' ? 'erro' : 'aviso'}">${estado[f.estado] || esc(f.estado)}</span></td>
-            <td>${f.destinatarios || 0}</td><td>${f.enviado_em ? new Date(f.enviado_em).toLocaleString('pt-PT') : esc(f.erro || '—')}</td></tr>`)
+            <td>${destinatarios(f)}</td><td>${f.enviado_em ? new Date(f.enviado_em).toLocaleString('pt-PT') : esc(f.erro || '—')}</td></tr>`)
         const ultimo = p => `${dataPt(p.inicio)} a ${dataPt(p.fim)}`
         popup({ titulo: 'Fechamentos por e-mail', elemento: `<div class="asd-popup-lista asd-fechamentos">
             <p class="asd-nota">Semanal (sexta a quinta): enviado na sexta às 07:00. Mensal (dia 1 ao último dia): enviado no último dia útil às 19:00.
-                Cada superior recebe os colaboradores da sua equipa; a administração recebe todos. O envio automático precisa estar ligado no servidor.</p>
+                Cada superior recebe os colaboradores da sua equipa; a administração recebe todos.</p>
             <div class="asd-acoes">
                 <button type="button" onclick="Assiduidade.enviarFechamento('semanal')">✉ Enviar semanal agora (${ultimo(r.ultimos.semanal)})</button>
                 <button type="button" onclick="Assiduidade.enviarFechamento('mensal')">✉ Enviar mensal agora (${ultimo(r.ultimos.mensal)})</button>
             </div>
-            ${tabela(['Tipo', 'Período', 'Estado', 'E-mails', 'Enviado em / erro'], linhas, 'Nenhum fechamento enviado ainda.')}
+            ${tabela(['Tipo', 'Período', 'Estado', 'Destinatários', 'Enviado em / erro'], linhas, 'Nenhum fechamento enviado ainda.')}
         </div>` })
     }
     async function enviarFechamento(tipo) {
         try {
+            overlayAguarde()
             const r = await pedir('/fechamentos/enviar', 'POST', { tipo })
+            removerOverlay()
             removerPopup()
             popup({ titulo: 'Fechamento', mensagem: r.enviados
                 ? `Fechamento ${tipo} de ${dataPt(r.periodo.inicio)} a ${dataPt(r.periodo.fim)} enviado para ${r.enviados} ${r.enviados === 1 ? 'pessoa' : 'pessoas'}.`
                 : 'Nenhum e-mail enviado: não há colaboradores com esse tipo de pagamento no período, ou os superiores não têm e-mail registado.' })
-        } catch (erro) { falha(erro) }
+        } catch (erro) { removerOverlay(); falha(erro) }
     }
 
     // Completar horas: o servidor calcula a carga prevista do período (jornada × dias úteis, sem ausências)
