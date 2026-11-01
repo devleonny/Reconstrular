@@ -23,7 +23,7 @@ const ROTULOS_HISTORICO = {
         apolice: 'Apólice', telefone: 'Telefone', numero_documento: 'Número do documento', seguranca_social: 'Segurança social',
         numero_contribuinte: 'Número de contribuinte', status_disponivel: 'Disponibilidade', documento: 'Tipo de documento',
         especialidade: 'Especialidades', funcao: 'Função', pin: 'PIN', senha: 'Palavra-passe', cidade: 'Cidade', foto: 'Foto',
-        epi: 'EPI', filtros: 'Filtros de acesso', contrato_obra: 'Contrato de obra', exame: 'Exame médico',
+        epi: 'EPI', filtros: 'Filtros de acesso', contrato_obra: 'Contrato de obra', exame: 'Exame médico', iban: 'IBAN', comprovativo_iban: 'Comprovativo do IBAN',
         acesso_bloqueado: 'Acesso', usuario: 'Utilizador', status: 'Status', excluido: 'Eliminação', remuneracao: 'Remuneração'
     }
 }
@@ -36,7 +36,7 @@ const SUBROTULOS_HISTORICO = {
 const IGNORAR_HISTORICO = /^(snapshots|timestamp|atualizado_em|id|empresa|empresa_id|id_empresa|_acao)(\.|$)/
 // Campos que guardam o id de outro cadastro: exibidos pelo nome.
 const REFERENCIAS_HISTORICO = { cidade: 'cidades', cliente: 'dados_clientes', fornecedor: 'fornecedores' }
-const ANEXOS_HISTORICO = { documentos: 'Documento', fatura: 'Fatura', foto: 'Foto', contrato_obra: 'Contrato de obra', exame: 'Exame médico' }
+const ANEXOS_HISTORICO = { documentos: 'Documento', fatura: 'Fatura', foto: 'Foto', contrato_obra: 'Contrato de obra', exame: 'Exame médico', comprovativo_iban: 'Comprovativo do IBAN' }
 // Concordância das frases curtas ("Senha alterada", "Fatura anexada").
 const FEMININOS_HISTORICO = new Set(['senha', 'fatura', 'foto', 'morada', 'apolice', 'cidade', 'funcao', 'data', 'data_visita', 'data_contato', 'data_nascimento'])
 const participioHistorico = (raiz, masculino) => FEMININOS_HISTORICO.has(raiz) ? masculino.replace(/o$/, 'a') : masculino

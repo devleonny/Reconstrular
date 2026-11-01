@@ -133,6 +133,31 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
         janela.document.close(); janela.focus(); setTimeout(() => janela.print(), 250)
     }
 
+    // Impressão da folha: o mesmo documento do PDF (logótipo, dados do colaborador, totais), reduzido para caber numa página A4.
+    // A janela abre já no clique: aberta depois da espera, o navegador bloqueia-a como pop-up.
+    async function imprimirFolha() {
+        const janela = window.open('', '_blank')
+        if (!janela) return popup({ titulo: 'Ponto', mensagem: 'O navegador bloqueou a janela de impressão. Permita pop-ups para este site.' })
+        janela.document.write('<p style="font-family: Arial, sans-serif">A preparar a folha de ponto…</p>')
+        try {
+            const { html } = await pedir(`/folha/documento?colaborador=${encodeURIComponent(folhaSel.colaborador)}&ano=${folhaSel.ano}&mes=${folhaSel.mes}`)
+            janela.document.open()
+            janela.document.write(html.replace('</style>', '@page { size: A4; margin: 12mm 10mm; } body { width: 190mm; }</style>'))
+            janela.document.close()
+            // Espera o logótipo ser desenhado antes de medir (como em imprimir()).
+            setTimeout(() => {
+                // Altura útil do A4 (273 mm ≈ 1032 px): acima disso, reduz para não passar a uma segunda página.
+                const altura = janela.document.documentElement.scrollHeight
+                if (altura > 1032) janela.document.body.style.zoom = String(Math.floor(1032 / altura * 98) / 100)
+                janela.focus()
+                janela.print()
+            }, 300)
+        } catch (erro) {
+            janela.close()
+            falha(erro)
+        }
+    }
+
     // ---------- Painel ----------
     async function painel() {
         const p = await pedir('/painel')
@@ -287,7 +312,7 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
         }
         form.addEventListener('change', mostrar)
         form.addEventListener('submit', e => { e.preventDefault(); mostrar() })
-        conteudo().querySelector('[data-imprimir]').onclick = () => imprimir(`Folha de ponto · ${folhaAtual?.colaborador?.nome || ''} · ${MESES[folhaSel.mes - 1]} ${folhaSel.ano}`)
+        conteudo().querySelector('[data-imprimir]').onclick = imprimirFolha
         conteudo().querySelector('[data-pdf]').onclick = async () => {
             try {
                 overlayAguarde()

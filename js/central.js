@@ -527,6 +527,15 @@ async function tirarFoto() {
 // Mesma regra de SCRIPTS/salvar_registro.js (servidor) e dos destinatários do e-mail.
 const emailValido = valor => /^[^\s<>@,;"']+@[^\s<>@,;"']+\.[^\s<>@,;"']+$/.test(String(valor ?? '').trim())
 
+// IBAN sem espaços: país + 2 dígitos de controlo + conta; o resto da divisão por 97 (ISO 13616) tem de ser 1.
+function ibanValido(iban) {
+    if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(iban)) return false
+    const numeros = (iban.slice(4) + iban.slice(0, 4)).replace(/[A-Z]/g, letra => letra.charCodeAt(0) - 55)
+    let resto = 0
+    for (const digito of numeros) resto = (resto * 10 + Number(digito)) % 97
+    return resto === 1
+}
+
 async function verificarRegras() {
 
     const painel = document.querySelector('.painel-padrao')
@@ -712,6 +721,27 @@ async function verificarRegras() {
                 inv(campo)
                 campos.push(name)
             }
+        }
+    }
+
+    // IBAN (opcional): se preenchido, tem de passar no dígito de controlo e vir com o comprovativo.
+    const campoIban = input('iban')
+    if (campoIban) {
+        const iban = campoIban.value.replace(/\s/g, '').toUpperCase()
+        if (!iban || ibanValido(iban)) {
+            inv(campoIban, true)
+        } else {
+            inv(campoIban)
+            campos.push('IBAN')
+        }
+
+        const inputComprovativo = input('comprovativo_iban')
+        const alvoComprovativo = inputComprovativo?.closest('.zona-documento')?.querySelector('.zona-documento-alvo')
+        if (iban && inputComprovativo && !inputComprovativo.files.length && !document.getElementById('anexos_comprovativo_iban')?.children.length) {
+            inv(alvoComprovativo)
+            campos.push('Comprovativo do IBAN')
+        } else {
+            inv(alvoComprovativo, true)
         }
     }
 

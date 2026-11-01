@@ -148,6 +148,121 @@
     background-color: #ff4e2f8f;
 }
 
+/* Detalhes da linha do colaborador: uma ficha com as 5 colunas sempre na mesma linha (EPI na última);
+   só em ecrãs estreitos passa a 2 colunas e, no telemóvel, a 1. */
+.ficha-colaborador {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    border: 1px solid #9aa5b0;
+    border-radius: 8px;
+    background-color: #fff;
+    overflow: hidden;
+}
+
+.ficha-colaborador section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 10px 12px;
+    border-right: 1px solid #d3d9df;
+}
+
+.ficha-colaborador section:last-child {
+    border-right: 0;
+}
+
+@media (max-width: 900px) {
+    .ficha-colaborador {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ficha-colaborador section {
+        border-bottom: 1px solid #d3d9df;
+    }
+}
+
+@media (max-width: 520px) {
+    .ficha-colaborador {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ficha-colaborador h3 {
+    margin: -10px -12px 0;
+    padding: 8px 12px;
+    border-bottom: 1px solid #9aa5b0;
+    background-color: #dde3e8;
+    color: #36424d;
+    font-size: 12px;
+}
+
+.ficha-colaborador dl {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+}
+
+.ficha-colaborador dt {
+    color: #6f7b84;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+.ficha-colaborador dd {
+    margin: 0;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+.ficha-colaborador button {
+    align-self: flex-start;
+    margin-top: auto;
+}
+
+.ficha-vazio {
+    color: #9aa5b0;
+}
+
+.ficha-tags,
+.ficha-anexos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.ficha-anexos .contorno-anexos {
+    width: 100%;
+}
+
+.ficha-anexos .anexo-imagem .foto-status {
+    width: 80px;
+    height: 60px;
+}
+
+/* Coluna IBAN: selo de IBAN registado (ativo) ou não (inativo). */
+.selo-iban {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.selo-iban-ativo {
+    border: 1px solid #1f7a4d;
+    background-color: #e3f4ea;
+    color: #1f7a4d;
+}
+
+.selo-iban-inativo {
+    border: 1px solid #b8bfc6;
+    background-color: #f1f3f5;
+    color: #6f7b84;
+}
+
 .local-cidades {
     max-width: 500px;
     display: flex;

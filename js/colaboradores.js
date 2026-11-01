@@ -176,12 +176,10 @@ async function telaColaboradores() {
         'Usuário': { chave: 'usuario' },
         'Função': { chave: 'funcao', tipoPesquisa: 'select' },
         'Nome Completo': { chave: 'nome' },
-        'Telefone': { chave: 'telefone' },
+        'IBAN': {},
         'Distrito': { chave: 'snapshots.cidade.distrito', tipoPesquisa: 'select' },
         'Cidade': { chave: 'snapshots.cidade.nome', tipoPesquisa: 'select' },
         'Status': { chave: 'status_disponivel', tipoPesquisa: 'select' },
-        'Folha de Ponto': {},
-        'Ficha de EPI': {},
         ...(
             ['CEO', 'Diretor Programador'].includes(acesso.funcao)
                 ? { 'Bloquear acesso': {} }
@@ -237,7 +235,16 @@ async function criarLinhaColaboradores(colaborador) {
         status_disponivel,
         especialidade,
         acesso_bloqueado,
-        foto
+        foto,
+        iban,
+        email,
+        data_nascimento,
+        morada,
+        numero_contribuinte,
+        seguranca_social,
+        documento,
+        numero_documento,
+        apolice
     } = colaborador || {}
     const { distrito, nome: nomeCidade } = snapshots?.cidade || {}
 
@@ -258,18 +265,48 @@ async function criarLinhaColaboradores(colaborador) {
 
     const estilo = labelStatus(status_disponivel)
 
-    let qtdeEPIs = 0
+    // Detalhes da linha: uma ficha só, em colunas lado a lado (quebra para baixo apenas em ecrãs estreitos).
+    const valor = v => v ? escaparAtributo(v) : '<span class="ficha-vazio">—</span>'
+    const campos = lista => `<dl>${lista.map(([rotulo, v]) => `<div><dt>${rotulo}</dt><dd>${v}</dd></div>`).join('')}</dl>`
+    const anexos = chave => {
+        const lista = Object.values(colaborador?.[chave] || {}).map(anexo => criarAnexoVisual(anexo)).join('')
+        return lista ? `<div class="ficha-anexos">${lista}</div>` : '<span class="ficha-vazio">Sem anexo</span>'
+    }
+    const coluna = (tituloColuna, conteudo) => `<section><h3>${tituloColuna}</h3>${conteudo}</section>`
 
-    Object.values(epi?.equipamentos || {}).forEach(e => {
-        qtdeEPIs += e.quantidade
-    })
+    // EPI: quantidade e tamanho por equipamento (nomes de epi.js).
+    const itensEpi = Object.entries(epi?.equipamentos || {})
+    const qtdeEPIs = itensEpi.reduce((total, [, e]) => total + (Number(e.quantidade) || 0), 0)
+    const listaEpi = itensEpi.length
+        ? campos(itensEpi.map(([chave, e]) => [escaparAtributo(equipamentosLinhas[chave]?.nome || chave), `${e.quantidade || 0} un.${e.tamanho ? ` · T${e.tamanho}` : ''}`]))
+        : '<p class="ficha-vazio">Nenhum EPI registado.</p>'
 
-    const formEpi = `
-            <div data-acao="editavel" style="${vertical}; align-items: center;" onclick="abrirEPI('${id}')">
-                <img src="imagens/colaborador.png">
-                ${qtdeEPIs ? `<div class="labelQuantidade">${qtdeEPIs}</div>` : ''}
-            </div>
-        `
+    const detalhes = `
+        <div class="ficha-colaborador">
+            ${coluna('Contacto', campos([
+                ['Telefone', valor(telefone)],
+                ['E-mail', valor(String(email || '').split(/[\s,;]+/).filter(Boolean).join(', '))],
+                ['Morada', valor(morada)],
+                ['Data de nascimento', valor(/^\d{4}-\d{2}-\d{2}$/.test(data_nascimento || '') ? data_nascimento.split('-').reverse().join('/') : data_nascimento)]
+            ]))}
+            ${coluna('Registo', campos([
+                ['Número de contribuinte', valor(numero_contribuinte)],
+                ['Segurança Social', valor(seguranca_social)],
+                ['Documento', valor([documento, numero_documento].filter(Boolean).join(' · '))],
+                ['Apólice de seguro', valor(apolice)],
+                ['Especialidades', especialidades ? `<div class="ficha-tags">${especialidades}</div>` : 'Não se aplica']
+            ]) + `<button type="button" data-acao="editavel" onclick="mostrarFolha('${id}')">Ver folha de ponto</button>`)}
+            ${coluna('Banco', campos([
+                ['IBAN', valor(iban)],
+                ['Comprovativo do IBAN', anexos('comprovativo_iban')]
+            ]))}
+            ${coluna('Documentos', campos([
+                ['Contrato de obra', anexos('contrato_obra')],
+                ['Exame médico', anexos('exame')]
+            ]))}
+            ${coluna(`EPI · ${qtdeEPIs} ${qtdeEPIs === 1 ? 'unidade' : 'unidades'}`, listaEpi
+                + `<button type="button" data-acao="editavel" onclick="abrirEPI('${id}')">Abrir ficha de EPI</button>`)}
+        </div>`
 
     // Miniatura no mesmo estilo do formulário; sem foto (ou se falhar ao carregar) fica o avatar genérico.
     const tds = `
@@ -287,17 +324,13 @@ async function criarLinhaColaboradores(colaborador) {
         <td>
             ${nome}
         </td>
-        <td>${telefone || ''}</td>
+        <td>
+            <span class="selo-iban ${iban ? 'selo-iban-ativo' : 'selo-iban-inativo'}" title="${iban ? 'IBAN registado' : 'Sem IBAN registado'}">${iban ? 'Ativo' : 'Inativo'}</span>
+        </td>
         <td>${distrito || ''}</td>
         <td>${nomeCidade || ''}</td>
         <td>
             <span class="${estilo}">${status_disponivel || ''}</span>
-        </td>
-        <td>
-            <img data-acao="editavel" src="imagens/relogio.svg" class="icone-tabela" alt="Folha de ponto" title="Folha de ponto" onclick="mostrarFolha('${id}')">
-        </td>
-        <td>
-            ${formEpi}
         </td>
         ${tdBloqueio}
         <td>
@@ -307,7 +340,7 @@ async function criarLinhaColaboradores(colaborador) {
 
     return {
         linha: `<tr>${tds}</tr>`,
-        detalhes: `<div><strong>Especialidades</strong><div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;">${especialidades || '<span>Não se aplica</span>'}</div></div>`
+        detalhes
     }
 }
 
@@ -335,6 +368,7 @@ async function adicionarColaborador(id) {
             foto,
             seguranca_social,
             numero_contribuinte,
+            iban,
             snapshots
         } = colaborador
 
@@ -515,6 +549,11 @@ async function adicionarColaborador(id) {
                 texto: 'Segurança Social',
                 elemento: `<input ${regras} value="${seguranca_social || ''}" name="seguranca_social" placeholder="Máximo de 11 dígitos">`
             },
+            {
+                texto: 'IBAN',
+                elemento: `<textarea ${regras} name="iban" placeholder="PT50 0000 0000 0000 0000 0000 0" maxlength="42">${escaparAtributo(iban || '')}</textarea>`
+            },
+            { texto: 'Comprovativo do IBAN', elemento: zonaDocumento('comprovativo_iban', 'comprovativo') },
             { texto: 'Especialidade', elemento: caixaEspecialidades },
             { texto: 'Status', elemento: caixaStatus },
 
@@ -591,7 +630,7 @@ async function adicionarColaborador(id) {
 // data-lpignore / data-1p-ignore: o mesmo para os gestores de palavras-passe LastPass e 1Password.
 const ATRIBUTOS_PIN = 'inputmode="numeric" maxlength="4" autocomplete="off" data-lpignore="true" data-1p-ignore'
 
-// ---------- Documentos do colaborador (contrato e exame) ----------
+// ---------- Documentos do colaborador (contrato, exame e comprovativo do IBAN) ----------
 const DOCUMENTO_EXTENSOES = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx']
 const DOCUMENTO_ACEITES = DOCUMENTO_EXTENSOES.map(e => '.' + e).join(',')
 const DOCUMENTO_MAX_MB = 20
@@ -799,6 +838,9 @@ async function salvarColaborador(idExistente) {
         for (const campo of camposFixos)
             colaborador[campo] = obVal(campo)
 
+        // IBAN guardado em maiúsculas e em grupos de 4 (como aparece no banco e na folha de ponto).
+        colaborador.iban = (obVal('iban') || '').replace(/\s/g, '').toUpperCase().replace(/(.{4})/g, '$1 ').trim()
+
         const camposRatio = ['status_disponivel', 'documento']
         for (const campo of camposRatio) {
             colaborador[campo] = document.querySelector(`input[name="${campo}"]:checked`)?.value || ''
@@ -823,7 +865,7 @@ async function salvarColaborador(idExistente) {
         // O servidor atribui o usuário na criação e preserva o login nas edições.
         // A senha não sai deste formulário: é gerada como provisória pelo botão do rodapé.
 
-        const camposAnexos = ['contrato_obra', 'exame']
+        const camposAnexos = ['contrato_obra', 'exame', 'comprovativo_iban']
         for (const campo of camposAnexos) {
             const input = document.querySelector(`[name="${campo}"]`)
             if (!input || !input.files || input.files.length === 0) continue

@@ -186,6 +186,14 @@ td:has(> .icone-editar), td:has(> .icone-tabela) {
     z-index: 2;
 }
 
+/* Tabelas dentro dos detalhes de uma linha não fixam o cabeçalho: senão ficam por cima do cabeçalho da tabela principal ao rolar. */
+.tabela .tabela-detalhes-conteudo thead {
+    position: static;
+    z-index: auto;
+    box-shadow: none;
+    background-color: transparent;
+}
+
 .borda-tabela {
     display: flex;
     align-items: start;
