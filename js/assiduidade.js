@@ -142,13 +142,23 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
         try {
             const { html } = await pedir(`/folha/documento?colaborador=${encodeURIComponent(folhaSel.colaborador)}&ano=${folhaSel.ano}&mes=${folhaSel.mes}`)
             janela.document.open()
-            janela.document.write(html.replace('</style>', '@page { size: A4; margin: 12mm 10mm; } body { width: 190mm; }</style>'))
+            // Margens do A4 na impressão; no ecrã, a folha centrada com espaço à volta.
+            janela.document.write(html.replace('</style>', `@page { size: A4; margin: 12mm 10mm; }
+                body { width: 190mm; margin: 0 auto; }
+                @media screen { html { background: #e9ecef; } body { margin: 24px auto; padding: 12mm 10mm; box-sizing: content-box; box-shadow: 0 2px 10px rgba(0, 0, 0, .15); } }</style>`))
             janela.document.close()
             // Espera o logótipo ser desenhado antes de medir (como em imprimir()).
             setTimeout(() => {
                 // Altura útil do A4 (273 mm ≈ 1032 px): acima disso, reduz para não passar a uma segunda página.
-                const altura = janela.document.documentElement.scrollHeight
-                if (altura > 1032) janela.document.body.style.zoom = String(Math.floor(1032 / altura * 98) / 100)
+                // O zoom também estreitaria a folha: a largura sobe na mesma proporção para continuar nos 190 mm.
+                const corpo = janela.document.body
+                const estilo = janela.getComputedStyle(corpo)
+                const altura = corpo.scrollHeight - parseFloat(estilo.paddingTop) - parseFloat(estilo.paddingBottom)
+                if (altura > 1032) {
+                    const zoom = Math.floor(1032 / altura * 98) / 100
+                    corpo.style.zoom = String(zoom)
+                    corpo.style.width = `calc(190mm / ${zoom})`
+                }
                 janela.focus()
                 janela.print()
             }, 300)
