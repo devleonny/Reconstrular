@@ -25,14 +25,25 @@ async function verificarDespesas() {
 
     overlayAguarde()
 
+    // Seleção para o Excel: começa vazia; o Excel é só para o CEO e o Diretor Programador.
+    selecaoDespesas.todos = false
+    selecaoDespesas.ids.clear()
+    totaisObrasDespesas.clear()
+    const podeExcel = podeExcelDespesas()
+
     const tabela = await modTab({
-      btnExtras: '<button onclick="formularioDespesa()">Adicionar Despesa</button>',
+      btnExtras: `<div class="acoes-colaboradores">
+        ${podeExcel ? `<label class="selecionar-todos"><input type="checkbox" data-selecionar-todas-despesas onchange="selecionarTodasDespesas(this.checked)"> Selecionar todas</label>
+        <button type="button" onclick="baixarExcelDespesas()">Descarregar em Excel</button>` : ''}
+        <button onclick="formularioDespesa()">Adicionar Despesa</button>
+      </div>`,
       pag: 'despesas',
       detalhes: true,
       base: 'vw_despesas',
       body: 'bodyDespesas',
       criarLinha: 'criarLinhaDespesa',
       colunas: {
+        ...(podeExcel ? { 'Selecionar': {} } : {}),
         'Edição': {},
         'Obra': {},
         'Fornecedor': { chave: 'nome_fornecedor' },
@@ -62,7 +73,79 @@ async function verificarDespesas() {
 
 }
 
-function criarLinhaDespesa(dados) {
+// ---------- Tipos de despesa e IVA ----------
+// "Despesa" (registos antigos) é a atual "Despesa Extra de Obra". A Despesa Interna Empresa não tem obra
+// e só o CEO e o Diretor Programador a podem lançar.
+const TIPOS_DESPESA = ['Despesa Extra de Obra', 'Despesa Inicial de Obra', 'Despesa Interna Empresa', 'Nota de Crédito']
+const TAXAS_IVA = [23, 6, 13]
+const nomeTipoDespesa = tipo => tipo === 'Despesa' ? 'Despesa Extra de Obra' : tipo || ''
+const podeExcelDespesas = () => ['CEO', 'Diretor Programador'].includes(acesso?.funcao)
+const podeDespesaInterna = () => ['CEO', 'Diretor Programador'].includes(acesso?.funcao)
+const ehDespesaExtra = tipo => ['Despesa', 'Despesa Extra de Obra'].includes(tipo)
+
+// ---------- Seleção para o Excel ----------
+const selecaoDespesas = { todos: false, ids: new Set() }
+
+function selecionarTodasDespesas(marcado) {
+  selecaoDespesas.todos = marcado
+  selecaoDespesas.ids.clear()
+  document.querySelectorAll('#bodyDespesas [data-selecionar-despesa]').forEach(caixa => {
+    caixa.checked = marcado
+    if (marcado) selecaoDespesas.ids.add(caixa.value)
+  })
+}
+
+function selecionarDespesa(caixa) {
+  if (caixa.checked) selecaoDespesas.ids.add(caixa.value)
+  else selecaoDespesas.ids.delete(caixa.value)
+  if (!caixa.checked && selecaoDespesas.todos) {
+    selecaoDespesas.todos = false
+    const todas = document.querySelector('[data-selecionar-todas-despesas]')
+    if (todas) todas.checked = false
+  }
+}
+
+// ---------- Totais da obra nos detalhes ----------
+// Estimado: custos de material e de ferramentas do orçamento. Extra: despesas extra de obra (menos notas de crédito),
+// por categoria de cada item. Diferença = Extra (o que se comprou além do orçamentado).
+const totaisObrasDespesas = new Map()
+
+function totaisObraDespesa(contrato) {
+  if (!contrato) return Promise.resolve(null)
+  if (!totaisObrasDespesas.has(contrato)) totaisObrasDespesas.set(contrato, (async () => {
+    const [obra, despesas] = await Promise.all([
+      pesquisarDB({ base: 'vw_dados_orcamentos', filtros: { contrato: { op: '=', value: contrato } }, pagina: 1, limite: 1 }),
+      pesquisarDB({ base: 'vw_despesas', filtros: { obra: { op: '=', value: contrato } }, pagina: 1, limite: 1000 })
+    ])
+    const o = obra?.resultados?.[0] || {}
+    const extra = { Material: 0, Ferramenta: 0 }
+    for (const d of despesas?.resultados || []) {
+      const sinal = ehDespesaExtra(d.tipo_despesa) ? 1 : d.tipo_despesa === 'Nota de Crédito' ? -1 : 0
+      if (!sinal) continue
+      const itens = Array.isArray(d.material) ? d.material : Object.values(d.material || {})
+      for (const item of itens)
+        extra[item.categoria === 'Ferramenta' ? 'Ferramenta' : 'Material'] += sinal * (Number(item.quantidade) || 0) * (Number(item.valor) || 0)
+    }
+    return { material: { estimado: Number(o.total_materiais) || 0, extra: extra.Material }, ferramentas: { estimado: Number(o.total_ferramentas) || 0, extra: extra.Ferramenta } }
+  })().catch(erro => { totaisObrasDespesas.delete(contrato); throw erro }))
+  return totaisObrasDespesas.get(contrato)
+}
+
+function htmlTotaisObra(contrato, t) {
+  const linha = (rotulo, valor) => `<tr><td>${rotulo}</td><td class="despesa-numero">${dinheiro(valor)}</td></tr>`
+  return `<section class="despesa-materiais-detalhes"><h3>Custos da obra ${escaparAtributo(contrato)} face ao orçamento</h3>
+    <div class="despesa-totais-obra">
+      <table class="tabela"><thead><tr><th>Material</th><th></th></tr></thead><tbody>
+        ${linha('Total Material Estimado', t.material.estimado)}${linha('Total Material Extra', t.material.extra)}${linha('Total Material Diferença', t.material.extra)}
+      </tbody></table>
+      <table class="tabela"><thead><tr><th>Ferramentas</th><th></th></tr></thead><tbody>
+        ${linha('Total Ferramentas Estimado', t.ferramentas.estimado)}${linha('Total Ferramentas Extra', t.ferramentas.extra)}${linha('Total Ferramentas Diferença', t.ferramentas.extra)}
+      </tbody></table>
+    </div>
+  </section>`
+}
+
+async function criarLinhaDespesa(dados) {
 
   const {
     tipo_despesa,
@@ -77,7 +160,9 @@ function criarLinhaDespesa(dados) {
     data,
     mes,
     ano,
-    obra
+    obra,
+    iva,
+    taxa_iva
   } = dados || {}
 
   const tagObra = obra
@@ -92,11 +177,17 @@ function criarLinhaDespesa(dados) {
         `
   }
 
-  const etiquetaValor = tipo_despesa == 'Despesa'
-    ? 'despesa'
-    : 'credito'
+  const etiquetaValor = tipo_despesa == 'Nota de Crédito'
+    ? 'credito'
+    : 'despesa'
+
+  const tdSelecionar = podeExcelDespesas()
+    ? `<td><input type="checkbox" data-selecionar-despesa value="${escaparAtributo(id)}" aria-label="Selecionar despesa"
+        ${selecaoDespesas.todos || selecaoDespesas.ids.has(String(id)) ? 'checked' : ''} onchange="selecionarDespesa(this)"></td>`
+    : ''
 
   const tds = `
+        ${tdSelecionar}
         <td>
             <img data-controle="editar" src="imagens/editar.svg" class="icone-editar" alt="Editar" title="Editar" onclick="formularioDespesa('${id}')">
         </td>
@@ -105,7 +196,7 @@ function criarLinhaDespesa(dados) {
         <td>${distrito || ''}</td>
         <td>${nome_cidade || ''}</td>
         <td>${nif || ''}</td>
-        <td>${tipo_despesa}</td>
+        <td>${escaparAtributo(nomeTipoDespesa(tipo_despesa))}</td>
         <td style="white-space: nowrap;">
             <span class="${etiquetaValor}">${dinheiro(valor)}</span>
         </td>
@@ -120,6 +211,7 @@ function criarLinhaDespesa(dados) {
     const quantidade = Number(item.quantidade) || 0
     const valorUnitario = Number(item.valor) || 0
     return `<tr>
+      <td>${item.categoria === 'Ferramenta' ? 'Ferramenta' : 'Material'}</td>
       <td>${escaparAtributo(item.descricao || 'Sem descrição')}</td>
       <td>${escaparAtributo(item.especialidade || '—')}</td>
       <td>${escaparAtributo(item.motivo || 'Não informado')}</td>
@@ -129,15 +221,21 @@ function criarLinhaDespesa(dados) {
     </tr>`
   }).join('')
   const totalMateriais = materiais.reduce((total, item) => total + (Number(item.quantidade) || 0) * (Number(item.valor) || 0), 0)
+  let totaisObra = ''
+  try {
+    const t = await totaisObraDespesa(obra)
+    if (t) totaisObra = htmlTotaisObra(obra, t)
+  } catch (erro) { console.error(erro) }
   return {
     linha: `<tr>${tds}</tr>`,
     detalhes: `<section class="despesa-materiais-detalhes"><h3>Materiais da despesa</h3>
       ${materiais.length ? `<div class="despesa-detalhes-recorte"><table class="tabela">
-        <thead><tr><th>Descrição</th><th>Especialidade</th><th>Motivo</th><th>Quantidade</th><th>Valor unitário</th><th>Total</th></tr></thead>
+        <thead><tr><th>Categoria</th><th>Descrição</th><th>Especialidade</th><th>Motivo</th><th>Quantidade</th><th>Valor unitário</th><th>Total</th></tr></thead>
         <tbody>${linhasMateriais}</tbody>
-        <tfoot><tr><td colspan="5">Total dos materiais</td><td class="despesa-numero">${dinheiro(totalMateriais)}</td></tr></tfoot>
+        <tfoot><tr><td colspan="6">Total dos materiais</td><td class="despesa-numero">${dinheiro(totalMateriais)}</td></tr></tfoot>
       </table></div>` : '<p>Nenhum material listado nesta despesa.</p>'}
-    </section>`
+      ${Number(taxa_iva) ? `<p>IVA ${taxa_iva}%: ${dinheiro(iva)}</p>` : ''}
+    </section>${totaisObra}`
   }
 
 }
@@ -157,7 +255,8 @@ async function formularioDespesa(idDespesa) {
       fornecedor,
       obra,
       fatura,
-      foto
+      foto,
+      taxa_iva
     } = await recuperarDado('dados_despesas', idDespesa) || {}
 
     const { nome } = await recuperarDado('fornecedores', fornecedor) || {}
@@ -185,9 +284,13 @@ async function formularioDespesa(idDespesa) {
       }
     }
 
-    const opcoesTipos = ['Despesa', 'Nota de Crédito'].map(t => `
+    // A Despesa Interna Empresa só aparece para o CEO e o Diretor Programador (ou se a despesa já for desse tipo).
+    const tipoAtual = nomeTipoDespesa(tipo_despesa)
+    const opcoesTipos = TIPOS_DESPESA
+      .filter(t => t !== 'Despesa Interna Empresa' || podeDespesaInterna() || tipoAtual === t)
+      .map(t => `
         <label class="despesa-radio">
-          <input ${regras} ${tipo_despesa == t ? 'checked' : ''} data-tipo="${t}" name="tipo_despesa" type="radio">
+          <input ${regras} ${tipoAtual == t ? 'checked' : ''} data-tipo="${t}" name="tipo_despesa" type="radio" onchange="alternarObraDespesa()">
           <span>${t}</span>
         </label>
       `).join('')
@@ -219,6 +322,10 @@ async function formularioDespesa(idDespesa) {
       {
         texto: 'Tipo de Despesa',
         elemento: `<div class="tipo-despesa" ${regras}>${opcoesTipos}</div>`
+      },
+      {
+        texto: 'IVA',
+        elemento: `<select name="taxa_iva" ${regras}><option value="">Selecione o IVA</option>${TAXAS_IVA.map(t => `<option value="${t}" ${Number(taxa_iva) === t ? 'selected' : ''}>${t}%</option>`).join('')}</select>`
       },
       {
         texto: 'Fornecedor',
@@ -266,6 +373,7 @@ async function formularioDespesa(idDespesa) {
     `)
 
     alterarModal()
+    alternarObraDespesa()
 
     for (const item of Array.isArray(material) ? material : Object.values(material || {}))
       await adicionarMaterial(item)
@@ -319,6 +427,14 @@ async function adicionarMaterial(dados = {}) {
       </label>
     `).join('')
 
+    const nomeCategoria = `categoria_material_${crypto.randomUUID()}`
+    const opcoesCategoria = ['Material', 'Ferramenta'].map(categoria => `
+      <label class="despesa-radio">
+        <input type="radio" name="${nomeCategoria}" data-campo="categoria" value="${categoria}" ${(dados.categoria || 'Material') === categoria ? 'checked' : ''}>
+        <span>${categoria}</span>
+      </label>
+    `).join('')
+
     const item = `
       <div class="item-material">
 
@@ -339,6 +455,7 @@ async function adicionarMaterial(dados = {}) {
         </div>
 
         ${mod('Descrição do Material', `<textarea name="descricao" placeholder="Descrição do material">${escaparAtributo(dados.descricao || '')}</textarea>`)}
+        ${mod('Categoria', `<div class="despesa-motivos">${opcoesCategoria}</div>`)}
         ${mod('Motivo do material', `<div class="despesa-motivos">${opcoesMotivo}</div>`)}
         
       </div>
@@ -379,7 +496,8 @@ function alterarModal() {
   if (!modal)
     return
 
-  const upload = `<input onchange="verificarRegras()" name="fatura" type="file">`
+  // Fatura: só imagem ou PDF, para poder ser vista no app e no Excel.
+  const upload = `<input onchange="validarFicheiroFatura(this); verificarRegras()" name="fatura" type="file" accept="image/*,application/pdf">`
 
   const foto = `
       <div style="${vertical}; gap: 5px;">
@@ -394,6 +512,24 @@ function alterarModal() {
     `
   document.getElementById('upload').innerHTML = modal.value == 'Foto' ? foto : upload
 
+}
+
+function validarFicheiroFatura(input) {
+  const ficheiro = input.files?.[0]
+  if (!ficheiro) return
+  const aceite = /^image\//.test(ficheiro.type) || ficheiro.type === 'application/pdf'
+  if (!aceite || !ficheiro.size) {
+    input.value = ''
+    popup({ titulo: 'Fatura', mensagem: ficheiro.size ? 'Escolha uma imagem ou um PDF da fatura.' : 'O ficheiro escolhido está vazio.' })
+  }
+}
+
+// Despesa Interna Empresa: sem obra (a linha da obra desaparece e não é exigida).
+function alternarObraDespesa() {
+  const painel = [...document.querySelectorAll('.painel-padrao')].at(-1)
+  const tipo = painel?.querySelector('[name="tipo_despesa"]:checked')?.dataset.tipo
+  const linhaObra = painel?.querySelector('[name="obra"]')?.closest('.linha-padrao')
+  if (linhaObra) linhaObra.style.display = tipo === 'Despesa Interna Empresa' ? 'none' : ''
 }
 
 function confirmarExclusaoDespesa(idDespesa) {
@@ -463,19 +599,28 @@ async function salvarDespesa(idDespesa = crypto.randomUUID()) {
           especialidade: div.querySelector('[name="especialidade"]').value,
           descricao: div.querySelector('[name="descricao"]').value,
           valor: Number(div.querySelector('[name="valor"]').value || 0),
-          motivo: div.querySelector('[data-campo="motivo"]:checked')?.value || 'Necessidade'
+          motivo: div.querySelector('[data-campo="motivo"]:checked')?.value || 'Necessidade',
+          categoria: div.querySelector('[data-campo="categoria"]:checked')?.value || 'Material'
         }
 
       })
+
+    // IVA: o valor da despesa inclui o IVA; guarda-se a taxa e o valor do IVA contido nele.
+    const valor = conversor(document.querySelector('.total-despesa').textContent)
+    const taxa = Number(obVal('taxa_iva')) || 0
+    const interna = tipo_despesa === 'Despesa Interna Empresa'
+    const obraEl = document.querySelector('[name="obra"]')
 
     const atualizado = {
       ...despesa,
       tipo_despesa,
       material,
       fornecedor: obVal('fornecedor'),
-      obra: document.querySelector('[name="obra"]').textContent.trim(),
+      obra: interna ? '' : (obraEl?.textContent.trim() || ''),
       data: obVal('data'),
-      valor: conversor(document.querySelector('.total-despesa').textContent)
+      valor,
+      taxa_iva: taxa || null,
+      iva: taxa ? Math.round(valor * taxa / (100 + taxa) * 100) / 100 : null
     }
 
     await enviar(`dados_despesas/${idDespesa}`, atualizado)
@@ -582,11 +727,12 @@ async function adicionarFornecedor(idFornecedor) {
 
     controlesCxOpcoes.cidade = {
       base: 'cidades',
+      semPaginacao: true,
       retornar: ['nome'],
       funcaoAdicional: ['verificarRegras'],
       colunas: {
-        'Cidade': { chave: 'nome' },
         'Distrito': { chave: 'distrito' },
+        'Cidade': { chave: 'nome' },
         'Zona': { chave: 'zona' },
         'Área': { chave: 'area' }
       }
@@ -831,7 +977,17 @@ async function confirmarBaixarExcel() {
 
 }
 
+// Filtros da tela (incluindo mês e ano) e, sem "Selecionar todas", só as linhas marcadas.
+function filtrosExcelDespesas() {
+  const filtrosTela = controles.despesas?.filtros || {}
+  if (selecaoDespesas.todos) return filtrosTela
+  return { modo: 'AND', regras: [filtrosTela, { modo: 'OR', regras: [...selecaoDespesas.ids].map(id => ({ path: 'id', op: '=', value: id })) }] }
+}
+
 async function baixarExcelDespesas() {
+
+  if (!selecaoDespesas.todos && !selecaoDespesas.ids.size)
+    return popup({ titulo: 'Descarregar em Excel', mensagem: 'Selecione as despesas a exportar (ou marque "Selecionar todas").' })
 
   overlayAguarde()
 
@@ -846,7 +1002,7 @@ async function baixarExcelDespesas() {
         'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ filtros: controles.despesas?.filtros || {}, ordenar: controles.despesas?.ordenar || null })
+      body: JSON.stringify({ filtros: filtrosExcelDespesas(), ordenar: controles.despesas?.ordenar || null })
     })
 
     if (!response.ok) {

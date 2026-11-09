@@ -395,3 +395,29 @@ td:has(> .icone-editar), td:has(> .icone-tabela) {
 .pag-seta:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 /* Desativada (primeira/última página): continua visível, só sem efeito. */
 .pag-seta:disabled { opacity: .5; box-shadow: none; cursor: default; }
+
+/* Botões de detalhes com texto ("Detalhes Geral" no topo, "Detalhes" em cada linha) em vez do +/−.
+   Aberto fica com o fundo mais escuro (aria-expanded). */
+.topo-tabela .tabela-expandir,
+.tabela .tabela-expandir {
+    flex: 0 0 auto;
+    width: auto;
+    height: 26px;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: #4c5965;
+}
+
+.topo-tabela .tabela-expandir::before,
+.topo-tabela .tabela-expandir::after,
+.tabela .tabela-expandir::before,
+.tabela .tabela-expandir::after {
+    display: none;
+}
+
+.tabela .tabela-coluna-detalhes {
+    width: auto;
+    padding: 0 6px;
+}

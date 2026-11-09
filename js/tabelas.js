@@ -116,7 +116,7 @@ async function modTab(configuracoes) {
         <div class="modtab${nude ? ' nude' : ''}" style="${vertical}; width: 100%;">
 
             <div class="topo-tabela${nude ? ' nude' : ''}" ${cor ? `style="background: ${cor};"` : ''}>
-                ${detalhes === true ? `<button type="button" class="tabela-expandir" data-expandir-todos data-body="${escaparAtributo(body)}" aria-expanded="false" aria-label="Expandir todos os detalhes" title="Expandir todos os detalhes" onclick="alternarTodosDetalhes(this)">+</button>` : ''}
+                ${detalhes === true ? `<button type="button" class="tabela-expandir" data-expandir-todos data-body="${escaparAtributo(body)}" aria-expanded="false" aria-label="Expandir todos os detalhes" title="Expandir todos os detalhes" onclick="alternarTodosDetalhes(this)">Detalhes Geral</button>` : ''}
                 <div id="paginacao_${pag}"></div>
                 <div style="padding: 0 1rem;">
                     ${btnExtras || ''}
@@ -610,7 +610,7 @@ async function criarElementoLinha(dado, criarLinha, base, indice = 0, habilitarD
     const botao = document.createElement('button')
     botao.type = 'button'
     botao.className = 'tabela-expandir'
-    botao.textContent = '+'
+    botao.textContent = 'Detalhes'
     botao.setAttribute('aria-expanded', 'false')
     botao.setAttribute('aria-label', 'Expandir detalhes')
     botao.addEventListener('click', event => {
@@ -631,7 +631,6 @@ function definirDetalhesExpandidos(linha, expandir) {
     if (!linha?.detalhesTabela) return
     linha.estadoDetalhesTabela?.set(linha.dataset.id, !!expandir)
     linha.detalhesTabela.hidden = !expandir
-    linha.botaoDetalhesTabela.textContent = expandir ? '−' : '+'
     linha.botaoDetalhesTabela.setAttribute('aria-expanded', String(expandir))
     linha.botaoDetalhesTabela.setAttribute('aria-label', expandir ? 'Recolher detalhes' : 'Expandir detalhes')
 }
@@ -649,7 +648,6 @@ function atualizarBotaoTodosDetalhes(tbody) {
     if (!botao) return
     const linhas = [...tbody.children].filter(linha => linha.detalhesTabela)
     const todosAbertos = linhas.length > 0 && linhas.every(linha => !linha.detalhesTabela.hidden)
-    botao.textContent = todosAbertos ? '−' : '+'
     const descricao = todosAbertos ? 'Recolher todos os detalhes' : 'Expandir todos os detalhes'
     botao.title = descricao
     botao.setAttribute('aria-label', descricao)

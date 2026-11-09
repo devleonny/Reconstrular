@@ -14,14 +14,16 @@ async function telaObras() {
             criarLinha: 'criarLinhaObras',
             colunas: {
                 'Checklist': {},
-                'Cronog.': {},
-                'H. Edições': {},
-                'Edição': {},
+                'Alinhamento de Tarefas': {},
+                'Cronograma': {},
+                'Histórico de Edições': {},
+                'Colaboradores da Obra': {},
                 'Status': {},
                 'Número': { chave: 'contrato' },
                 'Cliente': { chave: 'snapshots.cliente' },
                 'Distrito': { chave: 'snapshots.cidade.distrito' },
                 'Cidade': { chave: 'snapshots.cidade.nome' },
+                'Morada': { chave: 'morada' },
                 'Total de orçamento': { chave: 'total_geral' }
             }
         })
@@ -74,13 +76,16 @@ function criarLinhaObras(obra) {
             <img src="imagens/checklist.svg" class="icone-tabela" alt="Checklist" title="Checklist" onclick="verAndamento('${id}')">
         </td>
         <td>
+            <img src="imagens/checklist.svg" class="icone-tabela" alt="Alinhamento de tarefas" title="Alinhamento de tarefas (ordem de execução do cronograma)" onclick="alinhamentoTarefas('${id}')">
+        </td>
+        <td>
             <img src="imagens/cronograma.svg" class="icone-tabela" alt="Cronograma" title="Cronograma" onclick="telaCronograma('${id}')">
         </td>
         <td>
             <img src="imagens/historico.svg" class="icone-tabela" alt="Histórico de edições" title="Histórico de edições" onclick="historicoObras('${numeroObra}')">
         </td>
         <td>
-            <img src="imagens/editar.svg" class="icone-editar" alt="Editar" title="Editar" onclick="adicionarObra('${id}')">
+            <img src="imagens/editar.svg" class="icone-editar" alt="Editar colaboradores da obra" title="Editar os colaboradores da obra" onclick="adicionarObra('${id}')">
         </td>
         <td>
             <span class="${st.replace(' ', '_')}">${st}</span>
@@ -89,8 +94,9 @@ function criarLinhaObras(obra) {
             <span class="tag-orcamento">${numeroObra}</span>
         </td>
         <td>${nome_cliente || ''}</td>
-        <td>${cidade || ''}</td>
         <td>${distrito || ''}</td>
+        <td>${cidade || ''}</td>
+        <td>${escaparAtributo(obra.morada || '')}</td>
         <td style="white-space: nowrap;">${dinheiro(total_geral ?? 0)}</td>
     `
     const detalhes = `<div class="obra-detalhes-row">
@@ -123,6 +129,99 @@ function criarLinhaObras(obra) {
     </div>`
     return { linha: `<tr>${tds}</tr>`, detalhes }
 
+}
+
+// Alinhamento de Tarefas: itens da checklist com a especialidade, na ordem de execução (Interior e depois Exterior,
+// pela sequência lógica das especialidades). Arrastar (ou ▲/▼) muda a ordem; ao guardar, o cronograma segue-a.
+async function alinhamentoApi(idObra, metodo = 'GET', corpo) {
+    const resposta = await fetchAutenticado(`${api}/obras-alinhamento/${encodeURIComponent(idObra)}`, {
+        method: metodo,
+        headers: { Authorization: `Bearer ${acesso?.token}`, ...(corpo ? { 'Content-Type': 'application/json' } : {}) },
+        ...(corpo ? { body: JSON.stringify(corpo) } : {})
+    })
+    if (!resposta) throw new Error('Sessão encerrada.')
+    const dados = await resposta.json().catch(() => ({}))
+    if (!resposta.ok || dados.success === false) throw new Error(dados.mensagem || `Falha no alinhamento de tarefas (HTTP ${resposta.status}).`)
+    return dados
+}
+
+async function alinhamentoTarefas(idObra) {
+    overlayAguarde()
+    try {
+        const { contrato, itens, personalizado } = await alinhamentoApi(idObra)
+        const linhas = itens.map(item => `
+            <tr draggable="true" data-chave="${escaparAtributo(item.chave)}">
+                <td class="alinhamento-pega" title="Arraste para mudar a ordem">⋮⋮</td>
+                <td class="alinhamento-numero"></td>
+                <td><span class="alinhamento-secao alinhamento-${item.secao === 'Exterior' ? 'exterior' : 'interior'}">${escaparAtributo(item.secao)}</span></td>
+                <td>${escaparAtributo(item.especialidade || 'Sem especialidade')}</td>
+                <td>${escaparAtributo(item.descricao || '')}</td>
+                <td>${escaparAtributo(item.zona || '')}</td>
+                <td class="alinhamento-mover"><button type="button" data-subir title="Subir">▲</button><button type="button" data-descer title="Descer">▼</button></td>
+            </tr>`).join('')
+        const elemento = `
+            <div class="alinhamento-tarefas" data-obra="${escaparAtributo(idObra)}">
+                <p>Obra <b>${escaparAtributo(contrato || '')}</b> · ${personalizado ? 'ordem definida pela equipa' : 'ordem padrão (Interior e depois Exterior)'}.
+                Arraste as tarefas (ou use ▲ ▼) para a ordem de execução; o cronograma é atualizado ao guardar.</p>
+                <div class="alinhamento-recorte">
+                    <table class="tabela"><thead><tr><th></th><th>Nº</th><th>Secção</th><th>Especialidade</th><th>Tarefa</th><th>Divisão</th><th>Mover</th></tr></thead>
+                    <tbody>${linhas || '<tr><td colspan="7">Esta obra não tem tarefas no orçamento.</td></tr>'}</tbody></table>
+                </div>
+            </div>`
+        const idPopup = popup({
+            titulo: 'Alinhamento de Tarefas', elemento, botoes: [
+                { texto: 'Guardar ordem', img: 'concluido', funcao: `salvarAlinhamento('${idObra}')` },
+                { texto: 'Repor ordem padrão', img: 'atualizar', funcao: `reporAlinhamento('${idObra}')` }
+            ]
+        })
+        document.getElementById(idPopup)?.classList.add('popup-alinhamento')
+        prepararAlinhamento(document.querySelector('.alinhamento-tarefas tbody'))
+    } catch (erro) { popup({ mensagem: escaparAtributo(erro.message) }) }
+    finally { removerOverlay() }
+}
+
+function prepararAlinhamento(tbody) {
+    if (!tbody) return
+    const numerar = () => [...tbody.querySelectorAll('tr[data-chave]')].forEach((tr, i) => { tr.querySelector('.alinhamento-numero').textContent = i + 1 })
+    let arrastada = null
+    tbody.addEventListener('dragstart', e => { arrastada = e.target.closest('tr[data-chave]'); arrastada?.classList.add('alinhamento-arrastando') })
+    tbody.addEventListener('dragend', () => { arrastada?.classList.remove('alinhamento-arrastando'); arrastada = null; numerar() })
+    tbody.addEventListener('dragover', e => {
+        e.preventDefault()
+        const alvo = e.target.closest('tr[data-chave]')
+        if (!arrastada || !alvo || alvo === arrastada) return
+        const meio = alvo.getBoundingClientRect().top + alvo.offsetHeight / 2
+        alvo.parentNode.insertBefore(arrastada, e.clientY < meio ? alvo : alvo.nextSibling)
+    })
+    tbody.addEventListener('click', e => {
+        const tr = e.target.closest('tr[data-chave]')
+        if (!tr) return
+        if (e.target.closest('[data-subir]') && tr.previousElementSibling) tr.parentNode.insertBefore(tr, tr.previousElementSibling)
+        if (e.target.closest('[data-descer]') && tr.nextElementSibling) tr.parentNode.insertBefore(tr.nextElementSibling, tr)
+        numerar()
+    })
+    numerar()
+}
+
+async function salvarAlinhamento(idObra) {
+    const ordem = [...document.querySelectorAll('.alinhamento-tarefas tr[data-chave]')].map(tr => tr.dataset.chave)
+    overlayAguarde()
+    try {
+        await alinhamentoApi(idObra, 'PUT', { ordem })
+        removerPopup()
+        popup({ titulo: 'Alinhamento de Tarefas', mensagem: 'Ordem guardada. O cronograma da obra já segue esta sequência.' })
+    } catch (erro) { popup({ mensagem: escaparAtributo(erro.message) }) }
+    finally { removerOverlay() }
+}
+
+async function reporAlinhamento(idObra) {
+    overlayAguarde()
+    try {
+        await alinhamentoApi(idObra, 'PUT', { padrao: true })
+        removerPopup()
+        await alinhamentoTarefas(idObra)
+    } catch (erro) { popup({ mensagem: escaparAtributo(erro.message) }) }
+    finally { removerOverlay() }
 }
 
 async function mostrarMateriaisOrcamento(id_obra, tipo) {
@@ -332,6 +431,7 @@ async function verAndamento(id, resetar) {
 
     controles.andamento ??= {}
     controles.andamento.idObraAtual = id
+    controles.obraPdf = id
 
     const acumulado = `
         <div style="${vertical}; gap: 1rem; padding: 1rem;">
@@ -375,12 +475,23 @@ async function verAndamento(id, resetar) {
 
 }
 
+// PDF da checklist ou do cronograma: cabeçalho com o logótipo e os dados da obra; sem a coluna "Gerir".
 async function pdfObra(nome) {
 
-    const htmlPdf = document.querySelector('#pdf')
+    const original = document.querySelector('#pdf')
+    if (!original) return
+    const copia = original.cloneNode(true)
+    copia.querySelectorAll('.col-gerir').forEach(el => el.remove())
+
+    const obra = controles.obraPdf ? await recuperarDado('dados_orcamentos', controles.obraPdf) : null
+    const cliente = obra?.cliente ? await recuperarDado('dados_clientes', obra.cliente) : null
+    copia.insertAdjacentHTML('afterbegin', cabecalhoPdf({
+        titulo: nome,
+        linhas: [['Obra', obra?.contrato], ['Cliente', cliente?.nome], ['Morada', cliente?.morada_execucao]]
+    }))
 
     await pdf({
-        html: htmlPdf.outerHTML,
+        html: copia.outerHTML,
         estilos: ['estilo', 'obras'],
         nome
     })
@@ -455,8 +566,10 @@ async function carregarLinhasAndamento(idObra) {
 
         }
 
-        // Renderiza especialidades
+        // Renderiza especialidades: cada uma tem o seu número (1, 2, 3…) e os itens continuam-no (1.1, 1.2…).
+        let numeroEspecialidade = 0
         for (const [especialidade, itens] of Object.entries(grupos)) {
+            numeroEspecialidade++
 
             const tabela = document.createElement('table')
             tabela.className = 'tabela-especialidade'
@@ -480,11 +593,11 @@ async function carregarLinhasAndamento(idObra) {
 
             trEsp.innerHTML = `
                 <td></td>
-                <td>1.0</td>
+                <td>${numeroEspecialidade}</td>
                 <td><b>${escaparAtributo(especialidade)}</b></td>
                 <td>Qtde Orçada / Qtde Realizada</td>
                 <td>Andamento</td>
-                <td>Gerir</td>
+                <td class="col-gerir">Gerir</td>
             `
 
             // ====== Itens ======
@@ -503,18 +616,22 @@ async function carregarLinhasAndamento(idObra) {
                     tbody.appendChild(tr)
                 }
 
-                const ordem = `1.${index}`
+                const ordem = `${numeroEspecialidade}.${index}`
                 const qtdeRealizada = item.campo.andamento?.realizado || 0
 
 
+                // Riscar: ícone verde; riscado, ícone e risco vermelhos. Fotos: câmara vermelha sem foto, verde com foto.
                 const riscado = !!item.campo.andamento?.removido
-                const estilo = riscado ? 'style="text-decoration: line-through"' : ''
+                const estilo = riscado ? 'class="checklist-riscado"' : ''
                 const fotos = Object.keys(item.campo.andamento?.fotos || {}).length > 0
-                const icoCam = fotos ? 'camera-fotos' : 'camera'
+                const icoCam = fotos ? 'camera-verde' : 'camera-vermelha'
+                const icoRiscar = riscado ? 'riscar-vermelho' : 'riscar-verde'
+                // A 100% a tarefa conta como concluída: caixa marcada e linha verde.
                 const concluido = !!item.campo.andamento?.concluido
 
                 const porcent = percentualItemChecklist(quantidade, qtdeRealizada, concluido)
 
+                tr.classList.toggle('checklist-completo', porcent >= 100)
                 tr.dataset.concluido = porcent >= 100 ? 'S' : 'N'
                 tr.dataset.removido = riscado ? 'S' : 'N'
                 tr.dataset.etapa = 'S'
@@ -529,7 +646,7 @@ async function carregarLinhasAndamento(idObra) {
 
                 tr.innerHTML = `
                     <td>
-                        <input onchange="marcarConclusao(this, ${params})" ${concluido ? 'checked' : ''} type="checkbox" style="width: 1.5rem; height: 1.5rem">
+                        <input onchange="marcarConclusao(this, ${params})" ${porcent >= 100 ? 'checked' : ''} type="checkbox" style="width: 1.5rem; height: 1.5rem">
                     </td>
 
                     <td ${estilo}>${ordem}</td>
@@ -547,11 +664,11 @@ async function carregarLinhasAndamento(idObra) {
                         ${andamentoVisualChecklist(quantidade, qtdeRealizada, concluido)}
                     </td>
 
-                    <td>
+                    <td class="col-gerir">
                         <div class="gerenciar">
                             <img onclick="gerenciar(${params})" src="imagens/editar.svg" class="icone-tabela" alt="Editar item" title="Editar item">
                             <img onclick="painelFotos(${params})" src="imagens/${icoCam}.svg" class="icone-tabela" alt="${fotos ? 'Ver fotos anexadas' : 'Adicionar fotos'}" title="${fotos ? 'Ver fotos anexadas' : 'Adicionar fotos'}">
-                            <img onclick="riscarItem(${params})" src="imagens/riscar.svg" class="icone-tabela" alt="Riscar item" title="Riscar item">
+                            <img onclick="riscarItem(${params})" src="imagens/${icoRiscar}.svg" class="icone-tabela" alt="${riscado ? 'Retirar risco do item' : 'Riscar item'}" title="${riscado ? 'Retirar risco do item' : 'Riscar item'}">
                         </div>
                     </td>
                 `
@@ -635,7 +752,8 @@ async function atualizarItemChecklist(idObra, idOrcamento, idDescricao, alteraco
     const { quantidade, realizado, concluido } = linha.checklist
     const percentual = percentualItemChecklist(quantidade, realizado, concluido)
     linha.dataset.concluido = percentual >= 100 ? 'S' : 'N'
-    linha.children[0].querySelector('input').checked = concluido
+    linha.classList.toggle('checklist-completo', percentual >= 100)
+    linha.children[0].querySelector('input').checked = percentual >= 100
     linha.children[3].textContent = `${quantidade > 0 ? quantidade : 'Não definida'} / ${realizado}`
     linha.children[4].innerHTML = `<input name="porcentagem" hidden type="number" value="${percentual}">${andamentoVisualChecklist(quantidade, realizado, concluido)}`
     try { await atualizarToolbar({ nomeTarefa: painel.querySelector('#etapas')?.value }) }
@@ -653,21 +771,143 @@ function andamentoVisualChecklist(quantidade, realizado, concluido) {
     return porcentagemHtml(percentualItemChecklist(quantidade, realizado, concluido))
 }
 
+// Fotos do item: as guardadas podem ser eliminadas; novas vêm da câmara (com pré-visualização para usar ou repetir)
+// ou de um ficheiro. As novas só são enviadas em "Guardar".
 async function painelFotos(idObra, idOrcamento, idDescricao) {
 
     const andamento = await recuperarAndamentoItem(idOrcamento, idDescricao)
     const fotos = andamento.fotos || {}
-    const linhas = [
-        { elemento: await blocoAuxiliarFotos(fotos || {}) }
-    ]
+    const params = [idObra, idOrcamento, idDescricao].map(v => escaparAtributo(JSON.stringify(String(v)))).join(', ')
+    const guardadas = Object.keys(fotos).map(link => `
+        <div class="foto-checklist">
+            <img data-salvo="sim" data-link="${escaparAtributo(link)}" src="${escaparAtributo(urlArquivo(link))}" class="foto" onclick="ampliarImagem(this)" alt="Foto do item">
+            <button type="button" class="foto-checklist-remover" title="Eliminar foto" aria-label="Eliminar foto" onclick="confirmarRemoverFotoChecklist(this, ${params})">&times;</button>
+        </div>`).join('')
+
+    const elemento = `
+        <div class="painel-fotos-checklist">
+            <div class="painel-fotos-acoes">
+                <button type="button" onclick="cameraFotoChecklist()">📷 Tirar foto</button>
+                <label class="painel-fotos-ficheiro">🖼️ Escolher imagem<input type="file" accept="image/*" multiple hidden onchange="ficheirosFotoChecklist(this)"></label>
+            </div>
+            <div class="fotos fotos-checklist">${guardadas}</div>
+            <p class="painel-fotos-vazio" ${guardadas ? 'hidden' : ''}>Sem fotos neste item.</p>
+        </div>`
+
     const botoes = [
         { texto: 'Guardar', img: 'concluido', funcao: `salvarFotos('${idObra}', '${idOrcamento}', '${idDescricao}')` }
     ]
 
-    popup({ linhas, botoes, titulo: 'Painel de Fotos' })
+    popup({ elemento, botoes, titulo: 'Fotos do item' })
+}
 
-    visibilidadeFotos()
+// Junta uma foto nova (ainda por enviar) ao painel, com o botão de a retirar.
+function adicionarFotoChecklist(src) {
+    const grelha = document.querySelector('.fotos-checklist')
+    if (!grelha) return
+    grelha.insertAdjacentHTML('beforeend', `
+        <div class="foto-checklist foto-checklist-nova">
+            <img src="${src}" class="foto" onclick="ampliarImagem(this)" alt="Foto nova">
+            <button type="button" class="foto-checklist-remover" title="Retirar foto" aria-label="Retirar foto" onclick="this.closest('.foto-checklist').remove(); atualizarVazioFotosChecklist()">&times;</button>
+        </div>`)
+    atualizarVazioFotosChecklist()
+}
 
+function atualizarVazioFotosChecklist() {
+    const vazio = document.querySelector('.painel-fotos-vazio')
+    if (vazio) vazio.hidden = !!document.querySelector('.fotos-checklist .foto-checklist')
+}
+
+function ficheirosFotoChecklist(input) {
+    for (const ficheiro of input.files) {
+        const leitor = new FileReader()
+        leitor.onload = () => adicionarFotoChecklist(leitor.result)
+        leitor.readAsDataURL(ficheiro)
+    }
+    input.value = ''
+}
+
+// Câmara: captura, mostra a foto e deixa usar ou repetir.
+async function cameraFotoChecklist() {
+    popup({
+        titulo: 'Tirar foto',
+        elemento: `
+            <div class="camera-checklist">
+                <div class="cameraDiv"><video autoplay playsinline></video><canvas hidden></canvas></div>
+                <img class="camera-checklist-previa" hidden alt="Foto capturada">
+                <div class="camera-checklist-acoes">
+                    <button type="button" data-capturar onclick="capturarFotoChecklist()">Capturar</button>
+                    <button type="button" data-usar hidden onclick="usarFotoChecklist()">Usar esta foto</button>
+                    <button type="button" data-repetir hidden onclick="repetirFotoChecklist()">Repetir</button>
+                </div>
+            </div>`
+    })
+    await abrirCamera()
+}
+
+function capturarFotoChecklist() {
+    const caixa = document.querySelector('.camera-checklist')
+    const video = caixa.querySelector('video'), canvas = caixa.querySelector('canvas'), previa = caixa.querySelector('.camera-checklist-previa')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    canvas.getContext('2d').drawImage(video, 0, 0)
+    previa.src = canvas.toDataURL('image/png')
+    previa.hidden = false
+    caixa.querySelector('.cameraDiv').hidden = true
+    caixa.querySelector('[data-capturar]').hidden = true
+    caixa.querySelector('[data-usar]').hidden = false
+    caixa.querySelector('[data-repetir]').hidden = false
+}
+
+function repetirFotoChecklist() {
+    const caixa = document.querySelector('.camera-checklist')
+    caixa.querySelector('.camera-checklist-previa').hidden = true
+    caixa.querySelector('.cameraDiv').hidden = false
+    caixa.querySelector('[data-capturar]').hidden = false
+    caixa.querySelector('[data-usar]').hidden = true
+    caixa.querySelector('[data-repetir]').hidden = true
+}
+
+function usarFotoChecklist() {
+    const src = document.querySelector('.camera-checklist .camera-checklist-previa')?.src
+    encerrarCam()
+    removerPopup()
+    if (src) adicionarFotoChecklist(src)
+}
+
+function confirmarRemoverFotoChecklist(botao, idObra, idOrcamento, idDescricao) {
+    const link = botao.closest('.foto-checklist')?.querySelector('img')?.dataset.link
+    if (!link) return
+    popup({
+        titulo: 'Eliminar foto',
+        mensagem: 'Eliminar esta foto do item?',
+        botoes: [{ texto: 'Eliminar', img: 'cancel', funcao: `removerFotoChecklist(${[idObra, idOrcamento, idDescricao, link].map(v => escaparAtributo(JSON.stringify(String(v)))).join(', ')})` }]
+    })
+}
+
+async function removerFotoChecklist(idObra, idOrcamento, idDescricao, link) {
+    overlayAguarde()
+    try {
+        const resultado = await deletar(`dados_orcamentos/${idOrcamento}/campos/${idDescricao}/andamento/fotos/${link}`)
+        if (resultado === null) throw new Error('Não foi possível eliminar a foto. Tente novamente.')
+        removerPopup()
+        document.querySelector(`.fotos-checklist img[data-link="${CSS.escape(link)}"]`)?.closest('.foto-checklist')?.remove()
+        atualizarVazioFotosChecklist()
+        await atualizarIconeFotosChecklist(idObra, idOrcamento, idDescricao)
+    } catch (erro) { popup({ mensagem: escaparAtributo(erro.message) }) }
+    finally { removerOverlay() }
+}
+
+// Ícone da câmara na linha: verde com fotos, vermelho sem.
+async function atualizarIconeFotosChecklist(idObra, idOrcamento, idDescricao) {
+    const linha = [...document.querySelectorAll('.acompanhamento tr[data-item]')].find(tr =>
+        tr.dataset.orcamento === String(idOrcamento) && tr.dataset.item === String(idDescricao))
+    const icone = linha?.querySelector('img[onclick^="painelFotos"]')
+    if (!icone) return
+    const andamento = await recuperarAndamentoItem(idOrcamento, idDescricao).catch(() => ({}))
+    const tem = Object.keys(andamento.fotos || {}).length > 0
+    icone.src = `imagens/${tem ? 'camera-verde' : 'camera-vermelha'}.svg`
+    icone.title = icone.alt = tem ? 'Ver fotos anexadas' : 'Adicionar fotos'
 }
 
 async function salvarFotos(idObra, idOrcamento, idDescricao) {
@@ -732,8 +972,17 @@ async function salvarAndamento(idObra, idOrcamento, idDescricao) {
     try {
         if (!qtdeRealizada || !Number.isFinite(realizado) || realizado < 0) throw new Error('Informe uma quantidade válida, positiva ou zero.')
         await salvarChecklist(`dados_orcamentos/${idOrcamento}/campos/${idDescricao}/andamento/realizado`, realizado)
+        // Chegou à quantidade orçada (100%): a tarefa fica marcada como concluída.
+        const linha = [...document.querySelectorAll('.acompanhamento tr[data-item]')].find(tr =>
+            tr.dataset.orcamento === String(idOrcamento) && tr.dataset.item === String(idDescricao))
+        const quantidade = Number(linha?.checklist?.quantidade) || 0
+        const alteracoes = { realizado }
+        if (quantidade > 0 && realizado >= quantidade && !linha.checklist.concluido) {
+            await salvarChecklist(`dados_orcamentos/${idOrcamento}/campos/${idDescricao}/andamento/concluido`, true)
+            alteracoes.concluido = true
+        }
         removerPopup()
-        await atualizarItemChecklist(idObra, idOrcamento, idDescricao, { realizado })
+        await atualizarItemChecklist(idObra, idOrcamento, idDescricao, alteracoes)
     } catch (erro) { popup({ mensagem: escaparAtributo(erro.message) }) }
     finally { removerOverlay() }
 }

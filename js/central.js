@@ -527,6 +527,22 @@ async function tirarFoto() {
 // Mesma regra de SCRIPTS/salvar_registro.js (servidor) e dos destinatários do e-mail.
 const emailValido = valor => /^[^\s<>@,;"']+@[^\s<>@,;"']+\.[^\s<>@,;"']+$/.test(String(valor ?? '').trim())
 
+// Tipo da função pelo título (os títulos variam: "Diretor Operacional", "Coordenador Operativo Sul", "Encarregado"…),
+// igual a delegacao.funcoes.tipo no servidor.
+function tipoFuncao(titulo) {
+    const t = String(titulo || '').trim()
+    if (/^CEO$/i.test(t)) return 'ceo'
+    if (/^Diretor/i.test(t)) return 'diretor'
+    if (/^Coordenador/i.test(t)) return 'coordenador'
+    if (/^Encarregado/i.test(t)) return 'encarregado'
+    return t ? 'trabalhador' : ''
+}
+
+// Funções de gestão (CEO, diretores, coordenadores): não trabalham em obra (sem especialidade, contrato, exame e EPI).
+const funcaoDeGestao = titulo => ['ceo', 'diretor', 'coordenador'].includes(tipoFuncao(titulo))
+// Com remuneração variável (% do lucro das obras): gestão e encarregados.
+const funcaoComVariavel = titulo => ['ceo', 'diretor', 'coordenador', 'encarregado'].includes(tipoFuncao(titulo))
+
 // IBAN sem espaços: país + 2 dígitos de controlo + conta; o resto da divisão por 97 (ISO 13616) tem de ser 1.
 function ibanValido(iban) {
     if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(iban)) return false
@@ -544,6 +560,9 @@ async function verificarRegras() {
     const campos = []
     const funcao = [...painel.querySelectorAll('[name="funcao"]:checked')]?.[0]?.dataset?.valor
     const ignorar = ['Diretor Programador', 'CEO'].includes(funcao)
+    // Funções de gestão (sem trabalho em obra): sem especialidade, contrato, exame nem EPI no registo.
+    const gestao = funcaoDeGestao(funcao)
+    const mostrarLinha = (el, mostrar) => { const linha = el?.closest('.linha-padrao'); if (linha) linha.style.display = mostrar ? 'flex' : 'none' }
     const limites = {
         nome: { tipo: 'A' },
         numero_contribuinte: { limite: 9, tipo: 1 },
@@ -592,7 +611,7 @@ async function verificarRegras() {
     if (formEPI) {
         const linhaFormEPI = formEPI.closest('.linha-padrao')
 
-        if (['Diretor Operativo', 'CEO', 'Diretor Programador'].includes(funcao)) {
+        if (gestao) {
 
             linhaFormEPI.style.display = 'none'
             inv(formEPI, true)
@@ -613,11 +632,8 @@ async function verificarRegras() {
     }
 
     // Documentos;
-    const funcoesExigemDocs = [
-        'Coordenador Operativo',
-        'Encarregado de Obra',
-        'Trabalhador'
-    ]
+    // Contrato e exame: obrigatórios para quem trabalha em obra (encarregados e trabalhadores).
+    const exigeDocs = ['encarregado', 'trabalhador'].includes(tipoFuncao(funcao))
 
     const docs = ['exame', 'contrato_obra']
     for (const doc of docs) {
@@ -630,8 +646,9 @@ async function verificarRegras() {
 
         // A marcação de obrigatório vai na área de documento (o input fica escondido dentro dela).
         const alvoDoc = inputExame.closest('.zona-documento')?.querySelector('.zona-documento-alvo') || inputExame
+        mostrarLinha(inputExame, !gestao)
 
-        if (funcoesExigemDocs.includes(funcao)) {
+        if (exigeDocs) {
 
             if (!inputExame.files.length && existente == 0) {
                 campos.push(`Documento ${doc}`.replace('_', ' '))
@@ -724,11 +741,11 @@ async function verificarRegras() {
         }
     }
 
-    // IBAN (opcional): se preenchido, tem de passar no dígito de controlo e vir com o comprovativo.
+    // IBAN e comprovativo: obrigatórios em qualquer função; o IBAN tem de passar no dígito de controlo.
     const campoIban = input('iban')
     if (campoIban) {
         const iban = campoIban.value.replace(/\s/g, '').toUpperCase()
-        if (!iban || ibanValido(iban)) {
+        if (ibanValido(iban)) {
             inv(campoIban, true)
         } else {
             inv(campoIban)
@@ -737,11 +754,27 @@ async function verificarRegras() {
 
         const inputComprovativo = input('comprovativo_iban')
         const alvoComprovativo = inputComprovativo?.closest('.zona-documento')?.querySelector('.zona-documento-alvo')
-        if (iban && inputComprovativo && !inputComprovativo.files.length && !document.getElementById('anexos_comprovativo_iban')?.children.length) {
+        if (inputComprovativo && !inputComprovativo.files.length && !document.getElementById('anexos_comprovativo_iban')?.children.length) {
             inv(alvoComprovativo)
             campos.push('Comprovativo do IBAN')
         } else {
             inv(alvoComprovativo, true)
+        }
+    }
+
+    // Valor variável da remuneração: só para CEO, diretores, coordenadores e encarregados.
+    const blocoVariavel = painel.querySelector('[data-remuneracao-variavel]')
+    if (blocoVariavel) blocoVariavel.style.display = funcaoComVariavel(funcao) ? '' : 'none'
+
+    // Foto do colaborador: obrigatória em qualquer função (é a referência do reconhecimento facial).
+    const foto = painel.querySelector('img[name="foto"]')
+    if (foto) {
+        const circulo = foto.closest('.colaborador-avatar-circulo')
+        if (foto.getAttribute('src')) {
+            inv(circulo, true)
+        } else {
+            inv(circulo)
+            campos.push('Foto')
         }
     }
 
@@ -763,8 +796,9 @@ async function verificarRegras() {
         if (!bloco)
             continue
 
-        // Pode ignorar se Especialidade && funções;
-        const podeIgnorar = campo == 'especialidade' && ['Diretor Operativo', 'Coordenador Operativo'].includes(funcao)
+        // Especialidade: dispensada (e oculta) nas funções de gestão.
+        const podeIgnorar = campo == 'especialidade' && gestao
+        if (campo == 'especialidade' && painel.querySelector('.campo-funcoes')) mostrarLinha(bloco, !gestao)
 
         if (podeIgnorar || ignorar || ativo) {
             inv(bloco, true)
@@ -777,7 +811,8 @@ async function verificarRegras() {
     // Campos Flex;
     for (const campo of camposFlex) {
         const elCampo = input(campo)
-        if (!elCampo)
+        // Campo oculto (ex.: morada por partes do cliente): validado pelo próprio formulário.
+        if (!elCampo || elCampo.type === 'hidden')
             continue
 
         if (elCampo.value == '') {
@@ -851,11 +886,13 @@ async function verificarRegras() {
         if (!el)
             continue
 
-        // No cadastro de colaborador, a foto (reconhecimento do ponto) só é exigida do Trabalhador.
-        if (c === 'foto' && el.closest('.colaborador-foto') && funcao !== 'Trabalhador') {
-            inv(el.closest('.colaborador-foto'), true)
+        // A foto do colaborador é validada acima (obrigatória em qualquer função).
+        if (c === 'foto' && el.closest('.colaborador-foto'))
             continue
-        }
+
+        // Campo numa linha oculta (ex.: Obra numa Despesa Interna Empresa) não é exigido.
+        if (el.closest('.linha-padrao')?.style.display === 'none')
+            continue
 
         let temValor
         const tipo = el.tagName
@@ -1514,6 +1551,20 @@ async function pdfEmail({ html, emails, htmlContent = 'Documento em anexo', titu
 
 }
 
+// Cabeçalho comum das exportações em PDF: título e dados à esquerda, logótipo no canto superior direito.
+function cabecalhoPdf({ titulo, linhas = [] }) {
+    const dados = linhas.filter(([, valor]) => valor)
+        .map(([rotulo, valor]) => `<div><b>${escaparAtributo(rotulo)}:</b> ${escaparAtributo(valor)}</div>`).join('')
+    return `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 12px 16px; border-bottom: 2px solid #3f4b55; margin-bottom: 12px; font-family: Arial, sans-serif;">
+            <div style="font-size: 12px; line-height: 1.5;">
+                <div style="font-size: 18px; font-weight: bold; margin-bottom: 4px;">${escaparAtributo(titulo || '')}</div>
+                ${dados}
+            </div>
+            <img src="img/logo.png" alt="Reconstrular" style="width: 90px; border-radius: 10px;">
+        </div>`
+}
+
 async function pdf({ id, html = null, estilos = [], nome = 'documento' }) {
 
     try {
@@ -1532,6 +1583,8 @@ async function pdf({ id, html = null, estilos = [], nome = 'documento' }) {
             <html>
                 <head>
                     <meta charset="UTF-8">
+                    <!-- Imagens com caminho relativo (logótipo, ícones) carregam do site no servidor do PDF. -->
+                    <base href="https://reconstrularobras.com/">
                     ${estilos}
                     <style>
                         @page { size: A4; margin: 0mm; }

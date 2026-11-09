@@ -211,3 +211,10 @@ th {
     .popup-despesa .despesa-material-campos { grid-template-columns: 1fr 1fr; }
     .popup-despesa .despesa-material-campos > :last-child { grid-column: 1 / -1; }
 }
+
+/* Detalhes da despesa: custos da obra face ao orçamento (material e ferramentas lado a lado). */
+.despesa-totais-obra {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+}

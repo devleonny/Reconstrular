@@ -22,6 +22,11 @@ const Remuneracao = (() => {
                 <label>Válida a partir de<input name="rem-inicio" type="date" value="${hoje()}"></label>
                 <label>Jornada diária (h)<input name="rem-jornada" type="number" min="0.01" max="24" step="0.01" value="8"></label>
             </div>
+            <div class="remuneracao-variavel" data-remuneracao-variavel>
+                <label>Valor variável (% do lucro das obras)<input name="rem-variavel" type="number" min="0" max="100" step="0.01" placeholder="0" value="${Number(c.remuneracao?.variavel) > 0 ? esc(c.remuneracao.variavel) : ''}"></label>
+                <p>Percentagem do lucro de cada obra (total do orçamento menos custos), somada na folha de ponto do mês em que a obra chega a 100%.
+                CEO e diretores: todas as obras · Coordenador: obras da sua zona · Encarregado: obras em que está como encarregado.</p>
+            </div>
             <p class="remuneracao-ajuda">Deixe o valor vazio para manter o registo atual. Uma nova diária preserva os valores dos períodos anteriores. Para encerrar um valor, registe uma nova vigência com zero.</p>
             ${lista.length ? `<details class="remuneracao-historico">
                 <summary>Histórico de valores <span>${lista.length} vigência${lista.length === 1 ? '' : 's'}</span></summary>
@@ -35,8 +40,14 @@ const Remuneracao = (() => {
         const rem = { vigencias: [], ajustes: [], ...(c.remuneracao || {}) }
         const periodicidade = document.querySelector('[name="rem-periodicidade"]')?.value || 'mensal'
         const mudouPeriodicidade = periodicidade !== (rem.periodicidade === 'semanal' ? 'semanal' : 'mensal')
+        // Variável: só para as funções que a têm (campo visível); noutras funções fica a zero.
+        const campoVariavel = document.querySelector('[name="rem-variavel"]')
+        const comVariavel = campoVariavel && campoVariavel.closest('[data-remuneracao-variavel]')?.style.display !== 'none'
+        const variavel = comVariavel && campoVariavel.value.trim() ? numero(campoVariavel.value) : 0
+        if (!Number.isFinite(variavel) || variavel < 0 || variavel > 100) throw new Error('O valor variável é uma percentagem entre 0 e 100.')
+        const mudouVariavel = Math.round(variavel * 100) !== Math.round((Number(rem.variavel) || 0) * 100)
         const campo = document.querySelector('[name="rem-diaria"]')
-        if ((!campo || !campo.value.trim()) && !mudouPeriodicidade) return null
+        if ((!campo || !campo.value.trim()) && !mudouPeriodicidade && !mudouVariavel) return null
         let vigencias = rem.vigencias || []
         if (campo && campo.value.trim()) {
             const diaria = numero(campo.value), inicio = document.querySelector('[name="rem-inicio"]').value
@@ -45,7 +56,10 @@ const Remuneracao = (() => {
             if (vigencias.some(v=>v.inicio === inicio)) throw new Error('Já existe uma diária nesta data. Escolha uma nova data de vigência para preservar o histórico.')
             vigencias = [...vigencias, { id: crypto.randomUUID(), inicio, centavos: Math.round(diaria * 100), minutos_dia: Math.max(1, Math.round(jornada * 60)), criado_em: new Date().toISOString(), criado_por: acesso.usuario }]
         }
-        return { ...rem, periodicidade, vigencias }
+        const final = { ...rem, periodicidade, vigencias }
+        if (variavel > 0) final.variavel = Math.round(variavel * 100) / 100
+        else delete final.variavel
+        return final
     }
     return { moeda, formulario, coletar, numero, dataValida }
 })()

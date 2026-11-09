@@ -380,7 +380,13 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
             ${f.remuneracao ? '<section class="asd-bloco"><h3>Remuneração do período</h3>' + tabela(['Data','Diária','Proporcional','Complemento','Bonificação','Total','Motivo / responsável'], f.dias.filter(d=>d.marcas.length || d.remuneracao.ajustes.length).map(d=>{
                 const v=d.remuneracao
                 return '<tr><td>'+dataPt(d.data)+'</td><td>'+Remuneracao.moeda(v.diaria)+'</td><td>'+Remuneracao.moeda(v.base)+'</td><td>'+horas(v.complemento)+' / '+Remuneracao.moeda(v.adicional)+'</td><td>'+Remuneracao.moeda(v.bonus)+'</td><td>'+Remuneracao.moeda(v.total)+'</td><td>'+v.ajustes.map(a=>esc(a.motivo)+' · '+esc(a.criado_por)).join('<br>')+'</td></tr>'
-            }), 'Sem valores no período.') + '<div class="asd-total">Total a pagar: <b>'+Remuneracao.moeda(f.remuneracao.total)+'</b></div></section>' : ''}
+            }), 'Sem valores no período.')
+            // Variável (gestão e encarregados): % do lucro das obras finalizadas no mês, já incluída no total a pagar.
+            + (f.variavel ? '<h3>Variável · '+String(f.variavel.percentagem).replace('.', ',')+'% do lucro das obras finalizadas</h3>'
+                + tabela(['Obra','Cliente','Finalizada a','Lucro da obra','Variável'], f.variavel.obras.map(o =>
+                    '<tr><td>'+esc(o.contrato)+'</td><td>'+esc(o.cliente || '')+'</td><td>'+esc(o.finalizada)+'</td><td>'+Remuneracao.moeda(o.lucro)+'</td><td>'+Remuneracao.moeda(o.valor)+'</td></tr>'),
+                    'Nenhuma obra finalizada neste mês.') : '')
+            + '<div class="asd-total">Total a pagar: <b>'+Remuneracao.moeda(f.remuneracao.total)+'</b></div></section>' : ''}
             <section class="asd-bloco asd-intervencoes"><h3>✎ Intervenções do gestor neste mês</h3>${tabela(['Data', 'Hora', 'Tipo', 'Ação', 'Por', 'Quando', 'Motivo', 'Trabalhador'],
                 f.lancamentos.map(l => `<tr><td class="asd-mono">${dataPt(l.data)}</td><td class="asd-mono">${esc(l.hora)}</td><td>${etiquetaTipo(l.tipo)}</td><td>${esc(ACOES_GESTOR[l.acao])}</td><td>${esc(l.autor)}</td><td class="asd-mono">${esc(l.momento)}</td><td>${esc(l.motivo)}</td><td>${l.visto_em ? `<span class="asd-gps asd-gps-ok">Visto ${esc(l.visto_em)}</span>` : '<span class="asd-gps asd-gps-aviso">Ainda não visto</span>'}</td></tr>`),
                 'Nenhuma intervenção do gestor neste mês: todas as marcações são do próprio trabalhador.')}</section>`
@@ -729,11 +735,21 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
             }
         })
     }
-    function formularioLocal(l = null) {
+    // Obras para a designação do local: "Nº da obra - Cliente - Morada da obra" (a morada vem de Ver Obras).
+    async function opcoesObrasLocal() {
+        const { resultados = [] } = await pesquisarDB({ base: 'vw_dados_orcamentos', filtros: { em_obra: { op: '=', value: true } }, pagina: 1, limite: 500,
+            ordenar: { path: 'contrato', direcao: 'ASC' } }) || {}
+        return resultados.map(o => [o.contrato, o.nome_cliente, o.morada].filter(Boolean).join(' - ').slice(0, 160))
+    }
+    async function formularioLocal(l = null) {
         emEdicao = l
+        let obras = []
+        try { obras = await opcoesObrasLocal() } catch (erro) { console.error(erro) }
+        // Um local antigo com designação livre continua selecionável.
+        if (l?.nome && !obras.includes(l.nome)) obras.unshift(l.nome)
         popup({
             titulo: l ? 'Editar local de trabalho' : 'Adicionar local de trabalho', linhas: [
-                { texto: 'Designação', elemento: `<input name="asd-nome" maxlength="160" placeholder="Ex.: Obra - Rua do Ouro, 3" value="${esc(l?.nome || '')}">` },
+                { texto: 'Obra', elemento: `<select name="asd-nome"><option value="">Selecione a obra</option>${obras.map(o => `<option ${o === l?.nome ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>` },
                 { texto: 'Coordenadas (latitude, longitude)', elemento: `<input name="asd-coordenadas" placeholder="38.656054, -9.027503" value="${l ? `${l.latitude}, ${l.longitude}` : ''}">` },
                 { elemento: '<div class="asd-nota-acoes"><button type="button" onclick="Assiduidade.usarMinhaLocalizacao(this)">📍 Usar a minha localização atual</button><span class="asd-nota">No Google Maps, clique com o botão direito no local e copie as coordenadas.</span></div>' },
                 { texto: 'Raio permitido (metros)', elemento: `<input type="number" name="asd-raio" min="20" max="5000" step="10" value="${l?.raio_m || 100}">` },

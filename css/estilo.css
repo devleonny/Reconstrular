@@ -2135,3 +2135,14 @@ button:disabled {
 .aviso-versao .aviso-versao-atualizar:hover { background: #4b5d6a; }
 .aviso-versao .aviso-versao-adiar { border: 1px solid #d0d9e0; background: #fff; color: #3f505e; }
 .aviso-versao .aviso-versao-adiar:hover { background: #e3e9ee; }
+
+/* Morada do cliente por partes (Moradia / Apartamento). */
+.morada-partes { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.morada-tipo { display: flex; gap: 16px; }
+.morada-tipo label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.morada-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.morada-campos label { display: flex; flex-direction: column; gap: 3px; font-size: 0.8rem; color: #4c5965; }
+.morada-campos label[hidden] { display: none; }
+.morada-previa { font-size: 0.8rem; color: #1f4f7a; }
+.morada-copiada { opacity: 0.65; }
+.morada-mesma { display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; }

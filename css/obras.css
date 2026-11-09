@@ -262,3 +262,117 @@ screen and (min-aspect-ratio: 13/9) {
 .obra-itens-recorte td:nth-child(n+5) { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .obra-itens-orcamento > p { padding: 0 16px; font-size: 11px; color: #78838c; line-height: 1.6; }
 .obra-total-zerado { display: inline-block; padding: 4px 8px; border: 1px solid #edc3c3; border-radius: 6px; background: #fceaea; color: #a52f2f; font-weight: 600; }
+
+/* Checklist: tarefa a 100% com a linha verde; item riscado com risco vermelho. */
+.tabela-especialidade tr.checklist-completo td {
+    background-color: #dff3e6;
+}
+
+.tabela-especialidade .checklist-riscado,
+.tabela-especialidade .checklist-riscado span {
+    text-decoration: line-through;
+    text-decoration-color: #d32f2f;
+    text-decoration-thickness: 2px;
+}
+
+/* Painel de fotos do item: grelha com botão de eliminar em cada foto. */
+.painel-fotos-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: min(420px, 80vw);
+}
+
+.painel-fotos-acoes {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.painel-fotos-ficheiro {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border: 1px solid #b8c1c9;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.fotos-checklist {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+}
+
+.foto-checklist {
+    position: relative;
+}
+
+.foto-checklist img {
+    display: block;
+    width: 100%;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #d6dee5;
+    cursor: zoom-in;
+}
+
+.foto-checklist-nova img {
+    border: 2px dashed #1f8a4c;
+}
+
+.foto-checklist-remover {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: #d32f2f;
+    color: #fff;
+    font-size: 16px;
+    line-height: 24px;
+    cursor: pointer;
+}
+
+.painel-fotos-vazio {
+    margin: 0;
+    color: #6f7b84;
+}
+
+.camera-checklist {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.camera-checklist video,
+.camera-checklist-previa {
+    width: min(480px, 85vw);
+    border-radius: 8px;
+}
+
+.camera-checklist-acoes {
+    display: flex;
+    gap: 8px;
+}
+
+/* Alinhamento de Tarefas: lista arrastável com a secção (Interior/Exterior) e a especialidade. */
+.popup-alinhamento .popup-janela-fora { width: min(1000px, 96vw); max-width: 96vw; }
+.alinhamento-tarefas { display: flex; flex-direction: column; gap: 10px; }
+.alinhamento-tarefas p { margin: 0; font-size: 0.85rem; color: #4c5965; }
+.alinhamento-recorte { max-height: 60vh; overflow: auto; }
+.alinhamento-tarefas tr[data-chave] { cursor: grab; }
+.alinhamento-tarefas tr.alinhamento-arrastando { opacity: 0.4; }
+.alinhamento-pega { color: #9aa5b0; font-weight: bold; text-align: center; user-select: none; }
+.alinhamento-numero { font-weight: 600; text-align: center; }
+.alinhamento-secao { padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; white-space: nowrap; }
+.alinhamento-interior { background: #e3eef9; color: #1f4f7a; }
+.alinhamento-exterior { background: #e8f5e9; color: #1f6b36; }
+.alinhamento-mover { white-space: nowrap; }
+.alinhamento-mover button { padding: 2px 8px; margin: 0 2px; }

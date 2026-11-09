@@ -451,3 +451,22 @@
 
 /* Formulário do colaborador: "Guardar" (1º botão, com o destaque) vai para a ponta direita do rodapé. */
 .popup-colaborador .rodape-padrao > .botoes-rodape:first-child { order: 1; }
+
+/* Topo da tabela de colaboradores: seleção para o Excel e botões. */
+.acoes-colaboradores {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.acoes-colaboradores .selecionar-todos {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #fff;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    cursor: pointer;
+}

@@ -171,7 +171,13 @@ async function telaColaboradores() {
 
     titulo.textContent = 'Colaboradores'
 
+    // Seleção para o Excel: começa vazia a cada abertura da tela.
+    selecaoColaboradores.todos = false
+    selecaoColaboradores.ids.clear()
+    const podeExcel = tipoFuncao(acesso.funcao) !== 'encarregado'
+
     const colunas = {
+        ...(podeExcel ? { 'Selecionar': {} } : {}),
         'Foto': {},
         'Usuário': { chave: 'usuario' },
         'Função': { chave: 'funcao', tipoPesquisa: 'select' },
@@ -192,7 +198,11 @@ async function telaColaboradores() {
         colunas,
         detalhes: true,
         pag: 'colaboradores',
-        btnExtras: '<button data-acao="editavel" onclick="adicionarColaborador()">Adicionar Colaborador</button>',
+        btnExtras: `<div class="acoes-colaboradores">
+            ${podeExcel ? `<label class="selecionar-todos"><input type="checkbox" data-selecionar-todos onchange="selecionarTodosColaboradores(this.checked)"> Selecionar todos</label>
+            <button type="button" onclick="excelColaboradores()">Descarregar em Excel</button>` : ''}
+            <button data-acao="editavel" onclick="adicionarColaborador()">Adicionar Colaborador</button>
+        </div>`,
         // Só quem o usuário pode editar (abaixo dele, na sua região); o servidor aplica a mesma regra do salvar.
         base: 'dados_colaboradores_gerenciaveis',
         ordenar: { path: 'timestamp', direcao: 'desc', tipo: 'numero' },
@@ -206,6 +216,29 @@ async function telaColaboradores() {
 
     removerOverlay()
 
+}
+
+// Seleção de colaboradores para o Excel. "todos" exporta tudo o que os filtros mostram (todas as páginas);
+// desmarcar uma linha passa a exportar só as linhas marcadas.
+const selecaoColaboradores = { todos: false, ids: new Set() }
+
+function selecionarTodosColaboradores(marcado) {
+    selecaoColaboradores.todos = marcado
+    selecaoColaboradores.ids.clear()
+    document.querySelectorAll('#bodyColaboradores [data-selecionar-colaborador]').forEach(caixa => {
+        caixa.checked = marcado
+        if (marcado) selecaoColaboradores.ids.add(caixa.value)
+    })
+}
+
+function selecionarColaborador(caixa) {
+    if (caixa.checked) selecaoColaboradores.ids.add(caixa.value)
+    else selecaoColaboradores.ids.delete(caixa.value)
+    if (!caixa.checked && selecaoColaboradores.todos) {
+        selecaoColaboradores.todos = false
+        const todos = document.querySelector('[data-selecionar-todos]')
+        if (todos) todos.checked = false
+    }
 }
 
 function labelStatus(st) {
@@ -309,7 +342,13 @@ async function criarLinhaColaboradores(colaborador) {
         </div>`
 
     // Miniatura no mesmo estilo do formulário; sem foto (ou se falhar ao carregar) fica o avatar genérico.
+    const tdSelecionar = tipoFuncao(acesso.funcao) !== 'encarregado'
+        ? `<td><input type="checkbox" data-selecionar-colaborador value="${escaparAtributo(id)}" aria-label="Selecionar ${escaparAtributo(nome || '')}"
+            ${selecaoColaboradores.todos || selecaoColaboradores.ids.has(String(id)) ? 'checked' : ''} onchange="selecionarColaborador(this)"></td>`
+        : ''
+
     const tds = `
+        ${tdSelecionar}
         <td>
             <span class="colaborador-mini" title="${escaparAtributo(nome || '')}">
                 ${foto ? `<img src="${urlArquivo(foto)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
@@ -477,10 +516,11 @@ async function adicionarColaborador(id) {
 
         controlesCxOpcoes.cidade = {
             base: 'cidades',
+            semPaginacao: true,
             funcaoAdicional: ['verificarRegras'],
             colunas: {
-                'Cidade': { chave: 'nome' },
                 'Distrito': { chave: 'distrito' },
+                'Cidade': { chave: 'nome' },
                 'Zona': { chave: 'zona' },
                 'Area': { chave: 'area' }
             },
@@ -941,7 +981,13 @@ async function salvarColaborador(idExistente) {
 }
 
 
+// Excel dos colaboradores selecionados na tela (ou de todos os filtrados, com "Selecionar todos").
 async function excelColaboradores() {
+
+    const filtrosTela = controles.colaboradores?.filtros || {}
+    const ids = [...selecaoColaboradores.ids]
+    if (!selecaoColaboradores.todos && !ids.length)
+        return popup({ titulo: 'Descarregar em Excel', mensagem: 'Selecione os colaboradores a exportar (ou marque "Selecionar todos").' })
 
     try {
         overlayAguarde()
@@ -949,7 +995,9 @@ async function excelColaboradores() {
         const dados = {
             base: "dados_colaboradores",
             titulo: `Colaboradores_${Date.now()}.xlsx`,
-            filtros: controles.colaboradores?.filtros || {},
+            filtros: selecaoColaboradores.todos
+                ? filtrosTela
+                : { modo: 'AND', regras: [filtrosTela, { modo: 'OR', regras: ids.map(id => ({ path: 'id', op: '=', value: id })) }] },
             ordenar: controles.colaboradores?.ordenar || { path: 'timestamp', direcao: 'desc', tipo: 'numero' },
             formatacao: {
                 datas: ['data_nascimento'],

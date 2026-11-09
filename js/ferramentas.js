@@ -16,7 +16,7 @@ async function cxOpcoes(name) {
         return popup({ mensagem: `>>> cxOpcoes(null) <<<` })
 
     controlesCxOpcoes.ativo = name
-    const { colunas, base, retornar, filtros = {} } = controle
+    const { colunas, base, retornar, filtros = {}, semPaginacao = false } = controle
 
     const pag = 'cxOpcoes'
     const tabela = await modTab({
@@ -28,6 +28,11 @@ async function cxOpcoes(name) {
             direcao: 'ASC'
         },
         filtros,
+        // Listas curtas (ex.: cidades) vêm inteiras, com scroll, em vez de divididas em páginas.
+        // O controle 'cxOpcoes' é reaproveitado: os valores são sempre definidos para não herdar da lista anterior.
+        limite: semPaginacao ? 1000 : 50,
+        ocultarPaginacao: semPaginacao,
+        pagina: 1,
         criarLinha: 'linCxOpcoes',
         body: 'cxOpcoes'
     })

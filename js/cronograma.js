@@ -293,6 +293,7 @@ async function telaCronograma(idObra) {
     overlayAguarde()
 
     const obra = await recuperarDado('dados_orcamentos', idObra) || {}
+    controles.obraPdf = idObra
 
     titulo.textContent = 'Cronograma'
 
