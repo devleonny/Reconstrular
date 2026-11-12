@@ -173,3 +173,6 @@
 .asd-completar .asd-nota-destaque { margin-top: 10px; }
 .asd-confirmar { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 1px dashed #b9d1ea; border-radius: 10px; background: #eaf2fb; color: #1f4f7a; text-align: left; line-height: 1.45; cursor: pointer; }
 .asd-confirmar input { margin-top: 2px; flex: none; }
+
+/* Folha de ponto: lucro da obra no variável, com ligação para os detalhes da obra. */
+button.asd-link-lucro, button.asd-link-lucro:hover:not(:disabled) { padding: 0; border: 0; background: none; box-shadow: none; color: #1f5fbf; text-decoration: underline; cursor: pointer; font: inherit; }

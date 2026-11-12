@@ -1,16 +1,21 @@
-async function telaObras() {
+// Ver Obras. Com { contrato }, mostra só essa obra com os detalhes abertos (ex.: vindo do lucro na folha de ponto).
+async function telaObras({ contrato = null } = {}) {
 
     try {
 
         titulo.textContent = 'Obras'
 
+        const destaque = contrato
+            ? `<span class="obras-destaque">A mostrar a obra <b>${escaparAtributo(contrato)}</b> <button type="button" onclick="telaObras()">Ver todas as obras</button></span>`
+            : ''
         const tabela = await modTab({
-            btnExtras: `<button onclick="adicionarObra()">Adicionar Obra</button>`,
+            btnExtras: `${destaque}<button onclick="adicionarObra()">Adicionar Obra</button>`,
             pag: 'obras',
             detalhes: true,
             body: 'bodyObras',
             base: 'vw_dados_orcamentos',
-            filtros: { em_obra: { op: '=', value: true } },
+            filtros: { em_obra: { op: '=', value: true }, ...(contrato ? { contrato: { op: '=', value: String(contrato) } } : {}) },
+            ...(contrato ? { pagina: 1 } : {}),
             criarLinha: 'criarLinhaObras',
             colunas: {
                 'Checklist': {},
@@ -31,6 +36,13 @@ async function telaObras() {
         tela.innerHTML = tabela
 
         await paginacao()
+
+        if (contrato) {
+            const linhas = [...document.querySelectorAll('#bodyObras > tr')].filter(tr => tr.detalhesTabela)
+            if (!linhas.length) return popup({ mensagem: `A obra ${escaparAtributo(contrato)} não está disponível para si (fora da sua região ou já não está em obra).` })
+            for (const linha of linhas) definirDetalhesExpandidos(linha, true)
+            atualizarBotaoTodosDetalhes(document.getElementById('bodyObras'))
+        }
 
     } catch (err) {
         console.error(err)
@@ -58,6 +70,9 @@ function criarLinhaObras(obra) {
     } = obra || {}
 
     const { porcentagem, excedente } = resultado || {}
+    // Lucro do orçamento = total − custos (materiais, mão de obra e ferramentas). É o valor do variável na folha de ponto.
+    const lucro = (Number(total_geral) || 0) - (Number(total_materiais) || 0) - (Number(total_mao_obra) || 0) - (Number(total_ferramentas) || 0)
+    const margemLucro = Number(total_geral) ? lucro / Number(total_geral) * 100 : 0
 
     const st = porcentagem == 0 || !porcentagem
         ? 'Por Iniciar'
@@ -114,6 +129,10 @@ function criarLinhaObras(obra) {
         </div>
         <div class="obra-detalhe"><strong>Material</strong>
             <span class="${Number(total_materiais) < 0 ? 'credito' : 'despesa'}" onclick="mostrarMateriaisOrcamento('${id}', 'materiais')" style="cursor: pointer;">${dinheiro(total_materiais)}</span>
+        </div>
+        <div class="obra-detalhe obra-detalhe-lucro" title="Total do orçamento menos Material, Mão de Obra e Ferramentas (base do variável na folha de ponto)"><strong>Lucro</strong>
+            <span class="${lucro < 0 ? 'despesa' : 'credito'}">${dinheiro(lucro)}</span>
+            <small>${margemLucro.toLocaleString('pt-PT', { maximumFractionDigits: 1 })}% do total · ${dinheiro(total_geral ?? 0)} − custos</small>
         </div>
         <div class="obra-detalhe"><strong>Material Extra</strong>
             <span class="${Number(total_extra) < 0 ? 'credito' : 'despesa'}" onclick="mostrarMateriaisExtras('${numeroObra}')" style="cursor: pointer;">${dinheiro(total_extra)}</span>

@@ -384,7 +384,7 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
             // Variável (gestão e encarregados): % do lucro das obras finalizadas no mês, já incluída no total a pagar.
             + (f.variavel ? '<h3>Variável · '+String(f.variavel.percentagem).replace('.', ',')+'% do lucro das obras finalizadas</h3>'
                 + tabela(['Obra','Cliente','Finalizada a','Lucro da obra','Variável'], f.variavel.obras.map(o =>
-                    '<tr><td>'+esc(o.contrato)+'</td><td>'+esc(o.cliente || '')+'</td><td>'+esc(o.finalizada)+'</td><td>'+Remuneracao.moeda(o.lucro)+'</td><td>'+Remuneracao.moeda(o.valor)+'</td></tr>'),
+                    '<tr><td>'+esc(o.contrato)+'</td><td>'+esc(o.cliente || '')+'</td><td>'+esc(o.finalizada)+'</td><td><button type="button" class="asd-link-lucro" title="Ver o cálculo do lucro nos detalhes da obra" data-obra="'+esc(o.contrato)+'" onclick="telaObras({ contrato: this.dataset.obra })">'+Remuneracao.moeda(o.lucro)+' ↗</button></td><td>'+Remuneracao.moeda(o.valor)+'</td></tr>'),
                     'Nenhuma obra finalizada neste mês.') : '')
             + '<div class="asd-total">Total a pagar: <b>'+Remuneracao.moeda(f.remuneracao.total)+'</b></div></section>' : ''}
             <section class="asd-bloco asd-intervencoes"><h3>✎ Intervenções do gestor neste mês</h3>${tabela(['Data', 'Hora', 'Tipo', 'Ação', 'Por', 'Quando', 'Motivo', 'Trabalhador'],
