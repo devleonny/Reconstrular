@@ -49,6 +49,26 @@
     grid-column: 1 / -1;
 }
 .colaborador-remuneracao .remuneracao-ajuda { margin-top: 12px; }
+/* Valor variável: título em cima e a caixa por baixo, como os campos da diária. */
+.colaborador-remuneracao .remuneracao-variavel { margin-top: 14px; }
+.colaborador-remuneracao .remuneracao-variavel label {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 7px;
+    width: min(260px, 100%);
+    font-size: 12px;
+    font-weight: 600;
+    color: #425363;
+}
+.popup .colaborador-remuneracao .remuneracao-variavel input {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    box-sizing: border-box;
+    font-variant-numeric: tabular-nums;
+}
+.colaborador-remuneracao .remuneracao-variavel p { margin: 8px 0 0; font-size: 12px; line-height: 1.6; color: #65788a; }
 .remuneracao-historico {
     margin-top: 18px;
     border-top: 1px solid #e4e9ee;
