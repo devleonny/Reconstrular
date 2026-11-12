@@ -18,11 +18,11 @@ async function telaObras({ contrato = null } = {}) {
             ...(contrato ? { pagina: 1 } : {}),
             criarLinha: 'criarLinhaObras',
             colunas: {
-                'Checklist': {},
-                'Alinhamento de Tarefas': {},
-                'Cronograma': {},
-                'Histórico de Edições': {},
-                'Colaboradores da Obra': {},
+                'Checklist': { icone: true },
+                'Alinhamento': { icone: true, titulo: 'Alinhamento de Tarefas' },
+                'Cronograma': { icone: true },
+                'Histórico': { icone: true, titulo: 'Histórico de Edições' },
+                'Colaboradores': { icone: true, titulo: 'Colaboradores da Obra' },
                 'Status': {},
                 'Número': { chave: 'contrato' },
                 'Cliente': { chave: 'snapshots.cliente' },
@@ -87,19 +87,19 @@ function criarLinhaObras(obra) {
         .filter(Boolean)
 
     const tds = `
-        <td>
+        <td class="tabela-coluna-icone">
             <img src="imagens/checklist.svg" class="icone-tabela" alt="Checklist" title="Checklist" onclick="verAndamento('${id}')">
         </td>
-        <td>
+        <td class="tabela-coluna-icone">
             <img src="imagens/checklist.svg" class="icone-tabela" alt="Alinhamento de tarefas" title="Alinhamento de tarefas (ordem de execução do cronograma)" onclick="alinhamentoTarefas('${id}')">
         </td>
-        <td>
+        <td class="tabela-coluna-icone">
             <img src="imagens/cronograma.svg" class="icone-tabela" alt="Cronograma" title="Cronograma" onclick="telaCronograma('${id}')">
         </td>
-        <td>
+        <td class="tabela-coluna-icone">
             <img src="imagens/historico.svg" class="icone-tabela" alt="Histórico de edições" title="Histórico de edições" onclick="historicoObras('${numeroObra}')">
         </td>
-        <td>
+        <td class="tabela-coluna-icone">
             <img src="imagens/editar.svg" class="icone-editar" alt="Editar colaboradores da obra" title="Editar os colaboradores da obra" onclick="adicionarObra('${id}')">
         </td>
         <td>

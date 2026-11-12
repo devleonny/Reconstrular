@@ -421,3 +421,20 @@ td:has(> .icone-editar), td:has(> .icone-tabela) {
     width: auto;
     padding: 0 6px;
 }
+
+/* Colunas só com ícones ({ icone: true } no modTab): estreitas, com o título em várias linhas. */
+.tabela th.tabela-coluna-icone,
+.tabela td.tabela-coluna-icone {
+    width: 1%;
+    min-width: 64px;
+    max-width: 84px;
+    padding-left: 4px;
+    padding-right: 4px;
+    text-align: center;
+}
+.tabela thead th.tabela-coluna-icone span {
+    display: block;
+    font-size: 10.5px;
+    line-height: 1.25;
+    white-space: normal;
+}

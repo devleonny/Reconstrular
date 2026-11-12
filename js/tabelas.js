@@ -33,8 +33,10 @@ async function modTab(configuracoes) {
     controles[pag].detalhes = detalhes === true
     controles[pag].estadoDetalhes ??= new Map()
 
+    // Coluna de ícones ({ icone: true }): estreita, cabeçalho em várias linhas e sem ordenação.
     const ths = Object.entries(colunas)
-        .map(([th, query]) => `
+        .map(([th, query]) => query.icone ? `
+        <th class="tabela-coluna-icone" title="${escaparAtributo(query.titulo || th.replace(/<[^>]*>/g, ''))}"><span>${th}</span></th>` : `
         <th onclick="ordenarColuna({ pag: '${pag}', path: '${query.chave || ''}' })" style="cursor: pointer;">
             <div style="${horizontal}; width: 100%; justify-content: space-between; gap: 1rem;">
                 <span>${th}</span>
@@ -48,7 +50,7 @@ async function modTab(configuracoes) {
         Object.entries(colunas).map(async ([th, query]) => {
             if (!query.chave)
                 return `
-                    <th class="tabela-pesquisa-inativa" title="Esta coluna não tem filtro">
+                    <th class="tabela-pesquisa-inativa${query.icone ? ' tabela-coluna-icone' : ''}" title="Esta coluna não tem filtro">
                         <span aria-hidden="true">—</span>
                     </th>`
 
