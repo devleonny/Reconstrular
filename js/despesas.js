@@ -537,7 +537,7 @@ function confirmarExclusaoDespesa(idDespesa) {
   const botoes = [
     { texto: 'Confirmar', img: 'concluido', funcao: `excluirDespesa('${idDespesa}')`, fechar: true }
   ]
-  popup({ mensagem: 'Tem cezesa?', botoes, titulo: 'Eliminação de Despesa', removerAnteriores: true })
+  popup({ mensagem: 'Tem a certeza de que quer eliminar esta despesa?', botoes, titulo: 'Eliminação de Despesa', removerAnteriores: true })
 }
 
 async function excluirDespesa(idDespesa) {
@@ -546,7 +546,11 @@ async function excluirDespesa(idDespesa) {
 
 }
 
-async function salvarDespesa(idDespesa = crypto.randomUUID()) {
+async function salvarDespesa(idExistente) {
+
+  // Despesa nova: o id é criado aqui e não se pede ao servidor (um id que ainda não existe é recusado
+  // pela proteção por região com "Registo não encontrado", o que impedia guardar qualquer despesa nova).
+  const idDespesa = idExistente || crypto.randomUUID()
 
   try {
 
@@ -565,25 +569,27 @@ async function salvarDespesa(idDespesa = crypto.randomUUID()) {
           `
       })
 
-    const despesa = await recuperarDado('dados_despesas', idDespesa) || {}
+    const despesa = idExistente ? await recuperarDado('dados_despesas', idExistente) || {} : {}
 
     // Foto da Fatura
     const foto = document.querySelector('[name="foto"]')
-    if (foto && foto.src && !foto.src.includes(api)) {
-      const resposta = await importarAnexos({ foto: foto.src });
-
-      if (resposta[0].link) {
-        despesa.fatura = resposta[0].link;
-      } else {
+    if (foto && foto.src && foto.src.startsWith('data:')) {
+      const resposta = await importarAnexos({ foto: foto.src })
+      if (!resposta?.[0]?.link) {
         removerOverlay()
-        return popup({ mensagem: 'Falha no envio da Foto: tente novamente.' })
+        return popup({ mensagem: 'Falha no envio da foto da fatura: tente novamente.' })
       }
+      despesa.fatura = resposta[0].link
     }
 
-    // Arquivo da fatura (ex: pdf)
+    // Arquivo da fatura (imagem ou PDF)
     const input = document.querySelector('[name="fatura"]');
     if (input?.files?.length === 1) {
       const anexos = await importarAnexos({ input })
+      if (!anexos?.[0]?.link) {
+        removerOverlay()
+        return popup({ mensagem: 'Falha no envio da fatura: tente novamente.' })
+      }
       despesa.fatura = anexos[0].link
     }
 

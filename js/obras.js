@@ -482,6 +482,8 @@ async function pdfObra(nome) {
     if (!original) return
     const copia = original.cloneNode(true)
     copia.querySelectorAll('.col-gerir').forEach(el => el.remove())
+    // Checklist no PDF: linhas todas com fundo branco (a da especialidade tem cinzento na app).
+    copia.querySelectorAll('.tabela-especialidade tr').forEach(tr => { tr.style.backgroundColor = '#fff' })
 
     const obra = controles.obraPdf ? await recuperarDado('dados_orcamentos', controles.obraPdf) : null
     const cliente = obra?.cliente ? await recuperarDado('dados_clientes', obra.cliente) : null

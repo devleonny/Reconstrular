@@ -735,11 +735,13 @@ const FUSO_EMPRESA = 'Europe/Lisbon'
             }
         })
     }
-    // Obras para a designação do local: "Nº da obra - Cliente - Morada da obra" (a morada vem de Ver Obras).
+    // Obras para a designação do local: só a morada da obra (a de Ver Obras), que é o que o utilizador procura.
+    // Obra ainda sem morada: fica "Nº da obra - Cliente" para não desaparecer da lista.
     async function opcoesObrasLocal() {
         const { resultados = [] } = await pesquisarDB({ base: 'vw_dados_orcamentos', filtros: { em_obra: { op: '=', value: true } }, pagina: 1, limite: 500,
             ordenar: { path: 'contrato', direcao: 'ASC' } }) || {}
-        return resultados.map(o => [o.contrato, o.nome_cliente, o.morada].filter(Boolean).join(' - ').slice(0, 160))
+        const opcoes = resultados.map(o => (String(o.morada || '').trim() || [o.contrato, o.nome_cliente].filter(Boolean).join(' - ')).slice(0, 160))
+        return [...new Set(opcoes.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'))
     }
     async function formularioLocal(l = null) {
         emEdicao = l

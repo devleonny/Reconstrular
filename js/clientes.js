@@ -241,6 +241,12 @@ async function salvarCliente(idCliente) {
 // "Rua de Bruxelas nº9, 2835-695 Santo António da Charneca, Barreiro, Setúbal".
 // A linha vai para morada_fiscal / morada_execucao (usada nas tabelas, obras e cronograma) e as partes para *_partes.
 const LADOS_MORADA = ['Esquerdo', 'Frente', 'Direito', 'A', 'B', 'C', 'D']
+// Tipos de habitação (por esta ordem no formulário). Moradia, Armazém, Estabelecimento Comercial, Arrecadação e Prédio
+// usam rua + nº de porta; Apartamento, Escritório e Garagem são frações de um prédio (nº do prédio, andar e lado).
+const TIPOS_HABITACAO = ['Moradia', 'Apartamento', 'Estabelecimento Comercial', 'Armazém', 'Garagem', 'Arrecadação', 'Escritório', 'Prédio']
+const TIPOS_FRACAO = ['Apartamento', 'Escritório', 'Garagem']
+const ehFracao = tipo => TIPOS_FRACAO.includes(tipo)
+const camposDoTipo = tipo => TIPOS_HABITACAO.includes(tipo) ? CAMPOS_MORADA[ehFracao(tipo) ? 'Apartamento' : 'Moradia'] : []
 const CAMPOS_MORADA = {
     Moradia: [['rua', 'Rua'], ['porta', 'Nº de porta'], ['codigo_postal', 'Código Postal'], ['freguesia', 'Freguesia'], ['cidade', 'Cidade'], ['distrito', 'Distrito']],
     Apartamento: [['rua', 'Rua'], ['predio', 'Nº do prédio'], ['andar', 'Andar'], ['lado', 'Lado'], ['codigo_postal', 'Código Postal'], ['freguesia', 'Freguesia'], ['cidade', 'Cidade'], ['distrito', 'Distrito']]
@@ -248,17 +254,18 @@ const CAMPOS_MORADA = {
 
 function blocoMorada(prefixo, partes, texto = '') {
     const p = partes || {}
-    const tipo = ['Moradia', 'Apartamento'].includes(p.tipo) ? p.tipo : ''
+    const tipo = TIPOS_HABITACAO.includes(p.tipo) ? p.tipo : ''
     const campo = (chave, rotulo) => chave === 'lado'
         ? `<label data-campo="${chave}">${rotulo}<select name="${prefixo}__${chave}" onchange="atualizarMorada('${prefixo}')">
             <option value=""></option>${LADOS_MORADA.map(l => `<option ${p.lado === l ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`
         : `<label data-campo="${chave}">${rotulo}<input name="${prefixo}__${chave}" value="${escaparAtributo(p[chave] || '')}"
             ${chave === 'codigo_postal' ? 'placeholder="xxxx-xxx" maxlength="8" inputmode="numeric"' : ''} oninput="atualizarMorada('${prefixo}')"></label>`
-    const todos = [...new Map([...CAMPOS_MORADA.Apartamento, ...CAMPOS_MORADA.Moradia]).entries()]
+    // Ordem do documento: Rua, Nº de porta / Nº do prédio, Andar, Lado, Código Postal…
+    const todos = [...new Map([CAMPOS_MORADA.Moradia[0], CAMPOS_MORADA.Moradia[1], ...CAMPOS_MORADA.Apartamento.slice(1), ...CAMPOS_MORADA.Moradia]).entries()]
     return `
         <div class="morada-partes" data-morada="${prefixo}">
             <div class="morada-tipo">
-                ${['Moradia', 'Apartamento'].map(t => `<label><input type="radio" name="${prefixo}__tipo" value="${t}" ${tipo === t ? 'checked' : ''} onchange="atualizarMorada('${prefixo}')"> ${t}</label>`).join('')}
+                ${TIPOS_HABITACAO.map(t => `<label><input type="radio" name="${prefixo}__tipo" value="${t}" ${tipo === t ? 'checked' : ''} onchange="atualizarMorada('${prefixo}')"> ${t}</label>`).join('')}
             </div>
             <div class="morada-campos">${todos.map(([chave, rotulo]) => campo(chave, rotulo)).join('')}</div>
             <input type="hidden" name="${prefixo}" value="${escaparAtributo(texto || '')}" data-texto-antigo="${escaparAtributo(!partes && texto ? texto : '')}">
@@ -272,16 +279,16 @@ function partesMorada(prefixo) {
     const tipo = bloco.querySelector(`[name="${prefixo}__tipo"]:checked`)?.value || ''
     if (!tipo) return null
     const partes = { tipo }
-    for (const [chave] of CAMPOS_MORADA[tipo]) partes[chave] = bloco.querySelector(`[name="${prefixo}__${chave}"]`)?.value.trim() || ''
+    for (const [chave] of camposDoTipo(tipo)) partes[chave] = bloco.querySelector(`[name="${prefixo}__${chave}"]`)?.value.trim() || ''
     return partes
 }
 
 function textoMorada(p) {
     if (!p) return ''
     const andar = p.andar ? (/^\d+$/.test(p.andar) ? `${p.andar}º` : p.andar) : ''
-    const numero = p.tipo === 'Apartamento' ? p.predio : p.porta
+    const numero = ehFracao(p.tipo) ? p.predio : p.porta
     const inicio = [p.rua, numero ? `nº${numero}` : ''].filter(Boolean).join(' ')
-    const fracao = p.tipo === 'Apartamento' ? [andar, p.lado].filter(Boolean).join(' ') : ''
+    const fracao = ehFracao(p.tipo) ? [andar, p.lado].filter(Boolean).join(' ') : ''
     const local = [p.codigo_postal, p.freguesia].filter(Boolean).join(' ')
     return [inicio, fracao, local, p.cidade, p.distrito].filter(Boolean).join(', ')
 }
@@ -291,7 +298,7 @@ function atualizarMorada(prefixo) {
     const bloco = document.querySelector(`[data-morada="${prefixo}"]`)
     if (!bloco) return
     const tipo = bloco.querySelector(`[name="${prefixo}__tipo"]:checked`)?.value || ''
-    const visiveis = new Set((CAMPOS_MORADA[tipo] || []).map(([chave]) => chave))
+    const visiveis = new Set(camposDoTipo(tipo).map(([chave]) => chave))
     bloco.querySelectorAll('[data-campo]').forEach(label => { label.hidden = !visiveis.has(label.dataset.campo) })
     const cp = bloco.querySelector(`[name="${prefixo}__codigo_postal"]`)
     if (cp) cp.value = cp.value.replace(/[^\d]/g, '').replace(/^(\d{4})(\d)/, '$1-$2').slice(0, 8)
@@ -299,7 +306,7 @@ function atualizarMorada(prefixo) {
     const partes = partesMorada(prefixo)
     // Registo antigo (morada em texto livre) sem partes preenchidas: mantém o texto até se escolher o tipo.
     oculto.value = partes ? textoMorada(partes) : oculto.dataset.textoAntigo || ''
-    bloco.querySelector('.morada-previa').textContent = oculto.value ? `Morada: ${oculto.value}` : 'Escolha Moradia ou Apartamento e preencha a morada.'
+    bloco.querySelector('.morada-previa').textContent = oculto.value ? `Morada: ${oculto.value}` : 'Escolha o tipo de habitação e preencha a morada.'
     if (prefixo === 'morada_fiscal') sincronizarMoradaExecucao()
     if (typeof verificarRegras === 'function') verificarRegras()
 }
@@ -325,7 +332,7 @@ function sincronizarMoradaExecucao() {
     ocultoExecucao.dataset.textoAntigo = ocultoFiscal.dataset.textoAntigo || ''
     const partes = partesMorada('morada_execucao')
     ocultoExecucao.value = partes ? textoMorada(partes) : ocultoFiscal.value
-    const visiveis = new Set((CAMPOS_MORADA[tipo] || []).map(([chave]) => chave))
+    const visiveis = new Set(camposDoTipo(tipo).map(([chave]) => chave))
     execucao.querySelectorAll('[data-campo]').forEach(label => { label.hidden = !visiveis.has(label.dataset.campo) })
     execucao.querySelector('.morada-previa').textContent = ocultoExecucao.value ? `Morada: ${ocultoExecucao.value}` : ''
 }
@@ -336,8 +343,8 @@ function validarMorada(prefixo) {
     const nome = prefixo === 'morada_fiscal' ? 'Morada Fiscal' : 'Morada de Execução'
     const partes = partesMorada(prefixo)
     const oculto = document.querySelector(`input[type="hidden"][name="${prefixo}"]`)
-    if (!partes) return oculto?.value ? [] : [`${nome}: escolha Moradia ou Apartamento`]
-    const faltam = CAMPOS_MORADA[partes.tipo].filter(([chave]) => !partes[chave]).map(([, rotulo]) => rotulo)
+    if (!partes) return oculto?.value ? [] : [`${nome}: escolha o tipo de habitação`]
+    const faltam = camposDoTipo(partes.tipo).filter(([chave]) => !partes[chave]).map(([, rotulo]) => rotulo)
     const erros = faltam.length ? [`${nome}: ${faltam.join(', ')}`] : []
     if (partes.codigo_postal && !/^\d{4}-\d{3}$/.test(partes.codigo_postal)) erros.push(`${nome}: código postal no formato xxxx-xxx`)
     return erros

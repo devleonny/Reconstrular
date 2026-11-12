@@ -170,6 +170,8 @@ async function importarDocumentoOrcamento(doc, idOrcamento) {
             return
 
         const anexo = await importarAnexos({ input })
+        if (!anexo?.[0]?.link)
+            return popup({ mensagem: "Falha no envio do documento: tente novamente." })
 
         await enviar(`dados_orcamentos/${idOrcamento}/documentos/${doc}`, anexo[0])
 
@@ -378,7 +380,9 @@ async function excluirOrcamento(idOrcamento) {
     }
 }
 
-async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
+async function salvarOrcamento(idExistente) {
+    // Orçamento novo: não se pede ao servidor um id que ainda não existe (seria recusado pela proteção por região).
+    const idOrcamento = idExistente || crypto.randomUUID()
     try {
         overlayAguarde()
 
@@ -389,7 +393,7 @@ async function salvarOrcamento(idOrcamento = crypto.randomUUID()) {
             return popup({ mensagem: 'Campo Cliente obrigatório' })
         }
 
-        const orcamento = await recuperarDado('dados_orcamentos', idOrcamento) || {}
+        const orcamento = idExistente ? await recuperarDado('dados_orcamentos', idExistente) || {} : {}
         const camposAtuais = orcamento.campos || {}
 
         const selects = [...document.querySelectorAll('[name="ambientes"]')]

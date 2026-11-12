@@ -1242,12 +1242,20 @@ async function importarAnexos({ input, foto }) {
     }
 
     try {
-        const response = await fetch(`${api}/upload`, {
+        // fetchAutenticado: com o token de acesso vencido, renova a sessão e repete o envio.
+        const { token } = JSON.parse(localStorage.getItem('acesso')) || {}
+        const response = await fetchAutenticado(`${api}/upload`, {
             method: 'POST',
-            headers: { Authorization: `Bearer ${acesso?.token}` },
+            headers: { Authorization: `Bearer ${token || acesso?.token}` },
             body: formData
         });
-        return await response.json();
+        if (!response) return []
+        const dados = await response.json().catch(() => null)
+        if (!response.ok || !Array.isArray(dados)) {
+            console.error('Envio de anexos recusado:', response.status, dados)
+            return []
+        }
+        return dados;
     } catch (err) {
         popup({ mensagem: `Erro na API: ${err}` })
         throw err;
@@ -1588,10 +1596,11 @@ async function pdf({ id, html = null, estilos = [], nome = 'documento' }) {
                     ${estilos}
                     <style>
                         @page { size: A4; margin: 0mm; }
-                        html, body { margin: 0; padding: 0; }
+                        /* O estilo da app dá ao html o fundo escuro e a altura do ecrã: no PDF, a partir da
+                           primeira página as linhas ficavam sobre esse fundo (cinzento). Aqui é tudo branco. */
+                        html, body { margin: 0; padding: 0; background: #fff !important; height: auto !important; min-height: 100%; overflow: visible !important; }
                         body {
-                            font-family: 'Poppins', sans-serif; 
-                            background: white; 
+                            font-family: 'Poppins', sans-serif;
                         }
 
                     </style>

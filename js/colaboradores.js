@@ -911,6 +911,8 @@ async function salvarColaborador(idExistente) {
             if (!input || !input.files || input.files.length === 0) continue
 
             const anexos = await importarAnexos({ input })
+            if (anexos.length !== input.files.length)
+                return popup({ mensagem: "Falha no envio dos anexos: tente novamente." })
 
             if (!colaborador[campo])
                 colaborador[campo] = {}
@@ -932,7 +934,7 @@ async function salvarColaborador(idExistente) {
         if (foto.src && !foto.src.includes(api)) {
             const resposta = await importarAnexos({ foto: foto.src })
 
-            if (resposta[0].link) {
+            if (resposta?.[0]?.link) {
                 colaborador.foto = resposta[0].link
             } else {
                 return popup({ mensagem: 'Falha no envio da Foto: tente novamente.' })
