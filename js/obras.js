@@ -150,7 +150,7 @@ function criarLinhaObras(obra) {
         <section class="obra-cartao">
             <h4>Material extra</h4>
             <button type="button" class="obra-valor-destaque" onclick="mostrarMateriaisExtras('${numeroObra}')" title="Ver as despesas extra da obra">${dinheiro(extra)} ›</button>
-            ${porcentagemHtml(porcentagem_extra || 0)}
+            ${barraPercentagem(porcentagem_extra || 0, { tipo: 'consumo', titulo: 'Material extra face ao material orçado' })}
             <small class="obra-nota">face ao material orçado (${dinheiro(total_materiais ?? 0)})</small>
         </section>
         <section class="obra-cartao">
@@ -1138,21 +1138,9 @@ async function atualizarToolbar({ nomeTarefa } = {}) {
     filtrar()
 }
 
+// Andamento de um item da checklist (mais é melhor; acima de 100 % é excedente).
 function porcentagemHtml(percentual) {
-    let cor
-    if (percentual < 50) cor = 'red'
-    else if (percentual < 100) cor = 'orange'
-    else if (percentual > 100) cor = 'blue'
-    else cor = 'green'
-
-    return `
-    <div style="display:flex; align-items:center; gap:4px;">
-        <span style="color:#888; font-size:14px;">${percentual}%</span>
-        <div class="barra" style="flex:1; height:8px; background:#ddd;">
-            <div style="width:${percentual}%; height:100%; background:${cor};"></div>
-        </div>
-    </div>
-  `
+    return barraPercentagem(percentual, { titulo: Number(percentual) > 100 ? 'Acima da quantidade orçada' : 'Andamento do item' })
 }
 
 async function historicoObras(ordem) {

@@ -2172,3 +2172,16 @@ button.icone-ficheiro:hover:not(:disabled), button.icone-ficheiro:focus, button.
 .icone-ficheiro .icone-ficheiro-canto { fill: rgba(255, 255, 255, .45); }
 .icone-ficheiro .icone-ficheiro-imagem { fill: rgba(255, 255, 255, .85); }
 .icone-ficheiro span { position: relative; color: #fff; font: 700 8px/1 'Poppins', sans-serif; letter-spacing: .03em; }
+
+/* ---------- Barra de percentagem (barraPercentagem em central.js) ---------- */
+.barra-pct { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 90px; }
+.barra-pct-trilho { position: relative; flex: 1; height: 8px; overflow: hidden; border-radius: 999px; background: #e6ebef; }
+.barra-pct-valor { display: block; height: 100%; border-radius: 999px; background: var(--barra-cor); transition: width 300ms ease; }
+.barra-pct-texto { min-width: 42px; color: var(--barra-texto, #4c5965); font-size: 12px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.barra-pct-mau { --barra-cor: #e05a4f; }
+.barra-pct-medio { --barra-cor: #f0b43c; }
+.barra-pct-bom { --barra-cor: #4caf72; }
+.barra-pct-completo { --barra-cor: #2e9a5a; --barra-texto: #23613b; }
+.barra-pct-excede { --barra-cor: #3b78c4; --barra-texto: #24548f; }
+.barra-pct-excede .barra-pct-valor { background: repeating-linear-gradient(45deg, #3b78c4 0 6px, #5b93d6 6px 12px); }
+@media print { .barra-pct-trilho, .barra-pct-valor { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }

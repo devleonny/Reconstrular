@@ -1529,19 +1529,26 @@ async function salvarNovaSenha({ identificador, novaSenha, codigo }) {
 
 }
 
-function divPorcentagem(porcentagem) {
-    const valor = Math.max(0, Math.min(100, Number(porcentagem) || 0))
+// Barra de percentagem (componente único; estilos em estilo.css, .barra-pct).
+// tipo "progresso": mais é melhor (vermelho → amarelo → verde; acima de 100 % fica azul, excedente).
+// tipo "consumo": mais é pior (ex.: % de material extra; verde até 10 %, amarelo até 25 %, depois vermelho).
+function barraPercentagem(percentual, { tipo = 'progresso', titulo = '' } = {}) {
+    const valor = Number(percentual) || 0
+    const largura = Math.max(0, Math.min(100, valor))
+    const nivel = tipo === 'consumo'
+        ? (valor <= 10 ? 'bom' : valor <= 25 ? 'medio' : 'mau')
+        : (valor > 100 ? 'excede' : valor >= 100 ? 'completo' : valor >= 70 ? 'bom' : valor >= 40 ? 'medio' : 'mau')
+    const texto = `${valor.toLocaleString('pt-PT', { maximumFractionDigits: 1 })}%`
+    return `<div class="barra-pct barra-pct-${nivel}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${largura}"
+            ${titulo ? `title="${escaparAtributo(titulo)}"` : ''} aria-label="${escaparAtributo(titulo || texto)}">
+        <span class="barra-pct-trilho"><span class="barra-pct-valor" style="width: ${largura}%"></span></span>
+        <span class="barra-pct-texto">${texto}</span>
+    </div>`
+}
 
-    return `
-        <div style="${horizontal}; width: 95%; z-index: 0;">
-            <div style="position: relative; border: 1px solid #666666; width: 100%; height: 16px; background: #eee; border-radius: 8px; overflow: hidden;">
-                <div style="width: ${valor}%; height: 100%; background: ${valor >= 70 ? "#4caf50" : valor >= 40 ? "#ffc107" : "#f44336"};"></div>
-                <label style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.7rem; color: #000;">
-                    ${valor}%
-                </label>
-            </div>
-        </div>
-    `
+// Andamento da obra (Ver Obras).
+function divPorcentagem(porcentagem) {
+    return barraPercentagem(porcentagem, { titulo: 'Andamento da obra' })
 }
 
 async function pdfEmail({ html, emails, htmlContent = 'Documento em anexo', titulo = 'Documento' }) {
