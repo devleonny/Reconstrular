@@ -34,7 +34,7 @@ async function telaObras() {
 
     } catch (err) {
         console.error(err)
-        popup({ mensagem: 'Falha ao abrir o ecrã de parceiros: Fale com o suporte.' })
+        popup({ mensagem: 'Falha ao abrir o ecrã de Obras: Fale com o suporte.' })
     }
 
 }
