@@ -295,26 +295,21 @@ async function formularioDespesa(idDespesa) {
         </label>
       `).join('')
 
-    const linhaAnexo = !foto && !fatura
-      ? {
-        texto: 'Upload Fatura', elemento: `
-            <div style="${horizontal}; gap: 1rem;">
-                <select id="modal" onchange="alterarModal(); verificarRegras()">
-                    <option>Upload</option>
-                    <option>Foto</option>
-                </select>
-                <div id="upload"></div>
-            </div>
-            `
-      }
+    // Fatura já anexada: ver (imagem ou PDF) ou substituir por outra; sem fatura: enviar ficheiro ou tirar foto.
+    const linkFatura = fatura || foto
+    const linhaAnexo = !linkFatura
+      ? { texto: 'Upload Fatura', elemento: `<div class="despesa-fatura">${escolhaFatura()}</div>` }
       : {
+        texto: 'Fatura',
         elemento: `
-          <div style="${horizontal}; gap: 1rem;">
-            <img src="imagens/concluido.png">
-            <span>Fatura já anexada</span>
+          <div class="despesa-fatura">
+            <div class="despesa-fatura-acoes">
+              <span class="despesa-fatura-ok"><img src="imagens/concluido.png" alt="">Fatura anexada</span>
+              <button type="button" onclick="abrirArquivo('${escaparAtributo(linkFatura)}')">Ver fatura</button>
+              <button type="button" onclick="substituirFatura(this)">Substituir fatura</button>
+            </div>
           </div>
         `
-
       }
 
     const linhas = [
@@ -488,6 +483,40 @@ function calcularTotalDespesa() {
   if (local)
     local.textContent = dinheiro(total)
 
+}
+
+// Escolha do envio da fatura: ficheiro (imagem ou PDF) ou foto pela câmara.
+function escolhaFatura() {
+  return `
+    <div style="${horizontal}; gap: 1rem;">
+      <select id="modal" onchange="alterarModal(); verificarRegras()">
+        <option>Upload</option>
+        <option>Foto</option>
+      </select>
+      <div id="upload"></div>
+    </div>`
+}
+
+// Troca a fatura anexada: mostra a escolha de envio; a nova só substitui a antiga ao guardar.
+function substituirFatura(botao) {
+  const caixa = botao.closest('.despesa-fatura')
+  if (!caixa) return
+  caixa.dataset.original = caixa.innerHTML
+  caixa.innerHTML = `${escolhaFatura()}
+    <div class="despesa-fatura-acoes">
+      <small class="despesa-fatura-nota">A fatura atual só é substituída ao guardar.</small>
+      <button type="button" onclick="manterFatura(this)">Manter a fatura atual</button>
+    </div>`
+  alterarModal()
+  verificarRegras()
+}
+
+function manterFatura(botao) {
+  const caixa = botao.closest('.despesa-fatura')
+  if (!caixa?.dataset.original) return
+  caixa.innerHTML = caixa.dataset.original
+  delete caixa.dataset.original
+  verificarRegras()
 }
 
 function alterarModal() {

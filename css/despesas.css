@@ -218,3 +218,11 @@ th {
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 12px;
 }
+
+/* Fatura no formulário da despesa: ver ou substituir a que já está anexada. */
+.popup-despesa .despesa-fatura { display: flex; flex-direction: column; gap: 6px; }
+.popup-despesa .despesa-fatura-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.popup-despesa .despesa-fatura-ok { display: inline-flex; align-items: center; gap: 6px; margin-right: 4px; }
+.popup-despesa .despesa-fatura-ok img { width: 20px; height: 20px; }
+.popup-despesa .despesa-fatura-acoes button { padding: 6px 12px; }
+.popup-despesa .despesa-fatura-nota { color: #65788a; font-size: 11px; }
