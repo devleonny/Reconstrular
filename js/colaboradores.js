@@ -999,7 +999,7 @@ async function excelColaboradores() {
             titulo: `Colaboradores_${Date.now()}.xlsx`,
             filtros: selecaoColaboradores.todos
                 ? filtrosTela
-                : { modo: 'AND', regras: [filtrosTela, { modo: 'OR', regras: ids.map(id => ({ path: 'id', op: '=', value: id })) }] },
+                : filtrosComSelecao(filtrosTela, ids),
             ordenar: controles.colaboradores?.ordenar || { path: 'timestamp', direcao: 'desc', tipo: 'numero' },
             formatacao: {
                 datas: ['data_nascimento'],

@@ -1,5 +1,5 @@
 const CACHE_PREFIX = `reconstrular-${self.registration.scope}-`
-const CACHE = `${CACHE_PREFIX}v8e2dd306`
+const CACHE = `${CACHE_PREFIX}va5afe932`
 const localUrl = path => new URL(path, self.registration.scope).href
 const PUSH_CACHE = `reconstrular-push:${self.registration.scope}`
 

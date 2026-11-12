@@ -987,7 +987,7 @@ async function confirmarBaixarExcel() {
 function filtrosExcelDespesas() {
   const filtrosTela = controles.despesas?.filtros || {}
   if (selecaoDespesas.todos) return filtrosTela
-  return { modo: 'AND', regras: [filtrosTela, { modo: 'OR', regras: [...selecaoDespesas.ids].map(id => ({ path: 'id', op: '=', value: id })) }] }
+  return filtrosComSelecao(filtrosTela, selecaoDespesas.ids)
 }
 
 async function baixarExcelDespesas() {

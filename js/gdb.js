@@ -90,6 +90,13 @@ async function pesquisarDB(params) {
     return await resposta.json()
 }
 
+// Filtros da tela + só os registos marcados. O servidor lê os filtros como { campo: regra }: um {modo, regras}
+// no topo era ignorado e o Excel saía com todos os registos.
+function filtrosComSelecao(filtros = {}, ids = []) {
+    const selecao = { modo: 'OR', regras: [...ids].map(id => ({ op: '=', value: String(id) })) }
+    return { ...filtros, id: filtros.id ? [filtros.id, selecao] : selecao }
+}
+
 async function baixarRelatorioExcel(dados = null) {
 
     if (!dados)
