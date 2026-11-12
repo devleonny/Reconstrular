@@ -275,10 +275,13 @@ async function formularioDespesa(idDespesa) {
       filtros: { em_obra: { op: '=', value: true } },
       funcaoAdicional: ['verificarRegras'],
       retornar: ['contrato'],
+      // vw_dados_orcamentos traz cidade, distrito e morada (do cliente) em colunas próprias, não nos snapshots.
       colunas: {
         'Número': { chave: 'contrato' },
-        'Cidade': { chave: 'snapshots.cidade.nome' },
-        'Distrito': { chave: 'snapshots.cidade.distrito' }
+        'Cliente': { chave: 'nome_cliente' },
+        'Morada': { chave: 'morada' },
+        'Cidade': { chave: 'cidade' },
+        'Distrito': { chave: 'distrito' }
       }
     }
 

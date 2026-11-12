@@ -21,8 +21,8 @@ async function telaObras() {
                 'Status': {},
                 'Número': { chave: 'contrato' },
                 'Cliente': { chave: 'snapshots.cliente' },
-                'Distrito': { chave: 'snapshots.cidade.distrito' },
-                'Cidade': { chave: 'snapshots.cidade.nome' },
+                'Distrito': { chave: 'distrito' },
+                'Cidade': { chave: 'cidade' },
                 'Morada': { chave: 'morada' },
                 'Total de orçamento': { chave: 'total_geral' }
             }
