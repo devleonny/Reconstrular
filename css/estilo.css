@@ -2146,3 +2146,29 @@ button:disabled {
 .morada-previa { font-size: 0.8rem; color: #1f4f7a; }
 .morada-copiada { opacity: 0.65; }
 .morada-mesma { display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; }
+
+/* Ícone de ficheiro por extensão (iconeFicheiro em central.js): folha na cor do tipo com a extensão. */
+.icone-ficheiro {
+    position: relative;
+    display: inline-flex;
+    align-items: flex-end;
+    justify-content: center;
+    width: 30px;
+    height: 37px;
+    padding: 0 0 6px;
+    margin: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    cursor: pointer;
+    vertical-align: middle;
+    transition: transform 120ms ease;
+}
+button.icone-ficheiro:hover:not(:disabled), button.icone-ficheiro:focus, button.icone-ficheiro:active { background: none; box-shadow: none; }
+.icone-ficheiro:hover, .icone-ficheiro:focus-visible { transform: translateY(-2px); }
+.icone-ficheiro:focus-visible { outline: 2px solid var(--ficheiro-cor); outline-offset: 2px; border-radius: 4px; }
+.icone-ficheiro svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.icone-ficheiro .icone-ficheiro-folha { fill: var(--ficheiro-cor); }
+.icone-ficheiro .icone-ficheiro-canto { fill: rgba(255, 255, 255, .45); }
+.icone-ficheiro .icone-ficheiro-imagem { fill: rgba(255, 255, 255, .85); }
+.icone-ficheiro span { position: relative; color: #fff; font: 700 8px/1 'Poppins', sans-serif; letter-spacing: .03em; }

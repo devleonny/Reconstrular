@@ -169,12 +169,10 @@ async function criarLinhaDespesa(dados) {
     ? `<span class="etiquetas">${obra}</span>`
     : ''
 
+  // Fatura: ícone pelo tipo do ficheiro (PDF, imagem, …) que a abre.
   const ax = (link) => {
     if (!link) return ''
-    return `
-        <img onclick="abrirArquivo('${link}')" src="imagens/contas.png">
-        <input name="link" style="display: none;" value="${link}">
-        `
+    return `${iconeFicheiro(link, { titulo: 'Ver fatura' })}<input name="link" style="display: none;" value="${escaparAtributo(link)}">`
   }
 
   const etiquetaValor = tipo_despesa == 'Nota de Crédito'
@@ -304,7 +302,8 @@ async function formularioDespesa(idDespesa) {
         elemento: `
           <div class="despesa-fatura">
             <div class="despesa-fatura-acoes">
-              <span class="despesa-fatura-ok"><img src="imagens/concluido.png" alt="">Fatura anexada</span>
+              ${iconeFicheiro(linkFatura, { titulo: 'Ver fatura' })}
+              <span class="despesa-fatura-ok">Fatura anexada</span>
               <button type="button" onclick="abrirArquivo('${escaparAtributo(linkFatura)}')">Ver fatura</button>
               <button type="button" onclick="substituirFatura(this)">Substituir fatura</button>
             </div>

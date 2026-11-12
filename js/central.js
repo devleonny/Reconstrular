@@ -1277,9 +1277,26 @@ function corTipoAnexo(extensao) {
         doc: '#2b6cb0', docx: '#2b6cb0', txt: '#2b6cb0',
         ppt: '#d9822b', pptx: '#d9822b',
         zip: '#7b4fb0', rar: '#7b4fb0', '7z': '#7b4fb0',
-        dwg: '#0f8a8a', dxf: '#0f8a8a'
+        dwg: '#0f8a8a', dxf: '#0f8a8a',
+        jpg: '#c2185b', jpeg: '#c2185b', png: '#c2185b', webp: '#c2185b', gif: '#c2185b', heic: '#c2185b'
     }
     return cores[extensao] || '#5b707f'
+}
+
+// Ícone de ficheiro pela extensão (folha com o canto dobrado, na cor do tipo, e a extensão escrita).
+// Abre o ficheiro ao clicar (abrirArquivo: imagem e PDF dentro do app).
+function iconeFicheiro(link, { titulo = 'Abrir ficheiro' } = {}) {
+    if (!link) return ''
+    const extensao = (String(link).match(/.([a-z0-9]+)$/i)?.[1] || '').toLowerCase()
+    const imagem = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic'].includes(extensao)
+    const rotulo = imagem ? 'IMG' : (extensao || 'arq').slice(0, 4).toUpperCase()
+    const nome = escaparAtributo(`${titulo} (${extensao || 'ficheiro'})`)
+    return `<button type="button" class="icone-ficheiro" style="--ficheiro-cor: ${corTipoAnexo(extensao)}" title="${nome}" aria-label="${nome}"
+        onclick="abrirArquivo('${escaparAtributo(link)}')">
+        <svg viewBox="0 0 32 40" aria-hidden="true"><path class="icone-ficheiro-folha" d="M3 1h18l8 8v28a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z"/><path class="icone-ficheiro-canto" d="M21 1v6a2 2 0 0 0 2 2h6z"/>
+        ${imagem ? '<path class="icone-ficheiro-imagem" d="M7 10h18v10l-5-5-5 5-3-3-5 5z"/><circle class="icone-ficheiro-imagem" cx="11" cy="13.5" r="1.8"/>' : ''}</svg>
+        <span>${escaparAtributo(rotulo)}</span>
+    </button>`
 }
 
 // Cartão de anexo (miniatura para imagem, selo com o tipo para os outros), como no GCS.
