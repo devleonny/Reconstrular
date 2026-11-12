@@ -380,5 +380,5 @@ screen and (min-aspect-ratio: 13/9) {
 
 /* Ver Obras: lucro nos detalhes e aviso de obra em destaque (vinda da folha de ponto). */
 .obra-detalhe-lucro small { color: #6b7a87; font-size: 10px; line-height: 1.4; }
-.obras-destaque { display: inline-flex; align-items: center; gap: 8px; padding: 4px 6px 4px 12px; border-radius: 8px; background: #fff3cd; color: #5c4a12; font-size: 12px; }
+.obras-destaque { display: inline-flex; align-items: center; gap: 8px; margin-right: 12px; padding: 4px 6px 4px 12px; border-radius: 8px; background: #fff3cd; color: #5c4a12; font-size: 12px; }
 .obras-destaque button { padding: 4px 10px; font-size: 12px; }
