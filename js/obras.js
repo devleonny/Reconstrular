@@ -161,8 +161,10 @@ async function alinhamentoTarefas(idObra) {
             </tr>`).join('')
         const elemento = `
             <div class="alinhamento-tarefas" data-obra="${escaparAtributo(idObra)}">
-                <p>Obra <b>${escaparAtributo(contrato || '')}</b> · ${personalizado ? 'ordem definida pela equipa' : 'ordem padrão (Interior e depois Exterior)'}.
-                Arraste as tarefas (ou use ▲ ▼) para a ordem de execução; o cronograma é atualizado ao guardar.</p>
+                <div class="alinhamento-info">
+                    <p>Obra <b>${escaparAtributo(contrato || '')}</b> · ${personalizado ? 'ordem definida pela equipa' : 'ordem padrão (Interior e depois Exterior)'}.</p>
+                    <p>Arraste as tarefas (ou use ▲ ▼) para a ordem de execução; o cronograma é atualizado ao guardar.</p>
+                </div>
                 <div class="alinhamento-recorte">
                     <table class="tabela"><thead><tr><th></th><th>Nº</th><th>Secção</th><th>Especialidade</th><th>Tarefa</th><th>Divisão</th><th>Mover</th></tr></thead>
                     <tbody>${linhas || '<tr><td colspan="7">Esta obra não tem tarefas no orçamento.</td></tr>'}</tbody></table>

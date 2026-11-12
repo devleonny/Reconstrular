@@ -365,7 +365,8 @@ screen and (min-aspect-ratio: 13/9) {
 /* Alinhamento de Tarefas: lista arrastável com a secção (Interior/Exterior) e a especialidade. */
 .popup-alinhamento .popup-janela-fora { width: min(1000px, 96vw); max-width: 96vw; }
 .alinhamento-tarefas { display: flex; flex-direction: column; gap: 10px; }
-.alinhamento-tarefas p { margin: 0; font-size: 0.85rem; color: #4c5965; }
+.alinhamento-info { display: flex; flex-direction: column; gap: 4px; margin: 12px 14px 4px; padding: 12px 16px; border-radius: 8px; background: #f3f6f9; }
+.alinhamento-tarefas .alinhamento-info p { margin: 0; font-size: 0.85rem; line-height: 1.5; color: #4c5965; }
 .alinhamento-recorte { max-height: 60vh; overflow: auto; }
 .alinhamento-tarefas tr[data-chave] { cursor: grab; }
 .alinhamento-tarefas tr.alinhamento-arrastando { opacity: 0.4; }
