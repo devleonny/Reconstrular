@@ -379,6 +379,62 @@ screen and (min-aspect-ratio: 13/9) {
 .alinhamento-mover button { padding: 2px 8px; margin: 0 2px; }
 
 /* Ver Obras: lucro nos detalhes e aviso de obra em destaque (vinda da folha de ponto). */
-.obra-detalhe-lucro small { color: #6b7a87; font-size: 10px; line-height: 1.4; }
 .obras-destaque { display: inline-flex; align-items: center; gap: 8px; margin-right: 12px; padding: 4px 6px 4px 12px; border-radius: 8px; background: #fff3cd; color: #5c4a12; font-size: 12px; }
 .obras-destaque button { padding: 4px 10px; font-size: 12px; }
+
+/* ---------- Ver Obras: detalhes em cartões ---------- */
+.obra-detalhes-cartoes {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.8fr) minmax(300px, 1.6fr) minmax(200px, 0.9fr) minmax(200px, 1fr);
+    gap: 12px;
+    padding: 12px;
+    text-align: left;
+}
+@media (max-width: 1100px) { .obra-detalhes-cartoes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .obra-detalhes-cartoes { grid-template-columns: 1fr; } }
+.obra-cartao {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid #e1e6eb;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(31, 45, 61, .04);
+}
+.obra-cartao h4 { display: flex; align-items: center; gap: 6px; margin: 0; color: #596773; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.obra-cartao h4 small { padding: 1px 7px; border-radius: 10px; background: #eef2f5; color: #596773; font-size: 10px; }
+.obra-cartao-rodape { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.obra-nota { color: #7a8894; font-size: 11px; }
+
+.obra-total { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; color: #4c5965; font-size: 12px; }
+.obra-total b { color: #26323d; font-size: 18px; font-variant-numeric: tabular-nums; }
+
+.obra-composicao { display: flex; height: 10px; overflow: hidden; border-radius: 5px; background: #eef2f5; }
+.obra-composicao > span { height: 100%; }
+.obra-composicao-materiais { background: #5b8fc7; }
+.obra-composicao-mao_obra { background: #e3a54a; }
+.obra-composicao-ferramentas { background: #8c7bc4; }
+.obra-composicao-lucro { background: #3f9f63; }
+.obra-legenda { display: inline-block; width: 9px; height: 9px; margin-right: 7px; border-radius: 2px; vertical-align: middle; }
+
+.obra-valores { display: flex; flex-direction: column; }
+button.obra-valor-linha, button.obra-valor-linha:hover:not(:disabled) {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    width: 100%; margin: 0; padding: 7px 4px; border: 0; border-bottom: 1px solid #eef1f4; border-radius: 0;
+    background: none; box-shadow: none; color: #3d4a56; font-size: 12px; font-weight: 400; cursor: pointer; text-align: left;
+}
+button.obra-valor-linha:hover:not(:disabled) { background: #f6f8fa; }
+.obra-valor-linha span:last-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.obra-valor-linha small, .obra-lucro small { color: #8a96a1; font-size: 10px; }
+
+.obra-lucro { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 8px; background: #e8f5ec; color: #23613b; font-size: 12px; }
+.obra-lucro b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.obra-lucro.obra-lucro-negativo { background: #fceaea; color: #a52f2f; }
+
+button.obra-valor-destaque, button.obra-valor-destaque:hover:not(:disabled) {
+    align-self: flex-start; margin: 0; padding: 0; border: 0; background: none; box-shadow: none;
+    color: #26323d; font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+button.obra-valor-destaque:hover:not(:disabled) { color: #1f5fbf; }

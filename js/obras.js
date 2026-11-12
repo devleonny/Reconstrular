@@ -114,37 +114,51 @@ function criarLinhaObras(obra) {
         <td>${escaparAtributo(obra.morada || '')}</td>
         <td style="white-space: nowrap;">${dinheiro(total_geral ?? 0)}</td>
     `
-    const detalhes = `<div class="obra-detalhes-row">
-        <div class="obra-detalhe"><strong>Andamento</strong>
+    // Detalhes em cartões: Andamento · Orçamento (total, custos e lucro, com barra da composição) · Material extra · Colaboradores.
+    const total = Number(total_geral) || 0
+    const custos = [
+        ['materiais', 'Material', Number(total_materiais) || 0],
+        ['mao_obra', 'Mão de Obra', Number(total_mao_obra) || 0],
+        ['ferramentas', 'Ferramentas', Number(total_ferramentas) || 0]
+    ]
+    const fatia = v => total > 0 ? Math.max(0, v) / total * 100 : 0
+    const pct = v => v.toLocaleString('pt-PT', { maximumFractionDigits: 1 })
+    const barraComposicao = total > 0 ? `<div class="obra-composicao" role="img" aria-label="Composição do total: ${custos.map(([, nome, v]) => `${nome} ${pct(fatia(v))}%`).join(', ')}, Lucro ${pct(fatia(lucro))}%">
+            ${custos.map(([tipo, nome, v]) => `<span class="obra-composicao-${tipo}" style="width: ${fatia(v)}%" title="${nome}: ${pct(fatia(v))}%"></span>`).join('')}
+            <span class="obra-composicao-lucro" style="width: ${fatia(lucro)}%" title="Lucro: ${pct(fatia(lucro))}%"></span>
+        </div>` : ''
+    const linhaValor = ([tipo, nome, v]) => `<button type="button" class="obra-valor-linha" onclick="mostrarMateriaisOrcamento('${id}', '${tipo}')" title="Ver os itens de ${nome}">
+            <span><i class="obra-legenda obra-composicao-${tipo}"></i>${nome}</span><span>${dinheiro(v)} <small>${pct(fatia(v))}%</small> ›</span>
+        </button>`
+    const extra = Number(total_extra) || 0
+    const detalhes = `<div class="obra-detalhes-cartoes">
+        <section class="obra-cartao">
+            <h4>Andamento</h4>
             ${divPorcentagem(porcentagem)}
-            <div style="${vertical}; gap: 2px;">
-                ${excedente ? '<span class="excedente">Excedente</span>' : ''}
+            <div class="obra-cartao-rodape"><span class="${st.replace(' ', '_')}">${st}</span>${excedente ? '<span class="excedente">Excedente</span>' : ''}</div>
+        </section>
+        <section class="obra-cartao obra-cartao-orcamento">
+            <h4>Orçamento</h4>
+            <div class="obra-total"><span>Total do orçamento</span><b>${dinheiro(total)}</b></div>
+            ${barraComposicao}
+            <div class="obra-valores">${custos.map(linhaValor).join('')}</div>
+            <div class="obra-lucro ${lucro < 0 ? 'obra-lucro-negativo' : ''}" title="Total do orçamento menos Material, Mão de Obra e Ferramentas. É a base do variável na folha de ponto.">
+                <span><i class="obra-legenda obra-composicao-lucro"></i>Lucro</span>
+                <span><b>${dinheiro(lucro)}</b> <small>${pct(margemLucro)}% do total</small></span>
             </div>
-        </div>
-        <div class="obra-detalhe"><strong>Ferramentas</strong>
-            <span class="${Number(total_ferramentas) < 0 ? 'credito' : 'despesa'}" onclick="mostrarMateriaisOrcamento('${id}', 'ferramentas')" style="cursor: pointer;">${dinheiro(total_ferramentas)}</span>
-        </div>
-        <div class="obra-detalhe"><strong>Mão de Obra</strong>
-            <span class="${Number(total_mao_obra) < 0 ? 'credito' : 'despesa'}" onclick="mostrarMateriaisOrcamento('${id}', 'mao_obra')" style="cursor: pointer;">${dinheiro(total_mao_obra)}</span>
-        </div>
-        <div class="obra-detalhe"><strong>Material</strong>
-            <span class="${Number(total_materiais) < 0 ? 'credito' : 'despesa'}" onclick="mostrarMateriaisOrcamento('${id}', 'materiais')" style="cursor: pointer;">${dinheiro(total_materiais)}</span>
-        </div>
-        <div class="obra-detalhe obra-detalhe-lucro" title="Total do orçamento menos Material, Mão de Obra e Ferramentas (base do variável na folha de ponto)"><strong>Lucro</strong>
-            <span class="${lucro < 0 ? 'despesa' : 'credito'}">${dinheiro(lucro)}</span>
-            <small>${margemLucro.toLocaleString('pt-PT', { maximumFractionDigits: 1 })}% do total · ${dinheiro(total_geral ?? 0)} − custos</small>
-        </div>
-        <div class="obra-detalhe"><strong>Material Extra</strong>
-            <span class="${Number(total_extra) < 0 ? 'credito' : 'despesa'}" onclick="mostrarMateriaisExtras('${numeroObra}')" style="cursor: pointer;">${dinheiro(total_extra)}</span>
-        </div>
-        <div class="obra-detalhe"><strong>% Material Extra</strong>
+        </section>
+        <section class="obra-cartao">
+            <h4>Material extra</h4>
+            <button type="button" class="obra-valor-destaque" onclick="mostrarMateriaisExtras('${numeroObra}')" title="Ver as despesas extra da obra">${dinheiro(extra)} ›</button>
             ${porcentagemHtml(porcentagem_extra || 0)}
-        </div>
-        <div class="obra-detalhe obra-detalhe-colaboradores"><strong>Colaboradores</strong>
+            <small class="obra-nota">face ao material orçado (${dinheiro(total_materiais ?? 0)})</small>
+        </section>
+        <section class="obra-cartao">
+            <h4>Colaboradores <small>${nomesColaboradores.length}</small></h4>
             <div class="obra-colaboradores-tags">${nomesColaboradores.length
                 ? nomesColaboradores.map(nome => `<span class="tag-orcamento">${escaparAtributo(nome)}</span>`).join('')
-                : '<span>Nenhum colaborador vinculado.</span>'}</div>
-        </div>
+                : '<span class="obra-nota">Nenhum colaborador vinculado.</span>'}</div>
+        </section>
     </div>`
     return { linha: `<tr>${tds}</tr>`, detalhes }
 
