@@ -853,7 +853,7 @@ async function painelFotos(idObra, idOrcamento, idDescricao) {
         { texto: 'Guardar', img: 'concluido', funcao: `salvarFotos('${idObra}', '${idOrcamento}', '${idDescricao}')` }
     ]
 
-    popup({ elemento, botoes, titulo: 'Fotos do item' })
+    popup({ elemento, botoes, titulo: 'Fotos do item', cor: '#fff' })
 }
 
 // Junta uma foto nova (ainda por enviar) ao painel, com o botão de a retirar.

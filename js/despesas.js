@@ -135,12 +135,12 @@ function htmlTotaisObra(contrato, t) {
   const linha = (rotulo, valor) => `<tr><td>${rotulo}</td><td class="despesa-numero">${dinheiro(valor)}</td></tr>`
   return `<section class="despesa-materiais-detalhes"><h3>Custos da obra ${escaparAtributo(contrato)} face ao orçamento</h3>
     <div class="despesa-totais-obra">
-      <table class="tabela"><thead><tr><th>Material</th><th></th></tr></thead><tbody>
-        ${linha('Total Material Estimado', t.material.estimado)}${linha('Total Material Extra', t.material.extra)}${linha('Total Material Diferença', t.material.extra)}
-      </tbody></table>
-      <table class="tabela"><thead><tr><th>Ferramentas</th><th></th></tr></thead><tbody>
-        ${linha('Total Ferramentas Estimado', t.ferramentas.estimado)}${linha('Total Ferramentas Extra', t.ferramentas.extra)}${linha('Total Ferramentas Diferença', t.ferramentas.extra)}
-      </tbody></table>
+      <div class="despesa-detalhes-recorte"><table class="tabela"><thead><tr><th>Material</th><th></th></tr></thead><tbody>
+        ${linha('Total Material Estimado', t.material.estimado)}${linha('Total Material Extra', t.material.extra)}
+      </tbody><tfoot>${linha('Total Material Diferença', t.material.extra)}</tfoot></table></div>
+      <div class="despesa-detalhes-recorte"><table class="tabela"><thead><tr><th>Ferramentas</th><th></th></tr></thead><tbody>
+        ${linha('Total Ferramentas Estimado', t.ferramentas.estimado)}${linha('Total Ferramentas Extra', t.ferramentas.extra)}
+      </tbody><tfoot>${linha('Total Ferramentas Diferença', t.ferramentas.extra)}</tfoot></table></div>
     </div>
   </section>`
 }
@@ -226,14 +226,14 @@ async function criarLinhaDespesa(dados) {
   } catch (erro) { console.error(erro) }
   return {
     linha: `<tr>${tds}</tr>`,
-    detalhes: `<section class="despesa-materiais-detalhes"><h3>Materiais da despesa</h3>
+    detalhes: `<div class="despesa-detalhes"><section class="despesa-materiais-detalhes"><h3>Materiais da despesa</h3>
       ${materiais.length ? `<div class="despesa-detalhes-recorte"><table class="tabela">
         <thead><tr><th>Categoria</th><th>Descrição</th><th>Especialidade</th><th>Motivo</th><th>Quantidade</th><th>Valor unitário</th><th>Total</th></tr></thead>
         <tbody>${linhasMateriais}</tbody>
         <tfoot><tr><td colspan="6">Total dos materiais</td><td class="despesa-numero">${dinheiro(totalMateriais)}</td></tr></tfoot>
       </table></div>` : '<p>Nenhum material listado nesta despesa.</p>'}
       ${Number(taxa_iva) ? `<p>IVA ${taxa_iva}%: ${dinheiro(iva)}</p>` : ''}
-    </section>${totaisObra}`
+    </section>${totaisObra}</div>`
   }
 
 }
@@ -402,7 +402,7 @@ async function formularioDespesa(idDespesa) {
 // Despesa Inicial de Obra: a descrição escolhe-se da lista dos materiais/ferramentas do orçamento da obra, com o
 // saldo (orçado − já lançado noutras despesas iniciais e nesta) e aviso de excedente. Restantes tipos: lista do
 // catálogo (Materiais e Ferramentas) com texto livre; o que não estiver no catálogo aparece em "Despesas Extras"
-// para os gestores decidirem incluí-lo no sistema. A especialidade filtra as opções.
+// para os gestores o associarem a um item existente ou o incluírem no sistema. A especialidade filtra as opções.
 const ESPECIALIDADE_OUTROS = 'Outros'
 const TIPO_DESPESA_INICIAL = 'Despesa Inicial de Obra'
 const cacheItensDespesa = { catalogo: null, orcamentos: new Map(), lancadas: new Map() }
@@ -491,6 +491,12 @@ function contextoDespesa() {
   return { painel, tipo, contrato, idDespesa: painel?.closest('.popup-despesa')?.dataset.idDespesa || '' }
 }
 
+// Obra escolhida no campo, mesmo com a linha oculta (Despesa Interna): só uma troca de obra limpa as descrições.
+function obraEscolhidaDespesa() {
+  const obraEl = painelDespesa()?.querySelector('[name="obra"]')
+  return obraEl?.id ? obraEl.textContent.trim() : ''
+}
+
 async function adicionarMaterial(dados = {}) {
 
   try {
@@ -550,7 +556,7 @@ async function adicionarMaterial(dados = {}) {
         <div class="despesa-material-campos">
           ${mod('Quantidade', `<input oninput="calcularTotalDespesa(); verificarRegras()" type="number" min="0" step="any" name="quantidade" placeholder="Quantidade" value="${escaparAtributo(dados.quantidade ?? '')}">`)}
           ${mod('Valor', `<input oninput="calcularTotalDespesa(); verificarRegras()" type="number" min="0" step="any" name="valor" placeholder="Valor" value="${escaparAtributo(dados.valor ?? '')}">`)}
-          ${mod('Especialidade', `<select name="especialidade" onchange="atualizarDescricaoItem(this.closest('.item-material')); verificarRegras()">${opcoes}</select>`)}
+          ${mod('Especialidade', `<select name="especialidade" onchange="atualizarDescricaoItem(this.closest('.item-material'), { limpar: true }); verificarRegras()">${opcoes}</select>`)}
         </div>
 
         ${mod('Categoria', `<div class="despesa-motivos">${opcoesCategoria}</div>`)}
@@ -581,21 +587,26 @@ function removerItemDespesa(botao) {
 }
 
 // Tipo de despesa ou obra mudou: refaz a descrição de todos os itens (lista do orçamento ou do catálogo).
+// Se a obra mudou, a descrição escolhida (de outro orçamento) é limpa.
 async function atualizarDescricoesDespesa() {
   const { painel } = contextoDespesa()
-  for (const item of painel?.querySelectorAll('.item-material') || []) await atualizarDescricaoItem(item)
+  const obra = obraEscolhidaDespesa()
+  for (const item of painel?.querySelectorAll('.item-material') || [])
+    await atualizarDescricaoItem(item, { limpar: (item.dataset.obra ?? obra) !== obra })
   calcularTotalDespesa()
   verificarRegras()
 }
 
-async function atualizarDescricaoItem(item) {
+// limpar: a especialidade ou a obra mudou, por isso a descrição escolhida deixa de valer e volta a "Selecione".
+async function atualizarDescricaoItem(item, { limpar = false } = {}) {
   if (!item) return
   const local = item.querySelector('.despesa-descricao')
   const campoAtual = item.querySelector('[name="descricao"]')
-  const atual = (campoAtual ? campoAtual.value : item.dataset.descricao) || ''
+  const atual = limpar ? '' : (campoAtual ? campoAtual.value : item.dataset.descricao) || ''
   const categoria = item.querySelector('[data-campo="categoria"]:checked')?.value || 'Material'
   const especialidade = item.querySelector('[name="especialidade"]')?.value || ''
   const { tipo, contrato, idDespesa } = contextoDespesa()
+  item.dataset.obra = obraEscolhidaDespesa()
   const opcao = (valor, selecionado) => `<option value="${escaparAtributo(valor)}" ${selecionado ? 'selected' : ''}>${escaparAtributo(valor)}</option>`
   const nomeCategoria = categoria === 'Ferramenta' ? 'ferramentas' : 'materiais'
 
@@ -1338,9 +1349,10 @@ async function baixarExcelDespesas() {
 
 // ---------- Despesas Extras (menu Despesas) ----------
 // Recolhe todos os itens lançados em despesas extras de obra, para os gestores acompanharem. Os que estão fora do
-// catálogo (escritos à mão) podem ser incluídos em Materiais ou Ferramentas por quem gere as composições.
+// catálogo (escritos à mão) podem ser associados a um item que já existe (a despesa passa a usar esse nome e guarda
+// o texto original em descricao_original) e/ou incluídos em Materiais ou Ferramentas por quem gere as composições.
 const podeIncluirCatalogo = () => ['CEO', 'Diretor Operativo', 'Diretor Programador'].includes(acesso?.funcao)
-const estadoDespesasExtras = { itens: [], filtro: 'fora', termo: '' }
+const estadoDespesasExtras = { itens: [], filtro: 'fora', termo: '', catalogo: { Material: [], Ferramenta: [] } }
 
 async function telaDespesasExtras() {
 
@@ -1363,24 +1375,32 @@ async function telaDespesasExtras() {
       Ferramenta: new Set(catalogo.Ferramenta.map(n => n.toLocaleLowerCase()))
     }
 
+    estadoDespesasExtras.catalogo = catalogo
     estadoDespesasExtras.itens = despesas
       .filter(d => ehDespesaExtra(d.tipo_despesa))
-      .flatMap(d => (Array.isArray(d.material) ? d.material : Object.values(d.material || {})).map(item => {
+      .flatMap(d => Object.entries(d.material || {}).map(([chave, item]) => {
         const categoria = item.categoria === 'Ferramenta' ? 'Ferramenta' : 'Material'
         const descricao = String(item.descricao || '').trim()
+        const original = String(item.descricao_original || '').trim()
         return {
+          // Posição do item na despesa (índice da lista ou chave do objeto), para o associar a um item do catálogo.
+          idDespesa: d.id, chave,
           data: d.data || '', obra: d.obra || '', fornecedor: d.nome_fornecedor || '', categoria, descricao,
+          original: original && original !== descricao ? original : '',
           especialidade: item.especialidade || '', motivo: item.motivo || '',
           quantidade: Number(item.quantidade) || 0, valor: Number(item.valor) || 0,
           noCatalogo: !!descricao && noCatalogo[categoria].has(descricao.toLocaleLowerCase())
         }
       }))
       .sort((a, b) => String(b.data).localeCompare(String(a.data)))
+      .map((item, indice) => ({ ...item, indice }))
 
     tela.innerHTML = `
       <div class="despesas-extras">
         <p class="despesas-extras-ajuda">Todos os itens lançados em <b>despesas extras de obra</b>. Os que estão <b>fora do catálogo</b>
-          foram escritos à mão: ${podeIncluirCatalogo() ? 'pode incluí-los em Materiais ou Ferramentas para passarem a aparecer na lista.' : 'a direção decide se os inclui no sistema.'}</p>
+          foram escritos à mão: ${podeIncluirCatalogo()
+            ? '<b>associe-os</b> a um material ou ferramenta que já existe, ou <b>inclua-os</b> em Materiais ou Ferramentas para passarem a aparecer na lista.'
+            : 'a direção decide se correspondem a um item existente ou se os inclui no sistema.'}</p>
         <div class="despesas-extras-filtros">
           <input type="search" placeholder="Pesquisar (obra, fornecedor, descrição…)" value="${escaparAtributo(estadoDespesasExtras.termo)}"
             oninput="estadoDespesasExtras.termo = this.value; renderDespesasExtras()">
@@ -1422,10 +1442,12 @@ function renderDespesasExtras() {
   }
 
   const acao = i => {
-    if (i.noCatalogo) return '<span class="despesas-extras-etiqueta dentro">No catálogo</span>'
-    if (!podeIncluirCatalogo() || !i.descricao) return '<span class="despesas-extras-etiqueta fora">Fora do catálogo</span>'
-    const args = [i.categoria, i.descricao, i.valor].map(v => escaparAtributo(JSON.stringify(v))).join(', ')
-    return `<button type="button" class="despesas-extras-incluir" onclick="incluirItemCatalogo(${args})">Incluir em ${i.categoria === 'Ferramenta' ? 'Ferramentas' : 'Materiais'}</button>`
+    if (i.noCatalogo) return `<span class="despesas-extras-etiqueta dentro">${i.original ? 'Associado' : 'No catálogo'}</span>`
+    if (!podeIncluirCatalogo()) return '<span class="despesas-extras-etiqueta fora">Fora do catálogo</span>'
+    return `<div class="despesas-extras-acoes">
+      <button type="button" class="despesas-extras-incluir" onclick="associarItemExtra(${i.indice})">Associar</button>
+      <button type="button" class="despesas-extras-incluir secundario" onclick="incluirItemCatalogo(${i.indice})">Incluir</button>
+    </div>`
   }
 
   local.innerHTML = `
@@ -1438,7 +1460,7 @@ function renderDespesasExtras() {
         <td>${escaparAtributo(i.fornecedor)}</td>
         <td>${i.categoria}</td>
         <td>${escaparAtributo(i.especialidade)}</td>
-        <td>${escaparAtributo(i.descricao || 'Sem descrição')}</td>
+        <td>${escaparAtributo(i.descricao || 'Sem descrição')}${i.original ? `<small class="despesas-extras-original">Escrito: ${escaparAtributo(i.original)}</small>` : ''}</td>
         <td>${escaparAtributo(i.motivo)}</td>
         <td class="despesa-numero">${i.quantidade}</td>
         <td class="despesa-numero">${dinheiro(i.valor)}</td>
@@ -1448,30 +1470,131 @@ function renderDespesasExtras() {
     </table>`
 }
 
+// Itens fora do catálogo escritos da mesma forma (mesma categoria e descrição) que o item escolhido.
+// Os "Sem descrição" não se agrupam: cada um pode ser um item diferente.
+function itensExtrasIguais(item) {
+  if (!item.descricao) return [item]
+  const chave = chaveItemDespesa(item.categoria, item.descricao)
+  return estadoDespesasExtras.itens.filter(i => !i.noCatalogo && chaveItemDespesa(i.categoria, i.descricao) === chave)
+}
+
+// Caixa "aplicar também aos outros N itens escritos da mesma forma" (só aparece quando há outros).
+function linhaAplicarIguais(item) {
+  const outros = itensExtrasIguais(item).length - 1
+  return outros > 0 ? [{
+    texto: 'Itens iguais',
+    elemento: `<label class="despesas-extras-iguais"><input type="checkbox" name="extras_iguais" checked>
+      Aplicar também aos outros ${outros} ${outros === 1 ? 'item escrito' : 'itens escritos'} "${escaparAtributo(item.descricao)}"</label>`
+  }] : []
+}
+
+function alvosExtras(item, painel) {
+  return painel.querySelector('[name="extras_iguais"]')?.checked ? itensExtrasIguais(item) : [item]
+}
+
+// Associa o item a um material/ferramenta já registado: escolhe-se o nome da lista do catálogo.
+function associarItemExtra(indice) {
+  const item = estadoDespesasExtras.itens[indice]
+  if (!item) return
+  const radio = cat => `<label><input type="radio" name="associar_categoria" value="${cat}" ${item.categoria === cat ? 'checked' : ''}
+    onchange="listaAssociarExtra(this.value)"> <span>${cat}</span></label>`
+  popup({
+    titulo: 'Associar a um item existente',
+    linhas: [
+      { texto: 'Escrito na despesa', elemento: `<b>${escaparAtributo(item.descricao || 'Sem descrição')}</b>` },
+      { texto: 'Categoria', elemento: `<div class="despesas-extras-categoria">${radio('Material')}${radio('Ferramenta')}</div>` },
+      { texto: 'Item do catálogo', elemento: `<input name="associar_nome" list="lista_associar_extra" autocomplete="off" placeholder="Pesquise e escolha da lista">
+        <datalist id="lista_associar_extra"></datalist>` },
+      ...linhaAplicarIguais(item)
+    ],
+    botoes: [{ texto: 'Associar', img: 'concluido', funcao: `salvarAssociacaoExtra(${indice})` }]
+  })
+  listaAssociarExtra(item.categoria)
+}
+
+function listaAssociarExtra(categoria) {
+  const lista = document.getElementById('lista_associar_extra')
+  if (lista) lista.innerHTML = (estadoDespesasExtras.catalogo[categoria] || []).map(n => `<option value="${escaparAtributo(n)}"></option>`).join('')
+}
+
+async function salvarAssociacaoExtra(indice) {
+  const item = estadoDespesasExtras.itens[indice]
+  const painel = [...document.querySelectorAll('.painel-padrao')].at(-1)
+  const categoria = painel.querySelector('[name="associar_categoria"]:checked')?.value || item.categoria
+  const escrito = painel.querySelector('[name="associar_nome"]').value.trim().toLocaleLowerCase()
+  // Só vale um nome que exista no catálogo (aceita diferenças de maiúsculas e usa o nome registado).
+  const nome = (estadoDespesasExtras.catalogo[categoria] || []).find(n => n.toLocaleLowerCase() === escrito)
+  if (!nome) return popup({ mensagem: `Escolha um item da lista de ${categoria === 'Ferramenta' ? 'Ferramentas' : 'Materiais'}.` })
+  try {
+    overlayAguarde()
+    await associarItensDespesas(alvosExtras(item, painel), { descricao: nome, categoria })
+    removerPopup()
+    await telaDespesasExtras()
+  } catch (err) {
+    console.error(err)
+    popup({ mensagem: 'Falha ao associar o item: Fale com o suporte.' })
+  } finally {
+    removerOverlay()
+  }
+}
+
+// Grava nas despesas o nome (e a categoria) do item do catálogo; o texto escrito fica em descricao_original.
+async function associarItensDespesas(alvos, { descricao, categoria }) {
+  const porDespesa = new Map()
+  for (const a of alvos) porDespesa.set(a.idDespesa, [...(porDespesa.get(a.idDespesa) || []), a.chave])
+  for (const [idDespesa, chaves] of porDespesa) {
+    const despesa = await recuperarDado('dados_despesas', idDespesa)
+    if (!despesa?.material) continue
+    const material = structuredClone(despesa.material)
+    for (const chave of chaves) {
+      const it = material[chave]
+      if (!it) continue
+      if (!it.descricao_original) it.descricao_original = it.descricao
+      it.descricao = descricao
+      it.categoria = categoria
+      delete it.fora_catalogo
+    }
+    await enviar(`dados_despesas/${idDespesa}`, { ...despesa, material })
+  }
+}
+
 // Inclui um item escrito à mão no catálogo (Materiais ou Ferramentas), com o nome e o preço revistos.
-function incluirItemCatalogo(categoria, descricao, valor) {
+// Se o nome ou o catálogo mudarem, a despesa fica associada ao item novo.
+function incluirItemCatalogo(indice) {
+  const item = estadoDespesasExtras.itens[indice]
+  if (!item) return
+  const { categoria, descricao, valor } = item
   popup({
     titulo: 'Incluir no sistema',
     linhas: [
       { texto: 'Catálogo', elemento: `<select name="catalogo_destino"><option value="materiais" ${categoria !== 'Ferramenta' ? 'selected' : ''}>Materiais</option><option value="ferramentas" ${categoria === 'Ferramenta' ? 'selected' : ''}>Ferramentas</option></select>` },
       { texto: 'Nome', elemento: `<textarea name="catalogo_nome">${escaparAtributo(descricao)}</textarea>` },
       { texto: 'Preço', elemento: `<input name="catalogo_preco" type="number" min="0" step="any" value="${escaparAtributo(valor || '')}">` },
-      { texto: 'Link', elemento: `<textarea name="catalogo_link" placeholder="Opcional"></textarea>` }
+      { texto: 'Link', elemento: `<textarea name="catalogo_link" placeholder="Opcional"></textarea>` },
+      ...linhaAplicarIguais(item)
     ],
-    botoes: [{ texto: 'Incluir', img: 'concluido', funcao: 'salvarItemCatalogo()' }]
+    botoes: [{ texto: 'Incluir', img: 'concluido', funcao: `salvarItemCatalogo(${indice})` }]
   })
 }
 
-async function salvarItemCatalogo() {
+async function salvarItemCatalogo(indice) {
   try {
+    const item = estadoDespesasExtras.itens[indice]
     const painel = [...document.querySelectorAll('.painel-padrao')].at(-1)
     const base = painel.querySelector('[name="catalogo_destino"]').value
     const nome = painel.querySelector('[name="catalogo_nome"]').value.trim()
     const preco = Number(String(painel.querySelector('[name="catalogo_preco"]').value).replace(',', '.'))
     if (!nome || !Number.isFinite(preco) || preco < 0) return popup({ mensagem: 'Indique o nome e um preço válido.' })
+    const categoria = base === 'ferramentas' ? 'Ferramenta' : 'Material'
+    if ((estadoDespesasExtras.catalogo[categoria] || []).some(n => n.toLocaleLowerCase() === nome.toLocaleLowerCase()))
+      return popup({ mensagem: `"${escaparAtributo(nome)}" já existe em ${base === 'ferramentas' ? 'Ferramentas' : 'Materiais'}: use "Associar".` })
     overlayAguarde()
+    const alvos = item ? alvosExtras(item, painel) : []
     const id = crypto.randomUUID()
     await enviar(`${base}/${id}`, { id, nome, preco, link: painel.querySelector('[name="catalogo_link"]').value.trim() })
+    // Nome revisto ou outro catálogo: as despesas passam a usar o item agora registado.
+    const precisaAssociar = alvos.filter(a => a.descricao !== nome || a.categoria !== categoria)
+    if (precisaAssociar.length) await associarItensDespesas(precisaAssociar, { descricao: nome, categoria })
     removerPopup()
     await telaDespesasExtras()
   } catch (err) {

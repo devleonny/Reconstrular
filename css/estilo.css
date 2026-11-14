@@ -24,10 +24,13 @@
     align-items: flex-start;
 }
 
-.tela button.pdf-exportar-fixo:hover,
+/* O button:hover global usa "background: #e4e9ed", que apagava a imagem e deixava um retângulo cinzento. */
+.tela button.pdf-exportar-fixo:hover:not(:disabled),
 .tela button.pdf-exportar-fixo:focus-visible {
     opacity: 1;
     transform: none;
+    background: url('../imagens/pdf-botao.svg') center / contain no-repeat;
+    filter: drop-shadow(0 4px 8px #00000045);
 }
 
 @media print {

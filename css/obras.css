@@ -37,11 +37,12 @@
     font-size: 10px;
     line-height: 16px;
 }
-.tela .acompanhamento button.pdf-exportar-fixo:hover,
+.tela .acompanhamento button.pdf-exportar-fixo:hover:not(:disabled),
 .tela .acompanhamento button.pdf-exportar-fixo:focus-visible {
     opacity: 1;
-    transform: none;
-    filter: drop-shadow(0 3px 8px #00000045);
+    transform: translateY(-1px);
+    background: url('../imagens/pdf-botao.svg') center / contain no-repeat;
+    filter: drop-shadow(0 4px 10px #00000055);
 }
 /* Reserva a faixa da direita para o botão não tapar o conteúdo. */
 .acompanhamento:has(.pdf-exportar-fixo) { padding-right: 56px; box-sizing: border-box; }
@@ -99,10 +100,16 @@
     border: 1px solid #d2d2d2;
 }
 
+/* Checklist e cronograma: o bloco branco ocupa a tela toda (sem a moldura cinzenta do padding da .tela) e cresce
+   com o conteúdo; quem faz o scroll é a página (.tela), não o bloco. */
+.tela:has(> .acompanhamento) { padding: 0; background: #fff; }
+/* Cronograma (o #pdf é filho direto): mesma margem interior que a checklist já tem no seu contentor. */
+.acompanhamento > #pdf { padding: 1rem; box-sizing: border-box; }
 .acompanhamento {
-    height: 100%;
+    box-sizing: border-box;
+    min-height: 100%;
     width: 100%;
-    overflow-x: auto;
+    overflow: visible;
     display: flex;
     align-items: start;
     justify-content: start;
@@ -330,35 +337,64 @@ screen and (min-aspect-ratio: 13/9) {
     text-decoration-thickness: 2px;
 }
 
+/* Popup das fotos todo em branco (sem a moldura cinzenta à volta do conteúdo e do rodapé). */
+.popup-janela-fora:has(.painel-fotos-checklist) { background: #fff; }
+.popup-janela-fora:has(.painel-fotos-checklist) .rodape-padrao { background: #fff; border-top: 1px solid #e6ebef; }
+
 /* Painel de fotos do item: grelha com botão de eliminar em cada foto. */
 .painel-fotos-checklist {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    min-width: min(420px, 80vw);
+    gap: 16px;
+    box-sizing: border-box;
+    min-width: min(460px, 80vw);
+    padding: 18px;
 }
 
 .painel-fotos-acoes {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
 }
 
+/* "Tirar foto" (botão) e "Escolher imagem" (label) com o mesmo aspeto. */
+.painel-fotos-acoes > button,
 .painel-fotos-ficheiro {
     display: inline-flex;
     align-items: center;
-    padding: 6px 12px;
-    border: 1px solid #b8c1c9;
-    border-radius: 6px;
+    gap: 8px;
+    margin: 0;
+    padding: 9px 14px;
+    border: 1px solid #c9d2d9;
+    border-radius: 8px;
     background: #fff;
+    color: #3f505e;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: none;
     cursor: pointer;
 }
-
-.fotos-checklist {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-    gap: 8px;
+.painel-fotos-acoes > button:hover:not(:disabled),
+.painel-fotos-ficheiro:hover {
+    background: #eef2f5;
+    border-color: #8b9caa;
+    transform: none;
 }
+
+/* Grelha das fotos: anula o fundo cinzento da classe global .fotos. */
+.fotos.fotos-checklist {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    padding: 12px;
+    border: 1px dashed #cdd6de;
+    border-radius: 10px;
+    background: #f6f8fa;
+}
+/* Sem fotos (também depois de retirar a última): fica só o aviso "Sem fotos neste item." */
+.fotos.fotos-checklist:not(:has(.foto-checklist)) { display: none; }
+.fotos.fotos-checklist img { width: 100%; }
 
 .foto-checklist {
     position: relative;
@@ -367,10 +403,11 @@ screen and (min-aspect-ratio: 13/9) {
 .foto-checklist img {
     display: block;
     width: 100%;
-    height: 90px;
+    height: 100px;
     object-fit: cover;
-    border-radius: 6px;
+    border-radius: 8px;
     border: 1px solid #d6dee5;
+    box-shadow: 0 1px 3px rgba(31, 45, 61, .12);
     cursor: zoom-in;
 }
 
@@ -380,24 +417,36 @@ screen and (min-aspect-ratio: 13/9) {
 
 .foto-checklist-remover {
     position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 24px;
-    height: 24px;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin: 0;
     padding: 0;
-    border: 0;
+    border: 2px solid #fff;
     border-radius: 50%;
     background: #d32f2f;
     color: #fff;
-    font-size: 16px;
-    line-height: 24px;
+    font-size: 15px;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
     cursor: pointer;
 }
+.foto-checklist-remover:hover:not(:disabled) { background: #b71c1c; transform: none; }
 
 .painel-fotos-vazio {
     margin: 0;
+    padding: 18px;
+    border: 1px dashed #cdd6de;
+    border-radius: 10px;
     color: #6f7b84;
+    font-size: 12px;
+    text-align: center;
 }
+.painel-fotos-vazio[hidden] { display: none; }
 
 .camera-checklist {
     display: flex;
