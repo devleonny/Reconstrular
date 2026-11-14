@@ -325,18 +325,18 @@ async function mostrarMateriaisExtras(ordem) {
         detalhes: true,
         criarLinha: 'criarLinhaDespesa',
         colunas: {
-            'Edição': {},
+            'Edição': { icone: true },
             'Obra': {},
             'Fornecedor': { chave: 'nome_fornecedor' },
             'Distrito': { chave: 'distrito' },
             'Cidade': { chave: 'nome_cidade' },
-            'Número do Contribuinte': { chave: 'nif' },
-            'Tipo da Despesa': { chave: 'tipo_despesa' },
+            'NIF': { chave: 'nif', titulo: 'Número do Contribuinte' },
+            'Tipo': { chave: 'tipo_despesa', titulo: 'Tipo da Despesa' },
             'Valor': { chave: 'valor' },
             'Ano': { chave: 'snapshots.ano', tipoPesquisa: 'select' },
             'Mês': { chave: 'snapshots.mes', tipoPesquisa: 'select' },
             'Data': { chave: 'data', tipoPesquisa: 'data' },
-            'Fatura': {}
+            'Fatura': { icone: true }
         },
         filtros: {
             'obra': { op: '=', value: ordem }
@@ -516,21 +516,42 @@ async function pdfObra(nome) {
     const original = document.querySelector('#pdf')
     if (!original) return
     const copia = original.cloneNode(true)
-    copia.querySelectorAll('.col-gerir').forEach(el => el.remove())
+    // No PDF não vão a coluna "Gerir" nem a das caixas de marcação.
+    copia.querySelectorAll('.col-gerir, .col-marcar').forEach(el => el.remove())
     // Checklist no PDF: linhas todas com fundo branco (a da especialidade tem cinzento na app).
     copia.querySelectorAll('.tabela-especialidade tr').forEach(tr => { tr.style.backgroundColor = '#fff' })
+
+    // Resumo da checklist (Total, Não iniciado…): sai do corpo e vai para o cabeçalho, com os blocos lado a lado.
+    const resumo = copia.querySelector('#resumo')
+    const blocos = resumo ? [...resumo.querySelectorAll('.bloco')].map(b => `
+        <div style="flex: 1 1 0; min-width: 0; padding: 4px 2px; border: 1px solid #c9c9c9; border-radius: 3px; background: #f5f5f5; text-align: center;">
+            <div style="font-size: 13px; color: #fd6828;">${escaparAtributo(b.querySelector('span')?.textContent.trim() || '')}</div>
+            <div style="font-size: 9px; color: #222;">${escaparAtributo(b.querySelector('label')?.textContent.trim() || '')}</div>
+        </div>`).join('') : ''
+    resumo?.remove()
 
     const obra = controles.obraPdf ? await recuperarDado('dados_orcamentos', controles.obraPdf) : null
     const cliente = obra?.cliente ? await recuperarDado('dados_clientes', obra.cliente) : null
     copia.insertAdjacentHTML('afterbegin', cabecalhoPdf({
         titulo: nome,
-        linhas: [['Obra', obra?.contrato], ['Cliente', cliente?.nome], ['Morada', cliente?.morada_execucao]]
+        linhas: [['Obra', obra?.contrato], ['Cliente', cliente?.nome], ['Morada', cliente?.morada_execucao]],
+        extra: blocos ? `<div style="display: flex; gap: 6px; margin-top: 8px;">${blocos}</div>` : ''
     }))
+    // Letra do documento ao tamanho padrão (a da app ficava grande no A4).
+    copia.insertAdjacentHTML('afterbegin', `<style>
+        #pdf { font-size: 11px; }
+        #pdf h2 { font-size: 14px; margin: 6px 0; }
+        #pdf .tabTarefas td { padding: 4px 6px; }
+    </style>`)
+
+    // Nome do ficheiro: "Checklist - nº orç - morada" (sem caracteres inválidos em nomes de ficheiro).
+    const nomeFicheiro = [nome, obra?.contrato, cliente?.morada_execucao]
+        .filter(Boolean).join(' - ').replace(/[\\/:*?"<>|\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
 
     await pdf({
         html: copia.outerHTML,
         estilos: ['estilo', 'obras'],
-        nome
+        nome: nomeFicheiro
     })
 
 }
@@ -629,10 +650,11 @@ async function carregarLinhasAndamento(idObra) {
             trEsp.style.backgroundColor = '#efefef'
 
             trEsp.innerHTML = `
-                <td></td>
+                <td class="col-marcar"></td>
                 <td>${numeroEspecialidade}</td>
                 <td><b>${escaparAtributo(especialidade)}</b></td>
-                <td>Qtde Orçada / Qtde Realizada</td>
+                <td class="col-medida">Medida</td>
+                <td>Qtd Orçada / Qtd Realizada</td>
                 <td>Andamento</td>
                 <td class="col-gerir">Gerir</td>
             `
@@ -682,18 +704,14 @@ async function carregarLinhasAndamento(idObra) {
                 const params = [idObra, idOrcamento, item.idDescricao].map(v => escaparAtributo(JSON.stringify(String(v)))).join(', ')
 
                 tr.innerHTML = `
-                    <td>
+                    <td class="col-marcar">
                         <input onchange="marcarConclusao(this, ${params})" ${porcent >= 100 ? 'checked' : ''} type="checkbox" style="width: 1.5rem; height: 1.5rem">
                     </td>
 
                     <td ${estilo}>${ordem}</td>
 
-                    <td>
-                        <div style="${horizontal}; justify-content: space-between; width: 100%; gap: 1rem;">
-                            <span ${estilo}>${escaparAtributo(item.campo.descricaoExtra || item.campo.descricao || '')}</span>
-                            <span>${escaparAtributo(item.campo.medida || '')}</span>
-                        </div>
-                    </td>
+                    <td><span ${estilo}>${escaparAtributo(item.campo.descricaoExtra || item.campo.descricao || '')}</span></td>
+                    <td class="col-medida">${escaparAtributo(item.campo.medida || '')}</td>
 
                     <td style="text-align: center;">${quantidade > 0 ? quantidade : 'Não definida'} / ${qtdeRealizada}</td>
                     <td>
@@ -791,8 +809,8 @@ async function atualizarItemChecklist(idObra, idOrcamento, idDescricao, alteraco
     linha.dataset.concluido = percentual >= 100 ? 'S' : 'N'
     linha.classList.toggle('checklist-completo', percentual >= 100)
     linha.children[0].querySelector('input').checked = percentual >= 100
-    linha.children[3].textContent = `${quantidade > 0 ? quantidade : 'Não definida'} / ${realizado}`
-    linha.children[4].innerHTML = `<input name="porcentagem" hidden type="number" value="${percentual}">${andamentoVisualChecklist(quantidade, realizado, concluido)}`
+    linha.children[4].textContent = `${quantidade > 0 ? quantidade : 'Não definida'} / ${realizado}`
+    linha.children[5].innerHTML = `<input name="porcentagem" hidden type="number" value="${percentual}">${andamentoVisualChecklist(quantidade, realizado, concluido)}`
     try { await atualizarToolbar({ nomeTarefa: painel.querySelector('#etapas')?.value }) }
     catch (erro) { popup({ mensagem: 'O item foi guardado, mas o resumo da obra não pôde ser atualizado. Abra novamente o checklist para tentar.' }) }
 }

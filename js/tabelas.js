@@ -37,7 +37,7 @@ async function modTab(configuracoes) {
     const ths = Object.entries(colunas)
         .map(([th, query]) => query.icone ? `
         <th class="tabela-coluna-icone" title="${escaparAtributo(query.titulo || th.replace(/<[^>]*>/g, ''))}"><span>${th}</span></th>` : `
-        <th onclick="ordenarColuna({ pag: '${pag}', path: '${query.chave || ''}' })" style="cursor: pointer;">
+        <th onclick="ordenarColuna({ pag: '${pag}', path: '${query.chave || ''}' })" style="cursor: pointer;"${query.titulo ? ` title="${escaparAtributo(query.titulo)}"` : ''}>
             <div style="${horizontal}; width: 100%; justify-content: space-between; gap: 1rem;">
                 <span>${th}</span>
                 <span data-ordem="${query.chave || ''}"></span>

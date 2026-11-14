@@ -95,13 +95,13 @@ function formatarDiaMes(data) {
 
 function nomeDiaSemana(data) {
     const nomes = [
-        'Domingo',
-        'Segunda',
-        'Terça',
-        'Quarta',
-        'Quinta',
-        'Sexta',
-        'Sábado'
+        'Dom',
+        'Seg',
+        'Ter',
+        'Qua',
+        'Qui',
+        'Sex',
+        'Sáb'
     ]
 
     return nomes[data.getDay()]
@@ -116,18 +116,8 @@ function escapeHtml(texto = '') {
         .replaceAll("'", '&#039;')
 }
 
-function corAtividade(indice) {
-    const cores = [
-        '#19dbe3',
-        '#24d8ff',
-        '#38e27b',
-        '#ffd84d',
-        '#ffb84d',
-        '#ff8a8a',
-        '#b998ff'
-    ]
-
-    return cores[indice % cores.length]
+function corAtividade() {
+    return '#ffd84d'
 }
 
 function atividadeOcupaDia(atividade, data) {
@@ -145,14 +135,9 @@ function renderTabelaSemana(atividades, semana, indiceSemana) {
         const fimDeSemana = isWeekend(data)
 
         return `
-            <th style="
-                min-width: 84px;
-                background: ${fimDeSemana ? '#8c8c8c' : '#d92222'};
-                color: #fff;
-                text-align: center;
-            ">
+            <th class="cron-dia" style="background: ${fimDeSemana ? '#8c8c8c' : '#d92222'};">
                 <div>${nomeDiaSemana(data)}</div>
-                <div style="font-size: .85rem;">${formatarDiaMes(data)}</div>
+                <div class="cron-dia-data">${formatarDiaMes(data)}</div>
             </th>
         `
     }).join('')
@@ -164,20 +149,15 @@ function renderTabelaSemana(atividades, semana, indiceSemana) {
             const fimDeSemana = isWeekend(data)
             const ocupado = atividadeOcupaDia(item, data)
 
-            let estilo = `
-                min-width: 84px;
-                height: 34px;
-                border: 1px solid #bdbdbd;
-                background: #fff;
-            `
+            let fundo = '#fff'
 
             if (fimDeSemana)
-                estilo += 'background: #9b9b9b;'
+                fundo = '#9b9b9b'
 
             if (ocupado)
-                estilo += `background: ${cor};`
+                fundo = cor
 
-            return `<td style="${estilo}"></td>`
+            return `<td class="cron-celula" style="background: ${fundo};"></td>`
         }).join('')
 
         return `
@@ -185,21 +165,21 @@ function renderTabelaSemana(atividades, semana, indiceSemana) {
                 <td>${escapeHtml(item.zona || item.ambiente || '')}</td>
                 <td>${escapeHtml(item.especialidade || '')}</td>
                 <td>${escapeHtml(item.descricao || '')}</td>
-                <td style="text-align:center;">${escapeHtml(item.medida || '')}</td>
-                <td style="text-align:center;">${item.quantidade || 0}</td>
-                <td style="text-align:center;">${item.tempoTotalHHMM || '00:00'}</td>
-                <td style="text-align:center;">${formatarDataBR(item.inicio)}</td>
-                <td style="text-align:center;">${formatarDataBR(item.fim)}</td>
+                <td>${escapeHtml(item.medida || '')}</td>
+                <td class="cron-curta">${item.quantidade || 0}</td>
+                <td>${item.tempoTotalHHMM || '00:00'}</td>
+                <td class="cron-curta">${formatarDataBR(item.inicio)}</td>
+                <td class="cron-curta">${formatarDataBR(item.fim)}</td>
                 ${dias}
             </tr>
         `
     }).join('')
 
     return `
-        <table class="tabela-obras" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+        <table class="tabela-obras tabela-cronograma">
             <thead>
                 <tr>
-                    <th colspan="9" style="background:#5b707f; color:#fff; text-align:left;">
+                    <th colspan="8" style="background:#5b707f; color:#fff; text-align:left;">
                         Semana ${indiceSemana + 1} - ${formatarDataBR(semana[0])} até ${formatarDataBR(semana[6])}
                     </th>
                     <th colspan="7" style="background:#5b707f;"></th>
@@ -209,10 +189,10 @@ function renderTabelaSemana(atividades, semana, indiceSemana) {
                     <th>Especialidades</th>
                     <th>Descrição do Serviço</th>
                     <th>Medida</th>
-                    <th>Quantidade</th>
+                    <th class="cron-curta">Qtd</th>
                     <th>Tempo (hh:mm)</th>
-                    <th>Início</th>
-                    <th>Fim</th>
+                    <th class="cron-curta">Início</th>
+                    <th class="cron-curta">Fim</th>
                     ${headerDias}
                 </tr>
             </thead>
@@ -240,7 +220,7 @@ async function renderCronogramaObra(ordem, idObra) {
         : [getWeekDates(dataInicio)]
 
     const tabInfos = `
-        <table class="tabela-obras">
+        <table class="tabela-obras tabela-cronograma tabela-cronograma-info">
             <tbody>
                 <tr>
                     <td colspan="2" style="background: #5b707f; color: #fff; font-size: 1.2rem;">CRONOGRAMA DE OBRA</td>

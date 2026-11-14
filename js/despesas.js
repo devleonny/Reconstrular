@@ -43,19 +43,19 @@ async function verificarDespesas() {
       body: 'bodyDespesas',
       criarLinha: 'criarLinhaDespesa',
       colunas: {
-        ...(podeExcel ? { 'Selecionar': {} } : {}),
-        'Edição': {},
+        ...(podeExcel ? { 'Selecionar': { icone: true } } : {}),
+        'Edição': { icone: true },
         'Obra': {},
         'Fornecedor': { chave: 'nome_fornecedor' },
         'Distrito': { chave: 'distrito' },
         'Cidade': { chave: 'nome_cidade' },
-        'Número do Contribuinte': { chave: 'nif' },
-        'Tipo da Despesa': { chave: 'tipo_despesa' },
+        'NIF': { chave: 'nif', titulo: 'Número do Contribuinte' },
+        'Tipo': { chave: 'tipo_despesa', titulo: 'Tipo da Despesa' },
         'Valor': { chave: 'valor' },
         'Ano': { chave: 'snapshots.ano', tipoPesquisa: 'select' },
         'Mês': { chave: 'snapshots.mes', tipoPesquisa: 'select' },
         'Data': { chave: 'data', tipoPesquisa: 'data' },
-        'Fatura': {}
+        'Fatura': { icone: true }
       }
     })
 
@@ -180,13 +180,13 @@ async function criarLinhaDespesa(dados) {
     : 'despesa'
 
   const tdSelecionar = podeExcelDespesas()
-    ? `<td><input type="checkbox" data-selecionar-despesa value="${escaparAtributo(id)}" aria-label="Selecionar despesa"
+    ? `<td class="tabela-coluna-icone"><input type="checkbox" data-selecionar-despesa value="${escaparAtributo(id)}" aria-label="Selecionar despesa"
         ${selecaoDespesas.todos || selecaoDespesas.ids.has(String(id)) ? 'checked' : ''} onchange="selecionarDespesa(this)"></td>`
     : ''
 
   const tds = `
         ${tdSelecionar}
-        <td>
+        <td class="tabela-coluna-icone">
             <img data-controle="editar" src="imagens/editar.svg" class="icone-editar" alt="Editar" title="Editar" onclick="formularioDespesa('${id}')">
         </td>
         <td>${tagObra}</td>
@@ -200,8 +200,8 @@ async function criarLinhaDespesa(dados) {
         </td>
         <td>${ano || ''}</td>
         <td>${mes || ''}</td>
-        <td>${data || ''}</td>
-        <td>${ax(fatura)}</td>
+        <td style="white-space: nowrap;">${data || ''}</td>
+        <td class="tabela-coluna-icone">${ax(fatura)}</td>
     `
 
   const materiais = Array.isArray(material) ? material : Object.values(material || {})
@@ -273,7 +273,8 @@ async function formularioDespesa(idDespesa) {
     controlesCxOpcoes.obra = {
       base: 'vw_dados_orcamentos',
       filtros: { em_obra: { op: '=', value: true } },
-      funcaoAdicional: ['verificarRegras'],
+      // A obra define os materiais do orçamento (lista e saldos da Despesa Inicial de Obra).
+      funcaoAdicional: ['atualizarDescricoesDespesa'],
       retornar: ['contrato'],
       // vw_dados_orcamentos traz cidade, distrito e morada (do cliente) em colunas próprias, não nos snapshots.
       colunas: {
@@ -291,7 +292,7 @@ async function formularioDespesa(idDespesa) {
       .filter(t => t !== 'Despesa Interna Empresa' || podeDespesaInterna() || tipoAtual === t)
       .map(t => `
         <label class="despesa-radio">
-          <input ${regras} ${tipoAtual == t ? 'checked' : ''} data-tipo="${t}" name="tipo_despesa" type="radio" onchange="alternarObraDespesa()">
+          <input ${regras} ${tipoAtual == t ? 'checked' : ''} data-tipo="${t}" name="tipo_despesa" type="radio" onchange="alternarObraDespesa(); atualizarDescricoesDespesa()">
           <span>${t}</span>
         </label>
       `).join('')
@@ -365,8 +366,20 @@ async function formularioDespesa(idDespesa) {
     const idPopup = popup({ linhas, botoes, titulo: 'Gerir Despesa' })
     const modalDespesa = document.getElementById(idPopup)
     modalDespesa.classList.add('popup-despesa')
+    modalDespesa.dataset.idDespesa = idDespesa || ''
+    // Dados novos a cada abertura (saldos e catálogo podem ter mudado entretanto).
+    cacheItensDespesa.catalogo = null
+    cacheItensDespesa.orcamentos.clear()
+    cacheItensDespesa.lancadas.clear()
+    // Resumo em tempo real: totais de Materiais e de Ferramentas (pela categoria de cada bloco) e o total.
     modalDespesa.querySelector('.rodape-padrao').insertAdjacentHTML('afterbegin', `
-      <div class="despesa-total"><small>Total da despesa</small><span class="total-despesa">${dinheiro(valor)}</span></div>
+      <div class="despesa-total">
+        <div class="despesa-total-partes">
+          <span><small>Materiais</small><b class="total-despesa-materiais">${dinheiro(0)}</b></span>
+          <span><small>Ferramentas</small><b class="total-despesa-ferramentas">${dinheiro(0)}</b></span>
+        </div>
+        <small>Total da despesa</small><span class="total-despesa">${dinheiro(valor)}</span>
+      </div>
     `)
 
     alterarModal()
@@ -385,6 +398,99 @@ async function formularioDespesa(idDespesa) {
   }
 }
 
+// ---------- Itens da despesa (materiais e ferramentas) ----------
+// Despesa Inicial de Obra: a descrição escolhe-se da lista dos materiais/ferramentas do orçamento da obra, com o
+// saldo (orçado − já lançado noutras despesas iniciais e nesta) e aviso de excedente. Restantes tipos: lista do
+// catálogo (Materiais e Ferramentas) com texto livre; o que não estiver no catálogo aparece em "Despesas Extras"
+// para os gestores decidirem incluí-lo no sistema. A especialidade filtra as opções.
+const ESPECIALIDADE_OUTROS = 'Outros'
+const TIPO_DESPESA_INICIAL = 'Despesa Inicial de Obra'
+const cacheItensDespesa = { catalogo: null, orcamentos: new Map(), lancadas: new Map() }
+const chaveItemDespesa = (categoria, descricao) => `${categoria === 'Ferramenta' ? 'Ferramenta' : 'Material'}|${String(descricao || '').trim().toLocaleLowerCase()}`
+const numeroDespesa = valor => Number(String(valor ?? '').replace(',', '.')) || 0
+
+// Todas as páginas de uma pesquisa (a pesquisa devolve no máximo 100 registos por página).
+async function pesquisarTodasPaginas(params) {
+  const todos = []
+  let pagina = 1, paginas = 1
+  do {
+    const resposta = await pesquisarDB({ ...params, pagina, limite: 100 })
+    todos.push(...(resposta?.resultados || []))
+    paginas = resposta?.paginas || 1
+    pagina++
+  } while (pagina <= paginas)
+  return todos
+}
+
+// Catálogo do sistema: nomes de Materiais e de Ferramentas.
+async function catalogoItensDespesa() {
+  if (!cacheItensDespesa.catalogo) cacheItensDespesa.catalogo = (async () => {
+    const [materiais, ferramentas] = await Promise.all([
+      pesquisarTodasPaginas({ base: 'materiais' }), pesquisarTodasPaginas({ base: 'ferramentas' })])
+    const nomes = lista => [...new Set(lista.map(i => String(i.nome || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+    return { Material: nomes(materiais), Ferramenta: nomes(ferramentas) }
+  })().catch(erro => { cacheItensDespesa.catalogo = null; throw erro })
+  return cacheItensDespesa.catalogo
+}
+
+// Materiais e ferramentas orçados na obra: quantidade = quantidade do serviço × quantidade na composição.
+async function itensOrcamentoObra(contrato) {
+  if (!contrato) return []
+  if (!cacheItensDespesa.orcamentos.has(contrato)) cacheItensDespesa.orcamentos.set(contrato, (async () => {
+    const resposta = await pesquisarDB({ base: 'vw_dados_orcamentos', filtros: { contrato: { op: '=', value: contrato } }, pagina: 1, limite: 1 })
+    const orcamento = resposta?.resultados?.[0]
+    const itens = new Map()
+    for (const campo of Object.values(orcamento?.campos || {})) {
+      if (!campo || typeof campo !== 'object' || campo.andamento?.removido) continue
+      const qtdServico = typeof quantidadeCampoChecklist === 'function' ? quantidadeCampoChecklist(campo) : numeroDespesa(campo.quantidade)
+      for (const [grupo, categoria] of [['materiais', 'Material'], ['ferramentas', 'Ferramenta']]) {
+        for (const comp of Object.values(campo[grupo] || {})) {
+          const descricao = String(comp?.descricao || '').trim()
+          if (!descricao) continue
+          const chave = chaveItemDespesa(categoria, descricao)
+          const item = itens.get(chave) || { descricao, categoria, especialidades: new Set(), quantidade: 0, preco: numeroDespesa(comp.preco) }
+          item.especialidades.add(campo.especialidade || ESPECIALIDADE_OUTROS)
+          item.quantidade += qtdServico * numeroDespesa(comp.qtde)
+          itens.set(chave, item)
+        }
+      }
+    }
+    return [...itens.values()].sort((a, b) => a.descricao.localeCompare(b.descricao))
+  })().catch(erro => { cacheItensDespesa.orcamentos.delete(contrato); throw erro }))
+  return cacheItensDespesa.orcamentos.get(contrato)
+}
+
+// Quantidades já lançadas em despesas iniciais da obra (sem a despesa em edição), por categoria + descrição.
+async function quantidadesLancadasObra(contrato, idDespesa) {
+  if (!contrato) return new Map()
+  const cacheChave = `${contrato}|${idDespesa || ''}`
+  if (!cacheItensDespesa.lancadas.has(cacheChave)) cacheItensDespesa.lancadas.set(cacheChave, (async () => {
+    const despesas = await pesquisarTodasPaginas({ base: 'vw_despesas', filtros: { obra: { op: '=', value: contrato } } })
+    const totais = new Map()
+    for (const d of despesas) {
+      if (d.tipo_despesa !== TIPO_DESPESA_INICIAL || String(d.id) === String(idDespesa || '')) continue
+      for (const item of Array.isArray(d.material) ? d.material : Object.values(d.material || {})) {
+        const chave = chaveItemDespesa(item.categoria, item.descricao)
+        totais.set(chave, (totais.get(chave) || 0) + numeroDespesa(item.quantidade))
+      }
+    }
+    return totais
+  })().catch(erro => { cacheItensDespesa.lancadas.delete(cacheChave); throw erro }))
+  return cacheItensDespesa.lancadas.get(cacheChave)
+}
+
+function painelDespesa() {
+  return [...document.querySelectorAll('.popup-despesa .painel-padrao')].at(-1)
+}
+
+function contextoDespesa() {
+  const painel = painelDespesa()
+  const tipo = painel?.querySelector('[name="tipo_despesa"]:checked')?.dataset.tipo || ''
+  const obraEl = painel?.querySelector('[name="obra"]')
+  const contrato = obraEl?.id && obraEl.closest('.linha-padrao')?.style.display !== 'none' ? obraEl.textContent.trim() : ''
+  return { painel, tipo, contrato, idDespesa: painel?.closest('.popup-despesa')?.dataset.idDespesa || '' }
+}
+
 async function adicionarMaterial(dados = {}) {
 
   try {
@@ -396,30 +502,30 @@ async function adicionarMaterial(dados = {}) {
       especialidades = resultados
     }
 
-    const painel = [...document.querySelectorAll('.painel-padrao')].at(-1)
+    const painel = painelDespesa()
     const local = painel.querySelector('.campo-materiais')
 
-    const opcoes = especialidades
-      .sort((a, b) => a.nome.localeCompare(b.nome))
-      .map(res => {
-        return `<option ${dados.especialidade === res.nome ? 'selected' : ''}>${escaparAtributo(res.nome)}</option>`
-      })
-      .join('')
+    // "Outros": para quando a especialidade não existe no sistema.
+    const nomesEspecialidades = [...new Set((especialidades || []).map(e => e.nome).filter(Boolean))]
+      .filter(n => n !== ESPECIALIDADE_OUTROS).sort((a, b) => a.localeCompare(b))
+    const especialidadeAtual = dados.especialidade || ''
+    if (especialidadeAtual && especialidadeAtual !== ESPECIALIDADE_OUTROS && !nomesEspecialidades.includes(especialidadeAtual)) nomesEspecialidades.push(especialidadeAtual)
+    const opcoes = `<option value="">Selecione</option>`
+      + [...nomesEspecialidades, ESPECIALIDADE_OUTROS]
+        .map(nome => `<option ${especialidadeAtual === nome ? 'selected' : ''}>${escaparAtributo(nome)}</option>`)
+        .join('')
 
-    const mod = (titulo, elemento) => {
-
-      return `
+    const mod = (titulo, elemento) => `
       <div class="despesa-campo">
         <span>${titulo}</span>
         ${elemento}
       </div>
     `
-    }
 
     const nomeMotivo = `motivo_material_${crypto.randomUUID()}`
     const opcoesMotivo = ['Má execução', 'Necessidade'].map(motivo => `
       <label class="despesa-radio">
-        <input type="radio" name="${nomeMotivo}" data-campo="motivo" value="${motivo}" ${(dados.motivo || 'Necessidade') === motivo ? 'checked' : ''}>
+        <input type="radio" name="${nomeMotivo}" data-campo="motivo" value="${motivo}" ${(dados.motivo || 'Necessidade') === motivo ? 'checked' : ''} onchange="verificarRegras()">
         <span>${motivo}</span>
       </label>
     `).join('')
@@ -427,63 +533,189 @@ async function adicionarMaterial(dados = {}) {
     const nomeCategoria = `categoria_material_${crypto.randomUUID()}`
     const opcoesCategoria = ['Material', 'Ferramenta'].map(categoria => `
       <label class="despesa-radio">
-        <input type="radio" name="${nomeCategoria}" data-campo="categoria" value="${categoria}" ${(dados.categoria || 'Material') === categoria ? 'checked' : ''}>
+        <input type="radio" name="${nomeCategoria}" data-campo="categoria" value="${categoria}" ${(dados.categoria || 'Material') === categoria ? 'checked' : ''}
+          onchange="atualizarDescricaoItem(this.closest('.item-material')); calcularTotalDespesa()">
         <span>${categoria}</span>
       </label>
     `).join('')
 
-    const item = `
-      <div class="item-material">
-
+    const div = document.createElement('div')
+    div.className = 'item-material'
+    div.dataset.descricao = dados.descricao || ''
+    div.innerHTML = `
         <div class="despesa-material-topo"><strong>Material</strong>
-          <button type="button" class="despesa-remover" aria-label="Remover material" onclick="this.closest('.item-material').remove(); calcularTotalDespesa();">&times;</button>
+          <button type="button" class="despesa-remover" aria-label="Remover material" onclick="removerItemDespesa(this)">&times;</button>
         </div>
 
         <div class="despesa-material-campos">
-
-          ${mod('Quantidade', `<input oninput="calcularTotalDespesa()" type="number" name="quantidade" placeholder="Quantidade" value="${escaparAtributo(dados.quantidade ?? '')}">`)}
-          ${mod('Valor', `<input oninput="calcularTotalDespesa()" type="number" name="valor" placeholder="Valor" value="${escaparAtributo(dados.valor ?? '')}">`)}
-          ${mod('Especialidade', `
-            <select name="especialidade">
-              ${opcoes}
-            </select>
-          `)}
-
+          ${mod('Quantidade', `<input oninput="calcularTotalDespesa(); verificarRegras()" type="number" min="0" step="any" name="quantidade" placeholder="Quantidade" value="${escaparAtributo(dados.quantidade ?? '')}">`)}
+          ${mod('Valor', `<input oninput="calcularTotalDespesa(); verificarRegras()" type="number" min="0" step="any" name="valor" placeholder="Valor" value="${escaparAtributo(dados.valor ?? '')}">`)}
+          ${mod('Especialidade', `<select name="especialidade" onchange="atualizarDescricaoItem(this.closest('.item-material')); verificarRegras()">${opcoes}</select>`)}
         </div>
 
-        ${mod('Descrição do Material', `<textarea name="descricao" placeholder="Descrição do material">${escaparAtributo(dados.descricao || '')}</textarea>`)}
         ${mod('Categoria', `<div class="despesa-motivos">${opcoesCategoria}</div>`)}
+        ${mod('Descrição do Material', `<div class="despesa-descricao"></div><div class="despesa-saldo"></div>`)}
         ${mod('Motivo do material', `<div class="despesa-motivos">${opcoesMotivo}</div>`)}
-        
-      </div>
     `
-    local.insertAdjacentHTML('beforeend', item)
-
-    removerOverlay()
+    local.appendChild(div)
+    await atualizarDescricaoItem(div)
+    calcularTotalDespesa()
+    verificarRegras()
 
   } catch (err) {
     console.error(err)
     popup({ mensagem: 'Falha ao adicionar um campo: Fale com o suporte.' })
+  } finally {
+    removerOverlay()
   }
 
 }
 
+function removerItemDespesa(botao) {
+  const lista = botao.closest('.campo-materiais')
+  botao.closest('.item-material')?.remove()
+  const primeiro = lista?.querySelector('.item-material')
+  if (primeiro) atualizarSaldoItem(primeiro)
+  calcularTotalDespesa()
+  verificarRegras()
+}
+
+// Tipo de despesa ou obra mudou: refaz a descrição de todos os itens (lista do orçamento ou do catálogo).
+async function atualizarDescricoesDespesa() {
+  const { painel } = contextoDespesa()
+  for (const item of painel?.querySelectorAll('.item-material') || []) await atualizarDescricaoItem(item)
+  calcularTotalDespesa()
+  verificarRegras()
+}
+
+async function atualizarDescricaoItem(item) {
+  if (!item) return
+  const local = item.querySelector('.despesa-descricao')
+  const campoAtual = item.querySelector('[name="descricao"]')
+  const atual = (campoAtual ? campoAtual.value : item.dataset.descricao) || ''
+  const categoria = item.querySelector('[data-campo="categoria"]:checked')?.value || 'Material'
+  const especialidade = item.querySelector('[name="especialidade"]')?.value || ''
+  const { tipo, contrato, idDespesa } = contextoDespesa()
+  const opcao = (valor, selecionado) => `<option value="${escaparAtributo(valor)}" ${selecionado ? 'selected' : ''}>${escaparAtributo(valor)}</option>`
+  const nomeCategoria = categoria === 'Ferramenta' ? 'ferramentas' : 'materiais'
+
+  try {
+    if (tipo === TIPO_DESPESA_INICIAL) {
+      item.dataset.modo = 'orcamento'
+      item.catalogo = null
+      if (!contrato) {
+        item.orcamento = null
+        local.innerHTML = `<select name="descricao" disabled><option value="">Selecione primeiro a obra</option></select>`
+      } else {
+        const [orcados, lancadas] = await Promise.all([itensOrcamentoObra(contrato), quantidadesLancadasObra(contrato, idDespesa)])
+        item.orcamento = { orcados, lancadas }
+        const daCategoria = orcados.filter(o => o.categoria === categoria)
+        const filtrados = especialidade && especialidade !== ESPECIALIDADE_OUTROS
+          ? daCategoria.filter(o => o.especialidades.has(especialidade)) : daCategoria
+        const nomes = filtrados.map(o => o.descricao)
+        // Um item já guardado que entretanto saiu da lista continua visível para não se perder.
+        if (atual && !nomes.includes(atual)) nomes.unshift(atual)
+        local.innerHTML = `<select name="descricao" onchange="atualizarSaldoItem(this.closest('.item-material')); verificarRegras()">
+          <option value="">${nomes.length ? `Selecione (${nomeCategoria} do orçamento)` : `Sem ${nomeCategoria} no orçamento para esta especialidade`}</option>
+          ${nomes.map(n => opcao(n, n === atual)).join('')}
+        </select>`
+      }
+    } else {
+      item.dataset.modo = 'livre'
+      item.orcamento = null
+      const catalogo = await catalogoItensDespesa()
+      const doCatalogo = catalogo[categoria] || []
+      // Também sugere os itens orçados na obra para a especialidade escolhida.
+      const orcados = contrato ? (await itensOrcamentoObra(contrato))
+        .filter(o => o.categoria === categoria && (!especialidade || especialidade === ESPECIALIDADE_OUTROS || o.especialidades.has(especialidade)))
+        .map(o => o.descricao) : []
+      const sugestoes = [...new Set([...orcados, ...doCatalogo])]
+      const idLista = `lista_${crypto.randomUUID()}`
+      local.innerHTML = `
+        <input name="descricao" list="${idLista}" autocomplete="off" placeholder="Escolha da lista ou escreva a descrição" value="${escaparAtributo(atual)}"
+          oninput="atualizarSaldoItem(this.closest('.item-material')); verificarRegras()">
+        <datalist id="${idLista}">${sugestoes.map(n => `<option value="${escaparAtributo(n)}"></option>`).join('')}</datalist>`
+      item.catalogo = new Set([...doCatalogo, ...orcados].map(n => n.toLocaleLowerCase()))
+    }
+  } catch (erro) {
+    console.error(erro)
+    item.dataset.modo = 'livre'
+    item.orcamento = null
+    item.catalogo = null
+    local.innerHTML = `<input name="descricao" placeholder="Descrição do material" value="${escaparAtributo(atual)}" oninput="verificarRegras()">`
+  }
+  item.dataset.descricao = item.querySelector('[name="descricao"]')?.value || ''
+  atualizarSaldoItem(item)
+}
+
+// Saldo de um item orçado: orçado − (lançado noutras despesas iniciais + nesta despesa, em todos os blocos do mesmo item).
+function saldoItemDespesa(item) {
+  if (item?.dataset.modo !== 'orcamento' || !item.orcamento) return null
+  const descricao = item.querySelector('[name="descricao"]')?.value || ''
+  if (!descricao) return null
+  const categoria = item.querySelector('[data-campo="categoria"]:checked')?.value || 'Material'
+  const chave = chaveItemDespesa(categoria, descricao)
+  const orcado = item.orcamento.orcados.find(o => chaveItemDespesa(o.categoria, o.descricao) === chave)?.quantidade || 0
+  const outras = item.orcamento.lancadas.get(chave) || 0
+  const nesta = [...(item.closest('.campo-materiais')?.querySelectorAll('.item-material') || [])]
+    .filter(i => chaveItemDespesa(i.querySelector('[data-campo="categoria"]:checked')?.value, i.querySelector('[name="descricao"]')?.value) === chave)
+    .reduce((s, i) => s + numeroDespesa(i.querySelector('[name="quantidade"]')?.value), 0)
+  return { descricao, orcado, outras, nesta, saldo: orcado - outras - nesta }
+}
+
+// Atualiza a linha de saldo (ou de "fora do catálogo") de todos os blocos: os do mesmo item partilham o saldo.
+function atualizarSaldoItem(item) {
+  if (!item) return
+  const fmt = n => Number(n.toFixed(2)).toLocaleString('pt-PT')
+  for (const bloco of item.closest('.campo-materiais')?.querySelectorAll('.item-material') || [item]) {
+    const local = bloco.querySelector('.despesa-saldo')
+    if (!local) continue
+    if (bloco.dataset.modo === 'livre') {
+      const descricao = (bloco.querySelector('[name="descricao"]')?.value || '').trim()
+      const fora = !!(descricao && bloco.catalogo && !bloco.catalogo.has(descricao.toLocaleLowerCase()))
+      local.className = `despesa-saldo${fora ? ' despesa-saldo-info' : ''}`
+      local.textContent = fora ? 'Fora do catálogo: fica em "Despesas Extras" para os gestores decidirem incluí-lo no sistema.' : ''
+      continue
+    }
+    const s = saldoItemDespesa(bloco)
+    if (!s) { local.className = 'despesa-saldo'; local.textContent = ''; continue }
+    const excede = s.saldo < -1e-9
+    local.className = `despesa-saldo ${excede ? 'despesa-saldo-excede' : 'despesa-saldo-ok'}`
+    local.textContent = `Orçado ${fmt(s.orcado)} · já lançado ${fmt(s.outras)} · nesta despesa ${fmt(s.nesta)} · `
+      + (excede ? `excede o orçado em ${fmt(-s.saldo)}` : `saldo ${fmt(s.saldo)}`)
+  }
+}
+
+// Itens desta despesa que ultrapassam o orçado (um por item, mesmo que repartido por vários blocos).
+function excedentesDespesa() {
+  const excedentes = new Map()
+  for (const item of painelDespesa()?.querySelectorAll('.item-material') || []) {
+    const s = saldoItemDespesa(item)
+    if (s && s.saldo < -1e-9) excedentes.set(s.descricao, -s.saldo)
+  }
+  return [...excedentes]
+}
+
+// Total da despesa e a separação Materiais / Ferramentas, em tempo real (conforme a categoria de cada bloco).
 function calcularTotalDespesa() {
 
-  let total = 0
+  const totais = { Material: 0, Ferramenta: 0 }
+  const itens = [...(painelDespesa()?.querySelectorAll('.item-material') || [])]
 
-  for (const item of [...document.querySelectorAll('.item-material')]) {
-
-    const quantidade = (item.querySelector('[name="quantidade"]').value || 0)
-    const valor = (item.querySelector('[name="valor"]').value || 0)
-
-    total += quantidade * valor
-
+  for (const item of itens) {
+    const quantidade = numeroDespesa(item.querySelector('[name="quantidade"]')?.value)
+    const valor = numeroDespesa(item.querySelector('[name="valor"]')?.value)
+    const categoria = item.querySelector('[data-campo="categoria"]:checked')?.value === 'Ferramenta' ? 'Ferramenta' : 'Material'
+    totais[categoria] += quantidade * valor
   }
 
-  const local = document.querySelector('.total-despesa')
-  if (local)
-    local.textContent = dinheiro(total)
+  const rodape = painelDespesa()?.closest('.popup-despesa')
+  const escrever = (seletor, valor) => { const el = rodape?.querySelector(seletor); if (el) el.textContent = dinheiro(valor) }
+  escrever('.total-despesa', totais.Material + totais.Ferramenta)
+  escrever('.total-despesa-materiais', totais.Material)
+  escrever('.total-despesa-ferramentas', totais.Ferramenta)
+
+  if (itens.length) atualizarSaldoItem(itens[0])
 
 }
 
@@ -577,7 +809,7 @@ async function excluirDespesa(idDespesa) {
 
 }
 
-async function salvarDespesa(idExistente) {
+async function salvarDespesa(idExistente, confirmouExcedente = false) {
 
   // Despesa nova: o id é criado aqui e não se pede ao servidor (um id que ainda não existe é recusado
   // pela proteção por região com "Registo não encontrado", o que impedia guardar qualquer despesa nova).
@@ -599,6 +831,27 @@ async function salvarDespesa(idExistente) {
               </div>
           `
       })
+
+    // Despesa inicial acima do orçado (somando as outras despesas iniciais da obra): avisa e só guarda se confirmado.
+    const excedentes = excedentesDespesa()
+    if (excedentes.length && !confirmouExcedente) {
+      removerOverlay()
+      const fmt = n => Number(n.toFixed(2)).toLocaleString('pt-PT')
+      return popup({
+        titulo: 'Acima do orçado',
+        imagem: 'gifs/interrogacao.gif',
+        mensagem: `
+              <div style="${vertical}; gap: 4px;">
+                  <span>Estes itens ultrapassam a quantidade orçada para a obra:</span>
+                  ${excedentes.map(([descricao, mais]) => `<span>• ${escaparAtributo(descricao)}: mais ${fmt(mais)}</span>`).join('')}
+                  <span>Quer guardar mesmo assim?</span>
+              </div>
+          `,
+        // Fecha primeiro este aviso: o guardar lê o formulário da despesa (o último aberto).
+        botoes: [{ texto: 'Guardar mesmo assim', img: 'concluido',
+          funcao: `removerPopup(); ${idExistente ? `salvarDespesa('${idExistente}', true)` : 'salvarDespesa(null, true)'}` }]
+      })
+    }
 
     const despesa = idExistente ? await recuperarDado('dados_despesas', idExistente) || {} : {}
 
@@ -628,17 +881,21 @@ async function salvarDespesa(idExistente) {
     const tipo_despesa = [...document.querySelectorAll('[name="tipo_despesa"]:checked')][0].dataset.tipo
 
     // Materiais
-    const material = [...document.querySelectorAll('.item-material')]
+    const material = [...painelDespesa().querySelectorAll('.item-material')]
       .map(div => {
 
-        return {
-          quantidade: Number(div.querySelector('[name="quantidade"]').value || 0),
+        const descricao = div.querySelector('[name="descricao"]').value.trim()
+        const item = {
+          quantidade: numeroDespesa(div.querySelector('[name="quantidade"]').value),
           especialidade: div.querySelector('[name="especialidade"]').value,
-          descricao: div.querySelector('[name="descricao"]').value,
-          valor: Number(div.querySelector('[name="valor"]').value || 0),
+          descricao,
+          valor: numeroDespesa(div.querySelector('[name="valor"]').value),
           motivo: div.querySelector('[data-campo="motivo"]:checked')?.value || 'Necessidade',
           categoria: div.querySelector('[data-campo="categoria"]:checked')?.value || 'Material'
         }
+        // Escrito à mão e fora do catálogo: aparece em "Despesas Extras" para os gestores decidirem incluí-lo no sistema.
+        if (div.dataset.modo === 'livre' && div.catalogo && !div.catalogo.has(descricao.toLocaleLowerCase())) item.fora_catalogo = true
+        return item
 
       })
 
@@ -1077,4 +1334,150 @@ async function baixarExcelDespesas() {
 
   } finally { removerOverlay() }
 
+}
+
+// ---------- Despesas Extras (menu Despesas) ----------
+// Recolhe todos os itens lançados em despesas extras de obra, para os gestores acompanharem. Os que estão fora do
+// catálogo (escritos à mão) podem ser incluídos em Materiais ou Ferramentas por quem gere as composições.
+const podeIncluirCatalogo = () => ['CEO', 'Diretor Operativo', 'Diretor Programador'].includes(acesso?.funcao)
+const estadoDespesasExtras = { itens: [], filtro: 'fora', termo: '' }
+
+async function telaDespesasExtras() {
+
+  try {
+
+    overlayAguarde()
+    document.querySelector('[name="titulo"]').textContent = 'Despesas Extras'
+
+    cacheItensDespesa.catalogo = null
+    const [despesas, catalogo] = await Promise.all([
+      pesquisarTodasPaginas({
+        base: 'vw_despesas',
+        filtros: { tipo_despesa: { modo: 'OR', regras: [{ op: '=', value: 'Despesa' }, { op: '=', value: 'Despesa Extra de Obra' }] } }
+      }),
+      catalogoItensDespesa()
+    ])
+
+    const noCatalogo = {
+      Material: new Set(catalogo.Material.map(n => n.toLocaleLowerCase())),
+      Ferramenta: new Set(catalogo.Ferramenta.map(n => n.toLocaleLowerCase()))
+    }
+
+    estadoDespesasExtras.itens = despesas
+      .filter(d => ehDespesaExtra(d.tipo_despesa))
+      .flatMap(d => (Array.isArray(d.material) ? d.material : Object.values(d.material || {})).map(item => {
+        const categoria = item.categoria === 'Ferramenta' ? 'Ferramenta' : 'Material'
+        const descricao = String(item.descricao || '').trim()
+        return {
+          data: d.data || '', obra: d.obra || '', fornecedor: d.nome_fornecedor || '', categoria, descricao,
+          especialidade: item.especialidade || '', motivo: item.motivo || '',
+          quantidade: Number(item.quantidade) || 0, valor: Number(item.valor) || 0,
+          noCatalogo: !!descricao && noCatalogo[categoria].has(descricao.toLocaleLowerCase())
+        }
+      }))
+      .sort((a, b) => String(b.data).localeCompare(String(a.data)))
+
+    tela.innerHTML = `
+      <div class="despesas-extras">
+        <p class="despesas-extras-ajuda">Todos os itens lançados em <b>despesas extras de obra</b>. Os que estão <b>fora do catálogo</b>
+          foram escritos à mão: ${podeIncluirCatalogo() ? 'pode incluí-los em Materiais ou Ferramentas para passarem a aparecer na lista.' : 'a direção decide se os inclui no sistema.'}</p>
+        <div class="despesas-extras-filtros">
+          <input type="search" placeholder="Pesquisar (obra, fornecedor, descrição…)" value="${escaparAtributo(estadoDespesasExtras.termo)}"
+            oninput="estadoDespesasExtras.termo = this.value; renderDespesasExtras()">
+          <select onchange="estadoDespesasExtras.filtro = this.value; renderDespesasExtras()">
+            <option value="fora" ${estadoDespesasExtras.filtro === 'fora' ? 'selected' : ''}>Só fora do catálogo</option>
+            <option value="todos" ${estadoDespesasExtras.filtro === 'todos' ? 'selected' : ''}>Todos os itens</option>
+            <option value="dentro" ${estadoDespesasExtras.filtro === 'dentro' ? 'selected' : ''}>Só no catálogo</option>
+          </select>
+          <span class="despesas-extras-contagem"></span>
+        </div>
+        <div class="despesas-extras-recorte"></div>
+      </div>`
+
+    renderDespesasExtras()
+
+  } catch (err) {
+    console.error(err)
+    popup({ mensagem: 'Falha ao abrir o ecrã de Despesas Extras: Fale com o suporte.' })
+  } finally {
+    removerOverlay()
+  }
+
+}
+
+function renderDespesasExtras() {
+  const local = document.querySelector('.despesas-extras-recorte')
+  if (!local) return
+  const termo = estadoDespesasExtras.termo.trim().toLocaleLowerCase()
+  const itens = estadoDespesasExtras.itens.filter(i =>
+    (estadoDespesasExtras.filtro === 'todos' || (estadoDespesasExtras.filtro === 'fora') !== i.noCatalogo)
+    && (!termo || [i.obra, i.fornecedor, i.descricao, i.especialidade, i.categoria].join(' ').toLocaleLowerCase().includes(termo)))
+
+  const contagem = document.querySelector('.despesas-extras-contagem')
+  if (contagem) contagem.textContent = `${itens.length} ${itens.length === 1 ? 'item' : 'itens'} · ${dinheiro(itens.reduce((s, i) => s + i.quantidade * i.valor, 0))}`
+
+  if (!itens.length) {
+    local.innerHTML = '<p class="despesas-extras-vazio">Nenhum item com estes filtros.</p>'
+    return
+  }
+
+  const acao = i => {
+    if (i.noCatalogo) return '<span class="despesas-extras-etiqueta dentro">No catálogo</span>'
+    if (!podeIncluirCatalogo() || !i.descricao) return '<span class="despesas-extras-etiqueta fora">Fora do catálogo</span>'
+    const args = [i.categoria, i.descricao, i.valor].map(v => escaparAtributo(JSON.stringify(v))).join(', ')
+    return `<button type="button" class="despesas-extras-incluir" onclick="incluirItemCatalogo(${args})">Incluir em ${i.categoria === 'Ferramenta' ? 'Ferramentas' : 'Materiais'}</button>`
+  }
+
+  local.innerHTML = `
+    <table class="tabela">
+      <thead><tr><th>Data</th><th>Obra</th><th>Fornecedor</th><th>Categoria</th><th>Especialidade</th><th>Descrição</th><th>Motivo</th>
+        <th>Qtd</th><th>Valor unit.</th><th>Total</th><th>Sistema</th></tr></thead>
+      <tbody>${itens.map(i => `<tr>
+        <td style="white-space: nowrap;">${escaparAtributo(i.data)}</td>
+        <td>${i.obra ? `<span class="etiquetas">${escaparAtributo(i.obra)}</span>` : ''}</td>
+        <td>${escaparAtributo(i.fornecedor)}</td>
+        <td>${i.categoria}</td>
+        <td>${escaparAtributo(i.especialidade)}</td>
+        <td>${escaparAtributo(i.descricao || 'Sem descrição')}</td>
+        <td>${escaparAtributo(i.motivo)}</td>
+        <td class="despesa-numero">${i.quantidade}</td>
+        <td class="despesa-numero">${dinheiro(i.valor)}</td>
+        <td class="despesa-numero">${dinheiro(i.quantidade * i.valor)}</td>
+        <td>${acao(i)}</td>
+      </tr>`).join('')}</tbody>
+    </table>`
+}
+
+// Inclui um item escrito à mão no catálogo (Materiais ou Ferramentas), com o nome e o preço revistos.
+function incluirItemCatalogo(categoria, descricao, valor) {
+  popup({
+    titulo: 'Incluir no sistema',
+    linhas: [
+      { texto: 'Catálogo', elemento: `<select name="catalogo_destino"><option value="materiais" ${categoria !== 'Ferramenta' ? 'selected' : ''}>Materiais</option><option value="ferramentas" ${categoria === 'Ferramenta' ? 'selected' : ''}>Ferramentas</option></select>` },
+      { texto: 'Nome', elemento: `<textarea name="catalogo_nome">${escaparAtributo(descricao)}</textarea>` },
+      { texto: 'Preço', elemento: `<input name="catalogo_preco" type="number" min="0" step="any" value="${escaparAtributo(valor || '')}">` },
+      { texto: 'Link', elemento: `<textarea name="catalogo_link" placeholder="Opcional"></textarea>` }
+    ],
+    botoes: [{ texto: 'Incluir', img: 'concluido', funcao: 'salvarItemCatalogo()' }]
+  })
+}
+
+async function salvarItemCatalogo() {
+  try {
+    const painel = [...document.querySelectorAll('.painel-padrao')].at(-1)
+    const base = painel.querySelector('[name="catalogo_destino"]').value
+    const nome = painel.querySelector('[name="catalogo_nome"]').value.trim()
+    const preco = Number(String(painel.querySelector('[name="catalogo_preco"]').value).replace(',', '.'))
+    if (!nome || !Number.isFinite(preco) || preco < 0) return popup({ mensagem: 'Indique o nome e um preço válido.' })
+    overlayAguarde()
+    const id = crypto.randomUUID()
+    await enviar(`${base}/${id}`, { id, nome, preco, link: painel.querySelector('[name="catalogo_link"]').value.trim() })
+    removerPopup()
+    await telaDespesasExtras()
+  } catch (err) {
+    console.error(err)
+    popup({ mensagem: 'Falha ao incluir o item no sistema: Fale com o suporte.' })
+  } finally {
+    removerOverlay()
+  }
 }

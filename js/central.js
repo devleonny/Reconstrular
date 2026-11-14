@@ -542,6 +542,8 @@ function tipoFuncao(titulo) {
 const funcaoDeGestao = titulo => ['ceo', 'diretor', 'coordenador'].includes(tipoFuncao(titulo))
 // Com remuneração variável (% do lucro das obras): gestão e encarregados.
 const funcaoComVariavel = titulo => ['ceo', 'diretor', 'coordenador', 'encarregado'].includes(tipoFuncao(titulo))
+// Ordenado mensal fixo (+ variável): CEO, Diretor Operativo e Diretor Programador; os restantes recebem à diária.
+const funcaoOrdenadoFixo = titulo => ['ceo', 'diretor'].includes(tipoFuncao(titulo))
 
 // IBAN sem espaços: país + 2 dígitos de controlo + conta; o resto da divisão por 97 (ISO 13616) tem de ser 1.
 function ibanValido(iban) {
@@ -765,6 +767,12 @@ async function verificarRegras() {
     // Valor variável da remuneração: só para CEO, diretores, coordenadores e encarregados.
     const blocoVariavel = painel.querySelector('[data-remuneracao-variavel]')
     if (blocoVariavel) blocoVariavel.style.display = funcaoComVariavel(funcao) ? '' : 'none'
+    // CEO e diretores: ordenado mensal fixo em vez de diária.
+    const fixo = funcaoOrdenadoFixo(funcao)
+    const blocoMensal = painel.querySelector('[data-remuneracao-mensal]')
+    const blocoDiaria = painel.querySelector('[data-remuneracao-diaria]')
+    if (blocoMensal) blocoMensal.style.display = fixo ? '' : 'none'
+    if (blocoDiaria) blocoDiaria.style.display = fixo ? 'none' : ''
 
     // Foto do colaborador: obrigatória em qualquer função (é a referência do reconhecimento facial).
     const foto = painel.querySelector('img[name="foto"]')
@@ -890,6 +898,10 @@ async function verificarRegras() {
         if (c === 'foto' && el.closest('.colaborador-foto'))
             continue
 
+        // Blocos de material da despesa: validados um a um mais abaixo.
+        if (el.closest('.item-material'))
+            continue
+
         // Campo numa linha oculta (ex.: Obra numa Despesa Interna Empresa) não é exigido.
         if (el.closest('.linha-padrao')?.style.display === 'none')
             continue
@@ -924,7 +936,38 @@ async function verificarRegras() {
 
     }
 
-    return { campos }
+    // Despesa: IVA obrigatório e cada bloco de material completo (pelo menos um bloco).
+    const listaMateriais = painel.querySelector('.campo-materiais')
+    if (listaMateriais) {
+        const iva = painel.querySelector('[name="taxa_iva"]')
+        if (iva && !iva.value) {
+            inv(iva)
+            if (!campos.includes('IVA')) campos.push('IVA')
+        } else if (iva) inv(iva, true)
+
+        const blocos = [...listaMateriais.querySelectorAll('.item-material')]
+        const caixaMateriais = listaMateriais.closest('.despesa-materiais')
+        if (!blocos.length) {
+            inv(caixaMateriais)
+            campos.push('Materiais (adicione pelo menos um)')
+        } else inv(caixaMateriais, true)
+
+        blocos.forEach((bloco, i) => {
+            const faltam = []
+            for (const [nome, rotulo] of [['quantidade', 'quantidade'], ['valor', 'valor'], ['especialidade', 'especialidade'], ['descricao', 'descrição']]) {
+                const el = bloco.querySelector(`[name="${nome}"]`)
+                if (!el) continue
+                const vazio = ['quantidade', 'valor'].includes(nome) ? !(Number(String(el.value).replace(',', '.')) > 0) : !String(el.value || '').trim()
+                inv(el, !vazio)
+                if (vazio) faltam.push(rotulo)
+            }
+            for (const [campo, rotulo] of [['categoria', 'categoria'], ['motivo', 'motivo']])
+                if (!bloco.querySelector(`[data-campo="${campo}"]:checked`)) faltam.push(rotulo)
+            if (faltam.length) campos.push(`Material ${i + 1}: ${faltam.join(', ')}`)
+        })
+    }
+
+    return { campos: [...new Set(campos)] }
 
 }
 
@@ -1584,16 +1627,20 @@ async function pdfEmail({ html, emails, htmlContent = 'Documento em anexo', titu
 }
 
 // Cabeçalho comum das exportações em PDF: título e dados à esquerda, logótipo no canto superior direito.
-function cabecalhoPdf({ titulo, linhas = [] }) {
+// extra: HTML opcional por baixo dos dados, na largura toda (ex.: resumo da checklist).
+function cabecalhoPdf({ titulo, linhas = [], extra = '' }) {
     const dados = linhas.filter(([, valor]) => valor)
         .map(([rotulo, valor]) => `<div><b>${escaparAtributo(rotulo)}:</b> ${escaparAtributo(valor)}</div>`).join('')
     return `
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 12px 16px; border-bottom: 2px solid #3f4b55; margin-bottom: 12px; font-family: Arial, sans-serif;">
-            <div style="font-size: 12px; line-height: 1.5;">
-                <div style="font-size: 18px; font-weight: bold; margin-bottom: 4px;">${escaparAtributo(titulo || '')}</div>
-                ${dados}
+        <div style="padding: 12px 16px; border-bottom: 2px solid #3f4b55; margin-bottom: 12px; font-family: Arial, sans-serif;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
+                <div style="font-size: 12px; line-height: 1.5;">
+                    <div style="font-size: 18px; font-weight: bold; margin-bottom: 4px;">${escaparAtributo(titulo || '')}</div>
+                    ${dados}
+                </div>
+                <img src="img/logo.png" alt="Reconstrular" style="width: 90px; border-radius: 10px;">
             </div>
-            <img src="img/logo.png" alt="Reconstrular" style="width: 90px; border-radius: 10px;">
+            ${extra}
         </div>`
 }
 

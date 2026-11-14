@@ -7,13 +7,20 @@ const Remuneracao = (() => {
     function dataValida(data) { return /^\d{4}-\d{2}-\d{2}$/.test(data) && Number.isFinite(Date.parse(data + 'T12:00:00Z')) && new Date(data + 'T12:00:00Z').toISOString().slice(0,10) === data }
     function formulario(c) {
         const lista = [...(c.remuneracao?.vigencias || [])].sort((a,b)=>a.inicio.localeCompare(b.inicio))
+        const ordenados = [...(c.remuneracao?.ordenados || [])].sort((a,b)=>a.inicio.localeCompare(b.inicio))
         const dataPt = data => data.split('-').reverse().join('/')
-        return `<section class="colaborador-remuneracao" aria-label="Remuneração diária">
+        return `<section class="colaborador-remuneracao" aria-label="Remuneração">
             <header class="remuneracao-cabecalho">
-                <h3>Remuneração diária</h3>
+                <h3>Remuneração</h3>
                 <p>Defina o valor e a data a partir da qual ele será usado no Ponto.</p>
             </header>
-            <div class="remuneracao-campos">
+            <div class="remuneracao-campos" data-remuneracao-mensal style="display: none;">
+                <label>Ordenado mensal fixo (€)<input name="rem-ordenado" inputmode="decimal" placeholder="0,00"></label>
+                <label>Válido a partir de<input name="rem-ordenado-inicio" type="date" value="${hoje().slice(0, 8)}01"></label>
+                <p class="remuneracao-ajuda">CEO e diretores: recebem o ordenado do mês inteiro, sem depender das horas registadas, mais a percentagem variável abaixo.</p>
+                ${ordenados.length ? `<p class="remuneracao-ajuda">Em vigor: ${ordenados.map(o => `${moeda(o.centavos)} desde ${esc(dataPt(o.inicio))}`).join(' · ')}</p>` : ''}
+            </div>
+            <div class="remuneracao-campos" data-remuneracao-diaria>
                 <label>Pagamento<select name="rem-periodicidade">
                     <option value="mensal" ${c.remuneracao?.periodicidade !== 'semanal' ? 'selected' : ''}>Mensal (dia 1 ao último dia)</option>
                     <option value="semanal" ${c.remuneracao?.periodicidade === 'semanal' ? 'selected' : ''}>Semanal (sexta a quinta)</option>
@@ -46,8 +53,20 @@ const Remuneracao = (() => {
         const variavel = comVariavel && campoVariavel.value.trim() ? numero(campoVariavel.value) : 0
         if (!Number.isFinite(variavel) || variavel < 0 || variavel > 100) throw new Error('O valor variável é uma percentagem entre 0 e 100.')
         const mudouVariavel = Math.round(variavel * 100) !== Math.round((Number(rem.variavel) || 0) * 100)
-        const campo = document.querySelector('[name="rem-diaria"]')
-        if ((!campo || !campo.value.trim()) && !mudouPeriodicidade && !mudouVariavel) return null
+        // Diária: ignorada quando o bloco está oculto (CEO e diretores têm ordenado mensal).
+        const campoDiaria = document.querySelector('[name="rem-diaria"]')
+        const campo = campoDiaria?.closest('[data-remuneracao-diaria]')?.style.display === 'none' ? null : campoDiaria
+        // Ordenado mensal fixo: só para o CEO e diretores (bloco visível).
+        const campoOrdenado = document.querySelector('[name="rem-ordenado"]')
+        const comOrdenado = campoOrdenado && campoOrdenado.closest('[data-remuneracao-mensal]')?.style.display !== 'none' && campoOrdenado.value.trim()
+        if ((!campo || !campo.value.trim()) && !mudouPeriodicidade && !mudouVariavel && !comOrdenado) return null
+        let ordenados = rem.ordenados || []
+        if (comOrdenado) {
+            const valor = numero(campoOrdenado.value), inicio = document.querySelector('[name="rem-ordenado-inicio"]').value
+            if (!Number.isFinite(valor) || valor < 0 || !Number.isSafeInteger(Math.round(valor * 100)) || !dataValida(inicio)) throw new Error('Informe um ordenado mensal não negativo e uma data válida.')
+            if (ordenados.some(o => o.inicio === inicio)) throw new Error('Já existe um ordenado mensal nesta data. Escolha outra data de início.')
+            ordenados = [...ordenados, { id: crypto.randomUUID(), inicio, centavos: Math.round(valor * 100), criado_em: new Date().toISOString(), criado_por: acesso.usuario }]
+        }
         let vigencias = rem.vigencias || []
         if (campo && campo.value.trim()) {
             const diaria = numero(campo.value), inicio = document.querySelector('[name="rem-inicio"]').value
@@ -56,7 +75,8 @@ const Remuneracao = (() => {
             if (vigencias.some(v=>v.inicio === inicio)) throw new Error('Já existe uma diária nesta data. Escolha uma nova data de vigência para preservar o histórico.')
             vigencias = [...vigencias, { id: crypto.randomUUID(), inicio, centavos: Math.round(diaria * 100), minutos_dia: Math.max(1, Math.round(jornada * 60)), criado_em: new Date().toISOString(), criado_por: acesso.usuario }]
         }
-        const final = { ...rem, periodicidade, vigencias }
+        const final = { ...rem, periodicidade: comOrdenado ? 'mensal' : periodicidade, vigencias }
+        if (ordenados.length) final.ordenados = ordenados
         if (variavel > 0) final.variavel = Math.round(variavel * 100) / 100
         else delete final.variavel
         return final

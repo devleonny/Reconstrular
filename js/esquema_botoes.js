@@ -217,6 +217,7 @@ const esquemaBotoes = {
             img: 'contas',
             sub: [
                 { nome: 'Verificar Despesas', funcao: 'verificarDespesas', img: 'contas' },
+                { nome: 'Despesas Extras', funcao: 'telaDespesasExtras', img: 'caixa' },
                 { nome: 'Fornecedores', funcao: 'telaFornecedores', img: 'fornecedor' },
 
             ]
