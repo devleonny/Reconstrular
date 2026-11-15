@@ -90,6 +90,7 @@ function iconeMenu(img) {
         ferramentas: '<path d="M14 6a5 5 0 0 0-6 6l-5 5a3 3 0 0 0 4 4l5-5a5 5 0 0 0 6-6l-3 3-4-4Z"/>',
         colaborador: '<circle cx="12" cy="7" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',
         carta: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 6 9 7 9-7"/>',
+        megafone: '<path d="M3 10v4a1 1 0 0 0 1 1h3l6 4V5L7 9H4a1 1 0 0 0-1 1Zm14-2a5 5 0 0 1 0 8m2.5-10.5a8.5 8.5 0 0 1 0 13"/>',
         olho: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
         qrcode: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3M6.5 6.5h.01M17.5 6.5h.01M6.5 17.5h.01"/>'
     }
@@ -260,6 +261,15 @@ const esquemaBotoes = {
             permitido: ['CEO', 'Diretor Programador'],
             img: 'objetivo',
             funcao: 'telaObjetivos'
+        },
+        {
+            nome: 'Marketing',
+            permitido: ['CEO', 'Diretor Programador'],
+            img: 'megafone',
+            sub: [
+                { nome: 'Publicações', funcao: 'telaMarketing', img: 'megafone' },
+                { nome: 'Nova Vaga de Parceiro', funcao: 'novaVagaParceiro', img: 'baixar' }
+            ]
         },
         {
             nome: 'Tarefas',

@@ -136,3 +136,10 @@
 .cabecalho-usuario .tarefas-contador-controle .labelQuantidade[hidden] { display: none; }
 /* Ícones de contador mais juntos: desconta o espaço entre itens da barra (o canto direito já reserva lugar para o selo). */
 .cabecalho-usuario .tarefas-contador-controle + .tarefas-contador-controle { margin-left: -8px; }
+
+/* Despesas Extras: o número fica ao lado do ícone (só quando há contagem), não em selo no canto. */
+.cabecalho-usuario .tarefas-contador-controle.contador-ao-lado { padding: 6px 11px 6px 3px; gap: 5px; }
+.cabecalho-usuario .tarefas-contador-controle.contador-ao-lado .labelQuantidade {
+    order: -1; position: relative; z-index: 1; margin-right: -16px; height: 20px; min-width: 20px; padding: 0 7px; border: 0;
+    background: #e11d48; color: #fff; font-size: 11px; line-height: 20px; box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+}
