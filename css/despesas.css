@@ -195,7 +195,12 @@ th {
 .popup-despesa .despesa-radio input { width: 16px; height: 16px; flex: 0 0 16px; margin: 0; accent-color: #596d7d; }
 .popup-despesa .despesa-materiais { width: 100%; min-width: 0; }
 .popup-despesa .despesa-materiais-topo { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
-.popup-despesa .despesa-total { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; margin-right: auto; }
+.popup-despesa .despesa-totais { display: flex; align-items: flex-end; gap: 28px; margin-right: auto; flex-wrap: wrap; }
+.popup-despesa .despesa-total { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.popup-despesa .despesa-total-obra { padding-left: 28px; border-left: 1px solid #cdd6de; }
+.popup-despesa .total-obra { color: #3f505e; font-size: 20px; font-weight: 600; }
+.popup-despesa .total-obra.total-obra-negativo { color: #c62828; }
+.popup-despesa .despesa-total .nota-total-obra { max-width: 260px; font-size: 10px; line-height: 1.3; color: #8a959e; }
 .popup-despesa .despesa-total small { font-size: 10px; color: #7a8691; }
 .popup-despesa .total-despesa { position: static; padding: 0; border: 0; border-radius: 0; background: transparent; color: #3f505e; box-shadow: none; filter: none; font-size: 20px; font-weight: 600; }
 .popup-despesa .campo-materiais { width: 100%; margin-bottom: 0; gap: 12px; align-items: stretch; }
@@ -224,7 +229,8 @@ th {
 .popup-despesa .despesa-remover:hover { background: #dbe2e8; color: #414e59; }
 .popup-despesa .despesa-adicionar:focus-visible, .popup-despesa .despesa-remover:focus-visible { outline: 2px solid #8b9caa; outline-offset: 2px; }
 @media (max-width: 600px) {
-    .popup-despesa .despesa-total { flex: 1 0 100%; padding-bottom: 8px; border-bottom: 1px solid #cdd6de; }
+    .popup-despesa .despesa-totais { flex: 1 0 100%; padding-bottom: 8px; border-bottom: 1px solid #cdd6de; gap: 16px; }
+    .popup-despesa .despesa-total-obra { padding-left: 16px; }
     .popup-despesa .linha-padrao { align-items: stretch; }
     .popup-despesa .linha-padrao > span:first-child { flex-basis: auto; }
     .popup-despesa .despesa-material-campos { grid-template-columns: 1fr 1fr; }

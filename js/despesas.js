@@ -371,14 +371,23 @@ async function formularioDespesa(idDespesa) {
     cacheItensDespesa.catalogo = null
     cacheItensDespesa.orcamentos.clear()
     cacheItensDespesa.lancadas.clear()
-    // Resumo em tempo real: totais de Materiais e de Ferramentas (pela categoria de cada bloco) e o total.
+    // Resumo em tempo real: subtotal desta despesa e total da obra (centro de custo), cada um com Materiais / Ferramentas.
+    const partes = sufixo => `
+      <div class="despesa-total-partes">
+        <span><small>Materiais</small><b class="total-${sufixo}-materiais">${dinheiro(0)}</b></span>
+        <span><small>Ferramentas</small><b class="total-${sufixo}-ferramentas">${dinheiro(0)}</b></span>
+      </div>`
     modalDespesa.querySelector('.rodape-padrao').insertAdjacentHTML('afterbegin', `
-      <div class="despesa-total">
-        <div class="despesa-total-partes">
-          <span><small>Materiais</small><b class="total-despesa-materiais">${dinheiro(0)}</b></span>
-          <span><small>Ferramentas</small><b class="total-despesa-ferramentas">${dinheiro(0)}</b></span>
+      <div class="despesa-totais">
+        <div class="despesa-total">
+          ${partes('despesa')}
+          <small>Subtotal da despesa</small><span class="total-despesa">${dinheiro(valor)}</span>
         </div>
-        <small>Total da despesa</small><span class="total-despesa">${dinheiro(valor)}</span>
+        <div class="despesa-total despesa-total-obra" style="display: none;">
+          ${partes('obra')}
+          <small class="titulo-total-obra">Total da obra</small><span class="total-obra">${dinheiro(0)}</span>
+          <small class="nota-total-obra"></small>
+        </div>
       </div>
     `)
 
@@ -721,13 +730,89 @@ function calcularTotalDespesa() {
   }
 
   const rodape = painelDespesa()?.closest('.popup-despesa')
-  const escrever = (seletor, valor) => { const el = rodape?.querySelector(seletor); if (el) el.textContent = dinheiro(valor) }
-  escrever('.total-despesa', totais.Material + totais.Ferramenta)
-  escrever('.total-despesa-materiais', totais.Material)
-  escrever('.total-despesa-ferramentas', totais.Ferramenta)
+  escreverTotaisDespesa(rodape, 'despesa', totais)
+  const subtotal = rodape?.querySelector('.total-despesa')
+  if (subtotal) subtotal.textContent = dinheiro(totais.Material + totais.Ferramenta)
 
   if (itens.length) atualizarSaldoItem(itens[0])
 
+  atualizarTotalObraDespesa(rodape, totais)
+
+}
+
+// Categoria a zero não aparece (Materiais ou Ferramentas).
+function escreverTotaisDespesa(rodape, sufixo, totais) {
+  for (const [categoria, nome] of [['Material', 'materiais'], ['Ferramenta', 'ferramentas']]) {
+    const el = rodape?.querySelector(`.total-${sufixo}-${nome}`)
+    if (!el) continue
+    el.textContent = dinheiro(totais[categoria])
+    el.parentElement.style.display = Math.abs(totais[categoria]) < 0.005 ? 'none' : ''
+  }
+}
+
+// Valores da obra por categoria, sem a despesa em edição: orçado (do orçamento), despesas iniciais lançadas e
+// despesas extras acumuladas (as notas de crédito descontam nas extras).
+async function totaisOutrasDespesasObra(contrato, idDespesa) {
+  const cacheChave = `total|${contrato}|${idDespesa || ''}`
+  if (!cacheItensDespesa.lancadas.has(cacheChave)) cacheItensDespesa.lancadas.set(cacheChave, (async () => {
+    const [obra, despesas] = await Promise.all([
+      pesquisarDB({ base: 'vw_dados_orcamentos', filtros: { contrato: { op: '=', value: contrato } }, pagina: 1, limite: 1 }),
+      pesquisarTodasPaginas({ base: 'vw_despesas', filtros: { obra: { op: '=', value: contrato } } })
+    ])
+    const o = obra?.resultados?.[0] || {}
+    const totais = {
+      orcado: { Material: Number(o.total_materiais) || 0, Ferramenta: Number(o.total_ferramentas) || 0 },
+      inicial: { Material: 0, Ferramenta: 0 },
+      extra: { Material: 0, Ferramenta: 0 }
+    }
+    for (const d of despesas) {
+      if (String(d.id) === String(idDespesa || '')) continue
+      const [grupo, sinal] = d.tipo_despesa === TIPO_DESPESA_INICIAL ? ['inicial', 1]
+        : ehDespesaExtra(d.tipo_despesa) ? ['extra', 1]
+          : d.tipo_despesa === 'Nota de Crédito' ? ['extra', -1] : [null, 0]
+      if (!grupo) continue
+      for (const item of Array.isArray(d.material) ? d.material : Object.values(d.material || {}))
+        totais[grupo][item.categoria === 'Ferramenta' ? 'Ferramenta' : 'Material'] += sinal * numeroDespesa(item.quantidade) * numeroDespesa(item.valor)
+    }
+    return totais
+  })().catch(erro => { cacheItensDespesa.lancadas.delete(cacheChave); throw erro }))
+  return cacheItensDespesa.lancadas.get(cacheChave)
+}
+
+// Segundo total do rodapé, conforme o tipo da despesa (sem obra, como na Despesa Interna, fica oculto):
+// - Despesa Extra de Obra / Nota de Crédito: acumulado das extras da obra + esta (a nota de crédito desconta);
+// - Despesa Inicial de Obra: saldo do orçamento = orçado − despesas iniciais já lançadas − esta.
+async function atualizarTotalObraDespesa(rodape, totaisDespesa) {
+  const bloco = rodape?.querySelector('.despesa-total-obra')
+  if (!bloco) return
+  const { contrato, idDespesa, tipo } = contextoDespesa()
+  const inicial = tipo === TIPO_DESPESA_INICIAL
+  const extra = ehDespesaExtra(tipo) || tipo === 'Nota de Crédito'
+  if (!contrato || (!inicial && !extra)) { bloco.style.display = 'none'; return }
+  try {
+    const t = await totaisOutrasDespesasObra(contrato, idDespesa)
+    const atual = contextoDespesa()
+    if (atual.contrato !== contrato || atual.tipo !== tipo) return
+    const totais = {}
+    for (const c of ['Material', 'Ferramenta']) {
+      totais[c] = inicial
+        ? t.orcado[c] - t.inicial[c] - totaisDespesa[c]
+        : t.extra[c] + (tipo === 'Nota de Crédito' ? -1 : 1) * totaisDespesa[c]
+    }
+    const total = totais.Material + totais.Ferramenta
+    escreverTotaisDespesa(rodape, 'obra', totais)
+    bloco.querySelector('.titulo-total-obra').textContent = inicial ? `Saldo do orçamento ${contrato}` : `Total de extras da obra ${contrato}`
+    const valor = bloco.querySelector('.total-obra')
+    valor.textContent = dinheiro(total)
+    valor.classList.toggle('total-obra-negativo', inicial && total < -0.005)
+    bloco.querySelector('.nota-total-obra').textContent = inicial
+      ? 'Orçado em materiais e ferramentas, menos as despesas iniciais já lançadas e esta.'
+      : 'Soma de todas as despesas extras desta obra, com esta (as notas de crédito descontam).'
+    bloco.style.display = ''
+  } catch (erro) {
+    console.error(erro)
+    bloco.style.display = 'none'
+  }
 }
 
 // Escolha do envio da fatura: ficheiro (imagem ou PDF) ou foto pela câmara.
@@ -1354,6 +1439,84 @@ async function baixarExcelDespesas() {
 const podeIncluirCatalogo = () => ['CEO', 'Diretor Operativo', 'Diretor Programador'].includes(acesso?.funcao)
 const estadoDespesasExtras = { itens: [], filtro: 'fora', termo: '', catalogo: { Material: [], Ferramenta: [] } }
 
+// Itens de todas as despesas extras de obra, mais recentes primeiro, marcados como no catálogo ou fora dele.
+async function itensDespesasExtras() {
+  cacheItensDespesa.catalogo = null
+  const [despesas, catalogo] = await Promise.all([
+    pesquisarTodasPaginas({
+      base: 'vw_despesas',
+      filtros: { tipo_despesa: { modo: 'OR', regras: [{ op: '=', value: 'Despesa' }, { op: '=', value: 'Despesa Extra de Obra' }] } }
+    }),
+    catalogoItensDespesa()
+  ])
+
+  const noCatalogo = {
+    Material: new Set(catalogo.Material.map(n => n.toLocaleLowerCase())),
+    Ferramenta: new Set(catalogo.Ferramenta.map(n => n.toLocaleLowerCase()))
+  }
+
+  const itens = despesas
+    .filter(d => ehDespesaExtra(d.tipo_despesa))
+    .flatMap(d => Object.entries(d.material || {}).map(([chave, item]) => {
+      const categoria = item.categoria === 'Ferramenta' ? 'Ferramenta' : 'Material'
+      const descricao = String(item.descricao || '').trim()
+      const original = String(item.descricao_original || '').trim()
+      return {
+        // Posição do item na despesa (índice da lista ou chave do objeto), para o associar a um item do catálogo.
+        idDespesa: d.id, chave,
+        data: d.data || '', obra: d.obra || '', fornecedor: d.nome_fornecedor || '', categoria, descricao,
+        original: original && original !== descricao ? original : '',
+        especialidade: item.especialidade || '', motivo: item.motivo || '',
+        quantidade: Number(item.quantidade) || 0, valor: Number(item.valor) || 0,
+        noCatalogo: !!descricao && noCatalogo[categoria].has(descricao.toLocaleLowerCase())
+      }
+    }))
+    .sort((a, b) => String(b.data).localeCompare(String(a.data)))
+    .map((item, indice) => ({ ...item, indice }))
+
+  return { itens, catalogo }
+}
+
+// ---------- Alerta de Despesas Extras no cabeçalho (só CEO e Diretor Programador) ----------
+// O contador mostra os itens fora do catálogo à espera de decisão. Quando aparece um item novo (por aviso do
+// servidor ou ao entrar), sai um balão de alerta. Os já avisados ficam guardados por utilizador neste aparelho.
+const podeAlertaDespesasExtras = () => ['CEO', 'Diretor Programador'].includes(acesso?.funcao)
+let contadorDespesasExtrasConsulta = 0
+
+function mostrarContadorDespesasExtras(total) {
+  const contador = document.getElementById('contadorDespesasExtras')
+  if (!contador) return
+  contador.textContent = total > 99 ? '99+' : String(total)
+  contador.hidden = total === 0
+  contador.parentElement.title = `${total} itens de despesas extras fora do catálogo`
+  contador.parentElement.setAttribute('aria-label', `${total} itens de despesas extras fora do catálogo. Abrir Despesas Extras`)
+}
+
+async function atualizarContadorDespesasExtras() {
+  if (!podeAlertaDespesasExtras() || !document.getElementById('contadorDespesasExtras')) return
+  const consulta = ++contadorDespesasExtrasConsulta, usuario = acesso.usuario
+  try {
+    const { itens } = await itensDespesasExtras()
+    if (consulta !== contadorDespesasExtrasConsulta || usuario !== acesso?.usuario) return
+    const pendentes = itens.filter(i => !i.noCatalogo)
+    mostrarContadorDespesasExtras(pendentes.length)
+
+    const chaveVistos = `despesasExtrasAvisadas:${usuario}`
+    const ids = pendentes.map(i => `${i.idDespesa}|${i.chave}`)
+    const guardados = localStorage.getItem(chaveVistos)
+    const vistos = new Set(guardados ? JSON.parse(guardados) : [])
+    const novos = pendentes.filter(i => !vistos.has(`${i.idDespesa}|${i.chave}`))
+    // Primeira vez neste aparelho: só regista, para não alertar sobre tudo o que já existia.
+    if (guardados && novos.length) {
+      const texto = novos.length === 1
+        ? `Nova despesa extra fora do catálogo: ${novos[0].descricao || 'sem descrição'}${novos[0].obra ? ` (${novos[0].obra})` : ''}`
+        : `${novos.length} novos itens de despesas extras fora do catálogo`
+      balaoNotificacao({ imagem: 'imagens/alerta.png', usuario: 'Despesas Extras', status: texto, tempo: 10 })
+    }
+    localStorage.setItem(chaveVistos, JSON.stringify(ids))
+  } catch (erro) { console.warn('Não foi possível atualizar o contador de despesas extras:', erro.message) }
+}
+
 async function telaDespesasExtras() {
 
   try {
@@ -1361,39 +1524,10 @@ async function telaDespesasExtras() {
     overlayAguarde()
     document.querySelector('[name="titulo"]').textContent = 'Despesas Extras'
 
-    cacheItensDespesa.catalogo = null
-    const [despesas, catalogo] = await Promise.all([
-      pesquisarTodasPaginas({
-        base: 'vw_despesas',
-        filtros: { tipo_despesa: { modo: 'OR', regras: [{ op: '=', value: 'Despesa' }, { op: '=', value: 'Despesa Extra de Obra' }] } }
-      }),
-      catalogoItensDespesa()
-    ])
-
-    const noCatalogo = {
-      Material: new Set(catalogo.Material.map(n => n.toLocaleLowerCase())),
-      Ferramenta: new Set(catalogo.Ferramenta.map(n => n.toLocaleLowerCase()))
-    }
-
+    const { itens, catalogo } = await itensDespesasExtras()
     estadoDespesasExtras.catalogo = catalogo
-    estadoDespesasExtras.itens = despesas
-      .filter(d => ehDespesaExtra(d.tipo_despesa))
-      .flatMap(d => Object.entries(d.material || {}).map(([chave, item]) => {
-        const categoria = item.categoria === 'Ferramenta' ? 'Ferramenta' : 'Material'
-        const descricao = String(item.descricao || '').trim()
-        const original = String(item.descricao_original || '').trim()
-        return {
-          // Posição do item na despesa (índice da lista ou chave do objeto), para o associar a um item do catálogo.
-          idDespesa: d.id, chave,
-          data: d.data || '', obra: d.obra || '', fornecedor: d.nome_fornecedor || '', categoria, descricao,
-          original: original && original !== descricao ? original : '',
-          especialidade: item.especialidade || '', motivo: item.motivo || '',
-          quantidade: Number(item.quantidade) || 0, valor: Number(item.valor) || 0,
-          noCatalogo: !!descricao && noCatalogo[categoria].has(descricao.toLocaleLowerCase())
-        }
-      }))
-      .sort((a, b) => String(b.data).localeCompare(String(a.data)))
-      .map((item, indice) => ({ ...item, indice }))
+    estadoDespesasExtras.itens = itens
+    mostrarContadorDespesasExtras(itens.filter(i => !i.noCatalogo).length)
 
     tela.innerHTML = `
       <div class="despesas-extras">
@@ -1446,7 +1580,7 @@ function renderDespesasExtras() {
     if (!podeIncluirCatalogo()) return '<span class="despesas-extras-etiqueta fora">Fora do catálogo</span>'
     return `<div class="despesas-extras-acoes">
       <button type="button" class="despesas-extras-incluir" onclick="associarItemExtra(${i.indice})">Associar</button>
-      <button type="button" class="despesas-extras-incluir secundario" onclick="incluirItemCatalogo(${i.indice})">Incluir</button>
+      <button type="button" class="despesas-extras-incluir secundario" onclick="incluirItemCatalogo(${i.indice})">Incluir/Editar</button>
     </div>`
   }
 

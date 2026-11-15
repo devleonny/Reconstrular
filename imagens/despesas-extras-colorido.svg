@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="caixa" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <!-- Fatura -->
+  <path d="M6 3h20v26l-3.3-2-3.4 2-3.3-2-3.3 2-3.4-2L6 29Z" fill="url(#caixa)"/>
+  <rect x="9" y="7" width="14" height="2.2" rx="1.1" fill="#fff" opacity=".9"/>
+  <rect x="9" y="12" width="9" height="2.2" rx="1.1" fill="#fff" opacity=".9"/>
+  <rect x="9" y="17" width="7" height="2.2" rx="1.1" fill="#fff" opacity=".9"/>
+  <!-- Item extra (+) -->
+  <circle cx="22.5" cy="20.5" r="5.5" fill="#fde047"/>
+  <path d="M22.5 17.6v5.8M19.6 20.5h5.8" stroke="#b45309" stroke-width="2" stroke-linecap="round"/>
+</svg>

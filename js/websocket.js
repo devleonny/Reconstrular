@@ -330,13 +330,14 @@ function comunicacao() {
             // Aba que esteve sem ligação (outra era a ativa): o que mudou entretanto não chegou aqui.
             if (ficouSemLigacao) {
                 ficouSemLigacao = false
-                await Promise.allSettled([paginacao(), verificarMensagens(), atualizarContadorTarefas(), window.atualizarContadorEmails?.()])
+                await Promise.allSettled([paginacao(), verificarMensagens(), atualizarContadorTarefas(), window.atualizarContadorEmails?.(), atualizarContadorDespesasExtras()])
             }
             removerOverlay()
         }
 
         if (tipo === 'atualizacao') {
             if (tabela === 'tarefas') await atualizarContadorTarefas()
+            if (['dados_despesas', 'despesas', 'materiais', 'ferramentas'].includes(tabela)) atualizarContadorDespesasExtras()
             if (['dados_orcamentos', 'vw_dados_orcamentos', 'execucoes'].includes(tabela)
                 && document.getElementById('execucoes-local')) {
                 await atualizarExecucoesMemoria()

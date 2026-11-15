@@ -325,9 +325,13 @@ screen and (min-aspect-ratio: 13/9) {
 .obra-itens-orcamento > p { padding: 0 16px; font-size: 11px; color: #78838c; line-height: 1.6; }
 .obra-total-zerado { display: inline-block; padding: 4px 8px; border: 1px solid #edc3c3; border-radius: 6px; background: #fceaea; color: #a52f2f; font-weight: 600; }
 
-/* Checklist: tarefa a 100% com a linha verde; item riscado com risco vermelho. */
-.tabela-especialidade tr.checklist-completo td {
-    background-color: #dff3e6;
+/* Checklist: linhas intercaladas em cinzento claro; item riscado com risco vermelho. */
+.tabela-especialidade tbody tr[data-etapa="S"] td {
+    background-color: #fff;
+}
+
+.tabela-especialidade tbody tr[data-etapa="S"]:nth-child(odd) td {
+    background-color: #f6f6f6;
 }
 
 .tabela-especialidade .checklist-riscado,

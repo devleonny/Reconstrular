@@ -521,6 +521,32 @@ async function pdfObra(nome) {
     // Checklist no PDF: linhas todas com fundo branco (a da especialidade tem cinzento na app).
     copia.querySelectorAll('.tabela-especialidade tr').forEach(tr => { tr.style.backgroundColor = '#fff' })
 
+    // Checklist no PDF: o orçamento vai para o cabeçalho e as especialidades ficam numa só tabela, com um único título de colunas.
+    let orcamentoPdf = null
+    const bloco = copia.querySelector('.orcamento-bloco')
+    if (bloco) {
+        const titulo = bloco.querySelector(':scope > div')
+        orcamentoPdf = [...(titulo?.querySelectorAll('span') || [])].map(s => s.textContent.trim()).filter(Boolean).join(' · ')
+        titulo?.remove()
+
+        const tabela = document.createElement('table')
+        tabela.className = 'tabela-especialidade tabela-checklist-pdf'
+        tabela.innerHTML = `<thead><tr><th>Nº</th><th>Descrição</th><th>Medida</th><th>Qtd Orçada / Qtd Realizada</th><th>Andamento</th></tr></thead><tbody></tbody>`
+        const tbody = tabela.querySelector('tbody')
+        bloco.querySelectorAll('table.tabela-especialidade').forEach(t => {
+            t.querySelectorAll('tbody > tr').forEach(tr => {
+                if (tr.dataset.etapa === 'N') {
+                    const [num, nomeEsp] = tr.children
+                    tr.innerHTML = `<td>${num?.innerHTML || ''}</td><td colspan="4">${nomeEsp?.innerHTML || ''}</td>`
+                    tr.classList.add('linha-especialidade')
+                }
+                tbody.appendChild(tr)
+            })
+            t.remove()
+        })
+        bloco.appendChild(tabela)
+    }
+
     // Resumo da checklist (Total, Não iniciado…): sai do corpo e vai para o cabeçalho, com os blocos lado a lado.
     const resumo = copia.querySelector('#resumo')
     const blocos = resumo ? [...resumo.querySelectorAll('.bloco')].map(b => `
@@ -534,7 +560,7 @@ async function pdfObra(nome) {
     const cliente = obra?.cliente ? await recuperarDado('dados_clientes', obra.cliente) : null
     copia.insertAdjacentHTML('afterbegin', cabecalhoPdf({
         titulo: nome,
-        linhas: [['Obra', obra?.contrato], ['Cliente', cliente?.nome], ['Morada', cliente?.morada_execucao]],
+        linhas: [['Obra', obra?.contrato], ['Cliente', cliente?.nome], ['Morada', cliente?.morada_execucao], ['Orçamento', orcamentoPdf]],
         extra: blocos ? `<div style="display: flex; gap: 6px; margin-top: 8px;">${blocos}</div>` : ''
     }))
     // Letra do documento ao tamanho padrão (a da app ficava grande no A4).
@@ -542,6 +568,19 @@ async function pdfObra(nome) {
         #pdf { font-size: 11px; }
         #pdf h2 { font-size: 14px; margin: 6px 0; }
         #pdf .tabTarefas td { padding: 4px 6px; }
+        /* Sem DOCTYPE o PDF abre em modo quirks e as tabelas não herdam o tamanho da letra. */
+        #pdf table, #pdf th, #pdf td { font-size: 10px; }
+        #pdf .tabela-checklist-pdf { width: 100%; margin: 0; }
+        #pdf .tabela-checklist-pdf thead { display: table-header-group; }
+        #pdf .tabela-checklist-pdf th { padding: 5px 6px; border: solid 1px #a7a7a7; background: #3f4b55; color: #fff; text-align: left; font-weight: 600; }
+        #pdf .tabela-checklist-pdf th:nth-child(1) { width: 32px; }
+        #pdf .tabela-checklist-pdf th:nth-child(3), #pdf .tabela-checklist-pdf td:nth-child(3) { width: 50px; }
+        #pdf .tabela-checklist-pdf th:nth-child(4) { width: 110px; text-align: center; }
+        #pdf .tabela-checklist-pdf th:nth-child(5) { width: 110px; }
+        #pdf .tabela-checklist-pdf tr { page-break-inside: avoid; }
+        #pdf .tabela-checklist-pdf tbody tr td { background: #fff !important; }
+        #pdf .tabela-checklist-pdf tbody tr:nth-child(even) td { background: #f6f6f6 !important; }
+        #pdf .tabela-checklist-pdf tr.linha-especialidade td { background: #eef1f4 !important; font-size: 11px; }
     </style>`)
 
     // Nome do ficheiro: "Checklist - nº orç - morada" (sem caracteres inválidos em nomes de ficheiro).
@@ -685,7 +724,7 @@ async function carregarLinhasAndamento(idObra) {
                 const fotos = Object.keys(item.campo.andamento?.fotos || {}).length > 0
                 const icoCam = fotos ? 'camera-verde' : 'camera-vermelha'
                 const icoRiscar = riscado ? 'riscar-vermelho' : 'riscar-verde'
-                // A 100% a tarefa conta como concluída: caixa marcada e linha verde.
+                // A 100% a tarefa conta como concluída: caixa marcada.
                 const concluido = !!item.campo.andamento?.concluido
 
                 const porcent = percentualItemChecklist(quantidade, qtdeRealizada, concluido)
