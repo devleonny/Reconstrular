@@ -471,6 +471,7 @@
         observer.observe(tela, {childList:true});
         // ---------- Caixas: a pessoal e, para o CEO e o Diretor Programador, as partilhadas (suporte@, financeiro@…) ----------
         const botaoCaixas = root.querySelector('[data-caixas]'), menuCaixas = root.querySelector('.em-caixas-menu');
+        let esperaCaixas = null;
         const abrirMenuCaixas = aberto => { menuCaixas.hidden = !aberto; botaoCaixas.setAttribute('aria-expanded', String(aberto)); };
         function desenharCaixas({ gerir, items }) {
             const ativa = items.find(c => caixaAtual ? c.id === caixaAtual : !c.shared);
@@ -482,6 +483,18 @@
             const linha = c => `<button type="button" role="menuitemradio" aria-checked="${c === ativa}" data-caixa="${escape(c.shared ? c.id : '')}">
                 <span class="em-caixa-texto"><b>${escape(c.shared ? c.name : 'A minha caixa')}</b><small>${escape(c.email)}${c.shared && !c.ready ? ' · a ativar envio' : ''}</small></span>
                 ${c.unread ? `<mark title="${c.unread} não lido(s)">${c.unread > 99 ? '99+' : c.unread}</mark>` : ''}</button>`;
+            // A caixa aberta acabou de ficar pronta (aviso do servidor ou nova consulta): ativa o envio sem recarregar a página.
+            if (ativa?.ready && account && !account.canSend) {
+                account.canSend = true;
+                root.querySelector('[data-new]').disabled = false;
+                const enviar = reader.querySelector('.em-compose [type=submit]'); if (enviar && !busy) enviar.disabled = false;
+                notice(`Envio ativado: já pode escrever a partir de ${ativa.email}.`);
+                window.balaoNotificacao?.({ imagem: 'imagens/concluido.png', usuario: ativa.email, status: 'Caixa pronta para enviar', tempo: 6 });
+            }
+            // Reserva para quando o aviso em tempo real não chega (ligação caída): volta a consultar enquanto houver caixas
+            // partilhadas por ativar (as pessoais pendentes dependem do administrador e não mudam sozinhas).
+            clearTimeout(esperaCaixas);
+            if (items.some(c => c.shared && !c.ready)) esperaCaixas = setTimeout(() => { if (root.isConnected) contar(); }, 20000);
             const pessoais = items.filter(c => !c.shared), partilhadas = items.filter(c => c.shared);
             menuCaixas.innerHTML = pessoais.map(linha).join('')
                 + (partilhadas.length ? `<div class="em-caixas-grupo">Caixas partilhadas</div>${partilhadas.map(linha).join('')}` : '')
