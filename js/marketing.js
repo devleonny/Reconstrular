@@ -90,7 +90,7 @@ const Marketing = (() => {
         const pubs = estado.publicacoes
         const publicadas = pubs.filter(p => p.estado === 'publicada')
         const soma = k => publicadas.reduce((s, p) => s + Number(p.metricas?.[k] || 0), 0)
-        tela.innerHTML = `
+        document.querySelector('.tela').innerHTML = `
             <div class="mkt">
                 ${cartaoConta()}
                 <div class="mkt-barra">
@@ -168,9 +168,9 @@ const Marketing = (() => {
         document.querySelector('[name="titulo"]').textContent = 'Marketing · Vaga de parceiro'
         const campo = (rotulo, html, ajuda = '') => `<label class="mkt-campo"><span>${rotulo}</span>${html}${ajuda ? `<small>${ajuda}</small>` : ''}</label>`
         const nomes = [...new Set((especialidades || []).map(e => e.nome).filter(Boolean))].sort((a, b) => a.localeCompare(b))
-        tela.innerHTML = `
+        document.querySelector('.tela').innerHTML = `
             <div class="mkt mkt-editor">
-                <button type="button" class="mkt-voltar" onclick="Marketing.tela()">← Voltar às publicações</button>
+                <button type="button" class="mkt-voltar" onclick="Marketing.tela()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Voltar às publicações</span></button>
                 <div class="mkt-editor-grade">
                     <form class="mkt-form" oninput="Marketing.alterado(this)" onsubmit="event.preventDefault()">
                         ${campo('Especialidade *', `<input name="especialidade" list="mkt-especialidades" maxlength="60" value="${esc(d.especialidade)}" placeholder="Ex.: Canalizador" required>
