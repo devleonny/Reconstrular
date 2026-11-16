@@ -122,11 +122,15 @@
             focar: () => area.focus()
         };
     }
+    // Caixa partilhada aberta (suporte@, financeiro@…); null = a caixa pessoal. Fica guardada entre visitas.
+    let caixaAtual = localStorage.getItem('emailCaixa') || null;
+    const escolherCaixa = id => { caixaAtual = id || null; if (caixaAtual) localStorage.setItem('emailCaixa', caixaAtual); else localStorage.removeItem('emailCaixa'); };
+    const comCaixa = path => caixaAtual ? `${path}${path.includes('?') ? '&' : '?'}caixa=${encodeURIComponent(caixaAtual)}` : path;
     async function request(path, method = 'GET', data) {
         const { token } = JSON.parse(localStorage.getItem('acesso') || '{}');
         if (!token) throw new Error('Entre novamente para aceder aos seus e-mails.');
         const multipart = data instanceof FormData;
-        const response = await fetchAutenticado(`${api}/emails${path}`, {
+        const response = await fetchAutenticado(`${api}/emails${comCaixa(path)}`, {
             method, headers: { Authorization:`Bearer ${token}`, ...(!multipart && data ? {'Content-Type':'application/json'} : {}) },
             ...(data ? {body:multipart ? data : JSON.stringify(data)} : {})
         });
@@ -142,7 +146,7 @@
     window.telaEmails = async function () {
         titulo.textContent = 'E-mails';
         tela.innerHTML = `<section class="emails" aria-label="E-mails"><div class="em-shell">
-            <div class="em-top"><div class="em-account">${iconeMenu('carta')}<span class="em-identity">A carregar sua conta…</span></div><div class="em-notice" role="status" aria-live="polite"></div></div>
+            <div class="em-top"><div class="em-caixas"><button type="button" class="em-account" data-caixas aria-haspopup="menu" aria-expanded="false" disabled>${iconeMenu('carta')}<span class="em-identity">A carregar sua conta…</span><svg class="em-caixas-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="m6 9 6 6 6-6"/></svg></button><div class="em-caixas-menu" role="menu" hidden></div></div><div class="em-notice" role="status" aria-live="polite"></div></div>
             <aside class="em-sidebar"><button class="em-primary" data-new disabled>＋ Escrever e-mail</button><nav class="em-folders" aria-label="Pastas de e-mail">${Object.entries(folders).map(([key,name]) => `<button data-folder="${key}" aria-current="${key === 'inbox'}"><span>${name}</span><span class="em-contagem" data-contagem="${key}"></span></button>`).join('')}</nav></aside>
             <div class="em-column"><form class="em-tools em-search" role="search"><div class="em-query"><input name="q" aria-label="Pesquisar e-mails" placeholder="Pesquisar nesta pasta…" maxlength="200"><button type="submit" data-refresh aria-label="Pesquisar e atualizar mensagens" title="Pesquisar e atualizar mensagens"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button></div><div class="em-filters"><select name="unread" aria-label="Filtrar leitura"><option value="">Todos os e-mails</option><option value="true">Não lidos</option></select></div></form><div class="em-list" aria-label="Mensagens"></div><div class="em-pagination"><span class="em-total"></span><button data-prev disabled aria-label="Página anterior">‹</button><span class="em-page"></span><button data-next disabled aria-label="Próxima página">›</button></div></div>
             <article class="em-reader" aria-label="Leitura e composição"><div class="em-empty">${iconeMenu('carta')}<strong>Suas mensagens, em um só lugar</strong><span>Selecione um e-mail para ler ou escreva uma nova mensagem.</span></div></article>
@@ -169,6 +173,8 @@
         let contagemSerial = 0;
         async function contar() {
             const n = ++contagemSerial;
+            // Não lidos de cada caixa no dropdown do cabeçalho (falha só deixa os números anteriores).
+            request('/mailboxes').then(caixas => { if (n === contagemSerial && root.isConnected) desenharCaixas(caixas); }).catch(() => {});
             try {
                 const contagem = await request('/counts');
                 if (n !== contagemSerial || !root.isConnected) return;
@@ -411,7 +417,7 @@
             const download = e.target.closest('[data-download]');
             if (download && current) {
                 const {token} = JSON.parse(localStorage.getItem('acesso') || '{}');
-                const response = await fetchAutenticado(`${api}/emails/messages/${encodeURIComponent(current.id)}/attachments/${encodeURIComponent(download.dataset.download)}`, {headers:{Authorization:`Bearer ${token}`}});
+                const response = await fetchAutenticado(`${api}/emails${comCaixa(`/messages/${encodeURIComponent(current.id)}/attachments/${encodeURIComponent(download.dataset.download)}`)}`, {headers:{Authorization:`Bearer ${token}`}});
                 if (!response?.ok) throw new Error('Não foi possível descarregar o anexo.');
                 const url = URL.createObjectURL(await response.blob()), a = document.createElement('a'); a.href = url; a.download = current.attachments.find(x => String(x.id) === download.dataset.download)?.name || 'anexo'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10000); return;
             }
@@ -463,28 +469,103 @@
         window.addEventListener('beforeunload', unload);
         const observer = new MutationObserver(() => { if (!root.isConnected) { ++serial; ++detailSerial; window.removeEventListener('beforeunload', unload); document.removeEventListener('click', navigation, true); observer.disconnect(); } });
         observer.observe(tela, {childList:true});
+        // ---------- Caixas: a pessoal e, para o CEO e o Diretor Programador, as partilhadas (suporte@, financeiro@…) ----------
+        const botaoCaixas = root.querySelector('[data-caixas]'), menuCaixas = root.querySelector('.em-caixas-menu');
+        const abrirMenuCaixas = aberto => { menuCaixas.hidden = !aberto; botaoCaixas.setAttribute('aria-expanded', String(aberto)); };
+        function desenharCaixas({ gerir, items }) {
+            const ativa = items.find(c => caixaAtual ? c.id === caixaAtual : !c.shared);
+            const pode = items.length > 1 || gerir;
+            botaoCaixas.disabled = !pode;
+            botaoCaixas.querySelector('.em-caixas-seta').hidden = !pode;
+            botaoCaixas.title = pode ? 'Trocar de caixa de e-mail' : '';
+            if (ativa) botaoCaixas.querySelector('.em-identity').textContent = ativa.email;
+            const linha = c => `<button type="button" role="menuitemradio" aria-checked="${c === ativa}" data-caixa="${escape(c.shared ? c.id : '')}">
+                <span class="em-caixa-texto"><b>${escape(c.shared ? c.name : 'A minha caixa')}</b><small>${escape(c.email)}${c.shared && !c.ready ? ' · a ativar envio' : ''}</small></span>
+                ${c.unread ? `<mark title="${c.unread} não lido(s)">${c.unread > 99 ? '99+' : c.unread}</mark>` : ''}</button>`;
+            const pessoais = items.filter(c => !c.shared), partilhadas = items.filter(c => c.shared);
+            menuCaixas.innerHTML = pessoais.map(linha).join('')
+                + (partilhadas.length ? `<div class="em-caixas-grupo">Caixas partilhadas</div>${partilhadas.map(linha).join('')}` : '')
+                + (gerir ? '<button type="button" role="menuitem" class="em-caixas-nova" data-nova-caixa>＋ Nova caixa partilhada…</button>' : '');
+        }
+        botaoCaixas.onclick = () => abrirMenuCaixas(menuCaixas.hidden);
+        const fecharMenuFora = e => { if (!root.isConnected) return document.removeEventListener('click', fecharMenuFora); if (!e.target.closest('.em-caixas')) abrirMenuCaixas(false); };
+        document.addEventListener('click', fecharMenuFora);
+        menuCaixas.addEventListener('click', guarded(async e => {
+            if (e.target.closest('[data-nova-caixa]')) { abrirMenuCaixas(false); novaCaixa(); return; }
+            const b = e.target.closest('[data-caixa]'); if (!b) return;
+            abrirMenuCaixas(false);
+            const destino = b.dataset.caixa || null;
+            if (destino === caixaAtual || busy || !await canLeave()) return;
+            if (compose) compose.dirty = false;
+            escolherCaixa(destino);
+            window.telaEmails();
+        }));
+        function novaCaixa() {
+            const dominio = (account?.senderEmail || '@reconstrularobras.com').split('@')[1];
+            popup({
+                titulo: 'Nova caixa partilhada',
+                linhas: [
+                    { texto: 'Endereço', elemento: `<div class="em-nova-caixa"><input name="em-caixa-prefixo" maxlength="64" placeholder="financeiro" autocomplete="off" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9._-]/g,'')"><span>@${escape(dominio)}</span></div>` },
+                    { texto: 'Nome a mostrar aos destinatários', elemento: '<input name="em-caixa-nome" maxlength="120" placeholder="Financeiro · Reconstrular">' },
+                    { elemento: '<small class="em-nova-caixa-ajuda">Só o CEO e o Diretor Programador veem esta caixa e recebem os avisos. O envio fica disponível assim que a Brevo confirmar o remetente (normalmente em poucos minutos).</small>' }
+                ],
+                botoes: [{ texto: 'Criar caixa', img: 'concluido', funcao: 'criarCaixaEmail()' }]
+            });
+            document.querySelector('[name=em-caixa-prefixo]')?.focus();
+        }
+        window.criarCaixaEmail = async () => {
+            const prefix = document.querySelector('[name=em-caixa-prefixo]')?.value.trim();
+            const name = document.querySelector('[name=em-caixa-nome]')?.value.trim();
+            try {
+                if (!prefix) throw new Error('Indique o endereço (ex.: financeiro).');
+                if (!name) throw new Error('Indique o nome a mostrar.');
+                overlayAguarde();
+                const caixa = await request('/mailboxes', 'POST', { prefix, name });
+                removerOverlay(); removerPopup();
+                if (!await canLeave()) return;
+                if (compose) compose.dirty = false;
+                escolherCaixa(caixa.id);
+                window.telaEmails();
+                window.atualizarContadorEmails();
+            } catch (error) {
+                removerOverlay();
+                popup({ titulo: 'Nova caixa partilhada', mensagem: escape(error.message), removerAnteriores: false });
+            }
+        };
+        try {
+            const caixas = await request('/mailboxes');
+            if (!root.isConnected) return;
+            // Caixa guardada que deixou de existir ou de estar acessível: volta à pessoal (ou à primeira partilhada).
+            if (caixaAtual && !caixas.items.some(c => c.shared && c.id === caixaAtual)) escolherCaixa(null);
+            if (!caixaAtual && !caixas.items.some(c => !c.shared) && caixas.items.length) escolherCaixa(caixas.items[0].id);
+            desenharCaixas(caixas);
+            if (!caixas.items.length && caixas.gerir) { botaoCaixas.querySelector('.em-identity').textContent = 'Sem caixa pessoal'; }
+        } catch (error) { console.warn('Não foi possível listar as caixas de e-mail:', error.message); }
         try {
             account = await request('/account');
             if (!root.isConnected) return;
             if (!account.senderEmail || !account.inboundEmail) throw new Error('Seu endereço de e-mail ainda não foi atribuído pelo administrador.');
             root.querySelector('.em-identity').textContent = account.senderEmail;
+            titulo.textContent = account.shared ? `E-mails · ${account.displayName}` : 'E-mails';
             root.querySelector('[data-new]').disabled = !account.canSend;
             await load();
             if (!account.canSend) notice('Envio ainda não habilitado para sua conta.');
         } catch (error) { root.querySelector('.em-identity').textContent = 'Conta de e-mail indisponível'; notice(error.message, true); }
     };
 
-    // Ícone do topo: não lidos da caixa de entrada. Sem conta de e-mail, o ícone some.
+    // Ícone do topo: não lidos da caixa de entrada pessoal somados aos das caixas partilhadas a que a pessoa tem acesso.
+    // Sem nenhuma caixa, o ícone some.
     let contadorConsulta = 0, contadorTimer = null;
     window.atualizarContadorEmails = async function () {
         const contador = document.getElementById('contadorEmails');
         if (!contador) return;
         const botao = contador.parentElement, consulta = ++contadorConsulta;
         try {
-            const data = await request('/messages?folder=inbox&unread=true&page=1&limit=1');
+            const data = await request('/mailboxes');
             if (consulta !== contadorConsulta || !contador.isConnected) return;
-            const total = Number(data?.total);
-            if (!Number.isFinite(total) || total < 0) throw new Error('Contagem inválida.');
+            if (!Array.isArray(data?.items)) throw new Error('Contagem inválida.');
+            if (!data.items.length) { botao.hidden = true; return; }
+            const total = data.items.reduce((soma, c) => soma + (Number(c.unread) || 0), 0);
             botao.hidden = false;
             contador.textContent = total > 99 ? '99+' : String(total);
             contador.hidden = total === 0;

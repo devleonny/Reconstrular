@@ -181,3 +181,28 @@
 .em-html { display:block; width:100%; min-height:120px; border:0; }
 .em-assinatura-titulo { font-size:12px; font-weight:600; color:#5b6d62; }
 .em-assinatura-previa.em-assinatura-erro { padding:10px 14px; border-style:solid; border-color:#e3a3a3; background:#fdeeee; color:#9b2c2c; font-size:12.5px; }
+
+/* Dropdown de caixas no cabeçalho (pessoal + partilhadas: suporte@, financeiro@…). */
+.em-caixas { position:relative; min-width:0; }
+.emails .em-account { min-height:0; padding:6px 12px 6px 8px; border:1px solid transparent; border-radius:999px; background:var(--em-accent-soft); color:#2b5444; font-weight:600; text-align:left; }
+.emails .em-account:hover:not(:disabled) { background:#d5e7dd; border-color:#b9d3c4; color:#21463a; }
+.emails .em-account:disabled, .emails .em-account:disabled:hover { opacity:1; cursor:default; background:var(--em-accent-soft); border-color:transparent; color:#2b5444; }
+.emails .em-account[aria-expanded=true] { border-color:#9fc2b0; background:#d5e7dd; }
+.em-caixas-seta { width:16px !important; height:16px !important; margin-left:-2px; color:#2b5444 !important; transition:transform .15s; }
+.em-account[aria-expanded=true] .em-caixas-seta { transform:rotate(180deg); }
+.em-caixas-menu { position:absolute; z-index:20; top:calc(100% + 6px); left:0; display:flex; flex-direction:column; gap:2px; min-width:280px; max-width:min(380px, 92vw); padding:6px; border:1px solid var(--em-line); border-radius:12px; background:#fff; box-shadow:0 10px 28px #1d332a2e; }
+.em-caixas-menu[hidden] { display:none; }
+.emails .em-caixas-menu button { display:flex; align-items:center; gap:10px; width:100%; min-height:0; padding:8px 10px; border:0; border-radius:8px; background:transparent; text-align:left; }
+.emails .em-caixas-menu button:hover { background:#f0f4f1; border-color:transparent; }
+.emails .em-caixas-menu button[aria-checked=true] { background:var(--em-accent-soft); }
+.em-caixa-texto { display:flex; flex-direction:column; flex:1; min-width:0; }
+.em-caixa-texto b { color:#293b32; font-weight:600; }
+.em-caixa-texto small { color:var(--em-muted); font-size:11.5px; overflow-wrap:anywhere; }
+.em-caixas-menu mark { flex:none; min-width:20px; padding:1px 7px; border-radius:999px; background:var(--em-accent); color:#fff; font-size:11px; font-weight:600; text-align:center; }
+.em-caixas-grupo { margin:6px 10px 2px; padding-top:8px; border-top:1px solid var(--em-line); color:var(--em-muted); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
+.emails .em-caixas-menu .em-caixas-nova { margin-top:4px; border-top:1px solid var(--em-line); border-radius:0 0 8px 8px; color:var(--em-accent); font-weight:600; }
+/* Popup de criação (fora de .emails). */
+.em-nova-caixa { display:flex; align-items:center; gap:6px; }
+.em-nova-caixa input { flex:1; min-width:0; }
+.em-nova-caixa span { color:#5b6d62; font-weight:600; white-space:nowrap; }
+.em-nova-caixa-ajuda { display:block; max-width:420px; color:#6b7770; line-height:1.45; text-align:left; }
