@@ -144,7 +144,7 @@
         tela.innerHTML = `<section class="emails" aria-label="E-mails"><div class="em-shell">
             <div class="em-top"><div class="em-account">${iconeMenu('carta')}<span class="em-identity">A carregar sua conta…</span></div><div class="em-notice" role="status" aria-live="polite"></div></div>
             <aside class="em-sidebar"><button class="em-primary" data-new disabled>＋ Escrever e-mail</button><nav class="em-folders" aria-label="Pastas de e-mail">${Object.entries(folders).map(([key,name]) => `<button data-folder="${key}" aria-current="${key === 'inbox'}"><span>${name}</span><span class="em-contagem" data-contagem="${key}"></span></button>`).join('')}</nav></aside>
-            <div class="em-column"><form class="em-tools em-search" role="search"><div class="em-query"><input name="q" aria-label="Pesquisar e-mails" placeholder="Pesquisar nesta pasta…" maxlength="200"><button type="submit" data-refresh aria-label="Pesquisar e atualizar mensagens" title="Pesquisar e atualizar mensagens"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button></div><div class="em-filters"><select name="unread" aria-label="Filtrar leitura"><option value="">Todos os e-mails</option><option value="true">Não lidos</option></select></div></form><div class="em-list" aria-label="Mensagens"></div><div class="em-pagination"><button data-prev disabled aria-label="Página anterior">‹</button><span class="em-page"></span><button data-next disabled aria-label="Próxima página">›</button></div></div>
+            <div class="em-column"><form class="em-tools em-search" role="search"><div class="em-query"><input name="q" aria-label="Pesquisar e-mails" placeholder="Pesquisar nesta pasta…" maxlength="200"><button type="submit" data-refresh aria-label="Pesquisar e atualizar mensagens" title="Pesquisar e atualizar mensagens"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button></div><div class="em-filters"><select name="unread" aria-label="Filtrar leitura"><option value="">Todos os e-mails</option><option value="true">Não lidos</option></select></div></form><div class="em-list" aria-label="Mensagens"></div><div class="em-pagination"><span class="em-total"></span><button data-prev disabled aria-label="Página anterior">‹</button><span class="em-page"></span><button data-next disabled aria-label="Próxima página">›</button></div></div>
             <article class="em-reader" aria-label="Leitura e composição"><div class="em-empty">${iconeMenu('carta')}<strong>Suas mensagens, em um só lugar</strong><span>Selecione um e-mail para ler ou escreva uma nova mensagem.</span></div></article>
         </div></section>`;
         const root = tela.querySelector('.emails');
@@ -165,7 +165,7 @@
             fim.observe(document.body, { childList: true });
         });
         const canLeave = async () => !compose || !compose.dirty || await confirmar('Descartar o e-mail em edição? As alterações não guardadas serão perdidas.', 'Descartar e-mail', 'Descartar');
-        // Total e não lidos ao lado de cada pasta; falha só deixa os números como estavam.
+        // Só os não lidos ao lado de cada pasta (o total da pasta aberta fica no rodapé da lista); falha só deixa os números como estavam.
         let contagemSerial = 0;
         async function contar() {
             const n = ++contagemSerial;
@@ -173,8 +173,8 @@
                 const contagem = await request('/counts');
                 if (n !== contagemSerial || !root.isConnected) return;
                 for (const el of root.querySelectorAll('[data-contagem]')) {
-                    const { total = 0, unread = 0 } = contagem[el.dataset.contagem] || {};
-                    el.innerHTML = `${total ? `<small>${total}</small>` : ''}${unread ? `<mark title="${unread} não lido(s)">${unread > 99 ? '99+' : unread}</mark>` : ''}`;
+                    const { unread = 0 } = contagem[el.dataset.contagem] || {};
+                    el.innerHTML = unread ? `<mark title="${unread} não lido(s)">${unread > 99 ? '99+' : unread}</mark>` : '';
                 }
             } catch (error) { console.warn('Não foi possível contar os e-mails:', error.message); }
         }
@@ -191,6 +191,8 @@
                 messages = data.items; pages = Math.max(1, Number(data.pages) || 1);
                 window.atualizarContadorEmails(); // leitura/movimentação muda os não lidos
                 list.innerHTML = messages.length ? messages.map(m => `<button class="em-row ${!m.read ? 'unread' : ''}${m.status === 'error' ? ' falhou' : ''}" data-message="${escape(m.id)}" aria-current="${current?.id === m.id}"><span>${m.status === 'error' ? '<mark class="em-badge-erro" title="Abra a mensagem para ver o motivo">Falha no envio</mark>' : ''}${m.starred ? '★ ' : ''}${escape(folder === 'sent' || folder === 'drafts' ? addresses(m.to) : m.from?.name || address(m.from))}</span><span>${escape(m.subject || '(Sem assunto)')}</span><small>${escape(m.preview || '')}</small><small>${escape(date(m.date))}${m.hasAttachments ? ' · Anexos' : ''}${Number(m.threadCount) > 1 ? ` · ${escape(m.threadCount)} mensagens` : ''}</small></button>`).join('') : '<div class="em-empty">Nenhum e-mail nesta pesquisa.</div>';
+                const total = Number(data.total);
+                root.querySelector('.em-total').textContent = Number.isFinite(total) && total >= 0 ? `${total} e-mail${total === 1 ? '' : 's'}` : '';
                 root.querySelector('.em-page').textContent = `${page} / ${pages}`;
                 root.querySelector('[data-prev]').disabled = page <= 1;
                 root.querySelector('[data-next]').disabled = page >= pages;

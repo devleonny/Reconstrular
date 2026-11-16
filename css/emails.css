@@ -43,6 +43,7 @@
 .em-row small,.em-row span { display:block; margin-top:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .em-row span:first-child { margin-top:0; padding-right:14px; font-size:12px; }.em-row small { color:var(--em-muted); font-weight:400; font-size:11px; }
 .em-pagination { display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:53px; padding:8px 16px; border-top:1px solid var(--em-line); color:var(--em-muted); font-size:12px; }
+.em-pagination .em-total { flex:1; white-space:nowrap; }
 .em-pagination button { width:32px; min-height:30px; padding:2px; font-size:21px; }
 .em-reader { padding:28px; min-width:0; min-height:0; overflow:auto; overflow-wrap:anywhere; }
 .em-reader h3 { margin:0 0 16px; font-size:20px; line-height:1.5; font-weight:600; color:#2c4034; }
@@ -97,7 +98,6 @@
 .em-folders button { gap:8px; }
 .em-folders button > span:first-child { flex:1; }
 .em-contagem { display:inline-flex; align-items:center; gap:6px; }
-.em-contagem small { color:#8a978f; font-size:11.5px; font-weight:400; }
 .em-contagem mark { min-width:20px; padding:1px 7px; border-radius:999px; background:var(--em-accent); color:#fff; font-size:11px; font-weight:700; line-height:1.6; text-align:center; }
 .em-folders button[aria-current=true] { background:#fff; color:var(--em-accent); box-shadow:inset 3px 0 0 var(--em-accent), 0 1px 2px rgba(31,45,61,.06); }
 
