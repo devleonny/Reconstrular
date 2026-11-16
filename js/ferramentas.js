@@ -150,6 +150,11 @@ async function selecionar(name, cod) {
     }
 }
 
+// Alerta de Despesas Extras no cabeçalho (o contador está em despesas.js).
+function podeAlertaDespesasExtras() {
+    return ['CEO', 'Diretor Programador'].includes(acesso?.funcao)
+}
+
 async function carregarControles() {
 
     cUsuario.style.display = ''
@@ -181,7 +186,9 @@ async function carregarControles() {
     await verificarMensagens()
     await atualizarContadorTarefas()
     window.iniciarContadorEmails?.()
-    atualizarContadorDespesasExtras()
+    // Com sessão já iniciada, isto corre antes de o despesas.js carregar: espera pela página completa.
+    if (window.atualizarContadorDespesasExtras) atualizarContadorDespesasExtras()
+    else window.addEventListener('load', () => window.atualizarContadorDespesasExtras?.(), { once: true })
     chatPushAtualizarBotao()
     chatPushSincronizar().catch(erro => console.warn('Notificações do chat:', erro.message)).finally(chatPushAtualizarBotao)
     chatPushOferecer()

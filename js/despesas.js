@@ -1480,7 +1480,6 @@ async function itensDespesasExtras() {
 // ---------- Alerta de Despesas Extras no cabeçalho (só CEO e Diretor Programador) ----------
 // O contador mostra os itens fora do catálogo à espera de decisão. Quando aparece um item novo (por aviso do
 // servidor ou ao entrar), sai um balão de alerta. Os já avisados ficam guardados por utilizador neste aparelho.
-const podeAlertaDespesasExtras = () => ['CEO', 'Diretor Programador'].includes(acesso?.funcao)
 let contadorDespesasExtrasConsulta = 0
 
 function mostrarContadorDespesasExtras(total) {
